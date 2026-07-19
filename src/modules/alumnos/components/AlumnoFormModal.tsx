@@ -3,10 +3,18 @@ import { Modal, Form, Input, DatePicker, Button } from 'antd';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
 
+export interface AlumnoFormValues {
+  numeroLegajo: string;
+  dni: string;
+  apellidos: string;
+  nombres: string;
+  fechaNacimiento: dayjs.Dayjs | null;
+}
+
 interface AlumnoFormModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (values: Record<string, any>) => Promise<void>;
+  onSubmit: (values: AlumnoFormValues, originalUpdatedDate?: string) => Promise<void>;
   initialValues?: Alumno | null;
 }
 
@@ -34,7 +42,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
 
   const handleOk = () => {
     form.validateFields().then((values) => {
-      onSubmit(values).then(() => {
+      onSubmit(values, initialValues?.updatedAt).then(() => {
         form.resetFields();
       });
     }).catch(info => {

@@ -1,6 +1,6 @@
 import PocketBase from 'pocketbase';
 
-const pb = new PocketBase('http://129.121.52.187:8090');
+const pb = new PocketBase(import.meta.env.VITE_POCKETBASE_URL);
 
 pb.autoCancellation(false); 
 
