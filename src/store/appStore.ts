@@ -18,7 +18,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => {
   // Suscribirse a los cambios de sesión de PocketBase
-  pb.authStore.onChange((token, model) => {
+  pb.authStore.onChange((_token, model) => {
     set({ currentUser: pb.authStore.isValid ? model : null });
   });
 
