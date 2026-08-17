@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Table,
   Typography,
@@ -30,23 +30,24 @@ import {
   AppstoreOutlined,
   ReloadOutlined,
   CheckCircleOutlined,
+  EyeOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { alumnoService } from '../services/alumno.service';
 import type { Alumno } from '../models/alumno.model';
 import { AlumnoFormModal, type AlumnoFormValues } from './AlumnoFormModal';
+import { AlumnoDetailModal } from './AlumnoDetailModal';
 import { useAppStore } from '../../../store/appStore';
 
 const { Title, Text } = Typography;
 
-// Helper to pick deterministic gradient color based on student name
 const getAvatarGradient = (str: string) => {
   const colors = [
+    'linear-gradient(135deg, #1e40af, #2563eb)',
     'linear-gradient(135deg, #0d9488, #10b981)',
-    'linear-gradient(135deg, #6366f1, #8b5cf6)',
-    'linear-gradient(135deg, #f59e0b, #d97706)',
-    'linear-gradient(135deg, #0284c7, #2563eb)',
-    'linear-gradient(135deg, #ec4899, #f43f5e)',
+    'linear-gradient(135deg, #0369a1, #0284c7)',
+    'linear-gradient(135deg, #4f46e5, #6366f1)',
+    'linear-gradient(135deg, #d97706, #f59e0b)',
   ];
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -67,9 +68,13 @@ export const AlumnoList: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // Modal state
+  // Modal para Crear / Editar Alumno
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingAlumno, setEditingAlumno] = useState<Alumno | null>(null);
+
+  // Modal para Ficha Completa del Alumno
+  const [selectedDetailAlumno, setSelectedDetailAlumno] = useState<Alumno | null>(null);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -82,7 +87,7 @@ export const AlumnoList: React.FC = () => {
     };
   }, [inputValue]);
 
-  const fetchAlumnos = async () => {
+  const fetchAlumnos = useCallback(async () => {
     try {
       setLoading(true);
       const data = await alumnoService.getList(currentPage, 50, searchTerm);
@@ -94,11 +99,28 @@ export const AlumnoList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchTerm, message]);
 
   useEffect(() => {
-    fetchAlumnos().then(() => {
-      alumnoService.subscribeToRealtime((action, alumno) => {
+    let isMounted = true;
+
+    const init = async () => {
+      try {
+        setLoading(true);
+        const data = await alumnoService.getList(currentPage, 50, searchTerm);
+        if (!isMounted) return;
+        setAlumnos(data.items);
+        setTotalItems(data.totalItems);
+      } catch (error) {
+        if (!isMounted) return;
+        console.error('Error al cargar alumnos:', error);
+        message.error('Error al cargar la lista de alumnos');
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+
+      await alumnoService.subscribeToRealtime((action, alumno) => {
+        if (!isMounted) return;
         setAlumnos((prev) => {
           if (action === 'create') {
             if (prev.some((a) => a.id === alumno.id)) return prev;
@@ -113,12 +135,15 @@ export const AlumnoList: React.FC = () => {
           return prev;
         });
       });
-    });
+    };
+
+    void init();
 
     return () => {
+      isMounted = false;
       alumnoService.unsubscribeRealtime();
     };
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, message]);
 
   const handleOpenModal = (alumno?: Alumno) => {
     setEditingAlumno(alumno || null);
@@ -130,23 +155,74 @@ export const AlumnoList: React.FC = () => {
     setEditingAlumno(null);
   };
 
+  const handleOpenDetail = (alumno: Alumno) => {
+    setSelectedDetailAlumno(alumno);
+    setIsDetailModalVisible(true);
+  };
+
+  const handleCloseDetail = () => {
+    setIsDetailModalVisible(false);
+    setSelectedDetailAlumno(null);
+  };
+
   const handleSubmit = async (values: AlumnoFormValues, originalUpdatedDate?: string) => {
     try {
-      const dataToSubmit = {
-        numero_legajo: values.numeroLegajo,
+      const alumnoData = {
+        numero_legajo: values.numeroLegajo || '',
         dni: values.dni,
         apellidos: values.apellidos,
         nombres: values.nombres,
         fecha_nacimiento: values.fechaNacimiento ? values.fechaNacimiento.format('YYYY-MM-DD') : '',
+        nacionalidad: values.nacionalidad || '',
+        sexo: values.sexo || '',
+        telefono: values.telefono || '',
+        domicilio: values.domicilio || '',
+        usuario_acadeu: values.usuarioAcadeu || '',
+        clave_acadeu: values.claveAcadeu || '',
       };
 
       if (editingAlumno) {
         if (!originalUpdatedDate) throw new Error('Falta la fecha de actualización original');
-        await alumnoService.update(editingAlumno.id, dataToSubmit, originalUpdatedDate);
-        message.success('Alumno actualizado con éxito');
+        await alumnoService.update(editingAlumno.id, alumnoData, originalUpdatedDate);
+        message.success('Ficha del alumno actualizada con éxito');
       } else {
-        await alumnoService.create(dataToSubmit);
-        message.success('Alumno registrado con éxito');
+        const responsableData = values.responsableDni
+          ? {
+              id: values.responsableId,
+              dni: values.responsableDni || '',
+              apellidos: values.responsableApellidos || '',
+              nombres: values.responsableNombres || '',
+              nacionalidad: values.responsableNacionalidad || '',
+              profesion: values.responsableProfesion || '',
+              telefono: values.responsableTelefono || '',
+              email: values.responsableEmail || '',
+            }
+          : undefined;
+
+        const inscripcionData =
+          values.cursoId && values.cicloId
+            ? {
+                curso_id: values.cursoId,
+                ciclo_id: values.cicloId,
+                numero_orden: values.numeroOrden,
+                numero_inscripcion: values.numeroInscripcion || '',
+                fecha_inscripcion: values.fechaInscripcion ? values.fechaInscripcion.format('YYYY-MM-DD') : '',
+                fecha_ingreso: values.fechaIngreso ? values.fechaIngreso.format('YYYY-MM-DD') : '',
+                fecha_egreso: values.fechaEgreso ? values.fechaEgreso.format('YYYY-MM-DD') : '',
+                estado: values.estadoInscripcion || 'Regular',
+              }
+            : undefined;
+
+        const vinculo = values.vinculo || 'Tutor/a';
+
+        await alumnoService.createIntegral({
+          alumno: alumnoData,
+          inscripcion: inscripcionData,
+          responsable: responsableData,
+          vinculo,
+        });
+
+        message.success('Alumno registrado, inscrito y vinculado exitosamente');
       }
       handleCloseModal();
     } catch (error: unknown) {
@@ -166,14 +242,15 @@ export const AlumnoList: React.FC = () => {
     }
   };
 
+  // Columnas de la tabla: ESTUDIANTE, Legajo, Dni y Acciones
   const columns: ColumnsType<Alumno> = [
     {
-      title: 'Estudiante',
+      title: 'ESTUDIANTE',
       key: 'estudiante',
       render: (_, record) => {
         const initials = `${record.apellidos.charAt(0)}${record.nombres.charAt(0)}`.toUpperCase();
         return (
-          <Space size="middle">
+          <Space size="middle" style={{ cursor: 'pointer' }}>
             <Avatar
               size={40}
               className="student-avatar"
@@ -182,11 +259,12 @@ export const AlumnoList: React.FC = () => {
               {initials}
             </Avatar>
             <div>
-              <span className="student-name">
+              <span className="student-name" style={{ color: '#1e40af', fontWeight: 600 }}>
                 {record.apellidos}, {record.nombres}
               </span>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Registrado en la institución
+              <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                {record.nacionalidad ? `${record.nacionalidad}` : 'Estudiante'}
+                {record.sexo ? ` • ${record.sexo}` : ''}
               </Text>
             </div>
           </Space>
@@ -211,7 +289,7 @@ export const AlumnoList: React.FC = () => {
             border: '1px solid rgba(13, 148, 136, 0.2)',
           }}
         >
-          {legajo}
+          {legajo || 'S/L'}
         </Tag>
       ),
     },
@@ -220,7 +298,6 @@ export const AlumnoList: React.FC = () => {
       dataIndex: 'dni',
       key: 'dni',
       width: 160,
-      responsive: ['sm'],
       render: (dni) => (
         <Text copyable={{ text: dni, tooltips: ['Copiar DNI', 'Copiaste el DNI'] }} className="student-dni" style={{ fontWeight: 500 }}>
           {dni}
@@ -230,11 +307,19 @@ export const AlumnoList: React.FC = () => {
     {
       title: 'Acciones',
       key: 'acciones',
-      width: 110,
+      width: 130,
       align: 'right',
       render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="Editar registro">
+        <Space size="small" onClick={(e) => e.stopPropagation()}>
+          <Tooltip title="Ver ficha completa">
+            <Button
+              type="text"
+              icon={<EyeOutlined style={{ color: '#2563eb' }} />}
+              onClick={() => handleOpenDetail(record)}
+              aria-label="Ver ficha del alumno"
+            />
+          </Tooltip>
+          <Tooltip title="Editar ficha">
             <Button
               type="text"
               icon={<EditOutlined style={{ color: '#0284c7' }} />}
@@ -330,26 +415,26 @@ export const AlumnoList: React.FC = () => {
         <Title level={2} style={{ margin: 0 }}>
           Directorio de Alumnos
         </Title>
-        <span className="page-subtitle">Consultá, buscá y gestioná las fichas estudiantiles en tiempo real.</span>
+        <span className="page-subtitle">Hacé click en cualquier alumno para consultar su ficha completa con cursada y responsables.</span>
       </div>
 
       {/* Toolbar & Filters */}
       <div className="toolbar">
         <Space size="middle" wrap>
           <Input.Search
-            placeholder="Buscar por nombre, apellido o DNI..."
+            placeholder="Buscar por nombre, apellido, DNI, legajo..."
             allowClear
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            style={{ width: 280 }}
-            prefix={<SearchOutlined style={{ color: '#0d9488' }} />}
+            style={{ width: 320 }}
+            prefix={<SearchOutlined style={{ color: '#2563eb' }} />}
             className="toolbar-search"
           />
           <Tooltip title="Actualizar lista">
             <Button icon={<ReloadOutlined />} onClick={fetchAlumnos} loading={loading} />
           </Tooltip>
           {searchTerm && (
-            <Tag closable onClose={() => setInputValue('')} color="teal" style={{ borderRadius: 6, padding: '4px 8px' }}>
+            <Tag closable onClose={() => setInputValue('')} color="blue" style={{ borderRadius: 6, padding: '4px 8px' }}>
               Filtro: "{searchTerm}"
             </Tag>
           )}
@@ -376,14 +461,17 @@ export const AlumnoList: React.FC = () => {
         </Space>
       </div>
 
-      {/* Selection Status Banner if rows selected */}
+      {/* Selected rows banner */}
       {selectedRowKeys.length > 0 && (
-        <Card style={{ marginBottom: 16, background: '#f0fdfa', borderColor: '#99f6e4', padding: '8px 16px' }} bodyStyle={{ padding: 0 }}>
+        <Card style={{ marginBottom: 16, background: '#eff6ff', borderColor: '#bfdbfe', borderRadius: 12 }} bodyStyle={{ padding: '10px 16px' }}>
           <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-            <Text style={{ color: '#0f766e', fontWeight: 600 }}>
-              {selectedRowKeys.length} {selectedRowKeys.length === 1 ? 'alumno seleccionado' : 'alumnos seleccionados'}
-            </Text>
-            <Button size="small" type="link" onClick={() => setSelectedRowKeys([])}>
+            <Space size={8}>
+              <Badge count={selectedRowKeys.length} style={{ backgroundColor: '#2563eb', fontWeight: 700 }} />
+              <Text strong style={{ color: '#1e40af' }}>
+                {selectedRowKeys.length === 1 ? 'alumno seleccionado' : 'alumnos seleccionados'}
+              </Text>
+            </Space>
+            <Button size="small" type="link" onClick={() => setSelectedRowKeys([])} style={{ fontWeight: 600 }}>
               Desmarcar todos
             </Button>
           </Space>
@@ -404,6 +492,10 @@ export const AlumnoList: React.FC = () => {
               selectedRowKeys,
               onChange: (keys) => setSelectedRowKeys(keys),
             }}
+            onRow={(record) => ({
+              onClick: () => handleOpenDetail(record),
+              style: { cursor: 'pointer' },
+            })}
             locale={{
               emptyText: (
                 <Empty
@@ -445,7 +537,13 @@ export const AlumnoList: React.FC = () => {
                 const initials = `${alumno.apellidos.charAt(0)}${alumno.nombres.charAt(0)}`.toUpperCase();
                 return (
                   <Col xs={24} sm={12} md={8} lg={6} key={alumno.id}>
-                    <Card className="student-grid-card" bodyStyle={{ padding: 20 }}>
+                    <Card
+                      className="student-grid-card"
+                      bodyStyle={{ padding: 20 }}
+                      hoverable
+                      onClick={() => handleOpenDetail(alumno)}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                         <Avatar
                           size={46}
@@ -458,11 +556,11 @@ export const AlumnoList: React.FC = () => {
                           {initials}
                         </Avatar>
                         <Tag className="student-legajo-tag">
-                          {alumno.numeroLegajo}
+                          {alumno.numeroLegajo || 'S/L'}
                         </Tag>
                       </div>
 
-                      <Title level={5} style={{ margin: '0 0 4px 0', fontSize: 15 }}>
+                      <Title level={5} style={{ margin: '0 0 4px 0', fontSize: 15, color: '#1e40af' }}>
                         {alumno.apellidos}, {alumno.nombres}
                       </Title>
 
@@ -470,13 +568,34 @@ export const AlumnoList: React.FC = () => {
                         <Text type="secondary" style={{ fontSize: 12 }}>
                           DNI: <strong className="student-dni">{alumno.dni}</strong>
                         </Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {alumno.nacionalidad || 'Estudiante'} {alumno.sexo ? `• ${alumno.sexo}` : ''}
+                        </Text>
                       </Space>
 
-                      <div className="student-card-actions">
-                        <Button type="text" size="small" icon={<EditOutlined style={{ color: '#0284c7' }} />} onClick={() => handleOpenModal(alumno)}>
+                      <div className="student-card-actions" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EyeOutlined style={{ color: '#2563eb' }} />}
+                          onClick={() => handleOpenDetail(alumno)}
+                        >
+                          Ver Ficha
+                        </Button>
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EditOutlined style={{ color: '#0284c7' }} />}
+                          onClick={() => handleOpenModal(alumno)}
+                        >
                           Editar
                         </Button>
-                        <Popconfirm title="¿Eliminar alumno?" onConfirm={() => handleDelete(alumno.id)} okText="Sí" cancelText="No">
+                        <Popconfirm
+                          title="¿Eliminar alumno?"
+                          onConfirm={() => handleDelete(alumno.id)}
+                          okText="Sí"
+                          cancelText="No"
+                        >
                           <Button type="text" size="small" danger icon={<DeleteOutlined />}>
                             Eliminar
                           </Button>
@@ -491,14 +610,21 @@ export const AlumnoList: React.FC = () => {
         </div>
       )}
 
-      {/* Modal for Creating / Editing Student */}
+      {/* Modal para Crear / Editar Alumno */}
       <AlumnoFormModal
         visible={isModalVisible}
         onClose={handleCloseModal}
         onSubmit={handleSubmit}
         initialValues={editingAlumno}
       />
+
+      {/* Modal para Ficha Completa del Alumno */}
+      <AlumnoDetailModal
+        visible={isDetailModalVisible}
+        alumno={selectedDetailAlumno}
+        onClose={handleCloseDetail}
+        onEdit={(alumnoToEdit) => handleOpenModal(alumnoToEdit)}
+      />
     </div>
   );
 };
-

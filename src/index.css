@@ -1,13 +1,15 @@
+@import './styles/landing.css';
+
 :root {
   --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --primary-color: #0d9488;
-  --primary-hover: #14b8a6;
-  --bg-gradient-light: radial-gradient(at 0% 0%, rgba(20, 184, 166, 0.08) 0px, transparent 50%),
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --bg-gradient-light: radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%),
                        radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.06) 0px, transparent 50%),
                        #f8fafc;
   --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
-  --card-hover-shadow: 0 12px 30px -4px rgba(13, 148, 136, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
+  --card-hover-shadow: 0 12px 30px -4px rgba(37, 99, 235, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
 }
 
 * {
@@ -30,17 +32,17 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 
 /* Reusable Utility Classes */
 .btn-primary-gradient {
-  background: linear-gradient(135deg, #0d9488, #10b981) !important;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
   border: none !important;
-  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35) !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
   color: #ffffff !important;
   font-weight: 600 !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .btn-primary-gradient:hover {
-  background: linear-gradient(135deg, #0f766e, #059669) !important;
-  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.45) !important;
+  background: linear-gradient(135deg, #1e40af, #1d4ed8) !important;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45) !important;
   transform: translateY(-1px);
 }
 
@@ -74,8 +76,9 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 /* Sidebar */
 .app-sider {
   padding: 0 !important;
-  background: #090d16 !important;
+  background: #0d1b3e !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 2px 0 16px rgba(15, 23, 42, 0.06);
 }
 
 .app-sider .ant-layout-sider-children {
@@ -90,35 +93,59 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 }
 
 .brand {
-  height: 56px;
-  margin: 4px 8px 24px;
+  height: 60px;
+  margin: 4px 4px 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: #ffffff;
   overflow: hidden;
-  white-space: nowrap;
 }
 
 .app-sider.ant-layout-sider-collapsed .brand {
   justify-content: center;
-  margin: 4px 0 24px 0;
+  margin: 4px 0 20px 0;
 }
 
-.brand-mark {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
-  display: grid;
-  place-items: center;
+/* Expanded Logo Header Card */
+.brand-logo-expanded {
+  width: 100%;
+  height: 52px;
+  background: #ffffff;
   border-radius: 12px;
-  background: linear-gradient(135deg, #0d9488, #10b981);
-  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4);
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 15px;
-  font-family: var(--font-heading);
-  letter-spacing: -0.5px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.25s ease;
+}
+
+.brand-logo-full {
+  max-width: 100%;
+  max-height: 42px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+/* Collapsed Logo Header Card */
+.brand-logo-collapsed {
+  width: 46px;
+  height: 46px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  margin: 0 auto;
+}
+
+.brand-logo-collapsed .brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .brand-copy {
@@ -150,7 +177,38 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   margin-block: 6px;
   border-radius: 12px;
   font-weight: 600;
-  transition: all 0.2s ease;
+  color: #cbd5e1 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-sider .ant-menu-item .ant-menu-item-icon {
+  color: #94a3b8 !important;
+  transition: color 0.2s ease;
+}
+
+.app-sider .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  color: #ffffff !important;
+}
+
+.app-sider .ant-menu-item:hover .ant-menu-item-icon {
+  color: #ffffff !important;
+}
+
+.app-sider .ant-menu-item-selected,
+.app-sider .ant-menu-item-selected:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+
+.app-sider .ant-menu-item-selected .ant-menu-item-icon {
+  color: #ffffff !important;
+}
+
+.app-sider .ant-menu-item-selected .ant-menu-title-content {
+  color: #ffffff !important;
 }
 
 /* Collapsed Menu Items - Perfect 48px Centered Pill */
@@ -183,11 +241,15 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 .sider-footer {
   margin-bottom: 8px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   color: #94a3b8;
   font-size: 12px;
+}
+
+.sider-footer strong {
+  color: #e2e8f0;
 }
 
 .sider-footer-collapsed {
@@ -203,8 +265,8 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   color: #cbd5e1;
   cursor: pointer;
@@ -214,9 +276,9 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 }
 
 .custom-sider-trigger:hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .custom-sider-trigger-collapsed {
@@ -334,7 +396,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 .kpi-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--card-hover-shadow);
-  border-color: rgba(13, 148, 136, 0.3);
+  border-color: rgba(37, 99, 235, 0.35);
 }
 
 .kpi-icon-wrapper {
@@ -347,8 +409,8 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 }
 
 .kpi-icon-wrapper.kpi-total {
-  background: #ecfdf5;
-  color: #0d9488;
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .kpi-icon-wrapper.kpi-ciclo {
@@ -455,7 +517,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 }
 
 .students-table .ant-table-tbody > tr:hover > td {
-  background: #f0fdfa !important;
+  background: #eff6ff !important;
 }
 
 .students-table .ant-table-pagination {
@@ -484,9 +546,9 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   border-radius: 6px !important;
   font-weight: 600 !important;
   font-size: 12px !important;
-  background: rgba(13, 148, 136, 0.08) !important;
-  color: #0d9488 !important;
-  border: 1px solid rgba(13, 148, 136, 0.2) !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+  color: #1d4ed8 !important;
+  border: 1px solid rgba(37, 99, 235, 0.2) !important;
 }
 
 .student-card-actions {
@@ -509,7 +571,122 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 .student-grid-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--card-hover-shadow);
-  border-color: rgba(13, 148, 136, 0.3);
+  border-color: rgba(37, 99, 235, 0.35);
+}
+
+/* ==========================================================================
+   STUDENT DETAIL MODAL (FICHA DEL ALUMNO)
+   ========================================================================== */
+
+.student-detail-modal .ant-modal-content {
+  border-radius: 20px !important;
+  padding: 24px 28px !important;
+  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.2) !important;
+  border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.detail-header-banner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(2, 132, 199, 0.04));
+  border: 1px solid rgba(37, 99, 235, 0.12);
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.detail-header-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+  background: #ffffff;
+  padding: 3px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.detail-tabs .ant-tabs-nav {
+  margin-bottom: 16px !important;
+}
+
+.detail-tabs .ant-tabs-tab {
+  font-size: 14px !important;
+  padding: 10px 16px !important;
+}
+
+.detail-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  font-weight: 700 !important;
+  color: #2563eb !important;
+}
+
+.detail-section-card {
+  border-radius: 14px !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  background: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03) !important;
+}
+
+.detail-section-card .ant-card-head {
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 0 16px !important;
+  min-height: 44px !important;
+  background: #f8fafc !important;
+  border-top-left-radius: 14px !important;
+  border-top-right-radius: 14px !important;
+}
+
+.detail-section-card .ant-card-body {
+  padding: 18px 20px !important;
+}
+
+.detail-section-card.acadeu-card .ant-card-head {
+  background: #faf5ff !important;
+  border-bottom-color: #f3e8ff !important;
+}
+
+.detail-data-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-tile-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.detail-tile-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+  line-height: 1.4;
+  word-break: normal;
+}
+
+.detail-tile-value.highlight {
+  color: #0f172a;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  letter-spacing: 0.3px;
+}
+
+.detail-sub-card {
+  border-radius: 14px !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  background: #ffffff !important;
+  padding: 4px !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03) !important;
+}
+
+.detail-sub-card:hover {
+  border-color: rgba(37, 99, 235, 0.3) !important;
 }
 
 /* ==========================================================================
@@ -518,6 +695,54 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 
 .theme-dark {
   background: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+.theme-dark .student-detail-modal .ant-modal-content,
+body.theme-dark .student-detail-modal .ant-modal-content {
+  background: #1e293b !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.theme-dark .detail-header-banner,
+body.theme-dark .detail-header-banner {
+  background: rgba(37, 99, 235, 0.12) !important;
+  border-color: rgba(37, 99, 235, 0.25) !important;
+}
+
+.theme-dark .detail-header-banner .ant-typography,
+body.theme-dark .detail-header-banner .ant-typography {
+  color: #f8fafc !important;
+}
+
+.theme-dark .detail-header-chip,
+body.theme-dark .detail-header-chip {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #cbd5e1 !important;
+}
+
+.theme-dark .detail-section-card,
+body.theme-dark .detail-section-card,
+.theme-dark .detail-sub-card,
+body.theme-dark .detail-sub-card {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.theme-dark .detail-section-card .ant-card-head,
+body.theme-dark .detail-section-card .ant-card-head {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.theme-dark .detail-tile-label,
+body.theme-dark .detail-tile-label {
+  color: #94a3b8 !important;
+}
+
+.theme-dark .detail-tile-value,
+body.theme-dark .detail-tile-value {
   color: #f8fafc !important;
 }
 
@@ -546,8 +771,8 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 }
 
 .theme-dark .kpi-icon-wrapper.kpi-total {
-  background: rgba(13, 148, 136, 0.2) !important;
-  color: #2dd4bf !important;
+  background: rgba(37, 99, 235, 0.2) !important;
+  color: #60a5fa !important;
 }
 
 .theme-dark .kpi-icon-wrapper.kpi-ciclo {
@@ -584,7 +809,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 }
 
 .theme-dark .students-table .ant-table-tbody > tr:hover > td {
-  background: rgba(13, 148, 136, 0.15) !important;
+  background: rgba(37, 99, 235, 0.15) !important;
 }
 
 .theme-dark .student-name {
@@ -601,9 +826,9 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 
 .theme-dark .student-legajo-tag,
 body.theme-dark .student-legajo-tag {
-  background: rgba(13, 148, 136, 0.2) !important;
-  color: #2dd4bf !important;
-  border: 1px solid rgba(13, 148, 136, 0.35) !important;
+  background: rgba(37, 99, 235, 0.2) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(37, 99, 235, 0.35) !important;
 }
 
 .theme-dark .student-card-actions,
@@ -628,33 +853,87 @@ body.theme-dark .student-card-actions {
   color: #f8fafc !important;
 }
 
-/* Checkboxes in Dark Mode */
-.theme-dark .ant-checkbox-inner {
-  background-color: #0f172a !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
-  border-radius: 6px !important;
+/* ==========================================================================
+   CHECKBOX DESIGN SYSTEM (Light & Dark Modes)
+   ========================================================================== */
+
+.ant-checkbox-inner {
   width: 18px !important;
   height: 18px !important;
-  transition: all 0.2s ease !important;
+  border-radius: 5px !important;
+  border: 1.5px solid #cbd5e1 !important;
+  background-color: #ffffff !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.theme-dark .ant-checkbox-hover .ant-checkbox-inner,
-.theme-dark .ant-checkbox:hover .ant-checkbox-inner {
-  border-color: #14b8a6 !important;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.25) !important;
+.ant-checkbox:hover .ant-checkbox-inner,
+.ant-checkbox-input:focus + .ant-checkbox-inner {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
 }
 
-.theme-dark .ant-checkbox-checked .ant-checkbox-inner {
-  background-color: #0d9488 !important;
-  border-color: #0d9488 !important;
+/* Checked State */
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
 }
 
-.theme-dark .ant-checkbox-checked::after {
-  border-color: #0d9488 !important;
+.ant-checkbox-checked .ant-checkbox-inner::after {
+  border-color: #ffffff !important;
+}
+
+/* Indeterminate (Partial Selection) State */
+.ant-checkbox-indeterminate .ant-checkbox-inner {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.ant-checkbox-indeterminate .ant-checkbox-inner::after {
+  width: 8px !important;
+  height: 2px !important;
+  background-color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 1px !important;
+  transform: translate(-50%, -50%) !important;
+  top: 50% !important;
+  left: 50% !important;
+  opacity: 1 !important;
+  content: '' !important;
+}
+
+/* Dark Mode Checkbox Overrides */
+.theme-dark .ant-checkbox-inner,
+body.theme-dark .ant-checkbox-inner {
+  background-color: #0f172a !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.theme-dark .ant-checkbox:hover .ant-checkbox-inner,
+body.theme-dark .ant-checkbox:hover .ant-checkbox-inner {
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+
+.theme-dark .ant-checkbox-checked .ant-checkbox-inner,
+body.theme-dark .ant-checkbox-checked .ant-checkbox-inner,
+.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner,
+body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+}
+
+.theme-dark .ant-checkbox-checked .ant-checkbox-inner::after,
+body.theme-dark .ant-checkbox-checked .ant-checkbox-inner::after {
+  border-color: #ffffff !important;
+}
+
+.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after,
+body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
+  background-color: #ffffff !important;
 }
 
 .theme-dark .students-table .ant-table-tbody > tr.ant-table-row-selected > td {
-  background: rgba(13, 148, 136, 0.22) !important;
+  background: rgba(37, 99, 235, 0.2) !important;
 }
 
 /* Pagination in Dark Mode */
@@ -668,11 +947,64 @@ body.theme-dark .student-card-actions {
 }
 
 .theme-dark .ant-pagination-item-active {
-  background: #0d9488 !important;
-  border-color: #0d9488 !important;
+  background: #2563eb !important;
+  border-color: #2563eb !important;
 }
 
 .theme-dark .ant-pagination-item-active a {
+  color: #ffffff !important;
+}
+
+/* Sidebar in Dark Mode */
+.theme-dark .app-sider {
+  background: #090d16 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+.theme-dark .app-sider .ant-menu-item {
+  color: #94a3b8 !important;
+}
+
+.theme-dark .app-sider .ant-menu-item .ant-menu-item-icon {
+  color: #94a3b8 !important;
+}
+
+.theme-dark .app-sider .ant-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #ffffff !important;
+}
+
+.theme-dark .app-sider .ant-menu-item:hover .ant-menu-item-icon {
+  color: #ffffff !important;
+}
+
+.theme-dark .app-sider .ant-menu-item-selected,
+.theme-dark .app-sider .ant-menu-item-selected:hover {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+
+.theme-dark .app-sider .ant-menu-item-selected .ant-menu-item-icon,
+.theme-dark .app-sider .ant-menu-item-selected .ant-menu-title-content {
+  color: #ffffff !important;
+}
+
+.theme-dark .sider-footer {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #94a3b8 !important;
+}
+
+.theme-dark .custom-sider-trigger {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  color: #cbd5e1 !important;
+}
+
+.theme-dark .custom-sider-trigger:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
   color: #ffffff !important;
 }
 
@@ -854,8 +1186,8 @@ body.theme-dark .ant-tooltip-arrow::before {
   display: grid;
   place-items: center;
   padding: 24px;
-  background: radial-gradient(circle at 10% 20%, rgba(13, 148, 136, 0.15), transparent 40%),
-              radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.12), transparent 40%),
+  background: radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.12), transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(225, 29, 72, 0.06), transparent 40%),
               #f8fafc;
   position: relative;
   overflow: hidden;
@@ -879,7 +1211,7 @@ body.theme-dark .ant-tooltip-arrow::before {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background: linear-gradient(135deg, #0f766e, #0d9488 60%, #047857);
+  background: linear-gradient(135deg, #1e3a8a, #1d4ed8 55%, #2563eb);
   color: #ffffff;
   position: relative;
   overflow: hidden;
@@ -909,7 +1241,7 @@ body.theme-dark .ant-tooltip-arrow::before {
 
 .login-intro p {
   max-width: 330px;
-  color: #ccfbf1;
+  color: #dbeafe;
   font-size: 15px;
   line-height: 1.6;
   margin-top: 14px;
@@ -925,6 +1257,43 @@ body.theme-dark .ant-tooltip-arrow::before {
   width: 100%;
   max-width: 360px;
   margin-inline: auto;
+}
+
+/* Dark Mode Overrides for Login */
+.theme-dark .login-page,
+body.theme-dark .login-page {
+  background: radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.15), transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(30, 41, 59, 0.5), transparent 40%),
+              #0f172a !important;
+}
+
+.theme-dark .login-shell,
+body.theme-dark .login-shell {
+  background: rgba(30, 41, 59, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.5) !important;
+}
+
+.theme-dark .login-form .ant-typography,
+body.theme-dark .login-form .ant-typography {
+  color: #f8fafc !important;
+}
+
+.theme-dark .login-form .form-description,
+body.theme-dark .login-form .form-description {
+  color: #94a3b8 !important;
+}
+
+.theme-dark .login-form .ant-form-item-label > label,
+body.theme-dark .login-form .ant-form-item-label > label {
+  color: #e2e8f0 !important;
+}
+
+.theme-dark .login-form .ant-input-affix-wrapper,
+body.theme-dark .login-form .ant-input-affix-wrapper {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f8fafc !important;
 }
 
 /* Pulsing Badge Indicator */
@@ -987,4 +1356,5 @@ body.theme-dark .ant-tooltip-arrow::before {
     padding: 36px 24px;
   }
 }
+
 

@@ -8,15 +8,15 @@ import {
   CalendarOutlined,
   SunOutlined,
   MoonOutlined,
-  BellOutlined,
   BookOutlined,
   SafetyCertificateOutlined,
   LeftOutlined,
   RightOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
-import { useTheme } from '../../App';
+import { useTheme } from '../../core/themeContext';
 import pb from '../../core/pocketbase';
 
 const { Header, Sider, Content } = Layout;
@@ -38,7 +38,7 @@ export const MainLayout: React.FC = () => {
   // Breadcrumb items mapping
   const getBreadcrumbItems = () => {
     const items = [{ title: 'Inicio' }];
-    if (location.pathname.startsWith('/alumnos')) {
+    if (location.pathname.startsWith('/app/alumnos')) {
       items.push({ title: 'Gestión de Alumnos' });
     }
     return items;
@@ -56,18 +56,20 @@ export const MainLayout: React.FC = () => {
         breakpoint="lg"
         trigger={null}
       >
-        <div className="brand" aria-label="Crecer y Ser">
-          <span className="brand-mark">CyS</span>
-          {!collapsed && (
-            <span className="brand-copy">
-              <strong>Crecer y Ser</strong>
-              <span>Gestión Educativa</span>
-            </span>
+        <div className="brand" aria-label="Crecer y Ser - Colegio A-1134">
+          {collapsed ? (
+            <div className="brand-logo-collapsed">
+              <img src="/isotype.png" alt="Crecer y Ser" className="brand-logo-img" />
+            </div>
+          ) : (
+            <div className="brand-logo-expanded">
+              <img src="/logo.png" alt="Colegio Crecer y Ser A-1134" className="brand-logo-full" />
+            </div>
           )}
         </div>
         <Menu
           theme="dark"
-          selectedKeys={location.pathname.startsWith('/alumnos') ? ['alumnos'] : []}
+          selectedKeys={location.pathname.startsWith('/app/alumnos') ? ['alumnos'] : []}
           mode="inline"
           inlineCollapsed={collapsed}
           items={[
@@ -75,7 +77,7 @@ export const MainLayout: React.FC = () => {
               key: 'alumnos',
               icon: <TeamOutlined style={{ fontSize: 18 }} />,
               label: 'Alumnos',
-              onClick: () => navigate('/alumnos'),
+              onClick: () => navigate('/app/alumnos'),
             },
           ]}
         />
@@ -129,6 +131,17 @@ export const MainLayout: React.FC = () => {
           </div>
 
           <Space size="middle" align="center">
+            <Tooltip title="Ver Sitio Web / Landing Page">
+              <Button
+                type="text"
+                icon={<GlobalOutlined style={{ color: '#2563eb', fontSize: 16 }} />}
+                onClick={() => navigate('/')}
+                style={{ fontWeight: 600, fontSize: 13 }}
+              >
+                Sitio Web
+              </Button>
+            </Tooltip>
+
             {isCicloLoading ? (
               <Spin size="small" />
             ) : (
@@ -165,12 +178,6 @@ export const MainLayout: React.FC = () => {
               />
             </Tooltip>
 
-            <Tooltip title="Notificaciones del sistema">
-              <Badge dot color="#0d9488" offset={[-3, 4]}>
-                <Button type="text" shape="circle" icon={<BellOutlined style={{ color: '#64748b', fontSize: 16 }} />} aria-label="Notificaciones" />
-              </Badge>
-            </Tooltip>
-
             <Dropdown
               menu={{
                 items: [
@@ -188,10 +195,16 @@ export const MainLayout: React.FC = () => {
                   },
                   { type: 'divider' },
                   {
+                    key: 'website-nav',
+                    label: 'Ver Sitio Web',
+                    icon: <GlobalOutlined />,
+                    onClick: () => navigate('/'),
+                  },
+                  {
                     key: 'alumnos-nav',
                     label: 'Directorio de Alumnos',
                     icon: <BookOutlined />,
-                    onClick: () => navigate('/alumnos'),
+                    onClick: () => navigate('/app/alumnos'),
                   },
                   {
                     key: 'security',
@@ -213,10 +226,10 @@ export const MainLayout: React.FC = () => {
               <Space className="user-trigger" size={10}>
                 <Avatar
                   style={{
-                    background: 'linear-gradient(135deg, #0d9488, #10b981)',
+                    background: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
                     color: '#ffffff',
                     fontWeight: 700,
-                    boxShadow: '0 2px 8px rgba(13, 148, 136, 0.3)',
+                    boxShadow: '0 2px 8px rgba(29, 78, 216, 0.3)',
                   }}
                   icon={<UserOutlined />}
                 >

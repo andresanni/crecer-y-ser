@@ -7,6 +7,12 @@ export interface AlumnoRecord {
   apellidos: string;
   nombres: string;
   fecha_nacimiento: string;
+  nacionalidad: string;
+  sexo: string;
+  telefono: string;
+  domicilio: string;
+  usuario_acadeu: string;
+  clave_acadeu: string;
 }
 
 export interface Alumno {
@@ -16,6 +22,12 @@ export interface Alumno {
   apellidos: string;
   nombres: string;
   fechaNacimiento: string;
+  nacionalidad: string;
+  sexo: string;
+  telefono: string;
+  domicilio: string;
+  usuarioAcadeu: string;
+  claveAcadeu: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,11 +35,17 @@ export interface Alumno {
 export const alumnoAdapter = (record: AlumnoRecord): Alumno => {
   return {
     id: record.id,
-    numeroLegajo: record.numero_legajo,
-    dni: record.dni,
-    apellidos: record.apellidos,
-    nombres: record.nombres,
-    fechaNacimiento: record.fecha_nacimiento,
+    numeroLegajo: record.numero_legajo || '',
+    dni: record.dni || '',
+    apellidos: record.apellidos || '',
+    nombres: record.nombres || '',
+    fechaNacimiento: record.fecha_nacimiento || '',
+    nacionalidad: record.nacionalidad || '',
+    sexo: record.sexo || '',
+    telefono: record.telefono || '',
+    domicilio: record.domicilio || '',
+    usuarioAcadeu: record.usuario_acadeu || '',
+    claveAcadeu: record.clave_acadeu || '',
     createdAt: record.created,
     updatedAt: record.updated,
   };

@@ -7,6 +7,7 @@ import {
   SafetyCertificateOutlined,
   ThunderboltOutlined,
   CheckCircleOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import pb from '../../../core/pocketbase';
@@ -23,7 +24,7 @@ export const Login: React.FC = () => {
       setLoading(true);
       await pb.collection('users').authWithPassword(values.email, values.password);
       message.success('¡Bienvenido/a de nuevo!');
-      navigate('/');
+      navigate('/app/alumnos');
     } catch (error) {
       console.error('Error de autenticación:', error);
       message.error('Correo electrónico o contraseña incorrectos');
@@ -36,12 +37,24 @@ export const Login: React.FC = () => {
     <div className="login-page">
       <div className="login-shell">
         <section className="login-intro">
-          <div className="brand">
-            <span className="brand-mark">CyS</span>
-            <span className="brand-copy">
-              <strong>Crecer y Ser</strong>
-              <span>Gestión Educativa</span>
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="brand-logo-collapsed" style={{ width: 44, height: 44, margin: 0, padding: 4 }}>
+                <img src="/isotype.png" alt="Colegio Crecer y Ser" className="brand-logo-img" />
+              </div>
+              <span className="brand-copy">
+                <strong style={{ fontSize: 17, color: '#ffffff' }}>Crecer y Ser</strong>
+                <span style={{ color: '#93c5fd', fontSize: 11 }}>Colegio A-1134</span>
+              </span>
+            </div>
+            <Button
+              type="text"
+              icon={<GlobalOutlined style={{ color: '#bfdbfe' }} />}
+              onClick={() => navigate('/')}
+              style={{ color: '#bfdbfe', fontSize: 12, borderRadius: 8 }}
+            >
+              Volver a la Web
+            </Button>
           </div>
 
           <div style={{ margin: '32px 0' }}>
@@ -65,23 +78,23 @@ export const Login: React.FC = () => {
             <p>Una forma simple, moderna y cercana de acompañar la gestión y trayectoria de cada estudiante.</p>
 
             <Space direction="vertical" size={12} style={{ marginTop: 28 }}>
-              <Space size={10} style={{ color: '#ccfbf1', fontSize: 13 }}>
-                <CheckCircleOutlined style={{ color: '#34d399' }} />
+              <Space size={10} style={{ color: '#dbeafe', fontSize: 13 }}>
+                <CheckCircleOutlined style={{ color: '#60a5fa' }} />
                 <span>Sincronización de registros en tiempo real</span>
               </Space>
-              <Space size={10} style={{ color: '#ccfbf1', fontSize: 13 }}>
-                <CheckCircleOutlined style={{ color: '#34d399' }} />
+              <Space size={10} style={{ color: '#dbeafe', fontSize: 13 }}>
+                <CheckCircleOutlined style={{ color: '#60a5fa' }} />
                 <span>Control de legajos y datos estudiantiles</span>
               </Space>
-              <Space size={10} style={{ color: '#ccfbf1', fontSize: 13 }}>
-                <SafetyCertificateOutlined style={{ color: '#34d399' }} />
+              <Space size={10} style={{ color: '#dbeafe', fontSize: 13 }}>
+                <SafetyCertificateOutlined style={{ color: '#60a5fa' }} />
                 <span>Acceso seguro mediante autenticación encriptada</span>
               </Space>
             </Space>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 16 }}>
-            <span style={{ color: '#99f6e4', fontSize: 12 }}>© 2026 Crecer y Ser</span>
+            <span style={{ color: '#93c5fd', fontSize: 12 }}>© 2026 Crecer y Ser • Colegio A-1134</span>
             <span className="pulse-dot" />
           </div>
         </section>
@@ -113,7 +126,7 @@ export const Login: React.FC = () => {
             >
               <Input
                 size="large"
-                prefix={<MailOutlined style={{ color: '#0d9488' }} />}
+                prefix={<MailOutlined style={{ color: '#2563eb' }} />}
                 placeholder="nombre@institucion.edu.ar"
                 autoComplete="email"
               />
@@ -126,7 +139,7 @@ export const Login: React.FC = () => {
             >
               <Input.Password
                 size="large"
-                prefix={<LockOutlined style={{ color: '#0d9488' }} />}
+                prefix={<LockOutlined style={{ color: '#2563eb' }} />}
                 placeholder="Tu contraseña de acceso"
                 autoComplete="current-password"
               />
@@ -141,10 +154,8 @@ export const Login: React.FC = () => {
                 loading={loading}
                 icon={<ArrowRightOutlined />}
                 iconPosition="end"
+                className="btn-primary-gradient"
                 style={{
-                  background: 'linear-gradient(135deg, #0d9488, #10b981)',
-                  border: 'none',
-                  boxShadow: '0 6px 20px rgba(13, 148, 136, 0.35)',
                   height: 48,
                   fontSize: 15,
                   fontWeight: 700,

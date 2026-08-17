@@ -1,23 +1,13 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './shared/components/MainLayout';
 import { AlumnoList } from './modules/alumnos/components/AlumnoList';
 import { Login } from './modules/auth/components/Login';
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
+import { LandingPage } from './modules/landing/LandingPage';
+import { ThemeContext } from './core/themeContext';
 import './index.css';
-
-interface ThemeContextType {
-  isDarkMode: boolean;
-  toggleTheme: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextType>({
-  isDarkMode: false,
-  toggleTheme: () => {},
-});
-
-export const useTheme = () => useContext(ThemeContext);
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -41,7 +31,7 @@ function App() {
           algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
           cssVar: { prefix: 'cys' },
           token: {
-            colorPrimary: '#0d9488',
+            colorPrimary: '#2563eb',
             colorInfo: '#0284c7',
             colorSuccess: '#10b981',
             colorWarning: '#f59e0b',
@@ -67,8 +57,8 @@ function App() {
               controlHeight: 38,
               fontWeight: 600,
               borderRadius: 10,
-              colorPrimaryHover: '#14b8a6',
-              colorPrimaryActive: '#0f766e',
+              colorPrimaryHover: '#3b82f6',
+              colorPrimaryActive: '#1d4ed8',
             },
             Card: {
               borderRadiusLG: 16,
@@ -77,7 +67,7 @@ function App() {
             Table: {
               headerBg: isDarkMode ? '#0f172a' : '#f8fafc',
               headerColor: isDarkMode ? '#cbd5e1' : '#475569',
-              rowHoverBg: isDarkMode ? 'rgba(13, 148, 136, 0.15)' : '#f0fdfa',
+              rowHoverBg: isDarkMode ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
               colorBgContainer: isDarkMode ? '#1e293b' : '#ffffff',
               borderRadius: 12,
             },
@@ -85,8 +75,8 @@ function App() {
               controlHeightLG: 46,
               controlHeight: 38,
               borderRadius: 10,
-              activeBorderColor: '#0d9488',
-              hoverBorderColor: '#14b8a6',
+              activeBorderColor: '#2563eb',
+              hoverBorderColor: '#3b82f6',
             },
             Modal: {
               borderRadiusLG: 20,
@@ -95,7 +85,7 @@ function App() {
             },
             Menu: {
               darkItemBg: 'transparent',
-              darkItemSelectedBg: '#0d9488',
+              darkItemSelectedBg: '#2563eb',
               darkItemColor: '#94a3b8',
               darkItemSelectedColor: '#ffffff',
               darkItemHoverBg: 'rgba(255, 255, 255, 0.06)',
@@ -105,10 +95,15 @@ function App() {
               fontSize: 12,
             },
             Segmented: {
-              itemSelectedBg: isDarkMode ? '#0d9488' : '#ffffff',
-              itemSelectedColor: isDarkMode ? '#ffffff' : '#0d9488',
+              itemSelectedBg: isDarkMode ? '#2563eb' : '#ffffff',
+              itemSelectedColor: isDarkMode ? '#ffffff' : '#1d4ed8',
               trackBg: isDarkMode ? '#0f172a' : '#f1f5f9',
               borderRadius: 10,
+            },
+            Checkbox: {
+              borderRadiusSM: 5,
+              colorPrimary: '#2563eb',
+              colorPrimaryHover: '#3b82f6',
             },
             Tooltip: {
               colorBgSpotlight: isDarkMode ? '#1e293b' : '#0f172a',
@@ -124,13 +119,15 @@ function App() {
         <AntdApp>
           <BrowserRouter>
             <Routes>
+              <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
-              <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<MainLayout />}>
-                  <Route index element={<Navigate replace to="/alumnos" />} />
+              <Route path="/app" element={<ProtectedRoute />}>
+                <Route element={<MainLayout />}>
+                  <Route index element={<Navigate replace to="/app/alumnos" />} />
                   <Route path="alumnos" element={<AlumnoList />} />
                 </Route>
               </Route>
+              <Route path="*" element={<Navigate replace to="/" />} />
             </Routes>
           </BrowserRouter>
         </AntdApp>
