@@ -188,7 +188,8 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   border-radius: 4px;
 }
 
-.app-sider .ant-menu-item {
+.app-sider .ant-menu-item,
+.app-sider .ant-menu-submenu-title {
   margin-block: 6px;
   border-radius: 12px;
   font-weight: 600;
@@ -196,18 +197,53 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.app-sider .ant-menu-item .ant-menu-item-icon {
+.app-sider .ant-menu-item .ant-menu-item-icon,
+.app-sider .ant-menu-submenu-title .ant-menu-item-icon {
   color: #94a3b8 !important;
   transition: color 0.2s ease;
 }
 
-.app-sider .ant-menu-item:hover {
+.app-sider .ant-menu-submenu-arrow {
+  color: #94a3b8 !important;
+  transition: color 0.2s ease;
+}
+
+.app-sider .ant-menu-item:hover,
+.app-sider .ant-menu-submenu-title:hover {
   background: rgba(255, 255, 255, 0.09) !important;
   color: #ffffff !important;
 }
 
-.app-sider .ant-menu-item:hover .ant-menu-item-icon {
+.app-sider .ant-menu-item:hover .ant-menu-item-icon,
+.app-sider .ant-menu-submenu-title:hover .ant-menu-item-icon,
+.app-sider .ant-menu-submenu-title:hover .ant-menu-submenu-arrow {
   color: #ffffff !important;
+}
+
+.app-sider .ant-menu-submenu-open > .ant-menu-submenu-title {
+  color: #ffffff !important;
+}
+
+.app-sider .ant-menu-submenu-open > .ant-menu-submenu-title .ant-menu-item-icon,
+.app-sider .ant-menu-submenu-open > .ant-menu-submenu-title .ant-menu-submenu-arrow {
+  color: #60a5fa !important;
+}
+
+.app-sider .ant-menu-sub.ant-menu-inline {
+  background: rgba(0, 0, 0, 0.18) !important;
+  border-radius: 12px;
+  padding: 4px 6px !important;
+  margin: 4px 0 8px 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.app-sider .ant-menu-sub .ant-menu-item {
+  height: 38px !important;
+  line-height: 38px !important;
+  font-size: 13px !important;
+  margin-block: 3px !important;
+  border-radius: 10px !important;
+  padding-inline: 12px !important;
 }
 
 .app-sider .ant-menu-item-selected,
@@ -232,7 +268,8 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 }
 
 .app-sider.ant-layout-sider-collapsed .ant-menu-inline-collapsed > .ant-menu-item,
-.app-sider.ant-layout-sider-collapsed .ant-menu-item {
+.app-sider.ant-layout-sider-collapsed .ant-menu-item,
+.app-sider.ant-layout-sider-collapsed .ant-menu-submenu-title {
   width: 48px !important;
   min-width: 48px !important;
   max-width: 48px !important;
@@ -247,7 +284,8 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   inset-inline: auto !important;
 }
 
-.app-sider.ant-layout-sider-collapsed .ant-menu-item .ant-menu-item-icon {
+.app-sider.ant-layout-sider-collapsed .ant-menu-item .ant-menu-item-icon,
+.app-sider.ant-layout-sider-collapsed .ant-menu-submenu-title .ant-menu-item-icon {
   font-size: 18px !important;
   margin: 0 !important;
   line-height: 1 !important;
@@ -512,6 +550,12 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   border-bottom: 1px solid #e2e8f0;
 }
 
+.cys-materias-table .ant-table-thead > tr > th {
+  vertical-align: top !important;
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
 .students-table .ant-table-thead > tr > th:first-child {
   border-top-left-radius: 16px !important;
   padding-left: 24px !important;
@@ -659,6 +703,180 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 .theme-dark .ant-table-body::-webkit-scrollbar-thumb:hover,
 .theme-dark .ant-table-content::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* ==========================================================================
+   MATERIAS CAROUSEL TABS (.cys-materia-carousel-track)
+   ========================================================================== */
+
+.cys-materia-carousel-track::-webkit-scrollbar {
+  display: none !important;
+}
+
+.cys-materia-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: #ffffff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  user-select: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  flex-shrink: 0;
+}
+
+.cys-materia-tab-pill:hover {
+  border-color: #93c5fd;
+  color: #2563eb;
+  background: #f8faff;
+  transform: translateY(-1px);
+}
+
+.cys-materia-tab-pill.active {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.cys-materia-tab-pill.asistencias {
+  border-color: rgba(124, 58, 237, 0.2);
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.04);
+}
+
+.cys-materia-tab-pill.asistencias:hover {
+  background: rgba(124, 58, 237, 0.08);
+  border-color: #a78bfa;
+}
+
+.cys-materia-tab-pill.asistencias.active {
+  background: linear-gradient(135deg, #6d28d9, #7c3aed);
+  color: #ffffff;
+  border-color: #6d28d9;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
+}
+
+/* Dark Theme Overrides for Materia Pills */
+.theme-dark .cys-materia-tab-pill,
+body.theme-dark .cys-materia-tab-pill {
+  background: #0f172a;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+}
+
+.theme-dark .cys-materia-tab-pill:hover,
+body.theme-dark .cys-materia-tab-pill:hover {
+  background: #1e293b;
+  color: #60a5fa;
+  border-color: rgba(37, 99, 235, 0.4);
+}
+
+.theme-dark .cys-materia-tab-pill.active,
+body.theme-dark .cys-materia-tab-pill.active {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #ffffff;
+  border-color: #3b82f6;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.theme-dark .cys-materia-tab-pill.asistencias,
+body.theme-dark .cys-materia-tab-pill.asistencias {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(124, 58, 237, 0.3);
+  color: #c4b5fd;
+}
+
+.theme-dark .cys-materia-tab-pill.asistencias.active,
+body.theme-dark .cys-materia-tab-pill.asistencias.active {
+  background: linear-gradient(135deg, #6d28d9, #7c3aed);
+  color: #ffffff;
+  border-color: #8b5cf6;
+}
+
+/* ==========================================================================
+   DISTINCT SUMMARY COLUMN: CALIFICACIÓN GENERAL (.cys-col-calificacion-general)
+   ========================================================================== */
+
+/* Header cell for Calificación General */
+.cys-materias-table .ant-table-thead > tr > th.cys-col-calificacion-general {
+  background: linear-gradient(180deg, #ecfdf5, #f0fdf4) !important;
+  border-left: 1px solid #a7f3d0 !important;
+}
+
+/* Body cells for Calificación General */
+.cys-materias-table .ant-table-tbody > tr > td.cys-col-calificacion-general {
+  background: rgba(240, 253, 244, 0.4) !important;
+  border-left: 1px solid rgba(16, 185, 129, 0.25) !important;
+}
+
+.cys-materias-table .ant-table-tbody > tr:hover > td.cys-col-calificacion-general {
+  background: #ecfdf5 !important;
+  border-left-color: #10b981 !important;
+}
+
+/* Row selection state on Calificación General column */
+.cys-materias-table .ant-table-tbody > tr.cys-table-row-selected > td.cys-col-calificacion-general {
+  background: #d1fae5 !important;
+}
+
+/* Fixed Student column subtle right divider for clean visual separation */
+.cys-materias-table .ant-table-cell-fix-left-last {
+  border-right: 2px solid #e2e8f0 !important;
+  box-shadow: 4px 0 10px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Enhanced select inside Calificación General */
+.cys-select-calificacion-general .ant-select-selector {
+  border: 1.5px solid rgba(16, 185, 129, 0.5) !important;
+  background: #ffffff !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.cys-select-calificacion-general:hover .ant-select-selector,
+.cys-select-calificacion-general.ant-select-focused .ant-select-selector {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* Dark Mode Overrides for Calificación General column */
+.theme-dark .cys-materias-table .ant-table-thead > tr > th.cys-col-calificacion-general,
+body.theme-dark .cys-materias-table .ant-table-thead > tr > th.cys-col-calificacion-general {
+  background: linear-gradient(180deg, #064e3b, #022c22) !important;
+  border-left: 1px solid #059669 !important;
+}
+
+.theme-dark .cys-materias-table .ant-table-tbody > tr > td.cys-col-calificacion-general,
+body.theme-dark .cys-materias-table .ant-table-tbody > tr > td.cys-col-calificacion-general {
+  background: rgba(6, 78, 59, 0.25) !important;
+  border-left: 1px solid #047857 !important;
+}
+
+.theme-dark .cys-materias-table .ant-table-tbody > tr:hover > td.cys-col-calificacion-general,
+body.theme-dark .cys-materias-table .ant-table-tbody > tr:hover > td.cys-col-calificacion-general {
+  background: #064e3b !important;
+}
+
+.theme-dark .cys-materias-table .ant-table-cell-fix-left-last,
+body.theme-dark .cys-materias-table .ant-table-cell-fix-left-last {
+  border-right: 2px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.theme-dark .cys-select-calificacion-general .ant-select-selector,
+body.theme-dark .cys-select-calificacion-general .ant-select-selector {
+  border-color: #059669 !important;
+  background: #1e293b !important;
 }
 
 /* ==========================================================================
@@ -1049,21 +1267,31 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
   box-shadow: none !important;
 }
 
-.theme-dark .app-sider .ant-menu-item {
+.theme-dark .app-sider .ant-menu-item,
+.theme-dark .app-sider .ant-menu-submenu-title {
   color: #94a3b8 !important;
 }
 
-.theme-dark .app-sider .ant-menu-item .ant-menu-item-icon {
+.theme-dark .app-sider .ant-menu-item .ant-menu-item-icon,
+.theme-dark .app-sider .ant-menu-submenu-title .ant-menu-item-icon {
   color: #94a3b8 !important;
 }
 
-.theme-dark .app-sider .ant-menu-item:hover {
+.theme-dark .app-sider .ant-menu-item:hover,
+.theme-dark .app-sider .ant-menu-submenu-title:hover {
   background: rgba(255, 255, 255, 0.06) !important;
   color: #ffffff !important;
 }
 
-.theme-dark .app-sider .ant-menu-item:hover .ant-menu-item-icon {
+.theme-dark .app-sider .ant-menu-item:hover .ant-menu-item-icon,
+.theme-dark .app-sider .ant-menu-submenu-title:hover .ant-menu-item-icon,
+.theme-dark .app-sider .ant-menu-submenu-title:hover .ant-menu-submenu-arrow {
   color: #ffffff !important;
+}
+
+.theme-dark .app-sider .ant-menu-sub.ant-menu-inline {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .theme-dark .app-sider .ant-menu-item-selected,
@@ -1447,6 +1675,95 @@ body.theme-dark .login-form .ant-input-affix-wrapper {
 .cys-slot-empty-hover:hover {
   border-color: #2563eb !important;
   background: rgba(37, 99, 235, 0.04) !important;
+}
+
+/* Floating Action Bar Slide Up Animation & Styles */
+.cys-floating-action-bar {
+  animation: cys-slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(8px);
+}
+
+@keyframes cys-slide-up {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Dark theme overrides for floating action bar */
+.theme-dark .cys-floating-action-bar,
+body.theme-dark .cys-floating-action-bar {
+  background: rgba(30, 41, 59, 0.95) !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* Styled Grade Selects */
+.cys-grade-select.cys-grade-destacado .ant-select-selector {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+  font-weight: 700 !important;
+}
+.cys-grade-select.cys-grade-avanzado .ant-select-selector {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
+}
+.cys-grade-select.cys-grade-alcanzado .ant-select-selector {
+  background-color: #f0f9ff !important;
+  border-color: #bae6fd !important;
+  color: #0369a1 !important;
+  font-weight: 700 !important;
+}
+.cys-grade-select.cys-grade-proceso .ant-select-selector {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+  font-weight: 700 !important;
+}
+.cys-grade-select.cys-grade-no-alcanzado .ant-select-selector {
+  background-color: #fef2f2 !important;
+  border-color: #fca5a5 !important;
+  color: #b91c1c !important;
+  font-weight: 700 !important;
+}
+
+/* Dark theme variants */
+.theme-dark .cys-grade-select.cys-grade-destacado .ant-select-selector,
+body.theme-dark .cys-grade-select.cys-grade-destacado .ant-select-selector {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+  border-color: #047857 !important;
+  color: #34d399 !important;
+}
+.theme-dark .cys-grade-select.cys-grade-avanzado .ant-select-selector,
+body.theme-dark .cys-grade-select.cys-grade-avanzado .ant-select-selector {
+  background-color: rgba(30, 58, 138, 0.4) !important;
+  border-color: #1d4ed8 !important;
+  color: #60a5fa !important;
+}
+.theme-dark .cys-grade-select.cys-grade-alcanzado .ant-select-selector,
+body.theme-dark .cys-grade-select.cys-grade-alcanzado .ant-select-selector {
+  background-color: rgba(12, 74, 110, 0.4) !important;
+  border-color: #0369a1 !important;
+  color: #38bdf8 !important;
+}
+.theme-dark .cys-grade-select.cys-grade-proceso .ant-select-selector,
+body.theme-dark .cys-grade-select.cys-grade-proceso .ant-select-selector {
+  background-color: rgba(120, 53, 4, 0.4) !important;
+  border-color: #b45309 !important;
+  color: #fbbf24 !important;
+}
+.theme-dark .cys-grade-select.cys-grade-no-alcanzado .ant-select-selector,
+body.theme-dark .cys-grade-select.cys-grade-no-alcanzado .ant-select-selector {
+  background-color: rgba(127, 29, 29, 0.4) !important;
+  border-color: #b91c1c !important;
+  color: #f87171 !important;
 }
 
 

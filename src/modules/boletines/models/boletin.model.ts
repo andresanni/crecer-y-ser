@@ -142,44 +142,254 @@ export interface CriterioFormItem {
   nombre: string;
 }
 
-// =========================================================================
-// 5. MODELO DE EVALUACIÓN Y CALIFICACIONES (Estructura Boletín Oficial)
-// =========================================================================
+// ==========================================
+// 5. ESCALAS DE CALIFICACIÓN Y VALORES
+// ==========================================
+export interface EscalaCalificacionRecord {
+  id: string;
+  created: string;
+  updated: string;
+  nombre: string;
+}
 
-/**
- * Escala binaria para Proyecto Pedagógico Individual (Apoyo a la inclusión).
- * Universal para todas las materias y bimestres.
- */
-export type PPIValor = 'SI' | 'NO';
+export interface EscalaCalificacion {
+  id: string;
+  nombre: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-/**
- * Evaluación de un criterio individual por alumno y período.
- */
+export const escalaCalificacionAdapter = (record: EscalaCalificacionRecord): EscalaCalificacion => ({
+  id: record.id,
+  nombre: record.nombre || '',
+  createdAt: record.created,
+  updatedAt: record.updated,
+});
+
+export interface ValorEscalaRecord {
+  id: string;
+  created: string;
+  updated: string;
+  escala_id: string;
+  peso_numerico: number;
+  etiqueta: string;
+  orden_visual: number;
+  expand?: {
+    escala_id?: EscalaCalificacionRecord;
+  };
+}
+
+export interface ValorEscala {
+  id: string;
+  escalaId: string;
+  pesoNumerico: number;
+  etiqueta: string;
+  ordenVisual: number;
+  escalaNombre?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const valorEscalaAdapter = (record: ValorEscalaRecord): ValorEscala => ({
+  id: record.id,
+  escalaId: record.escala_id,
+  pesoNumerico: Number(record.peso_numerico) || 0,
+  etiqueta: record.etiqueta || '',
+  ordenVisual: Number(record.orden_visual) || 0,
+  escalaNombre: record.expand?.escala_id?.nombre,
+  createdAt: record.created,
+  updatedAt: record.updated,
+});
+
+// =========================================================================
+// 6. EVALUACIONES_MATERIA (Cierre de materia por bimestre para un alumno)
+// =========================================================================
+export interface EvaluacionMateriaRecord {
+  id: string;
+  created: string;
+  updated: string;
+  inscripcion_id: string;
+  curso_materia_id: string;
+  periodo_id: string;
+  ppi: boolean;
+  calificacion_general_id: string;
+  expand?: {
+    inscripcion_id?: unknown;
+    curso_materia_id?: CursoMateriaRecord;
+    periodo_id?: PeriodoRecord;
+    calificacion_general_id?: ValorEscalaRecord;
+  };
+}
+
+export interface EvaluacionMateria {
+  id: string;
+  inscripcionId: string;
+  cursoMateriaId: string;
+  periodoId: string;
+  ppi: boolean;
+  calificacionGeneralId: string;
+  calificacionGeneralEtiqueta?: string;
+  cursoMateriaNombre?: string;
+  periodoNombre?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const evaluacionMateriaAdapter = (record: EvaluacionMateriaRecord): EvaluacionMateria => ({
+  id: record.id,
+  inscripcionId: record.inscripcion_id,
+  cursoMateriaId: record.curso_materia_id,
+  periodoId: record.periodo_id,
+  ppi: Boolean(record.ppi),
+  calificacionGeneralId: record.calificacion_general_id || '',
+  calificacionGeneralEtiqueta: record.expand?.calificacion_general_id?.etiqueta,
+  cursoMateriaNombre: record.expand?.curso_materia_id?.expand?.materia_id?.nombre,
+  periodoNombre: record.expand?.periodo_id?.nombre,
+  createdAt: record.created,
+  updatedAt: record.updated,
+});
+
+// =========================================================================
+// 7. EVALUACIONES_CRITERIOS (Respuesta a cada uno de los 5 conceptos)
+// =========================================================================
+export interface EvaluacionCriterioRecord {
+  id: string;
+  created: string;
+  updated: string;
+  evaluacion_materia_id: string;
+  criterio_id: string;
+  valor_escala_id: string;
+  expand?: {
+    evaluacion_materia_id?: EvaluacionMateriaRecord;
+    criterio_id?: CriterioEvaluacionRecord;
+    valor_escala_id?: ValorEscalaRecord;
+  };
+}
+
+export interface EvaluacionCriterio {
+  id: string;
+  evaluacionMateriaId: string;
+  criterioId: string;
+  valorEscalaId: string;
+  criterioNombre?: string;
+  criterioOrden?: number;
+  valorEscalaEtiqueta?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const evaluacionCriterioAdapter = (record: EvaluacionCriterioRecord): EvaluacionCriterio => ({
+  id: record.id,
+  evaluacionMateriaId: record.evaluacion_materia_id,
+  criterioId: record.criterio_id,
+  valorEscalaId: record.valor_escala_id || '',
+  criterioNombre: record.expand?.criterio_id?.nombre,
+  criterioOrden: record.expand?.criterio_id?.orden_visual,
+  valorEscalaEtiqueta: record.expand?.valor_escala_id?.etiqueta,
+  createdAt: record.created,
+  updatedAt: record.updated,
+});
+
+// =========================================================================
+// 8. CIERRES_PERIODO_ALUMNO (Asistencias y observaciones globales del bimestre)
+// =========================================================================
+export interface CierrePeriodoAlumnoRecord {
+  id: string;
+  created: string;
+  updated: string;
+  inscripcion_id: string;
+  periodo_id: string;
+  asistencias: number;
+  inasistencias_justificadas: number;
+  inasistencias_injustificadas: number;
+  observaciones: string;
+  expand?: {
+    inscripcion_id?: unknown;
+    periodo_id?: PeriodoRecord;
+  };
+}
+
+export interface CierrePeriodoAlumno {
+  id: string;
+  inscripcionId: string;
+  periodoId: string;
+  asistencias: number;
+  inasistenciasJustificadas: number;
+  inasistenciasInjustificadas: number;
+  observaciones: string;
+  periodoNombre?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const cierrePeriodoAlumnoAdapter = (record: CierrePeriodoAlumnoRecord): CierrePeriodoAlumno => ({
+  id: record.id,
+  inscripcionId: record.inscripcion_id,
+  periodoId: record.periodo_id,
+  asistencias: Number(record.asistencias) || 0,
+  inasistenciasJustificadas: Number(record.inasistencias_justificadas) || 0,
+  inasistenciasInjustificadas: Number(record.inasistencias_injustificadas) || 0,
+  observaciones: record.observaciones || '',
+  periodoNombre: record.expand?.periodo_id?.nombre,
+  createdAt: record.created,
+  updatedAt: record.updated,
+});
+
+// =========================================================================
+// 9. MODELOS COMBINADOS DE DOMINIO PARA LA VISTA/CARGA DE CALIFICACIONES
+// =========================================================================
 export interface CalificacionCriterioItem {
   criterioId: string;
   criterioNombre: string;
   ordenVisual: number;
-  valorEscalaId: string; // Relación con valores_escala (ej: S, MS, etc.)
+  valorEscalaId: string;
   etiqueta?: string;
 }
 
-/**
- * Registro integral de evaluación por Materia, Bimestre y Alumno.
- * Refleja los 3 niveles del Documento de Evaluación:
- * 1. Hasta 5 Criterios Pedagógicos específicos.
- * 2. Indicador reglamentario universal PPI (Sí/No).
- * 3. Calificación General del Bimestre (Ingreso manual por docente).
- */
 export interface EvaluacionMateriaBimestre {
-  alumnoId: string;
+  inscripcionId: string;
   cursoMateriaId: string;
   periodoId: string;
-  // Nivel 1: Criterios Pedagógicos (1 a 5)
+  evaluacionMateriaId?: string;
   criterios: CalificacionCriterioItem[];
-  // Nivel 2: Indicador Reglamentario Universal
-  ppi: PPIValor;
-  // Nivel 3: Calificación General Manual de Cierre de Bimestre
-  calificacionGeneralValorId: string | null;
+  ppi: boolean;
+  calificacionGeneralId: string | null;
   calificacionGeneralEtiqueta?: string;
-  observaciones?: string;
 }
+
+export interface AlumnoInscriptoRow {
+  inscripcionId: string;
+  alumnoId: string;
+  numeroOrden: number | null;
+  numeroLegajo: string;
+  dni: string;
+  apellidos: string;
+  nombres: string;
+  nombreCompleto: string;
+  estado: string;
+  promocionoConAcompanamiento?: string;
+  poseeApoyos?: string;
+  cualesApoyos?: string;
+}
+
+export interface FilaCalificacionMateria {
+  inscripcionId: string;
+  alumno: AlumnoInscriptoRow;
+  evaluacionMateriaId?: string;
+  ppi: boolean;
+  criteriosValores: Record<string, string>; // criterioId -> valorEscalaId
+  calificacionGeneralId: string | null;
+  isModified?: boolean;
+}
+
+export interface FilaCierreAsistencia {
+  inscripcionId: string;
+  alumno: AlumnoInscriptoRow;
+  cierreId?: string;
+  asistencias: number;
+  inasistenciasJustificadas: number;
+  inasistenciasInjustificadas: number;
+  observaciones: string;
+  isModified?: boolean;
+}
+

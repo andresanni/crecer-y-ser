@@ -1,5 +1,6 @@
 export type EstadoInscripcion = 'Regular' | 'Libre' | 'Baja';
 export type TurnoCurso = 'Mañana' | 'Tarde' | 'Jornada Completa';
+export type OpcionBinariaSN = 'SI' | 'NO' | '-';
 
 export interface NivelRecord {
   id: string;
@@ -86,6 +87,9 @@ export interface InscripcionRecord {
   fecha_ingreso?: string;
   fecha_egreso?: string;
   estado: EstadoInscripcion;
+  promociono_con_acompanamiento?: OpcionBinariaSN;
+  posee_apoyos?: OpcionBinariaSN;
+  cuales_apoyos?: string;
   expand?: {
     alumno_id?: unknown;
     curso_id?: CursoRecord;
@@ -104,6 +108,9 @@ export interface Inscripcion {
   fechaIngreso: string;
   fechaEgreso: string;
   estado: EstadoInscripcion;
+  promocionoConAcompanamiento: OpcionBinariaSN;
+  poseeApoyos: OpcionBinariaSN;
+  cualesApoyos: string;
   cursoNombre?: string;
   nivelNombre?: string;
   cicloAno?: number;
@@ -122,6 +129,9 @@ export const inscripcionAdapter = (record: InscripcionRecord): Inscripcion => ({
   fechaIngreso: record.fecha_ingreso || '',
   fechaEgreso: record.fecha_egreso || '',
   estado: record.estado,
+  promocionoConAcompanamiento: record.promociono_con_acompanamiento || '-',
+  poseeApoyos: record.posee_apoyos || '-',
+  cualesApoyos: record.cuales_apoyos || '',
   cursoNombre: record.expand?.curso_id?.nombre,
   nivelNombre: record.expand?.curso_id?.expand?.nivel_id?.nombre,
   cicloAno: record.expand?.ciclo_id?.ano,

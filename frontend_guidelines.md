@@ -18,17 +18,47 @@
     *   Cada módulo debe implementar su adaptador (ej: `alumnoAdapter`) para transformar registros `*Record` a entidades de dominio.
 *   **Conexión Directa:** No existe un servidor Node.js intermedio. Los servicios consumen directamente el cliente centralizado [`pocketbase.ts`](file:///c:/Users/andyg/OneDrive/Documents/crecer-y-ser/src/core/pocketbase.ts).
 
-## 3. Mapa de Colecciones (PocketBase)
-*   **`users`**: Usuarios del sistema (auth).
-*   **`alumnos`**: Información de estudiantes (`numero_legajo`, `dni`, `apellidos`, `nombres`, `fecha_nacimiento`).
-*   **`responsables`**: Padres/tutores (`dni`, `apellidos`, `nombres`, `telefono`, `email`).
-*   **`alumno_responable`**: Relación M:N entre `alumnos` y `responsables` con campo `vinculo`.
-*   **`ciclos_lectivos`**: Años escolares (`ano`, `actual`).
-*   **`niveles`**: Niveles educativos (`nombre`, relación con `escalas_calificacion`).
-*   **`cursos`**: Divisiones/cursos (`nombre`, relación con `niveles`, `turno`).
-*   **`inscripciones`**: Matrículas (`alumno_id`, `curso_id`, `ciclo_id`, `estado`, `fecha_matriculacion`).
-*   **`escalas_calificacion`** & **`valores_escala`**: Configuración de notas y escalas.
+## 3. Mapa de Colecciones (PocketBase) - Fuente de Verdad: `pb_schema.json`
+
+### 👤 Usuarios y Autenticación
+*   **`users`**: Autenticación del sistema escolar.
+
+### 🏛️ Estructura Institucional y Académica
+*   **`ciclos_lectivos`**: Años lectivos (`ano`, `actual`).
+*   **`niveles`**: Niveles escolares (`nombre`).
+*   **`escalas_calificacion`**: Escalas de evaluación configuradas (`nombre`).
+*   **`valores_escala`**: Ítems de cada escala (`escala_id`, `peso_numerico`, `etiqueta`, `orden_visual`).
+*   **`cursos`**: Divisiones (`nombre`, `nivel_id`, `escala_id`, `turno`: *Mañana* | *Tarde* | *Jornada Completa*).
+*   **`materias`**: Catálogo general de asignaturas (`nombre`).
+*   **`periodos`**: Bimestres por ciclo lectivo (`ciclo_id`, `nombre`, `numero_periodo`).
+*   **`curso_materias`**: Malla curricular asignada a cada curso (`curso_id`, `materia_id`, `orden_visual`).
+*   **`criterios_evaluacion`**: Los 5 conceptos pedagógicos configurados por materia (`curso_materia_id`, `nombre`, `orden_visual`).
+
+### 👨‍👩‍👧 Alumnos, Familias e Inscripciones
+*   **`alumnos`**: Estudiantes (`numero_legajo`, `dni`, `apellidos`, `nombres`, `fecha_nacimiento`, `nacionalidad`, `sexo`, `telefono`, `domicilio`, `usuario_acadeu`, `clave_acadeu`).
+*   **`responsables`**: Padres/tutores (`dni`, `apellidos`, `nombres`, `nacionalidad`, `profesion`, `telefono`, `email`).
+*   **`alumno_responable`**: Vínculo M:N entre estudiante y tutor (`alumno_id`, `responsable_id`, `vinculo`).
+*   **`inscripciones`**: Matrícula anual (`alumno_id`, `curso_id`, `ciclo_id`, `numero_orden`, `numero_inscripcion`, `fecha_inscripcion`, `fecha_ingreso`, `fecha_egreso`, `estado`: *Regular* | *Libre* | *Baja*, `promociono_con_acompanamiento`: *SI* | *NO* | *-*, `posee_apoyos`: *SI* | *NO* | *-*, `cuales_apoyos`: *text*).
+
+### 📝 Evaluaciones y Cierres Bimestrales (Boletines)
+*   **`evaluaciones_materia`**: Cierre de materia por bimestre para un alumno:
+    *   `inscripcion_id` $\rightarrow$ `inscripciones`
+    *   `curso_materia_id` $\rightarrow$ `curso_materias`
+    *   `periodo_id` $\rightarrow$ `periodos`
+    *   `ppi` (*bool*: true/false)
+    *   `calificacion_general_id` $\rightarrow$ `valores_escala`
+*   **`evaluaciones_criterios`**: Evaluación de cada uno de los conceptos de la materia:
+    *   `evaluacion_materia_id` $\rightarrow$ `evaluaciones_materia`
+    *   `criterio_id` $\rightarrow$ `criterios_evaluacion`
+    *   `valor_escala_id` $\rightarrow$ `valores_escala`
+*   **`cierres_periodo_alumno`**: Asistencias y observaciones globales del bimestre:
+    *   `inscripcion_id` $\rightarrow$ `inscripciones`
+    *   `periodo_id` $\rightarrow$ `periodos`
+    *   `asistencias` (*number*)
+    *   `inasistencias_justificadas` (*number*)
+    *   `inasistencias_injustificadas` (*number*)
+    *   `observaciones` (*text*)
 
 ## 4. Módulo Actual en Desarrollo
-*   **Dominio:** `Alumnos`.
-*   **Objetivo:** Conectar la aplicación a PocketBase, listar estudiantes usando `<Table>` de ANTD, filtrado/búsqueda y preparar formularios de alta y modificación respetando el esquema.
+*   **Dominio:** `Alumnos`, `Inscripciones` y `Boletines`.
+*   **Objetivo:** Gestión completa de estudiantes, configuración curricular de cursos/materias y carga/generación del Boletín Oficial de Calificaciones.

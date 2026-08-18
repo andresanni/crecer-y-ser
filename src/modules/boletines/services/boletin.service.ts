@@ -9,6 +9,11 @@ import {
   periodoAdapter,
   cursoMateriaAdapter,
   criterioEvaluacionAdapter,
+  escalaCalificacionAdapter,
+  valorEscalaAdapter,
+  evaluacionMateriaAdapter,
+  evaluacionCriterioAdapter,
+  cierrePeriodoAlumnoAdapter,
   type Materia,
   type MateriaRecord,
   type Periodo,
@@ -18,13 +23,33 @@ import {
   type CriterioEvaluacion,
   type CriterioEvaluacionRecord,
   type CriterioFormItem,
+  type EscalaCalificacion,
+  type EscalaCalificacionRecord,
+  type ValorEscala,
+  type ValorEscalaRecord,
+  type EvaluacionMateria,
+  type EvaluacionMateriaRecord,
+  type EvaluacionCriterio,
+  type EvaluacionCriterioRecord,
+  type CierrePeriodoAlumno,
+  type CierrePeriodoAlumnoRecord,
+  type AlumnoInscriptoRow,
+  type FilaCalificacionMateria,
+  type FilaCierreAsistencia,
 } from '../models/boletin.model';
+import type { AlumnoRecord } from '../../alumnos/models/alumno.model';
 
 const COLLECTION_CURSOS = 'cursos';
 const COLLECTION_MATERIAS = 'materias';
 const COLLECTION_PERIODOS = 'periodos';
 const COLLECTION_CURSO_MATERIAS = 'curso_materias';
 const COLLECTION_CRITERIOS = 'criterios_evaluacion';
+const COLLECTION_ESCALAS = 'escalas_calificacion';
+const COLLECTION_VALORES_ESCALA = 'valores_escala';
+const COLLECTION_EVALUACIONES_MATERIA = 'evaluaciones_materia';
+const COLLECTION_EVALUACIONES_CRITERIOS = 'evaluaciones_criterios';
+const COLLECTION_CIERRES_PERIODO = 'cierres_periodo_alumno';
+const COLLECTION_INSCRIPCIONES = 'inscripciones';
 
 export const boletinService = {
   // ==========================================
@@ -36,6 +61,24 @@ export const boletinService = {
       sort: 'nombre',
     });
     return records.map(cursoAdapter);
+  },
+
+  // ==========================================
+  // ESCALAS Y VALORES
+  // ==========================================
+  getEscalasCalificacion: async (): Promise<EscalaCalificacion[]> => {
+    const records = await pb.collection(COLLECTION_ESCALAS).getFullList<EscalaCalificacionRecord>({
+      sort: 'nombre',
+    });
+    return records.map(escalaCalificacionAdapter);
+  },
+
+  getValoresByEscala: async (escalaId: string): Promise<ValorEscala[]> => {
+    const records = await pb.collection(COLLECTION_VALORES_ESCALA).getFullList<ValorEscalaRecord>({
+      filter: `escala_id = "${escalaId}"`,
+      sort: 'orden_visual',
+    });
+    return records.map(valorEscalaAdapter);
   },
 
   // ==========================================
@@ -86,7 +129,6 @@ export const boletinService = {
   },
 
   removeMateriaFromCurso: async (cursoMateriaId: string): Promise<boolean> => {
-    // Primero eliminamos los criterios de evaluación asociados
     try {
       const criterios = await pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>({
         filter: `curso_materia_id = "${cursoMateriaId}"`,
@@ -98,13 +140,11 @@ export const boletinService = {
       console.warn('Error al limpiar criterios previos de curso_materia:', err);
     }
 
-    // Eliminamos la asignación de la materia al curso
     await pb.collection(COLLECTION_CURSO_MATERIAS).delete(cursoMateriaId);
     return true;
   },
 
   updateCursoMateriasOrder: async (items: { id: string; orden_visual: number }[]): Promise<void> => {
-    // Actualizamos secuencialmente el orden visual
     for (const item of items) {
       await pb.collection(COLLECTION_CURSO_MATERIAS).update(item.id, {
         orden_visual: item.orden_visual,
@@ -123,15 +163,10 @@ export const boletinService = {
     return records.map(criterioEvaluacionAdapter);
   },
 
-  /**
-   * Guarda o sincroniza los 5 criterios de una materia en un curso.
-   * Maneja altas, modificaciones y eliminaciones si se quita algún ítem.
-   */
   saveCriteriosForCursoMateria: async (
     cursoMateriaId: string,
     criterios: CriterioFormItem[]
   ): Promise<CriterioEvaluacion[]> => {
-    // 1. Obtener criterios existentes en la base de datos
     const existentes = await pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>({
       filter: `curso_materia_id = "${cursoMateriaId}"`,
     });
@@ -144,14 +179,12 @@ export const boletinService = {
       if (!trimmedNombre) continue;
 
       if (item.id && existentesMap.has(item.id)) {
-        // Actualizar existente
         await pb.collection(COLLECTION_CRITERIOS).update(item.id, {
           nombre: trimmedNombre,
           orden_visual: item.orden_visual,
         });
         processedIds.add(item.id);
       } else {
-        // Crear nuevo
         const created = await pb.collection(COLLECTION_CRITERIOS).create<CriterioEvaluacionRecord>({
           curso_materia_id: cursoMateriaId,
           nombre: trimmedNombre,
@@ -161,14 +194,12 @@ export const boletinService = {
       }
     }
 
-    // 2. Eliminar criterios que existían antes pero fueron removidos o vaciados
     for (const exist of existentes) {
       if (!processedIds.has(exist.id)) {
         await pb.collection(COLLECTION_CRITERIOS).delete(exist.id);
       }
     }
 
-    // 3. Retornar la lista final actualizada
     return boletinService.getCriteriosByCursoMateria(cursoMateriaId);
   },
 
@@ -202,9 +233,6 @@ export const boletinService = {
     return periodoAdapter(record);
   },
 
-  /**
-   * Inicializa automáticamente los 4 bimestres estándar para el ciclo si no existen.
-   */
   initDefaultPeriodos: async (cicloId: string): Promise<Periodo[]> => {
     const existentes = await boletinService.getPeriodosByCiclo(cicloId);
     const existingNums = new Set(existentes.map((p) => p.numeroPeriodo));
@@ -228,4 +256,466 @@ export const boletinService = {
 
     return boletinService.getPeriodosByCiclo(cicloId);
   },
+
+  // ==========================================
+  // EVALUACIONES MATERIA & CRITERIOS
+  // ==========================================
+  getEvaluacionMateria: async (
+    inscripcionId: string,
+    cursoMateriaId: string,
+    periodoId: string
+  ): Promise<EvaluacionMateria | null> => {
+    try {
+      const record = await pb
+        .collection(COLLECTION_EVALUACIONES_MATERIA)
+        .getFirstListItem<EvaluacionMateriaRecord>(
+          `inscripcion_id = "${inscripcionId}" && curso_materia_id = "${cursoMateriaId}" && periodo_id = "${periodoId}"`,
+          {
+            expand: 'curso_materia_id.materia_id,periodo_id,calificacion_general_id',
+          }
+        );
+      return evaluacionMateriaAdapter(record);
+    } catch {
+      return null;
+    }
+  },
+
+  getEvaluacionesCriteriosByEvaluacionMateria: async (
+    evaluacionMateriaId: string
+  ): Promise<EvaluacionCriterio[]> => {
+    const records = await pb
+      .collection(COLLECTION_EVALUACIONES_CRITERIOS)
+      .getFullList<EvaluacionCriterioRecord>({
+        filter: `evaluacion_materia_id = "${evaluacionMateriaId}"`,
+        expand: 'criterio_id,valor_escala_id',
+      });
+    const mapped = records.map(evaluacionCriterioAdapter);
+    return mapped.sort((a, b) => (a.criterioOrden ?? 0) - (b.criterioOrden ?? 0));
+  },
+
+  saveEvaluacionMateriaCompleta: async (data: {
+    inscripcionId: string;
+    cursoMateriaId: string;
+    periodoId: string;
+    ppi: boolean;
+    calificacionGeneralId: string;
+    criterios: { criterioId: string; valorEscalaId: string }[];
+  }): Promise<EvaluacionMateria> => {
+    let evalMateriaRecord: EvaluacionMateriaRecord;
+
+    const existing = await boletinService.getEvaluacionMateria(
+      data.inscripcionId,
+      data.cursoMateriaId,
+      data.periodoId
+    );
+
+    if (existing) {
+      evalMateriaRecord = await pb
+        .collection(COLLECTION_EVALUACIONES_MATERIA)
+        .update<EvaluacionMateriaRecord>(existing.id, {
+          ppi: data.ppi,
+          calificacion_general_id: data.calificacionGeneralId || null,
+        }, {
+          expand: 'curso_materia_id.materia_id,periodo_id,calificacion_general_id',
+        });
+    } else {
+      evalMateriaRecord = await pb
+        .collection(COLLECTION_EVALUACIONES_MATERIA)
+        .create<EvaluacionMateriaRecord>({
+          inscripcion_id: data.inscripcionId,
+          curso_materia_id: data.cursoMateriaId,
+          periodo_id: data.periodoId,
+          ppi: data.ppi,
+          calificacion_general_id: data.calificacionGeneralId || null,
+        }, {
+          expand: 'curso_materia_id.materia_id,periodo_id,calificacion_general_id',
+        });
+    }
+
+    // Sincronizar criterios
+    const existentesCriterios = await pb
+      .collection(COLLECTION_EVALUACIONES_CRITERIOS)
+      .getFullList<EvaluacionCriterioRecord>({
+        filter: `evaluacion_materia_id = "${evalMateriaRecord.id}"`,
+      });
+    const critMap = new Map(existentesCriterios.map((c) => [c.criterio_id, c]));
+
+    for (const c of data.criterios) {
+      if (!c.valorEscalaId) continue;
+      if (critMap.has(c.criterioId)) {
+        const item = critMap.get(c.criterioId)!;
+        await pb.collection(COLLECTION_EVALUACIONES_CRITERIOS).update(item.id, {
+          valor_escala_id: c.valorEscalaId,
+        });
+      } else {
+        await pb.collection(COLLECTION_EVALUACIONES_CRITERIOS).create({
+          evaluacion_materia_id: evalMateriaRecord.id,
+          criterio_id: c.criterioId,
+          valor_escala_id: c.valorEscalaId,
+        });
+      }
+    }
+
+    return evaluacionMateriaAdapter(evalMateriaRecord);
+  },
+
+  // ==========================================
+  // CIERRES DE PERIODO POR ALUMNO
+  // ==========================================
+  getCierrePeriodoAlumno: async (
+    inscripcionId: string,
+    periodoId: string
+  ): Promise<CierrePeriodoAlumno | null> => {
+    try {
+      const record = await pb
+        .collection(COLLECTION_CIERRES_PERIODO)
+        .getFirstListItem<CierrePeriodoAlumnoRecord>(
+          `inscripcion_id = "${inscripcionId}" && periodo_id = "${periodoId}"`,
+          {
+            expand: 'periodo_id',
+          }
+        );
+      return cierrePeriodoAlumnoAdapter(record);
+    } catch {
+      return null;
+    }
+  },
+
+  saveCierrePeriodoAlumno: async (data: {
+    inscripcionId: string;
+    periodoId: string;
+    asistencias: number;
+    inasistenciasJustificadas: number;
+    inasistenciasInjustificadas: number;
+    observaciones: string;
+  }): Promise<CierrePeriodoAlumno> => {
+    const existing = await boletinService.getCierrePeriodoAlumno(
+      data.inscripcionId,
+      data.periodoId
+    );
+
+    let record: CierrePeriodoAlumnoRecord;
+    if (existing) {
+      record = await pb
+        .collection(COLLECTION_CIERRES_PERIODO)
+        .update<CierrePeriodoAlumnoRecord>(existing.id, {
+          asistencias: data.asistencias,
+          inasistencias_justificadas: data.inasistenciasJustificadas,
+          inasistencias_injustificadas: data.inasistenciasInjustificadas,
+          observaciones: data.observaciones,
+        }, {
+          expand: 'periodo_id',
+        });
+    } else {
+      record = await pb
+        .collection(COLLECTION_CIERRES_PERIODO)
+        .create<CierrePeriodoAlumnoRecord>({
+          inscripcion_id: data.inscripcionId,
+          periodo_id: data.periodoId,
+          asistencias: data.asistencias,
+          inasistencias_justificadas: data.inasistenciasJustificadas,
+          inasistencias_injustificadas: data.inasistenciasInjustificadas,
+          observaciones: data.observaciones,
+        }, {
+          expand: 'periodo_id',
+        });
+    }
+
+    return cierrePeriodoAlumnoAdapter(record);
+  },
+
+  // ==========================================
+  // MATRIZ DE CALIFICACIONES (CARGA DOCENTE BATCH)
+  // ==========================================
+  getAlumnosRegularesByCurso: async (cursoId: string): Promise<AlumnoInscriptoRow[]> => {
+    interface InscripcionRaw {
+      id: string;
+      alumno_id: string;
+      numero_orden?: number;
+      estado: string;
+      promociono_con_acompanamiento?: string;
+      posee_apoyos?: string;
+      cuales_apoyos?: string;
+      expand?: {
+        alumno_id?: AlumnoRecord;
+      };
+    }
+
+    const records = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<InscripcionRaw>({
+      filter: `curso_id = "${cursoId}" && estado = "Regular"`,
+      expand: 'alumno_id',
+    });
+
+    const mapped: AlumnoInscriptoRow[] = records.map((r) => {
+      const alu = r.expand?.alumno_id;
+      const apellidos = alu?.apellidos || '';
+      const nombres = alu?.nombres || '';
+      const nombreCompleto = `${apellidos}, ${nombres}`.trim() || 'Estudiante sin nombre';
+
+      return {
+        inscripcionId: r.id,
+        alumnoId: r.alumno_id,
+        numeroOrden: r.numero_orden ?? null,
+        numeroLegajo: alu?.numero_legajo || '',
+        dni: alu?.dni || '',
+        apellidos,
+        nombres,
+        nombreCompleto,
+        estado: r.estado,
+        promocionoConAcompanamiento: r.promociono_con_acompanamiento || '-',
+        poseeApoyos: r.posee_apoyos || '-',
+        cualesApoyos: r.cuales_apoyos || '',
+      };
+    });
+
+    // Ordenamiento robusto en TypeScript: por numero_orden asc (si está asignado), y luego alfabéticamente por Apellidos y Nombres
+    return mapped.sort((a, b) => {
+      if (a.numeroOrden !== null && b.numeroOrden !== null) {
+        if (a.numeroOrden !== b.numeroOrden) {
+          return a.numeroOrden - b.numeroOrden;
+        }
+      } else if (a.numeroOrden !== null) {
+        return -1;
+      } else if (b.numeroOrden !== null) {
+        return 1;
+      }
+      return a.nombreCompleto.localeCompare(b.nombreCompleto, 'es', { sensitivity: 'base' });
+    });
+  },
+
+  getMatrizEvaluacionesByCursoMateriaAndPeriodo: async (
+    cursoMateriaId: string,
+    periodoId: string
+  ): Promise<
+    Record<
+      string,
+      {
+        evaluacionMateriaId: string;
+        ppi: boolean;
+        calificacionGeneralId: string | null;
+        criteriosValores: Record<string, string>;
+      }
+    >
+  > => {
+    // 1. Obtener todas las evaluaciones_materia de ese cursoMateria y periodo
+    const evalRecords = await pb
+      .collection(COLLECTION_EVALUACIONES_MATERIA)
+      .getFullList<EvaluacionMateriaRecord>({
+        filter: `curso_materia_id = "${cursoMateriaId}" && periodo_id = "${periodoId}"`,
+      });
+
+    if (evalRecords.length === 0) return {};
+
+    const evalMap: Record<
+      string,
+      {
+        evaluacionMateriaId: string;
+        ppi: boolean;
+        calificacionGeneralId: string | null;
+        criteriosValores: Record<string, string>;
+      }
+    > = {};
+
+    const evalIds = evalRecords.map((e) => e.id);
+    for (const e of evalRecords) {
+      evalMap[e.inscripcion_id] = {
+        evaluacionMateriaId: e.id,
+        ppi: Boolean(e.ppi),
+        calificacionGeneralId: e.calificacion_general_id || null,
+        criteriosValores: {},
+      };
+    }
+
+    // 2. Obtener los criterios de evaluación para estas evaluaciones
+    const idFilter = evalIds.map((id) => `evaluacion_materia_id = "${id}"`).join(' || ');
+    if (idFilter) {
+      const critRecords = await pb
+        .collection(COLLECTION_EVALUACIONES_CRITERIOS)
+        .getFullList<EvaluacionCriterioRecord>({
+          filter: idFilter,
+        });
+
+      for (const cr of critRecords) {
+        // Encontrar a qué inscripción pertenece esta evaluación
+        const parentEval = evalRecords.find((e) => e.id === cr.evaluacion_materia_id);
+        if (parentEval && evalMap[parentEval.inscripcion_id]) {
+          evalMap[parentEval.inscripcion_id].criteriosValores[cr.criterio_id] =
+            cr.valor_escala_id;
+        }
+      }
+    }
+
+    return evalMap;
+  },
+
+  getCierresPeriodoByPeriodo: async (
+    periodoId: string
+  ): Promise<Record<string, CierrePeriodoAlumno>> => {
+    const records = await pb
+      .collection(COLLECTION_CIERRES_PERIODO)
+      .getFullList<CierrePeriodoAlumnoRecord>({
+        filter: `periodo_id = "${periodoId}"`,
+        expand: 'periodo_id',
+      });
+
+    const map: Record<string, CierrePeriodoAlumno> = {};
+    for (const r of records) {
+      map[r.inscripcion_id] = cierrePeriodoAlumnoAdapter(r);
+    }
+    return map;
+  },
+
+  saveMatrizCalificacionesBatch: async (
+    cursoMateriaId: string,
+    periodoId: string,
+    filas: FilaCalificacionMateria[]
+  ): Promise<void> => {
+    for (const f of filas) {
+      const criteriosPayload = Object.entries(f.criteriosValores).map(([critId, valId]) => ({
+        criterioId: critId,
+        valorEscalaId: valId,
+      }));
+
+      await boletinService.saveEvaluacionMateriaCompleta({
+        inscripcionId: f.inscripcionId,
+        cursoMateriaId,
+        periodoId,
+        ppi: f.ppi,
+        calificacionGeneralId: f.calificacionGeneralId || '',
+        criterios: criteriosPayload,
+      });
+    }
+  },
+
+  saveCierresPeriodoBatch: async (
+    periodoId: string,
+    filas: FilaCierreAsistencia[]
+  ): Promise<void> => {
+    for (const f of filas) {
+      await boletinService.saveCierrePeriodoAlumno({
+        inscripcionId: f.inscripcionId,
+        periodoId,
+        asistencias: f.asistencias,
+        inasistenciasJustificadas: f.inasistenciasJustificadas,
+        inasistenciasInjustificadas: f.inasistenciasInjustificadas,
+        observaciones: f.observaciones,
+      });
+    }
+  },
+
+  // ==========================================
+  // VISTA POR ALUMNO (CARGA INTEGRAL INDIVIDUAL)
+  // ==========================================
+  getEvaluacionesByInscripcionAndPeriodo: async (
+    inscripcionId: string,
+    periodoId: string
+  ): Promise<
+    Record<
+      string,
+      {
+        evaluacionMateriaId: string;
+        ppi: boolean;
+        calificacionGeneralId: string | null;
+        criteriosValores: Record<string, string>;
+      }
+    >
+  > => {
+    const evalRecords = await pb
+      .collection(COLLECTION_EVALUACIONES_MATERIA)
+      .getFullList<EvaluacionMateriaRecord>({
+        filter: `inscripcion_id = "${inscripcionId}" && periodo_id = "${periodoId}"`,
+      });
+
+    if (evalRecords.length === 0) return {};
+
+    const evalMap: Record<
+      string,
+      {
+        evaluacionMateriaId: string;
+        ppi: boolean;
+        calificacionGeneralId: string | null;
+        criteriosValores: Record<string, string>;
+      }
+    > = {};
+
+    const evalIds = evalRecords.map((e) => e.id);
+    for (const e of evalRecords) {
+      evalMap[e.curso_materia_id] = {
+        evaluacionMateriaId: e.id,
+        ppi: Boolean(e.ppi),
+        calificacionGeneralId: e.calificacion_general_id || null,
+        criteriosValores: {},
+      };
+    }
+
+    const idFilter = evalIds.map((id) => `evaluacion_materia_id = "${id}"`).join(' || ');
+    if (idFilter) {
+      const critRecords = await pb
+        .collection(COLLECTION_EVALUACIONES_CRITERIOS)
+        .getFullList<EvaluacionCriterioRecord>({
+          filter: idFilter,
+        });
+
+      for (const cr of critRecords) {
+        const parentEval = evalRecords.find((e) => e.id === cr.evaluacion_materia_id);
+        if (parentEval && evalMap[parentEval.curso_materia_id]) {
+          evalMap[parentEval.curso_materia_id].criteriosValores[cr.criterio_id] =
+            cr.valor_escala_id;
+        }
+      }
+    }
+
+    return evalMap;
+  },
+
+  getCriteriosByCursoMateriasBatch: async (
+    cursoMateriaIds: string[]
+  ): Promise<Record<string, CriterioEvaluacion[]>> => {
+    if (cursoMateriaIds.length === 0) return {};
+
+    const filterStr = cursoMateriaIds.map((id) => `curso_materia_id = "${id}"`).join(' || ');
+    const records = await pb
+      .collection(COLLECTION_CRITERIOS)
+      .getFullList<CriterioEvaluacionRecord>({
+        filter: filterStr,
+      });
+
+    const map: Record<string, CriterioEvaluacion[]> = {};
+    for (const cmId of cursoMateriaIds) {
+      map[cmId] = [];
+    }
+
+    for (const r of records) {
+      if (!map[r.curso_materia_id]) {
+        map[r.curso_materia_id] = [];
+      }
+      map[r.curso_materia_id].push(criterioEvaluacionAdapter(r));
+    }
+
+    // Ordenar criterios en cliente
+    for (const cmId of Object.keys(map)) {
+      map[cmId].sort((a, b) => (a.ordenVisual ?? 0) - (b.ordenVisual ?? 0));
+    }
+
+    return map;
+  },
+
+  updateInscripcionApoyos: async (
+    inscripcionId: string,
+    data: {
+      promocionoConAcompanamiento?: string;
+      poseeApoyos?: string;
+      cualesApoyos?: string;
+    }
+  ): Promise<void> => {
+    await pb.collection(COLLECTION_INSCRIPCIONES).update(inscripcionId, {
+      promociono_con_acompanamiento: data.promocionoConAcompanamiento || '-',
+      posee_apoyos: data.poseeApoyos || '-',
+      cuales_apoyos: data.cualesApoyos || '',
+    });
+  },
 };
+
+
+
+

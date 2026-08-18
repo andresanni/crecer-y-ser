@@ -14,6 +14,8 @@ import {
   RightOutlined,
   GlobalOutlined,
   ScheduleOutlined,
+  TableOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
@@ -24,6 +26,7 @@ const { Header, Sider, Content } = Layout;
 
 export const MainLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [openKeys, setOpenKeys] = useState<string[]>(['boletines']);
   const navigate = useNavigate();
   const location = useLocation();
   const { cicloActual, isCicloLoading, fetchCicloActual, currentUser } = useAppStore();
@@ -33,6 +36,13 @@ export const MainLayout: React.FC = () => {
     fetchCicloActual();
   }, [fetchCicloActual]);
 
+  // Asegurar que el submenú de Boletines permanezca abierto al navegar dentro de su ámbito
+  useEffect(() => {
+    if (location.pathname.startsWith('/app/boletines') && !collapsed) {
+      setOpenKeys((prev) => (prev.includes('boletines') ? prev : [...prev, 'boletines']));
+    }
+  }, [location.pathname, collapsed]);
+
   const handleLogout = () => pb.authStore.clear();
   const userName = currentUser?.name || currentUser?.email || 'Usuario Institucional';
 
@@ -41,14 +51,19 @@ export const MainLayout: React.FC = () => {
     const items = [{ title: 'Inicio' }];
     if (location.pathname.startsWith('/app/alumnos')) {
       items.push({ title: 'Gestión de Alumnos' });
+    } else if (location.pathname.startsWith('/app/boletines/constructor')) {
+      items.push({ title: 'Boletines' });
+      items.push({ title: 'Constructor' });
     } else if (location.pathname.startsWith('/app/boletines')) {
       items.push({ title: 'Boletines' });
+      items.push({ title: 'Carga de Notas' });
     }
     return items;
   };
 
   const getSelectedKey = () => {
-    if (location.pathname.startsWith('/app/boletines')) return ['boletines'];
+    if (location.pathname.startsWith('/app/boletines/constructor')) return ['boletines_constructor'];
+    if (location.pathname.startsWith('/app/boletines')) return ['boletines_calificaciones'];
     if (location.pathname.startsWith('/app/alumnos')) return ['alumnos'];
     return [];
   };
@@ -57,7 +72,7 @@ export const MainLayout: React.FC = () => {
     <Layout className={`app-layout ${isDarkMode ? 'theme-dark' : ''}`} style={{ minHeight: '100vh' }}>
       <Sider
         className="app-sider"
-        width={210}
+        width={220}
         collapsedWidth={80}
         collapsible
         collapsed={collapsed}
@@ -79,6 +94,8 @@ export const MainLayout: React.FC = () => {
         <Menu
           theme="dark"
           selectedKeys={getSelectedKey()}
+          openKeys={collapsed ? [] : openKeys}
+          onOpenChange={(keys) => setOpenKeys(keys)}
           mode="inline"
           inlineCollapsed={collapsed}
           items={[
@@ -92,7 +109,20 @@ export const MainLayout: React.FC = () => {
               key: 'boletines',
               icon: <ScheduleOutlined style={{ fontSize: 18 }} />,
               label: 'Boletines',
-              onClick: () => navigate('/app/boletines'),
+              children: [
+                {
+                  key: 'boletines_calificaciones',
+                  icon: <TableOutlined style={{ fontSize: 15 }} />,
+                  label: 'Carga de Notas',
+                  onClick: () => navigate('/app/boletines/calificaciones'),
+                },
+                {
+                  key: 'boletines_constructor',
+                  icon: <SettingOutlined style={{ fontSize: 15 }} />,
+                  label: 'Constructor',
+                  onClick: () => navigate('/app/boletines/constructor'),
+                },
+              ],
             },
           ]}
         />
