@@ -59,21 +59,21 @@ export const landingData: LandingData = {
   schoolName: 'Crecer y Ser',
   schoolCode: 'Colegio A-1134',
   tagline: 'Formación Académica y Emocional',
-  badgeText: 'Admisiones 2026 — Inscripciones Abiertas',
+  badgeText: 'Admisiones 2027 — Inscripciones Abiertas',
   heroTitle: {
-    prefix: 'Educación con propósito, valores y ',
-    gradient: 'excelencia',
+    prefix: 'Colegio Crecer y Ser Educamos para la   ',
+    gradient: 'vida',
   },
   heroSubtitle:
     'Acompañamos a nuestros estudiantes en cada etapa de su desarrollo pedagógico y humano. Una propuesta integral orientada al futuro, la innovación y el bien común.',
   trustPoints: [
-    'Nivel Inicial, Primario y Secundario',
+    'Nivel Inicial y Primario',
     'Plataforma Digital Integrada',
     'Comunidad Comprometida',
   ],
   metrics: {
-    historyYears: '+25',
-    levelsCount: '3',
+    historyYears: '+35',
+    levelsCount: '2',
     commitmentPercentage: '100%',
     platformVersion: '2.0',
   },
@@ -139,19 +139,7 @@ export const landingData: LandingData = {
         'Acompañamiento psicopedagógico',
       ],
     },
-    {
-      id: 'secundario',
-      badge: 'Nivel Secundario',
-      iconName: 'global',
-      title: 'Educación Secundaria',
-      description:
-        'Formación crítica, ética y científica orientada a los desafíos de la universidad y el mundo laboral actual.',
-      features: [
-        'Orientaciones especializadas',
-        'Proyectos de orientación vocacional',
-        'Convenios institucionales y debates',
-      ],
-    },
+    
   ],
   novedades: [
     {

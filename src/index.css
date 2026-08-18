@@ -79,17 +79,21 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   background: #0d1b3e !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 2px 0 16px rgba(15, 23, 42, 0.06);
+  position: sticky !important;
+  top: 0;
+  height: 100vh;
+  z-index: 100;
 }
 
 .app-sider .ant-layout-sider-children {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 16px 12px 8px 12px;
+  padding: 16px 12px 16px 12px;
 }
 
 .app-sider.ant-layout-sider-collapsed .ant-layout-sider-children {
-  padding: 16px 0 8px 0;
+  padding: 16px 0 16px 0;
 }
 
 .brand {
@@ -171,6 +175,17 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 .app-sider .ant-menu {
   background: transparent !important;
   border-inline-end: 0 !important;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.app-sider .ant-menu::-webkit-scrollbar {
+  width: 4px;
+}
+.app-sider .ant-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
 }
 
 .app-sider .ant-menu-item {
@@ -236,6 +251,12 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   font-size: 18px !important;
   margin: 0 !important;
   line-height: 1 !important;
+}
+
+.sider-footer-wrapper {
+  margin-top: auto;
+  flex-shrink: 0;
+  width: 100%;
 }
 
 .sider-footer {
@@ -572,6 +593,72 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   transform: translateY(-3px);
   box-shadow: var(--card-hover-shadow);
   border-color: rgba(37, 99, 235, 0.35);
+}
+
+/* Custom Ultra-Slim Minimalist Scrollbar */
+.cys-criterios-scroll-list,
+.cys-materias-table .ant-table-body,
+.cys-materias-table .ant-table-content,
+.ant-table-body {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent !important;
+}
+
+.cys-criterios-scroll-list::-webkit-scrollbar,
+.cys-materias-table .ant-table-body::-webkit-scrollbar,
+.cys-materias-table .ant-table-content::-webkit-scrollbar,
+.cys-materias-table::-webkit-scrollbar,
+.ant-table-body::-webkit-scrollbar,
+.ant-table-content::-webkit-scrollbar {
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.cys-criterios-scroll-list::-webkit-scrollbar-track,
+.cys-materias-table .ant-table-body::-webkit-scrollbar-track,
+.cys-materias-table .ant-table-content::-webkit-scrollbar-track,
+.ant-table-body::-webkit-scrollbar-track,
+.ant-table-content::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.cys-criterios-scroll-list::-webkit-scrollbar-thumb,
+.cys-materias-table .ant-table-body::-webkit-scrollbar-thumb,
+.cys-materias-table .ant-table-content::-webkit-scrollbar-thumb,
+.ant-table-body::-webkit-scrollbar-thumb,
+.ant-table-content::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35) !important;
+  border-radius: 6px !important;
+}
+
+.cys-criterios-scroll-list::-webkit-scrollbar-thumb:hover,
+.cys-materias-table .ant-table-body::-webkit-scrollbar-thumb:hover,
+.cys-materias-table .ant-table-content::-webkit-scrollbar-thumb:hover,
+.ant-table-body::-webkit-scrollbar-thumb:hover,
+.ant-table-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6) !important;
+}
+
+.theme-dark .cys-criterios-scroll-list,
+.theme-dark .cys-materias-table .ant-table-body,
+.theme-dark .ant-table-body {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent !important;
+}
+
+.theme-dark .cys-criterios-scroll-list::-webkit-scrollbar-thumb,
+.theme-dark .cys-materias-table .ant-table-body::-webkit-scrollbar-thumb,
+.theme-dark .cys-materias-table .ant-table-content::-webkit-scrollbar-thumb,
+.theme-dark .ant-table-body::-webkit-scrollbar-thumb,
+.theme-dark .ant-table-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.theme-dark .cys-criterios-scroll-list::-webkit-scrollbar-thumb:hover,
+.theme-dark .cys-materias-table .ant-table-body::-webkit-scrollbar-thumb:hover,
+.theme-dark .cys-materias-table .ant-table-content::-webkit-scrollbar-thumb:hover,
+.theme-dark .ant-table-body::-webkit-scrollbar-thumb:hover,
+.theme-dark .ant-table-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* ==========================================================================
@@ -1355,6 +1442,11 @@ body.theme-dark .login-form .ant-input-affix-wrapper {
   .login-form-pane {
     padding: 36px 24px;
   }
+}
+
+.cys-slot-empty-hover:hover {
+  border-color: #2563eb !important;
+  background: rgba(37, 99, 235, 0.04) !important;
 }
 
 

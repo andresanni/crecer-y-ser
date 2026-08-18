@@ -13,6 +13,7 @@ import {
   LeftOutlined,
   RightOutlined,
   GlobalOutlined,
+  ScheduleOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
@@ -40,15 +41,23 @@ export const MainLayout: React.FC = () => {
     const items = [{ title: 'Inicio' }];
     if (location.pathname.startsWith('/app/alumnos')) {
       items.push({ title: 'Gestión de Alumnos' });
+    } else if (location.pathname.startsWith('/app/boletines')) {
+      items.push({ title: 'Boletines' });
     }
     return items;
+  };
+
+  const getSelectedKey = () => {
+    if (location.pathname.startsWith('/app/boletines')) return ['boletines'];
+    if (location.pathname.startsWith('/app/alumnos')) return ['alumnos'];
+    return [];
   };
 
   return (
     <Layout className={`app-layout ${isDarkMode ? 'theme-dark' : ''}`} style={{ minHeight: '100vh' }}>
       <Sider
         className="app-sider"
-        width={250}
+        width={210}
         collapsedWidth={80}
         collapsible
         collapsed={collapsed}
@@ -69,7 +78,7 @@ export const MainLayout: React.FC = () => {
         </div>
         <Menu
           theme="dark"
-          selectedKeys={location.pathname.startsWith('/app/alumnos') ? ['alumnos'] : []}
+          selectedKeys={getSelectedKey()}
           mode="inline"
           inlineCollapsed={collapsed}
           items={[
@@ -79,10 +88,16 @@ export const MainLayout: React.FC = () => {
               label: 'Alumnos',
               onClick: () => navigate('/app/alumnos'),
             },
+            {
+              key: 'boletines',
+              icon: <ScheduleOutlined style={{ fontSize: 18 }} />,
+              label: 'Boletines',
+              onClick: () => navigate('/app/boletines'),
+            },
           ]}
         />
 
-        <div style={{ marginTop: 'auto' }}>
+        <div className="sider-footer-wrapper">
           {!collapsed ? (
             <div className="sider-footer">
               <Space direction="vertical" size={2} style={{ width: '100%' }}>
@@ -99,7 +114,7 @@ export const MainLayout: React.FC = () => {
             </div>
           ) : (
             <div className="sider-footer-collapsed">
-              <Tooltip title="Sistema Operativo PocketBase v0.27 (En vivo)" placement="right">
+              <Tooltip title="Sistema Operativo PocketBase v0.27" placement="right">
                 <span className="pulse-dot" style={{ width: 8, height: 8, cursor: 'pointer' }} />
               </Tooltip>
             </div>

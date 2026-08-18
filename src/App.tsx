@@ -3,6 +3,7 @@ import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './shared/components/MainLayout';
 import { AlumnoList } from './modules/alumnos/components/AlumnoList';
+import { BoletinConfigPage } from './modules/boletines/components/BoletinConfigPage';
 import { Login } from './modules/auth/components/Login';
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
 import { LandingPage } from './modules/landing/LandingPage';
@@ -125,6 +126,7 @@ function App() {
                 <Route element={<MainLayout />}>
                   <Route index element={<Navigate replace to="/app/alumnos" />} />
                   <Route path="alumnos" element={<AlumnoList />} />
+                  <Route path="boletines" element={<BoletinConfigPage />} />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate replace to="/" />} />
