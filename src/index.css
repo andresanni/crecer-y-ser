@@ -235,6 +235,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   padding: 4px 6px !important;
   margin: 4px 0 8px 0 !important;
   border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 3px solid rgba(96, 165, 250, 0.45) !important; /* soft indicator line for hierarchy */
 }
 
 .app-sider .ant-menu-sub .ant-menu-item {
@@ -243,7 +244,9 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   font-size: 13px !important;
   margin-block: 3px !important;
   border-radius: 10px !important;
-  padding-inline: 12px !important;
+  padding-inline-start: 24px !important; /* Indent sub items to create visual hierarchy */
+  padding-inline-end: 12px !important;
+  font-weight: 500 !important; /* Lighter font weight for child items */
 }
 
 .app-sider .ant-menu-item-selected,
@@ -885,20 +888,25 @@ body.theme-dark .cys-select-calificacion-general .ant-select-selector {
 
 .student-detail-modal .ant-modal-content {
   border-radius: 20px !important;
-  padding: 24px 28px !important;
+  padding: 16px 22px !important;
   box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.2) !important;
   border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.student-detail-modal .ant-modal-close {
+  top: 12px !important;
+  right: 16px !important;
 }
 
 .detail-header-banner {
   display: flex;
   align-items: center;
-  gap: 18px;
-  padding: 16px 20px;
+  gap: 14px;
+  padding: 10px 16px;
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(2, 132, 199, 0.04));
   border: 1px solid rgba(37, 99, 235, 0.12);
-  border-radius: 16px;
-  margin-bottom: 20px;
+  border-radius: 12px;
+  margin-bottom: 12px;
 }
 
 .detail-header-chip {
@@ -915,12 +923,12 @@ body.theme-dark .cys-select-calificacion-general .ant-select-selector {
 }
 
 .detail-tabs .ant-tabs-nav {
-  margin-bottom: 16px !important;
+  margin-bottom: 8px !important;
 }
 
 .detail-tabs .ant-tabs-tab {
   font-size: 14px !important;
-  padding: 10px 16px !important;
+  padding: 8px 14px !important;
 }
 
 .detail-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
@@ -1702,34 +1710,34 @@ body.theme-dark .cys-floating-action-bar {
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6) !important;
 }
 
-/* Styled Grade Selects */
+/* Styled Grade Selects - Clean & Professional */
 .cys-grade-select.cys-grade-destacado .ant-select-selector {
-  background-color: #ecfdf5 !important;
-  border-color: #a7f3d0 !important;
+  background-color: #ffffff !important;
+  border: 1.5px solid #10b981 !important;
   color: #047857 !important;
   font-weight: 700 !important;
 }
 .cys-grade-select.cys-grade-avanzado .ant-select-selector {
-  background-color: #eff6ff !important;
-  border-color: #bfdbfe !important;
+  background-color: #ffffff !important;
+  border: 1.5px solid #3b82f6 !important;
   color: #1d4ed8 !important;
   font-weight: 700 !important;
 }
 .cys-grade-select.cys-grade-alcanzado .ant-select-selector {
-  background-color: #f0f9ff !important;
-  border-color: #bae6fd !important;
+  background-color: #ffffff !important;
+  border: 1.5px solid #0284c7 !important;
   color: #0369a1 !important;
   font-weight: 700 !important;
 }
 .cys-grade-select.cys-grade-proceso .ant-select-selector {
-  background-color: #fffbeb !important;
-  border-color: #fde68a !important;
+  background-color: #ffffff !important;
+  border: 1.5px solid #f59e0b !important;
   color: #b45309 !important;
   font-weight: 700 !important;
 }
 .cys-grade-select.cys-grade-no-alcanzado .ant-select-selector {
-  background-color: #fef2f2 !important;
-  border-color: #fca5a5 !important;
+  background-color: #ffffff !important;
+  border: 1.5px solid #ef4444 !important;
   color: #b91c1c !important;
   font-weight: 700 !important;
 }
@@ -1764,6 +1772,24 @@ body.theme-dark .cys-grade-select.cys-grade-no-alcanzado .ant-select-selector {
   background-color: rgba(127, 29, 29, 0.4) !important;
   border-color: #b91c1c !important;
   color: #f87171 !important;
+}
+
+/* Sticky Student Info Banner in VistaPorAlumno */
+.cys-sticky-student-banner {
+  position: sticky !important;
+  top: 10px;
+  z-index: 95 !important;
+}
+
+.app-layout .cys-sticky-student-banner {
+  top: 72px !important;
+}
+
+.theme-dark .cys-sticky-student-banner,
+body.theme-dark .cys-sticky-student-banner {
+  background: rgba(15, 23, 42, 0.94) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
 }
 
 

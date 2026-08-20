@@ -383,7 +383,7 @@
       {
         "system": false,
         "id": "cp_field_injust",
-        "name": "inasistencias_justificadas",
+        "name": "inasistencias",
         "type": "number",
         "required": false,
         "presentable": false,
@@ -397,7 +397,7 @@
       {
         "system": false,
         "id": "cp_field_ininjust",
-        "name": "inasistencias_injustificadas",
+        "name": "llegadas_tarde",
         "type": "number",
         "required": false,
         "presentable": false,
@@ -424,10 +424,10 @@
       }
     ],
     "indexes": [],
-    "listRule": "@request.auth.id != \"\"",
-    "viewRule": "@request.auth.id != \"\"",
-    "createRule": "@request.auth.id != \"\"",
-    "updateRule": "@request.auth.id != \"\"",
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": "",
     "deleteRule": "@request.auth.id != \"\"",
     "options": {}
   },
@@ -716,7 +716,7 @@
     "indexes": [],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
-    "createRule": "@request.auth.id != \"\"",
+    "createRule": "",
     "updateRule": "@request.auth.id != \"\"",
     "deleteRule": "@request.auth.id != \"\"",
     "options": {}
@@ -805,7 +805,7 @@
     "indexes": [],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
-    "createRule": "@request.auth.id != \"\"",
+    "createRule": "",
     "updateRule": "@request.auth.id != \"\"",
     "deleteRule": "@request.auth.id != \"\"",
     "options": {}
@@ -1000,7 +1000,7 @@
     "indexes": [],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
-    "createRule": "@request.auth.id != \"\"",
+    "createRule": "",
     "updateRule": "@request.auth.id != \"\"",
     "deleteRule": null,
     "options": {}
@@ -1232,6 +1232,120 @@
     "createRule": "@request.auth.id != \"\"",
     "updateRule": "@request.auth.id != \"\"",
     "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "q9zvsilyj8ibimy",
+    "name": "tokens_acceso_docente",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "f95x5su0",
+        "name": "token",
+        "type": "text",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "q1vuj2a3",
+        "name": "curso_id",
+        "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "vqrxx07qeuos8oo",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "bijpfphq",
+        "name": "periodo_id",
+        "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "per_col_0000002",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "xtcnuium",
+        "name": "materia_id",
+        "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "mat_col_0000001",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "uf6szcd9",
+        "name": "docente_nombre",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "wqajzq8l",
+        "name": "activo",
+        "type": "bool",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {}
+      },
+      {
+        "system": false,
+        "id": "hczgvbce",
+        "name": "fecha_expiracion",
+        "type": "date",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      }
+    ],
+    "indexes": [],
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "@request.auth.id != \"\"",
+    "updateRule": "@request.auth.id != \"\"",
+    "deleteRule": "@request.auth.id != \"\"",
     "options": {}
   },
   {

@@ -22,6 +22,7 @@
 
 ### 👤 Usuarios y Autenticación
 *   **`users`**: Autenticación del sistema escolar.
+*   **`tokens_acceso_docente`**: Tokens de acceso temporal para docentes (Magic Links) para la carga batch sin requerir cuenta (`token`, `curso_id`, `periodo_id`, `materia_id`, `docente_nombre`, `activo`, `fecha_expiracion`).
 
 ### 🏛️ Estructura Institucional y Académica
 *   **`ciclos_lectivos`**: Años lectivos (`ano`, `actual`).
@@ -55,8 +56,8 @@
     *   `inscripcion_id` $\rightarrow$ `inscripciones`
     *   `periodo_id` $\rightarrow$ `periodos`
     *   `asistencias` (*number*)
-    *   `inasistencias_justificadas` (*number*)
-    *   `inasistencias_injustificadas` (*number*)
+    *   `inasistencias` (*number*)
+    *   `llegadas_tarde` (*number*)
     *   `observaciones` (*text*)
 
 ## 4. Módulo Actual en Desarrollo

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Table,
   Typography,
@@ -17,6 +17,7 @@ import {
   Empty,
   Tooltip,
   Badge,
+  Select,
 } from 'antd';
 import {
   EditOutlined,
@@ -29,8 +30,8 @@ import {
   UnorderedListOutlined,
   AppstoreOutlined,
   ReloadOutlined,
-  CheckCircleOutlined,
   EyeOutlined,
+  BookOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { alumnoService } from '../services/alumno.service';
@@ -38,6 +39,14 @@ import type { Alumno } from '../models/alumno.model';
 import { AlumnoFormModal, type AlumnoFormValues } from './AlumnoFormModal';
 import { AlumnoDetailModal } from './AlumnoDetailModal';
 import { useAppStore } from '../../../store/appStore';
+import {
+  getGradeColorConfig,
+  compareGrados,
+  extractGradeNumber,
+  GRADE_PALETTE,
+  ALL_GRADES,
+  type GradeNumber,
+} from '../utils/gradeColors';
 
 const { Title, Text } = Typography;
 
@@ -67,6 +76,9 @@ export const AlumnoList: React.FC = () => {
   const [inputValue, setInputValue] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+
+  // Filtro rápido por Grado (Todos, 1°, 2°, 3°, 4°, 5°, 6°, 7°)
+  const [selectedGradeFilter, setSelectedGradeFilter] = useState<GradeNumber | 'all'>('all');
 
   // Modal para Crear / Editar Alumno
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -144,6 +156,14 @@ export const AlumnoList: React.FC = () => {
       alumnoService.unsubscribeRealtime();
     };
   }, [currentPage, searchTerm, message]);
+
+
+
+  // Lista filtrada según el grado seleccionado en el paneo visual
+  const displayedAlumnos = useMemo(() => {
+    if (selectedGradeFilter === 'all') return alumnos;
+    return alumnos.filter((a) => extractGradeNumber(a.cursoNombre) === selectedGradeFilter);
+  }, [alumnos, selectedGradeFilter]);
 
   const handleOpenModal = (alumno?: Alumno) => {
     setEditingAlumno(alumno || null);
@@ -242,7 +262,7 @@ export const AlumnoList: React.FC = () => {
     }
   };
 
-  // Columnas de la tabla: ESTUDIANTE, Legajo, Dni y Acciones
+  // Columnas de la tabla: ESTUDIANTE, Grado, Legajo, DNI y Acciones
   const columns: ColumnsType<Alumno> = [
     {
       title: 'ESTUDIANTE',
@@ -272,10 +292,67 @@ export const AlumnoList: React.FC = () => {
       },
     },
     {
+      title: 'Grado',
+      key: 'grado',
+      width: 155,
+      sorter: (a, b) => compareGrados(a.cursoNombre, b.cursoNombre),
+      filters: ALL_GRADES.map((num) => ({
+        text: GRADE_PALETTE[num].label,
+        value: num,
+      })),
+      onFilter: (value, record) => extractGradeNumber(record.cursoNombre) === value,
+      render: (_, record) => {
+        const config = getGradeColorConfig(record.cursoNombre);
+        if (!record.cursoNombre) {
+          return (
+            <Tag
+              style={{
+                borderRadius: 6,
+                fontSize: 12,
+                color: '#94a3b8',
+                background: '#f1f5f9',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              Sin Grado
+            </Tag>
+          );
+        }
+        return (
+          <Tag
+            style={{
+              borderRadius: 8,
+              padding: '3px 10px',
+              fontWeight: 700,
+              fontSize: 12,
+              color: config.textColor,
+              background: config.bgColor,
+              border: `1px solid ${config.borderColor}`,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                backgroundColor: config.textColor,
+                display: 'inline-block',
+                boxShadow: `0 0 0 2px ${config.bgColor}`,
+              }}
+            />
+            <span>{record.cursoNombre}</span>
+          </Tag>
+        );
+      },
+    },
+    {
       title: 'Legajo',
       dataIndex: 'numeroLegajo',
       key: 'numeroLegajo',
-      width: 140,
+      width: 130,
       render: (legajo) => (
         <Tag
           icon={<IdcardOutlined />}
@@ -297,7 +374,7 @@ export const AlumnoList: React.FC = () => {
       title: 'DNI',
       dataIndex: 'dni',
       key: 'dni',
-      width: 160,
+      width: 150,
       render: (dni) => (
         <Text copyable={{ text: dni, tooltips: ['Copiar DNI', 'Copiaste el DNI'] }} className="student-dni" style={{ fontWeight: 500 }}>
           {dni}
@@ -393,17 +470,17 @@ export const AlumnoList: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                  Sincronización
+                  Distribución por Grados
                 </Text>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <Badge status="processing" color="#10b981" />
+                  <Badge status="processing" color="#4f46e5" />
                   <Text strong style={{ fontSize: 18, fontFamily: 'var(--font-heading)' }}>
-                    Tiempo Real
+                    7 Grados Primarios
                   </Text>
                 </div>
               </div>
               <div className="kpi-icon-wrapper kpi-sync">
-                <CheckCircleOutlined />
+                <BookOutlined />
               </div>
             </div>
           </Card>
@@ -415,7 +492,9 @@ export const AlumnoList: React.FC = () => {
         <Title level={2} style={{ margin: 0 }}>
           Directorio de Alumnos
         </Title>
-        <span className="page-subtitle">Hacé click en cualquier alumno para consultar su ficha completa con cursada y responsables.</span>
+        <span className="page-subtitle">
+          Consultá y ordená alumnos por su grado correspondiente o hacé click para ver su ficha completa.
+        </span>
       </div>
 
       {/* Toolbar & Filters */}
@@ -426,16 +505,50 @@ export const AlumnoList: React.FC = () => {
             allowClear
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            style={{ width: 320 }}
+            style={{ width: 300 }}
             prefix={<SearchOutlined style={{ color: '#2563eb' }} />}
             className="toolbar-search"
+          />
+          <Select
+            value={selectedGradeFilter}
+            onChange={(val) => setSelectedGradeFilter(val)}
+            style={{ width: 180 }}
+            placeholder="Filtrar por grado"
+            options={[
+              { value: 'all', label: 'Todos los grados' },
+              ...ALL_GRADES.map((num) => {
+                const config = GRADE_PALETTE[num];
+                return {
+                  value: num,
+                  label: (
+                    <Space size={6} align="center">
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          backgroundColor: config.textColor,
+                          display: 'inline-block',
+                        }}
+                      />
+                      <span>{config.label}</span>
+                    </Space>
+                  ),
+                };
+              }),
+            ]}
           />
           <Tooltip title="Actualizar lista">
             <Button icon={<ReloadOutlined />} onClick={fetchAlumnos} loading={loading} />
           </Tooltip>
           {searchTerm && (
             <Tag closable onClose={() => setInputValue('')} color="blue" style={{ borderRadius: 6, padding: '4px 8px' }}>
-              Filtro: "{searchTerm}"
+              Búsqueda: "{searchTerm}"
+            </Tag>
+          )}
+          {selectedGradeFilter !== 'all' && (
+            <Tag closable onClose={() => setSelectedGradeFilter('all')} color="orange" style={{ borderRadius: 6, padding: '4px 8px' }}>
+              Grado: {GRADE_PALETTE[selectedGradeFilter as GradeNumber]?.label}
             </Tag>
           )}
         </Space>
@@ -484,10 +597,10 @@ export const AlumnoList: React.FC = () => {
           <Table
             className="students-table"
             columns={columns}
-            dataSource={alumnos}
+            dataSource={displayedAlumnos}
             rowKey="id"
             loading={loading}
-            scroll={{ x: 650 }}
+            scroll={{ x: 750 }}
             rowSelection={{
               selectedRowKeys,
               onChange: (keys) => setSelectedRowKeys(keys),
@@ -500,7 +613,13 @@ export const AlumnoList: React.FC = () => {
               emptyText: (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={searchTerm ? `No se encontraron alumnos para "${searchTerm}"` : 'No hay alumnos registrados aún'}
+                  description={
+                    selectedGradeFilter !== 'all'
+                      ? `No hay alumnos registrados en ${GRADE_PALETTE[selectedGradeFilter].label}`
+                      : searchTerm
+                      ? `No se encontraron alumnos para "${searchTerm}"`
+                      : 'No hay alumnos registrados aún'
+                  }
                 >
                   <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
                     Registrar primer alumno
@@ -511,7 +630,7 @@ export const AlumnoList: React.FC = () => {
             pagination={{
               current: currentPage,
               pageSize: 50,
-              total: totalItems,
+              total: selectedGradeFilter === 'all' ? totalItems : displayedAlumnos.length,
               onChange: (page) => setCurrentPage(page),
               showSizeChanger: false,
               showTotal: (total) => (
@@ -524,17 +643,25 @@ export const AlumnoList: React.FC = () => {
         </Card>
       ) : (
         <div>
-          {alumnos.length === 0 && !loading ? (
+          {displayedAlumnos.length === 0 && !loading ? (
             <Card className="students-card">
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={searchTerm ? `No se encontraron alumnos para "${searchTerm}"` : 'No hay alumnos registrados aún'}
+                description={
+                  selectedGradeFilter !== 'all'
+                    ? `No hay alumnos registrados en ${GRADE_PALETTE[selectedGradeFilter].label}`
+                    : searchTerm
+                    ? `No se encontraron alumnos para "${searchTerm}"`
+                    : 'No hay alumnos registrados aún'
+                }
               />
             </Card>
           ) : (
             <Row gutter={[16, 16]}>
-              {alumnos.map((alumno) => {
+              {displayedAlumnos.map((alumno) => {
                 const initials = `${alumno.apellidos.charAt(0)}${alumno.nombres.charAt(0)}`.toUpperCase();
+                const gradeConfig = getGradeColorConfig(alumno.cursoNombre);
+
                 return (
                   <Col xs={24} sm={12} md={8} lg={6} key={alumno.id}>
                     <Card
@@ -555,9 +682,32 @@ export const AlumnoList: React.FC = () => {
                         >
                           {initials}
                         </Avatar>
-                        <Tag className="student-legajo-tag">
-                          {alumno.numeroLegajo || 'S/L'}
-                        </Tag>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                          {/* Tag de Grado con color temático */}
+                          {alumno.cursoNombre ? (
+                            <Tag
+                              style={{
+                                borderRadius: 8,
+                                padding: '2px 8px',
+                                fontWeight: 700,
+                                fontSize: 12,
+                                color: gradeConfig.textColor,
+                                background: gradeConfig.bgColor,
+                                border: `1px solid ${gradeConfig.borderColor}`,
+                                margin: 0,
+                              }}
+                            >
+                              {alumno.cursoNombre}
+                            </Tag>
+                          ) : (
+                            <Tag style={{ borderRadius: 6, fontSize: 11, margin: 0, color: '#94a3b8' }}>
+                              Sin Grado
+                            </Tag>
+                          )}
+                          <Tag className="student-legajo-tag" style={{ margin: 0 }}>
+                            {alumno.numeroLegajo ? `Leg. ${alumno.numeroLegajo}` : 'S/L'}
+                          </Tag>
+                        </div>
                       </div>
 
                       <Title level={5} style={{ margin: '0 0 4px 0', fontSize: 15, color: '#1e40af' }}>
@@ -575,31 +725,13 @@ export const AlumnoList: React.FC = () => {
 
                       <div className="student-card-actions" onClick={(e) => e.stopPropagation()}>
                         <Button
-                          type="text"
-                          size="small"
+                          type="default"
                           icon={<EyeOutlined style={{ color: '#2563eb' }} />}
                           onClick={() => handleOpenDetail(alumno)}
+                          style={{ width: '100%', borderRadius: 8, fontWeight: 600, color: '#2563eb' }}
                         >
-                          Ver Ficha
+                          Ver Ficha Completa
                         </Button>
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined style={{ color: '#0284c7' }} />}
-                          onClick={() => handleOpenModal(alumno)}
-                        >
-                          Editar
-                        </Button>
-                        <Popconfirm
-                          title="¿Eliminar alumno?"
-                          onConfirm={() => handleDelete(alumno.id)}
-                          okText="Sí"
-                          cancelText="No"
-                        >
-                          <Button type="text" size="small" danger icon={<DeleteOutlined />}>
-                            Eliminar
-                          </Button>
-                        </Popconfirm>
                       </div>
                     </Card>
                   </Col>
@@ -624,6 +756,7 @@ export const AlumnoList: React.FC = () => {
         alumno={selectedDetailAlumno}
         onClose={handleCloseDetail}
         onEdit={(alumnoToEdit) => handleOpenModal(alumnoToEdit)}
+        onDelete={handleDelete}
       />
     </div>
   );

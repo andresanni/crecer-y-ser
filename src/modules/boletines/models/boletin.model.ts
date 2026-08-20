@@ -300,8 +300,8 @@ export interface CierrePeriodoAlumnoRecord {
   inscripcion_id: string;
   periodo_id: string;
   asistencias: number;
-  inasistencias_justificadas: number;
-  inasistencias_injustificadas: number;
+  inasistencias: number;
+  llegadas_tarde: number;
   observaciones: string;
   expand?: {
     inscripcion_id?: unknown;
@@ -314,8 +314,8 @@ export interface CierrePeriodoAlumno {
   inscripcionId: string;
   periodoId: string;
   asistencias: number;
-  inasistenciasJustificadas: number;
-  inasistenciasInjustificadas: number;
+  inasistencias: number;
+  llegadasTarde: number;
   observaciones: string;
   periodoNombre?: string;
   createdAt: string;
@@ -327,8 +327,8 @@ export const cierrePeriodoAlumnoAdapter = (record: CierrePeriodoAlumnoRecord): C
   inscripcionId: record.inscripcion_id,
   periodoId: record.periodo_id,
   asistencias: Number(record.asistencias) || 0,
-  inasistenciasJustificadas: Number(record.inasistencias_justificadas) || 0,
-  inasistenciasInjustificadas: Number(record.inasistencias_injustificadas) || 0,
+  inasistencias: Number(record.inasistencias) || 0,
+  llegadasTarde: Number(record.llegadas_tarde) || 0,
   observaciones: record.observaciones || '',
   periodoNombre: record.expand?.periodo_id?.nombre,
   createdAt: record.created,
@@ -372,24 +372,63 @@ export interface AlumnoInscriptoRow {
   cualesApoyos?: string;
 }
 
-export interface FilaCalificacionMateria {
-  inscripcionId: string;
-  alumno: AlumnoInscriptoRow;
-  evaluacionMateriaId?: string;
-  ppi: boolean;
-  criteriosValores: Record<string, string>; // criterioId -> valorEscalaId
-  calificacionGeneralId: string | null;
-  isModified?: boolean;
+
+// =========================================================================
+// 10. TOKENS DE ACCESO EXTERNO DOCENTE (MAGIC LINKS / MODO KIOSCO)
+// =========================================================================
+export interface TokenAccesoDocenteRecord {
+  id: string;
+  created: string;
+  updated: string;
+  token: string;
+  curso_id: string;
+  periodo_id: string;
+  materia_id?: string;
+  docente_nombre: string;
+  activo: boolean;
+  fecha_expiracion?: string;
+  expand?: {
+    curso_id?: CursoRecord;
+    periodo_id?: PeriodoRecord;
+    materia_id?: MateriaRecord;
+  };
 }
 
-export interface FilaCierreAsistencia {
-  inscripcionId: string;
-  alumno: AlumnoInscriptoRow;
-  cierreId?: string;
-  asistencias: number;
-  inasistenciasJustificadas: number;
-  inasistenciasInjustificadas: number;
-  observaciones: string;
-  isModified?: boolean;
+export interface TokenAccesoDocente {
+  id: string;
+  token: string;
+  cursoId: string;
+  periodoId: string;
+  materiaId?: string;
+  docenteNombre: string;
+  activo: boolean;
+  fechaExpiracion?: string;
+  cursoNombre?: string;
+  periodoNombre?: string;
+  numeroPeriodo?: number;
+  materiaNombre?: string;
+  createdAt: string;
+  updatedAt: string;
 }
+
+export const tokenAccesoDocenteAdapter = (record: TokenAccesoDocenteRecord): TokenAccesoDocente => ({
+  id: record.id,
+  token: record.token || '',
+  cursoId: record.curso_id || '',
+  periodoId: record.periodo_id || '',
+  materiaId: record.materia_id || undefined,
+  docenteNombre: record.docente_nombre || '',
+  activo: Boolean(record.activo),
+  fechaExpiracion: record.fecha_expiracion || undefined,
+  cursoNombre: record.expand?.curso_id?.nombre,
+  periodoNombre: record.expand?.periodo_id?.nombre,
+  numeroPeriodo:
+    record.expand?.periodo_id?.numero_periodo !== undefined
+      ? Number(record.expand.periodo_id.numero_periodo)
+      : undefined,
+  materiaNombre: record.expand?.materia_id?.nombre,
+  createdAt: record.created,
+  updatedAt: record.updated,
+});
+
 

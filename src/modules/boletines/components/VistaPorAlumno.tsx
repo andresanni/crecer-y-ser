@@ -24,11 +24,13 @@ import {
   LeftOutlined,
   RightOutlined,
   ClockCircleOutlined,
-  StarOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   UserOutlined,
   SafetyCertificateOutlined,
+  LockOutlined,
+  FlagOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { boletinService } from '../services/boletin.service';
 import type {
@@ -59,8 +61,8 @@ interface MateriaAlumnoState {
 interface AsistenciaAlumnoState {
   cierreId?: string;
   asistencias: number;
-  inasistenciasJustificadas: number;
-  inasistenciasInjustificadas: number;
+  inasistencias: number;
+  llegadasTarde: number;
   observaciones: string;
   isModified?: boolean;
 }
@@ -115,8 +117,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   // Estado de cierre de asistencias para el alumno seleccionado
   const [asistenciaState, setAsistenciaState] = useState<AsistenciaAlumnoState>({
     asistencias: 0,
-    inasistenciasJustificadas: 0,
-    inasistenciasInjustificadas: 0,
+    inasistencias: 0,
+    llegadasTarde: 0,
     observaciones: '',
     isModified: false,
   });
@@ -154,8 +156,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         setLoadingCriterios(false);
       }
     };
-    loadCriterios();
-  }, [cursoMaterias]);
+    void loadCriterios();
+  }, [cursoMaterias, message]);
 
   // 2. Cargar evaluaciones y asistencia para el alumno seleccionado
   const loadAlumnoData = useCallback(async () => {
@@ -188,8 +190,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       setAsistenciaState({
         cierreId: cierre?.id,
         asistencias: cierre?.asistencias ?? 0,
-        inasistenciasJustificadas: cierre?.inasistenciasJustificadas ?? 0,
-        inasistenciasInjustificadas: cierre?.inasistenciasInjustificadas ?? 0,
+        inasistencias: cierre?.inasistencias ?? 0,
+        llegadasTarde: cierre?.llegadasTarde ?? 0,
         observaciones: cierre?.observaciones || '',
         isModified: false,
       });
@@ -208,10 +210,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     } finally {
       setLoadingEvaluaciones(false);
     }
-  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos]);
+  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message]);
 
   useEffect(() => {
-    loadAlumnoData();
+    void loadAlumnoData();
   }, [loadAlumnoData]);
 
   // Manejadores de cambios
@@ -283,7 +285,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   };
 
   const handleAsistenciaChange = (
-    field: 'asistencias' | 'inasistenciasJustificadas' | 'inasistenciasInjustificadas' | 'observaciones',
+    field: 'asistencias' | 'inasistencias' | 'llegadasTarde' | 'observaciones',
     val: number | string
   ) => {
     setAsistenciaState((prev) => ({
@@ -293,10 +295,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     }));
   };
 
+  const isPrimerBimestre = periodo?.numeroPeriodo === 1;
+  const isCuartoBimestre = periodo?.numeroPeriodo === 4;
+
   const handleApoyoChange = (
     field: 'promocionoConAcompanamiento' | 'poseeApoyos' | 'cualesApoyos',
     val: string
   ) => {
+    // Restringir edición según el bimestre
+    if (field === 'promocionoConAcompanamiento' && !isCuartoBimestre) return;
+    if ((field === 'poseeApoyos' || field === 'cualesApoyos') && !isPrimerBimestre) return;
+
     setApoyoState((prev) => {
       const next = { ...prev, [field]: val, isModified: true };
       if (field === 'poseeApoyos' && val !== 'SI') {
@@ -344,8 +353,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         inscripcionId: selectedInscripcionId,
         periodoId,
         asistencias: asistenciaState.asistencias,
-        inasistenciasJustificadas: asistenciaState.inasistenciasJustificadas,
-        inasistenciasInjustificadas: asistenciaState.inasistenciasInjustificadas,
+        inasistencias: asistenciaState.inasistencias,
+        llegadasTarde: asistenciaState.llegadasTarde,
         observaciones: asistenciaState.observaciones,
       });
 
@@ -455,16 +464,16 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         bodyStyle={{ padding: '14px 18px' }}
       >
         <Row gutter={[16, 12]} align="middle" justify="space-between">
-          {/* Selector de Alumno + Botones Anterior / Siguiente */}
-          <Col xs={24} md={13}>
-            <Space orientation="horizontal" size={10} style={{ width: '100%', flexWrap: 'wrap' }}>
-              <Button.Group>
+          {/* Selector de Alumno + Botones Anterior / Siguiente en 1 sola fila */}
+          <Col xs={24} xl={13}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', width: '100%' }}>
+              <Button.Group style={{ flexShrink: 0 }}>
                 <Tooltip title="Alumno anterior">
                   <Button
                     icon={<LeftOutlined />}
                     onClick={handlePrevStudent}
                     disabled={isFirst}
-                    style={{ borderRadius: '8px 0 0 8px' }}
+                    style={{ borderRadius: '8px 0 0 8px', fontWeight: 600 }}
                   >
                     Anterior
                   </Button>
@@ -474,7 +483,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     icon={<RightOutlined />}
                     onClick={handleNextStudent}
                     disabled={isLast}
-                    style={{ borderRadius: '0 8px 8px 0' }}
+                    style={{ borderRadius: '0 8px 8px 0', fontWeight: 600 }}
                   >
                     Siguiente
                   </Button>
@@ -483,7 +492,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
               <Select
                 showSearch
-                style={{ minWidth: 260, flex: 1 }}
+                style={{ flex: 1, minWidth: 200 }}
                 placeholder="Seleccione un estudiante..."
                 value={selectedInscripcionId}
                 onChange={(val) => {
@@ -493,26 +502,27 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 filterOption={(input, option) =>
                   (option?.label as string ?? '').toLowerCase().includes(input.toLowerCase())
                 }
-                options={alumnos.map((a, idx) => ({
+                options={alumnos.map((a) => ({
                   value: a.inscripcionId,
-                  label: `${a.numeroOrden ? `Nº ${a.numeroOrden} - ` : `${idx + 1}. `}${a.nombreCompleto} (DNI ${a.dni || 'S/D'})`,
+                  label: a.nombreCompleto,
                 }))}
               />
-            </Space>
+            </div>
           </Col>
 
           {/* Progreso del Alumno y Botón Guardar */}
-          <Col xs={24} md={11}>
+          <Col xs={24} xl={11}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'flex-end',
-                flexWrap: 'wrap',
-                gap: 12,
+                justifyContent: 'space-between',
+                flexWrap: 'nowrap',
+                gap: 16,
+                paddingLeft: 12,
               }}
             >
-              <div style={{ textAlign: 'right' }}>
+              <div style={{ textAlign: 'left', flexShrink: 0 }}>
                 <Space size={6}>
                   <Tag
                     color={stats.percent === 100 ? 'green' : 'blue'}
@@ -529,7 +539,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   showInfo={false}
                   strokeColor={stats.percent === 100 ? '#10b981' : '#2563eb'}
                   size="small"
-                  style={{ width: 100, margin: 0 }}
+                  style={{ width: 110, margin: '2px 0 0 0' }}
                 />
               </div>
 
@@ -539,66 +549,57 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 onClick={handleSave}
                 loading={saving}
                 disabled={!hasChanges}
-                className="btn-primary-gradient"
-                style={{ borderRadius: 8, fontWeight: 600 }}
+                className={hasChanges ? 'btn-primary-gradient' : undefined}
+                style={{ borderRadius: 8, fontWeight: 600, minWidth: 155 }}
               >
-                {hasChanges ? 'Guardar Cambios' : 'Alumno al Día'}
+                Guardar Cambios
               </Button>
             </div>
           </Col>
         </Row>
       </Card>
 
-      {/* 2. Banner de Información del Estudiante Activo */}
+      {/* 2. Banner de Información del Estudiante Activo (Sticky Header) */}
       {currentAlumno && (
         <div
+          className="cys-sticky-student-banner"
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
             gap: 12,
-            padding: '10px 18px',
+            padding: '10px 16px',
             borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.02))',
-            border: '1px solid rgba(37, 99, 235, 0.15)',
-            flexWrap: 'wrap',
+            background: 'rgba(255, 255, 255, 0.94)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            border: '1px solid rgba(37, 99, 235, 0.22)',
+            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.06)',
+            transition: 'all 0.2s ease',
           }}
         >
-          <Space size={10}>
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 8,
-                background: '#2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                fontWeight: 700,
-                fontSize: 14,
-              }}
-            >
-              {currentAlumno.numeroOrden || <UserOutlined />}
-            </div>
-            <div>
-              <Typography.Text strong style={{ fontSize: 15, color: '#0f172a' }}>
-                {currentAlumno.nombreCompleto}
-              </Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                DNI: {currentAlumno.dni || 'Sin DNI'} • Legajo: {currentAlumno.numeroLegajo || '—'} • Condición: {currentAlumno.estado}
-              </Typography.Text>
-            </div>
-          </Space>
-
-          <Space size={6}>
-            <Tag color="blue" style={{ borderRadius: 6, fontSize: 12 }}>
-              Período: {periodo?.nombre || 'Bimestre Activo'}
-            </Tag>
-          </Space>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: '#2563eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              fontWeight: 700,
+              fontSize: 14,
+              flexShrink: 0,
+            }}
+          >
+            {currentAlumno.numeroOrden || <UserOutlined />}
+          </div>
+          <Typography.Text strong style={{ fontSize: 15, color: '#0f172a' }}>
+            {currentAlumno.nombreCompleto}
+          </Typography.Text>
         </div>
       )}
-      {/* 3. Cuadro de Informe sobre Dispositivos de Apoyo e Integración Escolar (Cabecera Oficial Compacta) */}
+      {/* 3. Cuadro de Informe sobre Dispositivos de Apoyo e Integración Escolar (Abstracción Bimestral / Trayectoria Anual) */}
       <Card
         style={{
           borderRadius: 12,
@@ -607,93 +608,171 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)',
           transition: 'all 0.2s ease',
         }}
-        bodyStyle={{ padding: '10px 16px' }}
+        bodyStyle={{ padding: '12px 16px' }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            marginBottom: 8,
-            flexWrap: 'wrap',
-          }}
-        >
+        <div style={{ marginBottom: 12 }}>
           <Space size={6} align="center">
-            <SafetyCertificateOutlined style={{ color: '#2563eb', fontSize: 14 }} />
+            <SafetyCertificateOutlined style={{ color: '#2563eb', fontSize: 15 }} />
             <Typography.Text strong style={{ fontSize: 13.5, color: '#1e293b' }}>
               Apoyos e Integración Escolar (Trayectoria Anual)
             </Typography.Text>
           </Space>
-
-          <Tooltip title="Configuración de inclusión y apoyos vinculada a la inscripción activa del ciclo lectivo.">
-            <Tag color="default" style={{ borderRadius: 6, fontSize: 10, margin: 0, padding: '1px 6px' }}>
-              Inscripción Anual
-            </Tag>
-          </Tooltip>
         </div>
 
-        <Row gutter={[16, 12]} align="middle">
-          {/* 1. Promocionó con acompañamiento */}
-          <Col xs={24} sm={12} lg={8}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Typography.Text style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>
-                ¿Promocionó con acompañamiento?
-              </Typography.Text>
-              <Select
-                value={apoyoState.promocionoConAcompanamiento}
-                onChange={(val) => handleApoyoChange('promocionoConAcompanamiento', val)}
-                size="middle"
-                style={{ width: '100%' }}
-                options={[
-                  { value: 'SI', label: 'Sí' },
-                  { value: 'NO', label: 'No' },
-                  { value: '-', label: 'Sin especificar (—)' },
-                ]}
-              />
+        <Row gutter={[16, 14]}>
+          {/* 1. Bloque: Dispositivos de Apoyo (Carga en 1° Bimestre) */}
+          <Col xs={24} lg={14}>
+            <div
+              style={{
+                background: isPrimerBimestre ? 'rgba(240, 253, 244, 0.7)' : '#f8fafc',
+                border: isPrimerBimestre ? '1px solid #86efac' : '1px solid #e2e8f0',
+                borderRadius: 10,
+                padding: '10px 14px',
+                height: '100%',
+                opacity: isPrimerBimestre ? 1 : 0.75,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                <Space size={4}>
+                  {!isPrimerBimestre && <LockOutlined style={{ color: '#94a3b8', fontSize: 12 }} />}
+                  <Typography.Text strong style={{ fontSize: 12.5, color: isPrimerBimestre ? '#166534' : '#64748b' }}>
+                    1. Dispositivos de Apoyo / Acompañamiento
+                  </Typography.Text>
+                </Space>
+                <Tag
+                  style={{
+                    fontSize: 10.5,
+                    borderRadius: 6,
+                    margin: 0,
+                    fontWeight: 700,
+                    padding: '1px 8px',
+                    background: isPrimerBimestre ? 'rgba(34, 197, 94, 0.12)' : '#f1f5f9',
+                    color: isPrimerBimestre ? '#15803d' : '#94a3b8',
+                    border: isPrimerBimestre ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid #cbd5e1',
+                  }}
+                >
+                  1ER BIMESTRE
+                </Tag>
+              </div>
+
+              <Row gutter={[12, 10]} align="middle">
+                <Col xs={24} sm={10}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <Typography.Text style={{ fontSize: 11.5, color: isPrimerBimestre ? '#475569' : '#94a3b8', fontWeight: 600 }}>
+                      ¿Posee apoyos?
+                    </Typography.Text>
+                    <Tooltip title={!isPrimerBimestre ? 'Los dispositivos de apoyo se establecen al inicio del ciclo lectivo en el 1° Bimestre.' : undefined}>
+                      <div>
+                        <Select
+                          value={apoyoState.poseeApoyos}
+                          onChange={(val) => handleApoyoChange('poseeApoyos', val)}
+                          size="middle"
+                          disabled={!isPrimerBimestre}
+                          style={{ width: '100%' }}
+                          options={[
+                            { value: 'SI', label: 'Sí' },
+                            { value: 'NO', label: 'No' },
+                            { value: '-', label: 'Sin especificar (—)' },
+                          ]}
+                        />
+                      </div>
+                    </Tooltip>
+                  </div>
+                </Col>
+
+                <Col xs={24} sm={14}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <Typography.Text
+                      style={{
+                        fontSize: 11.5,
+                        color: isPrimerBimestre && apoyoState.poseeApoyos === 'SI' ? '#475569' : '#94a3b8',
+                        fontWeight: 600,
+                      }}
+                    >
+                      ¿Cuáles? {isPrimerBimestre && apoyoState.poseeApoyos === 'SI' && <span style={{ color: '#ef4444' }}>*</span>}
+                    </Typography.Text>
+                    <Input
+                      size="middle"
+                      placeholder={
+                        !isPrimerBimestre
+                          ? apoyoState.cualesApoyos || (apoyoState.poseeApoyos === 'NO' ? 'Sin apoyos' : 'Sin especificar')
+                          : apoyoState.poseeApoyos === 'SI'
+                          ? 'Detallar apoyos (ej: DIL, MAI, etc.)...'
+                          : 'Sin apoyos'
+                      }
+                      disabled={!isPrimerBimestre || apoyoState.poseeApoyos !== 'SI'}
+                      value={apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos : ''}
+                      onChange={(e) => handleApoyoChange('cualesApoyos', e.target.value)}
+                      maxLength={150}
+                    />
+                  </div>
+                </Col>
+              </Row>
             </div>
           </Col>
 
-          {/* 2. Posee apoyos / acompañamiento */}
-          <Col xs={24} sm={12} lg={8}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Typography.Text style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>
-                ¿Posee apoyos / acompañamiento?
-              </Typography.Text>
-              <Select
-                value={apoyoState.poseeApoyos}
-                onChange={(val) => handleApoyoChange('poseeApoyos', val)}
-                size="middle"
-                style={{ width: '100%' }}
-                options={[
-                  { value: 'SI', label: 'Sí' },
-                  { value: 'NO', label: 'No' },
-                  { value: '-', label: 'Sin especificar (—)' },
-                ]}
-              />
-            </div>
-          </Col>
+          {/* 2. Bloque: Promoción con Acompañamiento (Carga en 4° Bimestre) */}
+          <Col xs={24} lg={10}>
+            <div
+              style={{
+                background: isCuartoBimestre ? 'rgba(239, 246, 255, 0.7)' : '#f8fafc',
+                border: isCuartoBimestre ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+                borderRadius: 10,
+                padding: '10px 14px',
+                height: '100%',
+                opacity: isCuartoBimestre ? 1 : 0.75,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
+                <Space size={4}>
+                  {isCuartoBimestre ? <FlagOutlined style={{ color: '#2563eb', fontSize: 12 }} /> : <LockOutlined style={{ color: '#94a3b8', fontSize: 12 }} />}
+                  <Typography.Text strong style={{ fontSize: 12.5, color: isCuartoBimestre ? '#1e40af' : '#64748b' }}>
+                    2. Promoción con Acompañamiento
+                  </Typography.Text>
+                </Space>
+                <Tag
+                  style={{
+                    fontSize: 10.5,
+                    borderRadius: 6,
+                    margin: 0,
+                    fontWeight: 700,
+                    padding: '1px 8px',
+                    background: isCuartoBimestre ? 'rgba(37, 99, 235, 0.12)' : '#f1f5f9',
+                    color: isCuartoBimestre ? '#1d4ed8' : '#94a3b8',
+                    border: isCuartoBimestre ? '1px solid rgba(37, 99, 235, 0.3)' : '1px solid #cbd5e1',
+                  }}
+                >
+                  4TO BIMESTRE
+                </Tag>
+              </div>
 
-          {/* 3. ¿Cuáles? */}
-          <Col xs={24} lg={8}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <Typography.Text
-                style={{
-                  fontSize: 12,
-                  color: apoyoState.poseeApoyos === 'SI' ? '#475569' : '#94a3b8',
-                  fontWeight: 600,
-                }}
-              >
-                ¿Cuáles? {apoyoState.poseeApoyos === 'SI' && <span style={{ color: '#ef4444' }}>*</span>}
-              </Typography.Text>
-              <Input
-                size="middle"
-                placeholder={apoyoState.poseeApoyos === 'SI' ? 'Detallar apoyos (ej: DIL, MAI, etc.)...' : 'Sin apoyos'}
-                disabled={apoyoState.poseeApoyos !== 'SI'}
-                value={apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos : ''}
-                onChange={(e) => handleApoyoChange('cualesApoyos', e.target.value)}
-                maxLength={150}
-              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <Typography.Text style={{ fontSize: 11.5, color: isCuartoBimestre ? '#475569' : '#94a3b8', fontWeight: 600 }}>
+                  ¿Promocionó con acompañamiento?
+                </Typography.Text>
+                <Tooltip
+                  title={
+                    !isCuartoBimestre
+                      ? 'La condición de promoción con acompañamiento se define exclusivamente durante el cierre del 4° Bimestre.'
+                      : undefined
+                  }
+                >
+                  <div>
+                    <Select
+                      value={apoyoState.promocionoConAcompanamiento}
+                      onChange={(val) => handleApoyoChange('promocionoConAcompanamiento', val)}
+                      size="middle"
+                      disabled={!isCuartoBimestre}
+                      style={{ width: '100%' }}
+                      options={[
+                        { value: 'SI', label: 'Sí' },
+                        { value: 'NO', label: 'No' },
+                        { value: '-', label: 'Sin especificar (—)' },
+                      ]}
+                    />
+                  </div>
+                </Tooltip>
+              </div>
             </div>
           </Col>
         </Row>
@@ -734,113 +813,78 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 }}
                 bodyStyle={{ padding: '16px 20px' }}
               >
-                {/* Encabezado de la Materia */}
-                <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
-                  <Col xs={24} md={12}>
-                    <Space size={8} align="center">
-                      <div
-                        style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 6,
-                          background: 'rgba(37, 99, 235, 0.1)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#2563eb',
-                          fontWeight: 700,
-                          fontSize: 12,
-                        }}
-                      >
-                        {matIdx + 1}
-                      </div>
-                      <div>
-                        <Typography.Text strong style={{ fontSize: 14.5, color: '#0f172a' }}>
-                          <BookOutlined style={{ marginRight: 6, color: '#2563eb' }} />
-                          {cm.materiaNombre}
-                        </Typography.Text>
-                      </div>
-                      {isMateriaComplete ? (
-                        <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontSize: 11, borderRadius: 4 }}>
-                          Completa
-                        </Tag>
-                      ) : (
-                        <Tag color="warning" icon={<ExclamationCircleOutlined />} style={{ fontSize: 11, borderRadius: 4 }}>
-                          Incompleta
-                        </Tag>
-                      )}
-                    </Space>
-                  </Col>
-
-                  {/* Controles de Materia: PPI + Calificación General */}
-                  <Col xs={24} md={12}>
+                {/* Encabezado de la Materia (Título + Estado + Switch PPI) */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'nowrap',
+                    gap: 12,
+                    marginBottom: 10,
+                  }}
+                >
+                  <Space size={8} align="center" style={{ flexShrink: 0 }}>
                     <div
                       style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 6,
+                        background: 'rgba(37, 99, 235, 0.1)',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'flex-end',
-                        flexWrap: 'wrap',
-                        gap: 14,
+                        justifyContent: 'center',
+                        color: '#2563eb',
+                        fontWeight: 700,
+                        fontSize: 12,
                       }}
                     >
-                      {/* Switch PPI */}
-                      <Space size={6} align="center">
-                        <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
-                          <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
-                            PPI
-                          </Tag>
-                        </Tooltip>
-                        <Switch
-                          size="default"
-                          checked={mat.ppi}
-                          onChange={(checked) => handlePpiChange(cm.id, checked)}
-                          checkedChildren="SÍ"
-                          unCheckedChildren="NO"
-                          style={{ background: mat.ppi ? '#7c3aed' : undefined }}
-                        />
-                      </Space>
-
-                      {/* Calificación General */}
-                      <Space size={6} align="center">
-                        <Tooltip title="Calificación General de la materia para este bimestre (Ingreso manual por docente)">
-                          <Space size={4}>
-                            <StarOutlined style={{ color: '#eab308' }} />
-                            <Typography.Text strong style={{ fontSize: 12, color: '#0f172a' }}>
-                              Nota General:
-                            </Typography.Text>
-                          </Space>
-                        </Tooltip>
-                        <Select
-                          size="middle"
-                          placeholder="Calificar..."
-                          allowClear
-                          value={mat.calificacionGeneralId || undefined}
-                          onChange={(val) => handleCalificacionGeneralChange(cm.id, val || null)}
-                          style={{ width: 140 }}
-                          className={getClassNameForValor(mat.calificacionGeneralId)}
-                          options={valoresEscala.map((v) => ({
-                            value: v.id,
-                            label: (
-                              <span style={{ color: getEtiquetaColor(v.etiqueta).color, fontWeight: 700, fontSize: 13 }}>
-                                {v.etiqueta}
-                              </span>
-                            ),
-                          }))}
-                        />
-                      </Space>
+                      {matIdx + 1}
                     </div>
-                  </Col>
-                </Row>
+                    <div>
+                      <Typography.Text strong style={{ fontSize: 14.5, color: '#0f172a' }}>
+                        <BookOutlined style={{ marginRight: 6, color: '#2563eb' }} />
+                        {cm.materiaNombre}
+                      </Typography.Text>
+                    </div>
+                    {isMateriaComplete ? (
+                      <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
+                        Completa
+                      </Tag>
+                    ) : (
+                      <Tag color="warning" icon={<ExclamationCircleOutlined />} style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
+                        Incompleta
+                      </Tag>
+                    )}
+                  </Space>
 
-                <Divider style={{ margin: '8px 0 12px' }} />
+                  {/* Switch PPI */}
+                  <Space size={6} align="center" style={{ flexShrink: 0 }}>
+                    <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
+                      <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
+                        PPI
+                      </Tag>
+                    </Tooltip>
+                    <Switch
+                      size="small"
+                      checked={mat.ppi}
+                      onChange={(checked) => handlePpiChange(cm.id, checked)}
+                      checkedChildren="SÍ"
+                      unCheckedChildren="NO"
+                      style={{ background: mat.ppi ? '#7c3aed' : undefined }}
+                    />
+                  </Space>
+                </div>
 
-                {/* 5 Criterios Pedagógicos de la Materia */}
+                <Divider style={{ margin: '8px 0 10px' }} />
+
+                {/* 5 Criterios Pedagógicos de la Materia + Calificación General */}
                 {crits.length === 0 ? (
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     Esta materia no tiene criterios pedagógicos configurados en la malla curricular.
                   </Typography.Text>
                 ) : (
-                  <Row gutter={[14, 10]}>
+                  <Row gutter={[12, 6]}>
                     {crits.map((crit, cIdx) => {
                       const num = crit.ordenVisual || cIdx + 1;
                       const valActual = mat.criteriosValores[crit.id] || undefined;
@@ -852,8 +896,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               alignItems: 'center',
                               justifyContent: 'space-between',
                               background: '#f8fafc',
-                              padding: '10px 16px',
-                              borderRadius: 10,
+                              padding: '7px 14px',
+                              borderRadius: 8,
                               gap: 12,
                               flexWrap: 'wrap',
                             }}
@@ -888,6 +932,64 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                         </Col>
                       );
                     })}
+
+                    {/* Ítem Destacado Final: Calificación General de la Materia */}
+                    <Col xs={24} sm={12} lg={24}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.03))',
+                          border: '1px solid rgba(37, 99, 235, 0.22)',
+                          padding: '8px 14px',
+                          borderRadius: 8,
+                          gap: 12,
+                          flexWrap: 'wrap',
+                          marginTop: 4,
+                        }}
+                      >
+                        <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div
+                            style={{
+                              width: 24,
+                              height: 24,
+                              borderRadius: 6,
+                              background: '#2563eb',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#ffffff',
+                              fontSize: 12,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <TrophyOutlined />
+                          </div>
+                          <Typography.Text style={{ fontSize: 14, color: '#1e3a8a', fontWeight: 700 }}>
+                            Calificación General
+                          </Typography.Text>
+                        </div>
+
+                        <Select
+                          size="middle"
+                          placeholder="Calificar..."
+                          allowClear
+                          value={mat.calificacionGeneralId || undefined}
+                          onChange={(val) => handleCalificacionGeneralChange(cm.id, val || null)}
+                          style={{ width: 140 }}
+                          className={getClassNameForValor(mat.calificacionGeneralId)}
+                          options={valoresEscala.map((v) => ({
+                            value: v.id,
+                            label: (
+                              <span style={{ color: getEtiquetaColor(v.etiqueta).color, fontWeight: 700, fontSize: 13 }}>
+                                {v.etiqueta}
+                              </span>
+                            ),
+                          }))}
+                        />
+                      </div>
+                    </Col>
                   </Row>
                 )}
               </Card>
@@ -917,7 +1019,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </div>
 
             <Row gutter={[16, 16]}>
-              <Col xs={12} sm={6}>
+              <Col xs={24} sm={8}>
                 <Space direction="vertical" size={4} style={{ width: '100%' }}>
                   <Typography.Text strong style={{ fontSize: 12, color: '#64748b' }}>
                     ASISTENCIAS
@@ -932,53 +1034,33 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 </Space>
               </Col>
 
-              <Col xs={12} sm={6}>
+              <Col xs={12} sm={8}>
                 <Space direction="vertical" size={4} style={{ width: '100%' }}>
                   <Typography.Text strong style={{ fontSize: 12, color: '#64748b' }}>
-                    INASIST. JUSTIFICADAS
+                    INASISTENCIAS
                   </Typography.Text>
                   <InputNumber
                     min={0}
                     max={180}
                     style={{ width: '100%' }}
-                    value={asistenciaState.inasistenciasJustificadas}
-                    onChange={(val) => handleAsistenciaChange('inasistenciasJustificadas', val ?? 0)}
+                    value={asistenciaState.inasistencias}
+                    onChange={(val) => handleAsistenciaChange('inasistencias', val ?? 0)}
                   />
                 </Space>
               </Col>
 
-              <Col xs={12} sm={6}>
+              <Col xs={12} sm={8}>
                 <Space direction="vertical" size={4} style={{ width: '100%' }}>
                   <Typography.Text strong style={{ fontSize: 12, color: '#64748b' }}>
-                    INASIST. INJUSTIFICADAS
+                    LLEGADAS TARDE
                   </Typography.Text>
                   <InputNumber
                     min={0}
                     max={180}
                     style={{ width: '100%' }}
-                    value={asistenciaState.inasistenciasInjustificadas}
-                    onChange={(val) => handleAsistenciaChange('inasistenciasInjustificadas', val ?? 0)}
+                    value={asistenciaState.llegadasTarde}
+                    onChange={(val) => handleAsistenciaChange('llegadasTarde', val ?? 0)}
                   />
-                </Space>
-              </Col>
-
-              <Col xs={12} sm={6}>
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                  <Typography.Text strong style={{ fontSize: 12, color: '#64748b' }}>
-                    TOTAL INASISTENCIAS
-                  </Typography.Text>
-                  <div style={{ paddingTop: 4 }}>
-                    <Tag
-                      color={
-                        asistenciaState.inasistenciasJustificadas + asistenciaState.inasistenciasInjustificadas > 0
-                          ? 'volcano'
-                          : 'default'
-                      }
-                      style={{ fontSize: 13, fontWeight: 700, padding: '4px 10px', borderRadius: 6 }}
-                    >
-                      {asistenciaState.inasistenciasJustificadas + asistenciaState.inasistenciasInjustificadas} faltas
-                    </Tag>
-                  </div>
                 </Space>
               </Col>
 

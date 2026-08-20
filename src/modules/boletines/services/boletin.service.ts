@@ -34,8 +34,9 @@ import {
   type CierrePeriodoAlumno,
   type CierrePeriodoAlumnoRecord,
   type AlumnoInscriptoRow,
-  type FilaCalificacionMateria,
-  type FilaCierreAsistencia,
+  type TokenAccesoDocente,
+  type TokenAccesoDocenteRecord,
+  tokenAccesoDocenteAdapter,
 } from '../models/boletin.model';
 import type { AlumnoRecord } from '../../alumnos/models/alumno.model';
 
@@ -50,6 +51,7 @@ const COLLECTION_EVALUACIONES_MATERIA = 'evaluaciones_materia';
 const COLLECTION_EVALUACIONES_CRITERIOS = 'evaluaciones_criterios';
 const COLLECTION_CIERRES_PERIODO = 'cierres_periodo_alumno';
 const COLLECTION_INSCRIPCIONES = 'inscripciones';
+const COLLECTION_TOKENS = 'tokens_acceso_docente';
 
 export const boletinService = {
   // ==========================================
@@ -385,8 +387,8 @@ export const boletinService = {
     inscripcionId: string;
     periodoId: string;
     asistencias: number;
-    inasistenciasJustificadas: number;
-    inasistenciasInjustificadas: number;
+    inasistencias: number;
+    llegadasTarde: number;
     observaciones: string;
   }): Promise<CierrePeriodoAlumno> => {
     const existing = await boletinService.getCierrePeriodoAlumno(
@@ -400,8 +402,8 @@ export const boletinService = {
         .collection(COLLECTION_CIERRES_PERIODO)
         .update<CierrePeriodoAlumnoRecord>(existing.id, {
           asistencias: data.asistencias,
-          inasistencias_justificadas: data.inasistenciasJustificadas,
-          inasistencias_injustificadas: data.inasistenciasInjustificadas,
+          inasistencias: data.inasistencias,
+          llegadas_tarde: data.llegadasTarde,
           observaciones: data.observaciones,
         }, {
           expand: 'periodo_id',
@@ -413,8 +415,8 @@ export const boletinService = {
           inscripcion_id: data.inscripcionId,
           periodo_id: data.periodoId,
           asistencias: data.asistencias,
-          inasistencias_justificadas: data.inasistenciasJustificadas,
-          inasistencias_injustificadas: data.inasistenciasInjustificadas,
+          inasistencias: data.inasistencias,
+          llegadas_tarde: data.llegadasTarde,
           observaciones: data.observaciones,
         }, {
           expand: 'periodo_id',
@@ -442,7 +444,7 @@ export const boletinService = {
     }
 
     const records = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<InscripcionRaw>({
-      filter: `curso_id = "${cursoId}" && estado = "Regular"`,
+      filter: `curso_id = "${cursoId}" && estado != "Baja"`,
       expand: 'alumno_id',
     });
 
@@ -483,125 +485,7 @@ export const boletinService = {
     });
   },
 
-  getMatrizEvaluacionesByCursoMateriaAndPeriodo: async (
-    cursoMateriaId: string,
-    periodoId: string
-  ): Promise<
-    Record<
-      string,
-      {
-        evaluacionMateriaId: string;
-        ppi: boolean;
-        calificacionGeneralId: string | null;
-        criteriosValores: Record<string, string>;
-      }
-    >
-  > => {
-    // 1. Obtener todas las evaluaciones_materia de ese cursoMateria y periodo
-    const evalRecords = await pb
-      .collection(COLLECTION_EVALUACIONES_MATERIA)
-      .getFullList<EvaluacionMateriaRecord>({
-        filter: `curso_materia_id = "${cursoMateriaId}" && periodo_id = "${periodoId}"`,
-      });
 
-    if (evalRecords.length === 0) return {};
-
-    const evalMap: Record<
-      string,
-      {
-        evaluacionMateriaId: string;
-        ppi: boolean;
-        calificacionGeneralId: string | null;
-        criteriosValores: Record<string, string>;
-      }
-    > = {};
-
-    const evalIds = evalRecords.map((e) => e.id);
-    for (const e of evalRecords) {
-      evalMap[e.inscripcion_id] = {
-        evaluacionMateriaId: e.id,
-        ppi: Boolean(e.ppi),
-        calificacionGeneralId: e.calificacion_general_id || null,
-        criteriosValores: {},
-      };
-    }
-
-    // 2. Obtener los criterios de evaluación para estas evaluaciones
-    const idFilter = evalIds.map((id) => `evaluacion_materia_id = "${id}"`).join(' || ');
-    if (idFilter) {
-      const critRecords = await pb
-        .collection(COLLECTION_EVALUACIONES_CRITERIOS)
-        .getFullList<EvaluacionCriterioRecord>({
-          filter: idFilter,
-        });
-
-      for (const cr of critRecords) {
-        // Encontrar a qué inscripción pertenece esta evaluación
-        const parentEval = evalRecords.find((e) => e.id === cr.evaluacion_materia_id);
-        if (parentEval && evalMap[parentEval.inscripcion_id]) {
-          evalMap[parentEval.inscripcion_id].criteriosValores[cr.criterio_id] =
-            cr.valor_escala_id;
-        }
-      }
-    }
-
-    return evalMap;
-  },
-
-  getCierresPeriodoByPeriodo: async (
-    periodoId: string
-  ): Promise<Record<string, CierrePeriodoAlumno>> => {
-    const records = await pb
-      .collection(COLLECTION_CIERRES_PERIODO)
-      .getFullList<CierrePeriodoAlumnoRecord>({
-        filter: `periodo_id = "${periodoId}"`,
-        expand: 'periodo_id',
-      });
-
-    const map: Record<string, CierrePeriodoAlumno> = {};
-    for (const r of records) {
-      map[r.inscripcion_id] = cierrePeriodoAlumnoAdapter(r);
-    }
-    return map;
-  },
-
-  saveMatrizCalificacionesBatch: async (
-    cursoMateriaId: string,
-    periodoId: string,
-    filas: FilaCalificacionMateria[]
-  ): Promise<void> => {
-    for (const f of filas) {
-      const criteriosPayload = Object.entries(f.criteriosValores).map(([critId, valId]) => ({
-        criterioId: critId,
-        valorEscalaId: valId,
-      }));
-
-      await boletinService.saveEvaluacionMateriaCompleta({
-        inscripcionId: f.inscripcionId,
-        cursoMateriaId,
-        periodoId,
-        ppi: f.ppi,
-        calificacionGeneralId: f.calificacionGeneralId || '',
-        criterios: criteriosPayload,
-      });
-    }
-  },
-
-  saveCierresPeriodoBatch: async (
-    periodoId: string,
-    filas: FilaCierreAsistencia[]
-  ): Promise<void> => {
-    for (const f of filas) {
-      await boletinService.saveCierrePeriodoAlumno({
-        inscripcionId: f.inscripcionId,
-        periodoId,
-        asistencias: f.asistencias,
-        inasistenciasJustificadas: f.inasistenciasJustificadas,
-        inasistenciasInjustificadas: f.inasistenciasInjustificadas,
-        observaciones: f.observaciones,
-      });
-    }
-  },
 
   // ==========================================
   // VISTA POR ALUMNO (CARGA INTEGRAL INDIVIDUAL)
@@ -714,7 +598,106 @@ export const boletinService = {
       cuales_apoyos: data.cualesApoyos || '',
     });
   },
+
+  // ==========================================
+  // TOKENS DE ACCESO DOCENTE (MAGIC LINKS)
+  // ==========================================
+  getTokensAccesoDocente: async (
+    cursoId?: string,
+    periodoId?: string
+  ): Promise<TokenAccesoDocente[]> => {
+    const conditions: string[] = [];
+    if (cursoId) conditions.push(`curso_id = "${cursoId}"`);
+    if (periodoId) conditions.push(`periodo_id = "${periodoId}"`);
+    const filter = conditions.length > 0 ? conditions.join(' && ') : undefined;
+
+    const records = await pb
+      .collection(COLLECTION_TOKENS)
+      .getFullList<TokenAccesoDocenteRecord>({
+        filter,
+        expand: 'curso_id,periodo_id,materia_id',
+        sort: '-created',
+      });
+
+    return records.map(tokenAccesoDocenteAdapter);
+  },
+
+  createTokenAccesoDocente: async (data: {
+    cursoId: string;
+    periodoId: string;
+    materiaId?: string;
+    docenteNombre: string;
+    fechaExpiracion?: string;
+  }): Promise<TokenAccesoDocente> => {
+    const token = `cys_${crypto.randomUUID().replace(/-/g, '')}`;
+
+    const record = await pb
+      .collection(COLLECTION_TOKENS)
+      .create<TokenAccesoDocenteRecord>(
+        {
+          token,
+          curso_id: data.cursoId,
+          periodo_id: data.periodoId,
+          materia_id: data.materiaId || null,
+          docente_nombre: data.docenteNombre,
+          activo: true,
+          fecha_expiracion: data.fechaExpiracion || null,
+        },
+        {
+          expand: 'curso_id,periodo_id,materia_id',
+        }
+      );
+
+    return tokenAccesoDocenteAdapter(record);
+  },
+
+  toggleTokenAccesoDocente: async (
+    tokenId: string,
+    activo: boolean
+  ): Promise<TokenAccesoDocente> => {
+    const record = await pb
+      .collection(COLLECTION_TOKENS)
+      .update<TokenAccesoDocenteRecord>(
+        tokenId,
+        { activo },
+        {
+          expand: 'curso_id,periodo_id,materia_id',
+        }
+      );
+    return tokenAccesoDocenteAdapter(record);
+  },
+
+  deleteTokenAccesoDocente: async (tokenId: string): Promise<boolean> => {
+    await pb.collection(COLLECTION_TOKENS).delete(tokenId);
+    return true;
+  },
+
+  validarTokenAccesoDocente: async (tokenStr: string): Promise<TokenAccesoDocente | null> => {
+    try {
+      const record = await pb
+        .collection(COLLECTION_TOKENS)
+        .getFirstListItem<TokenAccesoDocenteRecord>(
+          `token = "${tokenStr}" && activo = true`,
+          {
+            expand: 'curso_id,periodo_id,materia_id',
+          }
+        );
+
+      if (record.fecha_expiracion) {
+        const expDate = new Date(record.fecha_expiracion);
+        const now = new Date();
+        if (now > expDate) {
+          return null;
+        }
+      }
+
+      return tokenAccesoDocenteAdapter(record);
+    } catch {
+      return null;
+    }
+  },
 };
+
 
 
 

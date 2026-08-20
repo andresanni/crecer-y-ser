@@ -13,6 +13,7 @@ import {
   Row,
   Col,
   Tooltip,
+  Popconfirm,
 } from 'antd';
 import {
   UserOutlined,
@@ -31,6 +32,7 @@ import {
   EyeInvisibleOutlined,
   ManOutlined,
   WomanOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
@@ -46,6 +48,7 @@ interface AlumnoDetailModalProps {
   visible: boolean;
   onClose: () => void;
   onEdit: (alumno: Alumno) => void;
+  onDelete: (id: string) => void;
 }
 
 const getAvatarGradient = (str: string) => {
@@ -68,6 +71,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
   visible,
   onClose,
   onEdit,
+  onDelete,
 }) => {
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
   const [responsables, setResponsables] = useState<
@@ -542,9 +546,31 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
       open={visible}
       onCancel={handleModalClose}
       width={860}
-      style={{ top: 28, maxWidth: '95vw' }}
+      style={{ top: 10, maxWidth: '95vw' }}
       className="student-detail-modal"
+      closable={false}
       footer={[
+        <Popconfirm
+          key="delete"
+          title="¿Eliminar registro de alumno?"
+          description="Esta acción eliminará de forma permanente al alumno del sistema. No se puede deshacer."
+          onConfirm={() => {
+            onDelete(alumno.id);
+            handleModalClose();
+          }}
+          okText="Sí, eliminar"
+          cancelText="Cancelar"
+          okButtonProps={{ danger: true }}
+        >
+          <Button
+            danger
+            type="text"
+            icon={<DeleteOutlined />}
+            style={{ fontWeight: 600, float: 'left' }}
+          >
+            Eliminar Alumno
+          </Button>
+        </Popconfirm>,
         <Button key="close" size="large" onClick={handleModalClose} style={{ borderRadius: 10, fontWeight: 600 }}>
           Cerrar
         </Button>,

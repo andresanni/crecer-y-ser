@@ -5,6 +5,7 @@ import { MainLayout } from './shared/components/MainLayout';
 import { AlumnoList } from './modules/alumnos/components/AlumnoList';
 import { PlanillaCalificacionesPage } from './modules/boletines/components/PlanillaCalificacionesPage';
 import { BoletinConfigPage } from './modules/boletines/components/BoletinConfigPage';
+import { CargaDocentePublicaPage } from './modules/boletines/components/CargaDocentePublicaPage';
 import { Login } from './modules/auth/components/Login';
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
 import { LandingPage } from './modules/landing/LandingPage';
@@ -123,6 +124,7 @@ function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/carga" element={<CargaDocentePublicaPage />} />
               <Route path="/app" element={<ProtectedRoute />}>
                 <Route element={<MainLayout />}>
                   <Route index element={<Navigate replace to="/app/alumnos" />} />

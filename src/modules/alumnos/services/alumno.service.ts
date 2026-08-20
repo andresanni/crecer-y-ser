@@ -71,9 +71,50 @@ export const alumnoService = {
     const result = await pb.collection(COLLECTION_NAME).getList<AlumnoRecord>(page, perPage, {
       filter,
       sort: 'apellidos',
+      expand: 'inscripciones_via_alumno_id.curso_id.nivel_id',
     });
+
+    const items = result.items.map(alumnoAdapter);
+
+    // Complementar con carga en lote de inscripciones si no vinieron por expand
+    const unlinkedIds = items.filter((a) => !a.cursoNombre).map((a) => a.id);
+    if (unlinkedIds.length > 0) {
+      try {
+        const idsFilter = unlinkedIds.map((id) => `alumno_id = "${id}"`).join(' || ');
+        const inscripciones = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList({
+          filter: `(${idsFilter})`,
+          expand: 'curso_id.nivel_id',
+          sort: '-created',
+        });
+
+        const inscMap = new Map<string, { curso_id?: string; estado?: string; expand?: { curso_id?: { id: string; nombre: string; turno: string; expand?: { nivel_id?: { nombre: string } } } } }>();
+        for (const insc of inscripciones) {
+          const current = inscMap.get(insc.alumno_id);
+          if (!current || (current.estado !== 'Regular' && insc.estado === 'Regular')) {
+            inscMap.set(insc.alumno_id, insc);
+          }
+        }
+
+        for (const item of items) {
+          if (!item.cursoNombre) {
+            const insc = inscMap.get(item.id);
+            if (insc) {
+              const cursoExp = insc.expand?.curso_id;
+              item.cursoId = cursoExp?.id || insc.curso_id;
+              item.cursoNombre = cursoExp?.nombre;
+              item.nivelNombre = cursoExp?.expand?.nivel_id?.nombre;
+              item.turno = cursoExp?.turno;
+              item.estadoInscripcion = insc.estado;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Advertencia al consultar cursos en lote para alumnos:', e);
+      }
+    }
+
     return {
-      items: result.items.map(alumnoAdapter),
+      items,
       totalItems: result.totalItems,
       totalPages: result.totalPages,
     };
