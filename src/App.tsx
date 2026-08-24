@@ -3,7 +3,9 @@ import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './shared/components/MainLayout';
 import { AlumnoList } from './modules/alumnos/components/AlumnoList';
+import { BoletinesHubPage } from './modules/boletines/components/BoletinesHubPage';
 import { PlanillaCalificacionesPage } from './modules/boletines/components/PlanillaCalificacionesPage';
+import { MonitoreoProgresoPage } from './modules/boletines/components/MonitoreoProgresoPage';
 import { BoletinConfigPage } from './modules/boletines/components/BoletinConfigPage';
 import { CargaDocentePublicaPage } from './modules/boletines/components/CargaDocentePublicaPage';
 import { Login } from './modules/auth/components/Login';
@@ -81,6 +83,27 @@ function App() {
               activeBorderColor: '#2563eb',
               hoverBorderColor: '#3b82f6',
             },
+            Select: {
+              controlHeightLG: 46,
+              controlHeight: 38,
+              borderRadius: 10,
+              colorPrimary: '#2563eb',
+              colorPrimaryHover: '#3b82f6',
+            },
+            DatePicker: {
+              controlHeightLG: 46,
+              controlHeight: 38,
+              borderRadius: 10,
+              colorPrimary: '#2563eb',
+              colorPrimaryHover: '#3b82f6',
+            },
+            InputNumber: {
+              controlHeightLG: 46,
+              controlHeight: 38,
+              borderRadius: 10,
+              colorPrimary: '#2563eb',
+              colorPrimaryHover: '#3b82f6',
+            },
             Modal: {
               borderRadiusLG: 20,
               contentBg: isDarkMode ? '#1e293b' : '#ffffff',
@@ -129,8 +152,9 @@ function App() {
                 <Route element={<MainLayout />}>
                   <Route index element={<Navigate replace to="/app/alumnos" />} />
                   <Route path="alumnos" element={<AlumnoList />} />
-                  <Route path="boletines" element={<Navigate replace to="/app/boletines/calificaciones" />} />
+                  <Route path="boletines" element={<BoletinesHubPage />} />
                   <Route path="boletines/calificaciones" element={<PlanillaCalificacionesPage />} />
+                  <Route path="boletines/monitoreo" element={<MonitoreoProgresoPage />} />
                   <Route path="boletines/constructor" element={<BoletinConfigPage />} />
                 </Route>
               </Route>

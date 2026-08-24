@@ -76,4 +76,38 @@ export const inscripcionService = {
     });
     return records.map(inscripcionAdapter);
   },
+
+  /**
+   * Actualiza una inscripción existente.
+   */
+  update: async (
+    id: string,
+    data: Partial<Omit<InscripcionRecord, 'id' | 'created' | 'updated' | 'expand'>>
+  ): Promise<Inscripcion> => {
+    const record = await pb
+      .collection(COLLECTION_INSCRIPCIONES)
+      .update<InscripcionRecord>(id, data, {
+        expand: 'curso_id.nivel_id,ciclo_id',
+      });
+    return inscripcionAdapter(record);
+  },
+
+  /**
+   * Registra la baja de una inscripción con su fecha de egreso.
+   */
+  darDeBaja: async (inscripcionId: string, fechaEgreso: string): Promise<Inscripcion> => {
+    const record = await pb
+      .collection(COLLECTION_INSCRIPCIONES)
+      .update<InscripcionRecord>(
+        inscripcionId,
+        {
+          estado: 'Baja',
+          fecha_egreso: fechaEgreso,
+        },
+        {
+          expand: 'curso_id.nivel_id,ciclo_id',
+        }
+      );
+    return inscripcionAdapter(record);
+  },
 };

@@ -1350,7 +1350,7 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
 
 .form-modal .ant-modal-header {
   margin: 0 !important;
-  padding: 24px 28px 12px !important;
+  padding: 16px 24px 8px !important;
   background: transparent !important;
   border-bottom: none !important;
 }
@@ -1363,8 +1363,8 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
 }
 
 .form-modal .ant-modal-close {
-  top: 20px !important;
-  right: 22px !important;
+  top: 14px !important;
+  right: 18px !important;
   color: #64748b !important;
   transition: all 0.2s ease !important;
   z-index: 10;
@@ -1376,15 +1376,85 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
 }
 
 .form-modal .ant-modal-body {
-  padding: 12px 28px 20px !important;
+  padding: 8px 24px 14px !important;
   background: transparent !important;
 }
 
 .form-modal .ant-modal-footer {
   margin: 0 !important;
-  padding: 16px 28px 24px !important;
+  padding: 12px 24px 18px !important;
   background: transparent !important;
   border-top: 1px solid #f1f5f9 !important;
+}
+
+.form-modal .ant-form-item {
+  margin-bottom: 12px !important;
+}
+
+.form-modal .ant-form-item-label {
+  min-height: 26px !important;
+  max-height: 26px !important;
+  padding-bottom: 3px !important;
+  display: flex !important;
+  align-items: flex-end !important;
+}
+
+.form-modal .ant-form-item-label > label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  width: 100% !important;
+}
+
+/* Uniform Input, Select, DatePicker, InputNumber Heights & Borders in Form Modal */
+.form-modal .ant-input-affix-wrapper,
+.form-modal .ant-input:not(.ant-input-affix-wrapper .ant-input),
+.form-modal .ant-select-selector,
+.form-modal .ant-picker,
+.form-modal .ant-input-number {
+  height: 38px !important;
+  min-height: 38px !important;
+  border-radius: 10px !important;
+  font-size: 13.5px !important;
+}
+
+.form-modal .ant-input-affix-wrapper,
+.form-modal .ant-picker,
+.form-modal .ant-input-number {
+  display: flex !important;
+  align-items: center !important;
+}
+
+.form-modal .ant-select-single .ant-select-selector {
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 11px !important;
+}
+
+.form-modal .ant-select-single .ant-select-selector .ant-select-selection-item,
+.form-modal .ant-select-single .ant-select-selector .ant-select-selection-placeholder {
+  line-height: 36px !important;
+}
+
+.form-modal .ant-input-number .ant-input-number-input-wrap,
+.form-modal .ant-input-number .ant-input-number-input {
+  height: 36px !important;
+  line-height: 36px !important;
+}
+
+.form-modal .ant-space-compact .ant-input-affix-wrapper {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.form-modal .ant-space-compact .ant-btn {
+  height: 38px !important;
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
 }
 
 /* Modal Dark Theme Overrides */
@@ -1791,5 +1861,83 @@ body.theme-dark .cys-sticky-student-banner {
   border-color: rgba(59, 130, 246, 0.3) !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
 }
+
+/* Unified Section Headers Across All Pages */
+.cys-page-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cys-page-header-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+  flex-shrink: 0;
+}
+
+.theme-dark .cys-page-header-icon {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.cys-page-header-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.cys-page-header-title {
+  margin: 0 !important;
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.4px !important;
+  line-height: 1.25 !important;
+  font-family: var(--font-heading, inherit) !important;
+  color: #0f172a !important;
+}
+
+.theme-dark .cys-page-header-title {
+  color: #f8fafc !important;
+}
+
+.cys-page-header-subtitle {
+  color: #64748b !important;
+  font-size: 13.5px !important;
+  margin-top: 2px !important;
+  line-height: 1.4 !important;
+}
+
+.theme-dark .cys-page-header-subtitle {
+  color: #94a3b8 !important;
+}
+
+/* Hub / Portal Action Cards */
+.cys-hub-card {
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s ease !important;
+}
+
+.cys-hub-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.12) !important;
+  border-color: rgba(37, 99, 235, 0.35) !important;
+}
+
+.theme-dark .cys-hub-card {
+  background: #1e293b !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.theme-dark .cys-hub-card:hover {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.3) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
 
 

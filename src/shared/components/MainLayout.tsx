@@ -16,6 +16,7 @@ import {
   ScheduleOutlined,
   TableOutlined,
   SettingOutlined,
+  DashboardOutlined,
 } from '@ant-design/icons';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
@@ -53,17 +54,23 @@ export const MainLayout: React.FC = () => {
       items.push({ title: 'Gestión de Alumnos' });
     } else if (location.pathname.startsWith('/app/boletines/constructor')) {
       items.push({ title: 'Boletines' });
-      items.push({ title: 'Constructor' });
-    } else if (location.pathname.startsWith('/app/boletines')) {
+      items.push({ title: 'Constructor Curricular' });
+    } else if (location.pathname.startsWith('/app/boletines/monitoreo')) {
       items.push({ title: 'Boletines' });
-      items.push({ title: 'Carga de Notas' });
+      items.push({ title: 'Monitoreo' });
+    } else if (location.pathname.startsWith('/app/boletines/calificaciones')) {
+      items.push({ title: 'Boletines' });
+      items.push({ title: 'Carga de Calificaciones' });
+    } else if (location.pathname === '/app/boletines') {
+      items.push({ title: 'Boletines' });
     }
     return items;
   };
 
   const getSelectedKey = () => {
     if (location.pathname.startsWith('/app/boletines/constructor')) return ['boletines_constructor'];
-    if (location.pathname.startsWith('/app/boletines')) return ['boletines_calificaciones'];
+    if (location.pathname.startsWith('/app/boletines/monitoreo')) return ['boletines_monitoreo'];
+    if (location.pathname.startsWith('/app/boletines/calificaciones')) return ['boletines_calificaciones'];
     if (location.pathname.startsWith('/app/alumnos')) return ['alumnos'];
     return [];
   };
@@ -109,12 +116,19 @@ export const MainLayout: React.FC = () => {
               key: 'boletines',
               icon: <ScheduleOutlined style={{ fontSize: 18 }} />,
               label: 'Boletines',
+              onTitleClick: () => navigate('/app/boletines'),
               children: [
                 {
                   key: 'boletines_calificaciones',
                   icon: <TableOutlined style={{ fontSize: 15 }} />,
                   label: 'Carga de Notas',
                   onClick: () => navigate('/app/boletines/calificaciones'),
+                },
+                {
+                  key: 'boletines_monitoreo',
+                  icon: <DashboardOutlined style={{ fontSize: 15 }} />,
+                  label: 'Monitoreo',
+                  onClick: () => navigate('/app/boletines/monitoreo'),
                 },
                 {
                   key: 'boletines_constructor',

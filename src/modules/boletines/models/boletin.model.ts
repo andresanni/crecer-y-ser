@@ -372,6 +372,85 @@ export interface AlumnoInscriptoRow {
   cualesApoyos?: string;
 }
 
+// =========================================================================
+// 9. PROGRESO Y GUÍA VISUAL DE ALUMNOS (ESTADOS SEMAFÓRICOS)
+// =========================================================================
+export type EstadoProgresoAlumno = 'COMPLETO' | 'EN_PROGRESO' | 'SIN_INICIAR';
+
+export interface MateriaProgresoItem {
+  cursoMateriaId: string;
+  materiaNombre: string;
+  completada: boolean;
+  ppi: boolean;
+  calificacionGeneralId: string | null;
+  criteriosEvaluados: number;
+  criteriosTotal: number;
+}
+
+export interface ProgresoAlumnoDetalle {
+  inscripcionId: string;
+  alumnoId: string;
+  numeroOrden: number | null;
+  nombreCompleto: string;
+  totalMaterias: number;
+  materiasCompletadas: number;
+  tieneAsistencia: boolean;
+  porcentaje: number;
+  estado: EstadoProgresoAlumno;
+  materiasDetalle: MateriaProgresoItem[];
+}
+
+export interface ProgresoCursoResumen {
+  totalAlumnos: number;
+  completadosCount: number;
+  enProgresoCount: number;
+  sinIniciarCount: number;
+  porcentajeGlobal: number;
+}
+
+// =========================================================================
+// 9.1 MONITOREO Y SEGUIMIENTO INSTITUCIONAL (VISTA DIRECTIVA)
+// =========================================================================
+export type EstadoMonitoreoCurso = 'COMPLETO' | 'EN_PROGRESO' | 'SIN_INICIAR' | 'SIN_ENLACE';
+
+export interface MateriaMonitoreoResumen {
+  cursoMateriaId: string;
+  materiaId: string;
+  materiaNombre: string;
+  totalAlumnos: number;
+  alumnosEvaluados: number;
+  porcentaje: number;
+  docenteNombre?: string;
+  tieneToken: boolean;
+}
+
+export interface CursoMonitoreoResumen {
+  cursoId: string;
+  cursoNombre: string;
+  gradoNumero: number | null;
+  totalAlumnos: number;
+  alumnosCompletos: number;
+  alumnosEnProgreso: number;
+  alumnosSinIniciar: number;
+  porcentaje: number;
+  estado: EstadoMonitoreoCurso;
+  tokenDocente?: TokenAccesoDocente;
+  materias: MateriaMonitoreoResumen[];
+}
+
+export interface MonitoreoInstitucionalData {
+  totalAlumnosColegio: number;
+  completadosColegio: number;
+  enProgresoColegio: number;
+  sinIniciarColegio: number;
+  porcentajeGlobalColegio: number;
+  cursosCompletosCount: number;
+  cursosEnProgresoCount: number;
+  cursosSinIniciarCount: number;
+  cursosSinTokenCount: number;
+  cursos: CursoMonitoreoResumen[];
+}
+
 
 // =========================================================================
 // 10. TOKENS DE ACCESO EXTERNO DOCENTE (MAGIC LINKS / MODO KIOSCO)
@@ -430,5 +509,36 @@ export const tokenAccesoDocenteAdapter = (record: TokenAccesoDocenteRecord): Tok
   createdAt: record.created,
   updatedAt: record.updated,
 });
+
+/**
+ * Determina si una materia corresponde a un área formativa / conductual
+ * (ej: "TRABAJO EN EL AULA", "CONVIVENCIA"), las cuales evalúan sus 5 criterios
+ * pedagógicos pero no llevan indicador de PPI ni Calificación General.
+ */
+export const esMateriaConducta = (nombre?: string): boolean => {
+  if (!nombre) return false;
+  const n = nombre.trim().toUpperCase();
+  return (
+    n.includes('TRABAJO EN EL AULA') ||
+    n.includes('TRABAJO PERSONAL') ||
+    n.includes('CONVIVENCIA') ||
+    n.includes('CONDUCTA')
+  );
+};
+
+// =========================================================================
+// 11. PROGRESO GLOBAL DE CONSTRUCCIÓN DE MALLA CURRICULAR (POR CURSO)
+// =========================================================================
+export interface ProgresoConstructorCurso {
+  cursoId: string;
+  totalMaterias: number;
+  materiasCompletas: number;
+  criteriosConfigurados: number;
+  criteriosTotalEsperado: number;
+  porcentaje: number;
+  estado: 'COMPLETO' | 'EN_PROGRESO' | 'SIN_CRITERIOS' | 'VACIO';
+}
+
+
 
 

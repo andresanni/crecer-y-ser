@@ -34,11 +34,21 @@ import {
   type CierrePeriodoAlumno,
   type CierrePeriodoAlumnoRecord,
   type AlumnoInscriptoRow,
+  type ProgresoAlumnoDetalle,
+  type ProgresoCursoResumen,
+  type EstadoProgresoAlumno,
+  type EstadoMonitoreoCurso,
+  type MateriaMonitoreoResumen,
+  type CursoMonitoreoResumen,
+  type MonitoreoInstitucionalData,
   type TokenAccesoDocente,
   type TokenAccesoDocenteRecord,
+  type ProgresoConstructorCurso,
   tokenAccesoDocenteAdapter,
+  esMateriaConducta,
 } from '../models/boletin.model';
 import type { AlumnoRecord } from '../../alumnos/models/alumno.model';
+import { extractGradeNumber, compareGrados } from '../../alumnos/utils/gradeColors';
 
 const COLLECTION_CURSOS = 'cursos';
 const COLLECTION_MATERIAS = 'materias';
@@ -599,6 +609,478 @@ export const boletinService = {
     });
   },
 
+  getProgresoCursoPeriodo: async (
+    alumnos: AlumnoInscriptoRow[],
+    cursoMaterias: CursoMateria[],
+    criteriosMap: Record<string, CriterioEvaluacion[]>,
+    periodoId: string
+  ): Promise<{
+    alumnosProgreso: Record<string, ProgresoAlumnoDetalle>;
+    resumen: ProgresoCursoResumen;
+  }> => {
+    if (alumnos.length === 0 || cursoMaterias.length === 0 || !periodoId) {
+      return {
+        alumnosProgreso: {},
+        resumen: {
+          totalAlumnos: alumnos.length,
+          completadosCount: 0,
+          enProgresoCount: 0,
+          sinIniciarCount: alumnos.length,
+          porcentajeGlobal: 0,
+        },
+      };
+    }
+
+    try {
+      // 1. Obtener todas las evaluaciones_materia de ese período
+      const evalRecords = await pb
+        .collection(COLLECTION_EVALUACIONES_MATERIA)
+        .getFullList<EvaluacionMateriaRecord>({
+          filter: `periodo_id = "${periodoId}"`,
+        });
+
+      // 2. Obtener los criterios de evaluación de esas evaluaciones en bloques
+      const evalIds = evalRecords.map((e) => e.id);
+      const critCountMap: Record<string, number> = {};
+
+      if (evalIds.length > 0) {
+        const chunkSize = 35;
+        for (let i = 0; i < evalIds.length; i += chunkSize) {
+          const chunk = evalIds.slice(i, i + chunkSize);
+          const idFilter = chunk.map((id) => `evaluacion_materia_id = "${id}"`).join(' || ');
+          const critRecords = await pb
+            .collection(COLLECTION_EVALUACIONES_CRITERIOS)
+            .getFullList<EvaluacionCriterioRecord>({
+              filter: idFilter,
+            });
+
+          for (const cr of critRecords) {
+            critCountMap[cr.evaluacion_materia_id] =
+              (critCountMap[cr.evaluacion_materia_id] || 0) + 1;
+          }
+        }
+      }
+
+      // 3. Obtener los cierres de período (asistencias) del período
+      const cierreRecords = await pb
+        .collection(COLLECTION_CIERRES_PERIODO)
+        .getFullList<CierrePeriodoAlumnoRecord>({
+          filter: `periodo_id = "${periodoId}"`,
+        });
+
+      const cierresMap: Record<string, boolean> = {};
+      for (const c of cierreRecords) {
+        cierresMap[c.inscripcion_id] = true;
+      }
+
+      // 4. Mapear evaluaciones estructuradas por inscripción y curso_materia
+      const evalStructureMap: Record<
+        string,
+        Record<
+          string,
+          {
+            calificacionGeneralId: string | null;
+            ppi: boolean;
+            criteriosCargados: number;
+          }
+        >
+      > = {};
+
+      for (const e of evalRecords) {
+        if (!evalStructureMap[e.inscripcion_id]) {
+          evalStructureMap[e.inscripcion_id] = {};
+        }
+        evalStructureMap[e.inscripcion_id][e.curso_materia_id] = {
+          calificacionGeneralId: e.calificacion_general_id || null,
+          ppi: Boolean(e.ppi),
+          criteriosCargados: critCountMap[e.id] || 0,
+        };
+      }
+
+      // 5. Calcular progreso individual para cada alumno
+      const alumnosProgreso: Record<string, ProgresoAlumnoDetalle> = {};
+      let completadosCount = 0;
+      let enProgresoCount = 0;
+      let sinIniciarCount = 0;
+      let sumaPorcentajes = 0;
+
+      for (const alu of alumnos) {
+        const inscId = alu.inscripcionId;
+        const aluEvals = evalStructureMap[inscId] || {};
+        const tieneAsistencia = Boolean(cierresMap[inscId]);
+
+        let materiasCompletadas = 0;
+        const materiasDetalle = cursoMaterias.map((cm) => {
+          const mat = aluEvals[cm.id];
+          const critsTotal = (criteriosMap[cm.id] || []).length;
+          const criteriosEvaluados = mat?.criteriosCargados || 0;
+          const hasCalGral = Boolean(mat?.calificacionGeneralId);
+          const hasAllCrits = critsTotal === 0 || criteriosEvaluados >= critsTotal;
+          const completada = hasCalGral && hasAllCrits;
+
+          if (completada) {
+            materiasCompletadas++;
+          }
+
+          return {
+            cursoMateriaId: cm.id,
+            materiaNombre: cm.materiaNombre,
+            completada,
+            ppi: mat?.ppi ?? false,
+            calificacionGeneralId: mat?.calificacionGeneralId || null,
+            criteriosEvaluados,
+            criteriosTotal: critsTotal,
+          };
+        });
+
+        const totalMaterias = cursoMaterias.length;
+        const porcentaje =
+          totalMaterias > 0
+            ? Math.round((materiasCompletadas / totalMaterias) * 100)
+            : 0;
+
+        let estado: EstadoProgresoAlumno = 'SIN_INICIAR';
+        if (materiasCompletadas === totalMaterias && tieneAsistencia) {
+          estado = 'COMPLETO';
+          completadosCount++;
+        } else if (materiasCompletadas > 0 || tieneAsistencia) {
+          estado = 'EN_PROGRESO';
+          enProgresoCount++;
+        } else {
+          sinIniciarCount++;
+        }
+
+        sumaPorcentajes += porcentaje;
+
+        alumnosProgreso[inscId] = {
+          inscripcionId: inscId,
+          alumnoId: alu.alumnoId,
+          numeroOrden: alu.numeroOrden,
+          nombreCompleto: alu.nombreCompleto,
+          totalMaterias,
+          materiasCompletadas,
+          tieneAsistencia,
+          porcentaje,
+          estado,
+          materiasDetalle,
+        };
+      }
+
+      const totalAlumnos = alumnos.length;
+      const porcentajeGlobal =
+        totalAlumnos > 0 ? Math.round(sumaPorcentajes / totalAlumnos) : 0;
+
+      return {
+        alumnosProgreso,
+        resumen: {
+          totalAlumnos,
+          completadosCount,
+          enProgresoCount,
+          sinIniciarCount,
+          porcentajeGlobal,
+        },
+      };
+    } catch (err) {
+      console.error('[boletinService.getProgresoCursoPeriodo] Error:', err);
+      return {
+        alumnosProgreso: {},
+        resumen: {
+          totalAlumnos: alumnos.length,
+          completadosCount: 0,
+          enProgresoCount: 0,
+          sinIniciarCount: alumnos.length,
+          porcentajeGlobal: 0,
+        },
+      };
+    }
+  },
+
+  // ==========================================
+  // MONITOREO Y SEGUIMIENTO INSTITUCIONAL (DIRECTIVOS)
+  // ==========================================
+  getMonitoreoInstitucional: async (
+    periodoId: string
+  ): Promise<MonitoreoInstitucionalData> => {
+    if (!periodoId) {
+      return {
+        totalAlumnosColegio: 0,
+        completadosColegio: 0,
+        enProgresoColegio: 0,
+        sinIniciarColegio: 0,
+        porcentajeGlobalColegio: 0,
+        cursosCompletosCount: 0,
+        cursosEnProgresoCount: 0,
+        cursosSinIniciarCount: 0,
+        cursosSinTokenCount: 0,
+        cursos: [],
+      };
+    }
+
+    try {
+      // 1. Obtener todos los cursos
+      const cursosRecords = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
+        sort: 'nombre',
+      });
+      const cursos = cursosRecords.map(cursoAdapter);
+
+      // Ordenar cursos por grado (1° a 7°)
+      cursos.sort((a, b) => compareGrados(a.nombre, b.nombre));
+
+      // 2. Obtener inscripciones activas (no bajas) de todos los cursos
+      const inscripcionesRecords = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<{
+        id: string;
+        curso_id: string;
+        alumno_id: string;
+        estado: string;
+      }>({
+        filter: 'estado != "Baja"',
+      });
+
+      // Mapear alumnos por curso
+      const cursoInscripcionesMap: Record<string, string[]> = {};
+      for (const cur of cursos) {
+        cursoInscripcionesMap[cur.id] = [];
+      }
+      for (const insc of inscripcionesRecords) {
+        if (cursoInscripcionesMap[insc.curso_id]) {
+          cursoInscripcionesMap[insc.curso_id].push(insc.id);
+        }
+      }
+
+      // 3. Obtener todas las curso_materias
+      const cmRecords = await pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
+        expand: 'materia_id',
+      });
+      const cursoMateriasMap: Record<string, CursoMateria[]> = {};
+      const cmMateriaNombreMap: Record<string, string> = {};
+      for (const cur of cursos) {
+        cursoMateriasMap[cur.id] = [];
+      }
+      for (const cm of cmRecords) {
+        cmMateriaNombreMap[cm.id] = cm.expand?.materia_id?.nombre || '';
+        if (cursoMateriasMap[cm.curso_id]) {
+          cursoMateriasMap[cm.curso_id].push(cursoMateriaAdapter(cm));
+        }
+      }
+
+      // 4. Obtener todos los criterios de evaluación
+      const critRecords = await pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>();
+      const criteriosMap: Record<string, number> = {};
+      for (const cr of critRecords) {
+        criteriosMap[cr.curso_materia_id] = (criteriosMap[cr.curso_materia_id] || 0) + 1;
+      }
+
+      // 5. Obtener todos los tokens del período
+      const tokenRecords = await pb.collection(COLLECTION_TOKENS).getFullList<TokenAccesoDocenteRecord>({
+        filter: `periodo_id = "${periodoId}" && activo = true`,
+        expand: 'curso_id,periodo_id,materia_id',
+      });
+      const tokens = tokenRecords.map(tokenAccesoDocenteAdapter);
+
+      const tokensCursoMap: Record<string, TokenAccesoDocente> = {};
+      const tokensMateriaMap: Record<string, TokenAccesoDocente> = {};
+      for (const t of tokens) {
+        if (t.cursoId && !t.materiaId) {
+          tokensCursoMap[t.cursoId] = t;
+        } else if (t.cursoId && t.materiaId) {
+          tokensMateriaMap[`${t.cursoId}_${t.materiaId}`] = t;
+        }
+      }
+
+      // 6. Obtener todas las evaluaciones_materia del período
+      const evalRecords = await pb.collection(COLLECTION_EVALUACIONES_MATERIA).getFullList<EvaluacionMateriaRecord>({
+        filter: `periodo_id = "${periodoId}"`,
+      });
+
+      const evalIds = evalRecords.map((e) => e.id);
+      const critEvaluadosMap: Record<string, number> = {};
+
+      if (evalIds.length > 0) {
+        const chunkSize = 40;
+        for (let i = 0; i < evalIds.length; i += chunkSize) {
+          const chunk = evalIds.slice(i, i + chunkSize);
+          const idFilter = chunk.map((id) => `evaluacion_materia_id = "${id}"`).join(' || ');
+          const evalCritRecords = await pb.collection(COLLECTION_EVALUACIONES_CRITERIOS).getFullList<EvaluacionCriterioRecord>({
+            filter: idFilter,
+          });
+          for (const ec of evalCritRecords) {
+            critEvaluadosMap[ec.evaluacion_materia_id] = (critEvaluadosMap[ec.evaluacion_materia_id] || 0) + 1;
+          }
+        }
+      }
+
+      const evalAlumnoMateriaMap: Record<string, Record<string, boolean>> = {};
+      for (const e of evalRecords) {
+        if (!evalAlumnoMateriaMap[e.inscripcion_id]) {
+          evalAlumnoMateriaMap[e.inscripcion_id] = {};
+        }
+        const totalCrits = criteriosMap[e.curso_materia_id] || 0;
+        const evaluados = critEvaluadosMap[e.id] || 0;
+        const matNombre = cmMateriaNombreMap[e.curso_materia_id];
+        const esConducta = esMateriaConducta(matNombre);
+        const hasCalGral = Boolean(e.calificacion_general_id);
+        const hasAllCrits = totalCrits === 0 || evaluados >= totalCrits;
+        evalAlumnoMateriaMap[e.inscripcion_id][e.curso_materia_id] = esConducta
+          ? hasAllCrits
+          : (hasCalGral && hasAllCrits);
+      }
+
+      // 7. Obtener cierres de período
+      const cierreRecords = await pb.collection(COLLECTION_CIERRES_PERIODO).getFullList<CierrePeriodoAlumnoRecord>({
+        filter: `periodo_id = "${periodoId}"`,
+      });
+      const cierresMap: Record<string, boolean> = {};
+      for (const c of cierreRecords) {
+        cierresMap[c.inscripcion_id] = true;
+      }
+
+      // 8. Calcular resumen por curso y métricas globales
+      let totalAlumnosColegio = 0;
+      let completadosColegio = 0;
+      let enProgresoColegio = 0;
+      let sinIniciarColegio = 0;
+      let sumaPorcentajesCursos = 0;
+
+      let cursosCompletosCount = 0;
+      let cursosEnProgresoCount = 0;
+      let cursosSinIniciarCount = 0;
+      let cursosSinTokenCount = 0;
+
+      const cursosResumen: CursoMonitoreoResumen[] = [];
+
+      for (const cur of cursos) {
+        const inscIds = cursoInscripcionesMap[cur.id] || [];
+        const totalAlumnosCurso = inscIds.length;
+        const materiasCurso = cursoMateriasMap[cur.id] || [];
+        const totalMateriasCurso = materiasCurso.length;
+        const tokenGeneral = tokensCursoMap[cur.id];
+
+        let alumnosCompletosCurso = 0;
+        let alumnosEnProgresoCurso = 0;
+        let alumnosSinIniciarCurso = 0;
+
+        for (const inscId of inscIds) {
+          const aluMats = evalAlumnoMateriaMap[inscId] || {};
+          const tieneAsistencia = Boolean(cierresMap[inscId]);
+
+          let matsCompletas = 0;
+          for (const cm of materiasCurso) {
+            if (aluMats[cm.id]) {
+              matsCompletas++;
+            }
+          }
+
+          if (totalMateriasCurso > 0 && matsCompletas === totalMateriasCurso && tieneAsistencia) {
+            alumnosCompletosCurso++;
+          } else if (matsCompletas > 0 || tieneAsistencia) {
+            alumnosEnProgresoCurso++;
+          } else {
+            alumnosSinIniciarCurso++;
+          }
+        }
+
+        const porcentajeCurso = totalAlumnosCurso > 0
+          ? Math.round((alumnosCompletosCurso / totalAlumnosCurso) * 100)
+          : 0;
+
+        const materiasResumen: MateriaMonitoreoResumen[] = materiasCurso.map((cm) => {
+          let alumnosEvaluados = 0;
+          for (const inscId of inscIds) {
+            if (evalAlumnoMateriaMap[inscId]?.[cm.id]) {
+              alumnosEvaluados++;
+            }
+          }
+          const porcentajeMateria = totalAlumnosCurso > 0
+            ? Math.round((alumnosEvaluados / totalAlumnosCurso) * 100)
+            : 0;
+
+          const tokMat = tokensMateriaMap[`${cur.id}_${cm.materiaId}`] || tokenGeneral;
+
+          return {
+            cursoMateriaId: cm.id,
+            materiaId: cm.materiaId,
+            materiaNombre: cm.materiaNombre,
+            totalAlumnos: totalAlumnosCurso,
+            alumnosEvaluados,
+            porcentaje: porcentajeMateria,
+            docenteNombre: tokMat?.docenteNombre,
+            tieneToken: Boolean(tokMat),
+          };
+        });
+
+        let estado: EstadoMonitoreoCurso = 'SIN_INICIAR';
+        if (totalAlumnosCurso > 0 && alumnosCompletosCurso === totalAlumnosCurso) {
+          estado = 'COMPLETO';
+          cursosCompletosCount++;
+        } else if (alumnosCompletosCurso > 0 || alumnosEnProgresoCurso > 0) {
+          estado = 'EN_PROGRESO';
+          cursosEnProgresoCount++;
+        } else if (!tokenGeneral && materiasResumen.every((m) => !m.tieneToken)) {
+          estado = 'SIN_ENLACE';
+          cursosSinTokenCount++;
+          cursosSinIniciarCount++;
+        } else {
+          estado = 'SIN_INICIAR';
+          cursosSinIniciarCount++;
+        }
+
+        totalAlumnosColegio += totalAlumnosCurso;
+        completadosColegio += alumnosCompletosCurso;
+        enProgresoColegio += alumnosEnProgresoCurso;
+        sinIniciarColegio += alumnosSinIniciarCurso;
+        sumaPorcentajesCursos += porcentajeCurso;
+
+        cursosResumen.push({
+          cursoId: cur.id,
+          cursoNombre: cur.nombre,
+          gradoNumero: extractGradeNumber(cur.nombre),
+          totalAlumnos: totalAlumnosCurso,
+          alumnosCompletos: alumnosCompletosCurso,
+          alumnosEnProgreso: alumnosEnProgresoCurso,
+          alumnosSinIniciar: alumnosSinIniciarCurso,
+          porcentaje: porcentajeCurso,
+          estado,
+          tokenDocente: tokenGeneral,
+          materias: materiasResumen,
+        });
+      }
+
+      const totalCursos = cursos.length;
+      const porcentajeGlobalColegio = totalAlumnosColegio > 0
+        ? Math.round((completadosColegio / totalAlumnosColegio) * 100)
+        : totalCursos > 0
+        ? Math.round(sumaPorcentajesCursos / totalCursos)
+        : 0;
+
+      return {
+        totalAlumnosColegio,
+        completadosColegio,
+        enProgresoColegio,
+        sinIniciarColegio,
+        porcentajeGlobalColegio,
+        cursosCompletosCount,
+        cursosEnProgresoCount,
+        cursosSinIniciarCount,
+        cursosSinTokenCount,
+        cursos: cursosResumen,
+      };
+    } catch (err) {
+      console.error('[boletinService.getMonitoreoInstitucional] Error:', err);
+      return {
+        totalAlumnosColegio: 0,
+        completadosColegio: 0,
+        enProgresoColegio: 0,
+        sinIniciarColegio: 0,
+        porcentajeGlobalColegio: 0,
+        cursosCompletosCount: 0,
+        cursosEnProgresoCount: 0,
+        cursosSinIniciarCount: 0,
+        cursosSinTokenCount: 0,
+        cursos: [],
+      };
+    }
+  },
+
   // ==========================================
   // TOKENS DE ACCESO DOCENTE (MAGIC LINKS)
   // ==========================================
@@ -694,6 +1176,82 @@ export const boletinService = {
       return tokenAccesoDocenteAdapter(record);
     } catch {
       return null;
+    }
+  },
+
+  // ==========================================
+  // PROGRESO DE CONSTRUCCIÓN DE MALLA POR CURSO
+  // ==========================================
+  getProgresoConstructorCursos: async (): Promise<Record<string, ProgresoConstructorCurso>> => {
+    try {
+      const [cursoMaterias, criterios] = await Promise.all([
+        pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
+          fields: 'id,curso_id,materia_id',
+        }),
+        pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>({
+          fields: 'id,curso_materia_id',
+        }),
+      ]);
+
+      // Conteo de criterios por curso_materia_id
+      const critsPorCm: Record<string, number> = {};
+      for (const crit of criterios) {
+        critsPorCm[crit.curso_materia_id] = (critsPorCm[crit.curso_materia_id] || 0) + 1;
+      }
+
+      // Agrupar materias por curso_id
+      const cmsPorCurso: Record<string, CursoMateriaRecord[]> = {};
+      for (const cm of cursoMaterias) {
+        if (!cmsPorCurso[cm.curso_id]) {
+          cmsPorCurso[cm.curso_id] = [];
+        }
+        cmsPorCurso[cm.curso_id].push(cm);
+      }
+
+      const progresoMap: Record<string, ProgresoConstructorCurso> = {};
+      for (const [cursoId, cms] of Object.entries(cmsPorCurso)) {
+        const totalMaterias = cms.length;
+        let materiasCompletas = 0;
+        let criteriosConfigurados = 0;
+
+        for (const cm of cms) {
+          const critsCount = critsPorCm[cm.id] || 0;
+          criteriosConfigurados += critsCount;
+          if (critsCount >= 5) {
+            materiasCompletas++;
+          }
+        }
+
+        const criteriosTotalEsperado = totalMaterias * 5;
+        const porcentaje =
+          totalMaterias > 0 ? Math.round((materiasCompletas / totalMaterias) * 100) : 0;
+
+        let estado: 'COMPLETO' | 'EN_PROGRESO' | 'SIN_CRITERIOS' | 'VACIO' = 'VACIO';
+        if (totalMaterias > 0) {
+          if (materiasCompletas === totalMaterias) {
+            estado = 'COMPLETO';
+          } else if (criteriosConfigurados > 0) {
+            estado = 'EN_PROGRESO';
+          } else {
+            estado = 'SIN_CRITERIOS';
+          }
+        }
+
+        progresoMap[cursoId] = {
+          cursoId,
+          totalMaterias,
+          materiasCompletas,
+          criteriosConfigurados,
+          criteriosTotalEsperado,
+          porcentaje,
+          estado,
+        };
+      }
+
+      return progresoMap;
+    } catch (err) {
+      console.error('Error al calcular progreso del constructor de cursos:', err);
+      return {};
     }
   },
 };

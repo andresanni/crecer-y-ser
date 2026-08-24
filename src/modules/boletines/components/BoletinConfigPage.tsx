@@ -14,6 +14,7 @@ import {
   Col,
   Empty,
   Badge,
+  Progress,
 } from 'antd';
 import {
   BookOutlined,
@@ -27,11 +28,16 @@ import {
   ExclamationCircleOutlined,
   ReloadOutlined,
   ScheduleOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { boletinService } from '../services/boletin.service';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
-import type { CursoMateria } from '../models/boletin.model';
+import {
+  type CursoMateria,
+  type ProgresoConstructorCurso,
+  esMateriaConducta,
+} from '../models/boletin.model';
 import { CriteriosManager } from './CriteriosManager';
 import { MateriaSelectorModal } from './MateriaSelectorModal';
 import { CatalogoMateriasModal } from './CatalogoMateriasModal';
@@ -48,6 +54,7 @@ export const BoletinConfigPage: React.FC = () => {
   const [cursoMaterias, setCursoMaterias] = useState<CursoMateria[]>([]);
   const [selectedCursoMateria, setSelectedCursoMateria] = useState<CursoMateria | null>(null);
   const [criteriosCounts, setCriteriosCounts] = useState<Record<string, number>>({});
+  const [progresoCursosMap, setProgresoCursosMap] = useState<Record<string, ProgresoConstructorCurso>>({});
 
   // Estados de carga
   const [loadingCursos, setLoadingCursos] = useState(false);
@@ -59,13 +66,27 @@ export const BoletinConfigPage: React.FC = () => {
   const [openCatalogoModal, setOpenCatalogoModal] = useState(false);
   const [openPeriodosModal, setOpenPeriodosModal] = useState(false);
 
+  // Cargar progreso global de construcción para todos los cursos
+  const loadProgresoGlobal = useCallback(async () => {
+    try {
+      const pMap = await boletinService.getProgresoConstructorCursos();
+      setProgresoCursosMap(pMap);
+    } catch (err) {
+      console.error('Error al calcular progreso global:', err);
+    }
+  }, []);
+
   // 1. Cargar cursos al montar
   useEffect(() => {
     const loadCursos = async () => {
       try {
         setLoadingCursos(true);
-        const data = await boletinService.getCursos();
+        const [data, pMap] = await Promise.all([
+          boletinService.getCursos(),
+          boletinService.getProgresoConstructorCursos(),
+        ]);
         setCursos(data);
+        setProgresoCursosMap(pMap);
         if (data.length > 0) {
           setSelectedCursoId(data[0].id);
         }
@@ -157,6 +178,7 @@ export const BoletinConfigPage: React.FC = () => {
       message.success(`Materia "${nombre}" removida del curso`);
       if (selectedCursoId) {
         await loadMateriasCurso(selectedCursoId);
+        loadProgresoGlobal();
       }
     } catch (err) {
       console.error(err);
@@ -165,6 +187,7 @@ export const BoletinConfigPage: React.FC = () => {
   };
 
   const selectedCurso = cursos.find((c) => c.id === selectedCursoId);
+  const selectedProg = selectedCursoId ? progresoCursosMap[selectedCursoId] : undefined;
 
   // Columnas para la tabla de materias del curso
   const columns: ColumnsType<CursoMateria> = [
@@ -200,6 +223,11 @@ export const BoletinConfigPage: React.FC = () => {
             >
               {nombre}
             </Typography.Text>
+            {esMateriaConducta(nombre) && (
+              <Tag color="cyan" style={{ fontSize: 10, padding: '0 4px', borderRadius: 4, marginLeft: 6, fontWeight: 600 }}>
+                Conducta
+              </Tag>
+            )}
             <div style={{ marginTop: 2 }}>
               {isComplete ? (
                 <Tag color="success" style={{ fontSize: 11, padding: '0 6px', borderRadius: 4 }}>
@@ -258,13 +286,13 @@ export const BoletinConfigPage: React.FC = () => {
         <Popconfirm
           title="¿Remover materia del curso?"
           description="Se eliminarán también los criterios configurados para esta materia en este curso."
+          onConfirm={(e) => {
+            e?.stopPropagation();
+            handleRemoveMateria(record.id, record.materiaNombre || 'Materia');
+          }}
           okText="Remover"
           cancelText="Cancelar"
           okButtonProps={{ danger: true }}
-          onConfirm={(e) => {
-            e?.stopPropagation();
-            handleRemoveMateria(record.id, record.materiaNombre);
-          }}
         >
           <Button
             size="small"
@@ -280,42 +308,20 @@ export const BoletinConfigPage: React.FC = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Barra Superior de Control y Accesos Rápidos */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
-        <div>
-          <Space size={10} align="center">
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                fontSize: 20,
-              }}
-            >
-              <ScheduleOutlined />
-            </div>
-            <div>
-              <Typography.Title level={3} style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
-                Constructor de Boletines y Malla Curricular
-              </Typography.Title>
-              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                Configuración anual de materias y 5 criterios oficiales de evaluación por curso.
-              </Typography.Text>
-            </div>
-          </Space>
+      {/* Header Institucional */}
+      <div className="cys-page-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div className="cys-page-header-icon" style={{ background: '#2563eb', color: '#ffffff' }}>
+            <ScheduleOutlined />
+          </div>
+          <div className="cys-page-header-content">
+            <Typography.Title level={2} className="cys-page-header-title">
+              Constructor de Boletines y Malla Curricular
+            </Typography.Title>
+            <Typography.Text className="cys-page-header-subtitle">
+              Configuración anual de materias y 5 criterios oficiales de evaluación por curso.
+            </Typography.Text>
+          </div>
         </div>
 
         <Space size="small" wrap>
@@ -340,7 +346,7 @@ export const BoletinConfigPage: React.FC = () => {
         </Space>
       </div>
 
-      {/* Selector de Curso */}
+      {/* Selector de Curso con Indicadores de Progreso */}
       <Card
         style={{
           borderRadius: 14,
@@ -349,9 +355,9 @@ export const BoletinConfigPage: React.FC = () => {
         }}
         bodyStyle={{ padding: '16px 20px' }}
       >
-        <Row gutter={[16, 16]} align="middle" justify="space-between">
-          <Col xs={24} md={12} lg={10}>
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+        <Row gutter={[20, 16]} align="middle" justify="space-between">
+          <Col xs={24} md={12} lg={11}>
+            <Space direction="vertical" size={6} style={{ width: '100%' }}>
               <Typography.Text strong style={{ fontSize: 13, color: '#64748b' }}>
                 SELECCIONAR CURSO / DIVISIÓN
               </Typography.Text>
@@ -364,41 +370,145 @@ export const BoletinConfigPage: React.FC = () => {
                 value={selectedCursoId}
                 onChange={(val) => setSelectedCursoId(val)}
                 optionFilterProp="label"
-                options={cursos.map((c) => ({
-                  value: c.id,
-                  label: `${c.nombre} (${c.nivelNombre || 'Nivel'} - ${c.turno})`,
-                }))}
+                options={cursos.map((c) => {
+                  const prog = progresoCursosMap[c.id];
+                  const searchLabel = `${c.nombre} ${c.nivelNombre || ''} ${c.turno}`;
+
+                  let tagNode = null;
+                  if (!prog || prog.estado === 'VACIO') {
+                    tagNode = (
+                      <Tag color="default" style={{ margin: 0, fontSize: 11, borderRadius: 4 }}>
+                        Sin materias
+                      </Tag>
+                    );
+                  } else if (prog.estado === 'COMPLETO') {
+                    tagNode = (
+                      <Tag color="success" style={{ margin: 0, fontSize: 11, borderRadius: 4, fontWeight: 600 }}>
+                        <CheckCircleOutlined style={{ marginRight: 3 }} /> {prog.materiasCompletas}/{prog.totalMaterias} listas (100%)
+                      </Tag>
+                    );
+                  } else if (prog.estado === 'EN_PROGRESO') {
+                    tagNode = (
+                      <Tag color="processing" style={{ margin: 0, fontSize: 11, borderRadius: 4, fontWeight: 600 }}>
+                        <SyncOutlined style={{ marginRight: 3 }} /> {prog.materiasCompletas}/{prog.totalMaterias} ({prog.porcentaje}%)
+                      </Tag>
+                    );
+                  } else if (prog.estado === 'SIN_CRITERIOS') {
+                    tagNode = (
+                      <Tag color="warning" style={{ margin: 0, fontSize: 11, borderRadius: 4, fontWeight: 600 }}>
+                        <ExclamationCircleOutlined style={{ marginRight: 3 }} /> {prog.totalMaterias} mat. (0 crit.)
+                      </Tag>
+                    );
+                  }
+
+                  return {
+                    value: c.id,
+                    label: searchLabel,
+                    customRender: (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
+                        <Space size={6}>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{c.nombre}</span>
+                          <span style={{ fontSize: 12, color: '#64748b' }}>({c.nivelNombre || 'Nivel'} - {c.turno})</span>
+                        </Space>
+                        {tagNode}
+                      </div>
+                    ),
+                  };
+                })}
+                optionRender={(option) => option.data.customRender}
               />
             </Space>
           </Col>
 
-          <Col xs={24} md={12} lg={14}>
+          <Col xs={24} md={12} lg={13}>
             {selectedCurso && (
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end',
-                  flexWrap: 'wrap',
-                  gap: 12,
+                  flexDirection: 'column',
+                  gap: 8,
+                  background: 'var(--cys-color-fill-quaternary, #f8fafc)',
+                  padding: '10px 16px',
+                  borderRadius: 10,
+                  border: '1px solid var(--cys-color-border-secondary, #e2e8f0)',
                 }}
               >
-                <Tag color="blue" style={{ fontSize: 13, padding: '4px 10px', borderRadius: 6 }}>
-                  Nivel: <strong>{selectedCurso.nivelNombre || 'General'}</strong>
-                </Tag>
-                <Tag color="purple" style={{ fontSize: 13, padding: '4px 10px', borderRadius: 6 }}>
-                  Turno: <strong>{selectedCurso.turno}</strong>
-                </Tag>
-                <Tag color="cyan" style={{ fontSize: 13, padding: '4px 10px', borderRadius: 6 }}>
-                  Materias asignadas: <strong>{cursoMaterias.length}</strong>
-                </Tag>
-                <Tooltip title="Recargar configuración de este curso">
-                  <Button
-                    type="text"
-                    icon={<ReloadOutlined />}
-                    onClick={() => selectedCursoId && loadMateriasCurso(selectedCursoId)}
-                  />
-                </Tooltip>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                  }}
+                >
+                  <Space size={8} wrap>
+                    <Tag color="blue" style={{ fontSize: 12, borderRadius: 4, margin: 0 }}>
+                      Nivel: <strong>{selectedCurso.nivelNombre || 'General'}</strong>
+                    </Tag>
+                    <Tag color="purple" style={{ fontSize: 12, borderRadius: 4, margin: 0 }}>
+                      Turno: <strong>{selectedCurso.turno}</strong>
+                    </Tag>
+                    <Tag color="cyan" style={{ fontSize: 12, borderRadius: 4, margin: 0 }}>
+                      Materias: <strong>{cursoMaterias.length}</strong>
+                    </Tag>
+                  </Space>
+
+                  <Space size={8} align="center">
+                    {selectedProg?.estado === 'COMPLETO' ? (
+                      <Badge
+                        status="success"
+                        text={<strong style={{ color: '#059669', fontSize: 12.5 }}>Malla 100% Configurada</strong>}
+                      />
+                    ) : selectedProg?.estado === 'EN_PROGRESO' ? (
+                      <Badge
+                        status="processing"
+                        text={<strong style={{ color: '#2563eb', fontSize: 12.5 }}>En Construcción ({selectedProg.porcentaje}%)</strong>}
+                      />
+                    ) : selectedProg?.estado === 'SIN_CRITERIOS' ? (
+                      <Badge
+                        status="warning"
+                        text={<strong style={{ color: '#d97706', fontSize: 12.5 }}>Sin Criterios Cargados</strong>}
+                      />
+                    ) : (
+                      <Badge
+                        status="default"
+                        text={<span style={{ color: '#64748b', fontSize: 12.5 }}>Sin materias asignadas</span>}
+                      />
+                    )}
+
+                    <Tooltip title="Recargar configuración de este curso">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<ReloadOutlined />}
+                        onClick={() => {
+                          if (selectedCursoId) {
+                            loadMateriasCurso(selectedCursoId);
+                            loadProgresoGlobal();
+                          }
+                        }}
+                      />
+                    </Tooltip>
+                  </Space>
+                </div>
+
+                {/* Barra de progreso de la malla del curso seleccionado */}
+                {selectedProg && selectedProg.totalMaterias > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <Progress
+                        percent={selectedProg.porcentaje}
+                        size="small"
+                        strokeColor={selectedProg.estado === 'COMPLETO' ? '#10b981' : '#2563eb'}
+                        status={selectedProg.estado === 'COMPLETO' ? 'success' : 'active'}
+                      />
+                    </div>
+                    <Typography.Text type="secondary" style={{ fontSize: 11.5, whiteSpace: 'nowrap' }}>
+                      <strong>{selectedProg.materiasCompletas} de {selectedProg.totalMaterias}</strong> materias listas (5/5 criterios)
+                    </Typography.Text>
+                  </div>
+                )}
               </div>
             )}
           </Col>
@@ -491,6 +601,7 @@ export const BoletinConfigPage: React.FC = () => {
             onSaved={() => {
               if (selectedCursoId) {
                 loadMateriasCurso(selectedCursoId);
+                loadProgresoGlobal();
               }
             }}
           />
@@ -506,7 +617,10 @@ export const BoletinConfigPage: React.FC = () => {
           cursoNombre={selectedCurso.nombre}
           assignedMateriaIds={cursoMaterias.map((cm) => cm.materiaId)}
           onMateriasAdded={() => {
-            if (selectedCursoId) loadMateriasCurso(selectedCursoId);
+            if (selectedCursoId) {
+              loadMateriasCurso(selectedCursoId);
+              loadProgresoGlobal();
+            }
           }}
           onOpenCatalogoModal={() => setOpenCatalogoModal(true)}
         />

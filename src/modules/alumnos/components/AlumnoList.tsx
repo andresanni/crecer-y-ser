@@ -11,7 +11,6 @@ import {
   Tag,
   Row,
   Col,
-  Statistic,
   Segmented,
   Avatar,
   Empty,
@@ -25,20 +24,20 @@ import {
   PlusOutlined,
   SearchOutlined,
   IdcardOutlined,
-  UserOutlined,
-  CalendarOutlined,
   UnorderedListOutlined,
   AppstoreOutlined,
   ReloadOutlined,
   EyeOutlined,
-  BookOutlined,
+  TeamOutlined,
+  UserDeleteOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import dayjs from 'dayjs';
 import { alumnoService } from '../services/alumno.service';
 import type { Alumno } from '../models/alumno.model';
 import { AlumnoFormModal, type AlumnoFormValues } from './AlumnoFormModal';
 import { AlumnoDetailModal } from './AlumnoDetailModal';
-import { useAppStore } from '../../../store/appStore';
+import { DarDeBajaModal } from './DarDeBajaModal';
 import {
   getGradeColorConfig,
   compareGrados,
@@ -67,7 +66,6 @@ const getAvatarGradient = (str: string) => {
 
 export const AlumnoList: React.FC = () => {
   const { message } = App.useApp();
-  const { cicloActual } = useAppStore();
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,8 +75,9 @@ export const AlumnoList: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // Filtro rápido por Grado (Todos, 1°, 2°, 3°, 4°, 5°, 6°, 7°)
+  // Filtro por Grado y Filtro por Estado de Cursada
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<GradeNumber | 'all'>('all');
+  const [estadoFilter, setEstadoFilter] = useState<'REGULARES' | 'BAJAS' | 'TODOS'>('REGULARES');
 
   // Modal para Crear / Editar Alumno
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -87,6 +86,10 @@ export const AlumnoList: React.FC = () => {
   // Modal para Ficha Completa del Alumno
   const [selectedDetailAlumno, setSelectedDetailAlumno] = useState<Alumno | null>(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
+
+  // Modal para Acción Rápida de Baja
+  const [bajaModalAlumno, setBajaModalAlumno] = useState<Alumno | null>(null);
+  const [isBajaModalVisible, setIsBajaModalVisible] = useState(false);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -159,11 +162,27 @@ export const AlumnoList: React.FC = () => {
 
 
 
-  // Lista filtrada según el grado seleccionado en el paneo visual
+  // Conteos para el segmented de estados
+  const counts = useMemo(() => {
+    const bajas = alumnos.filter((a) => a.estadoInscripcion === 'Baja').length;
+    const regulares = alumnos.length - bajas;
+    return { regulares, bajas, total: alumnos.length };
+  }, [alumnos]);
+
+  // Lista filtrada según el grado seleccionado y el estado de cursada
   const displayedAlumnos = useMemo(() => {
-    if (selectedGradeFilter === 'all') return alumnos;
-    return alumnos.filter((a) => extractGradeNumber(a.cursoNombre) === selectedGradeFilter);
-  }, [alumnos, selectedGradeFilter]);
+    return alumnos.filter((a) => {
+      // 1. Filtro por Grado
+      if (selectedGradeFilter !== 'all') {
+        if (extractGradeNumber(a.cursoNombre) !== selectedGradeFilter) return false;
+      }
+      // 2. Filtro por Estado de Cursada
+      const isBaja = a.estadoInscripcion === 'Baja';
+      if (estadoFilter === 'REGULARES') return !isBaja;
+      if (estadoFilter === 'BAJAS') return isBaja;
+      return true;
+    });
+  }, [alumnos, selectedGradeFilter, estadoFilter]);
 
   const handleOpenModal = (alumno?: Alumno) => {
     setEditingAlumno(alumno || null);
@@ -203,8 +222,31 @@ export const AlumnoList: React.FC = () => {
 
       if (editingAlumno) {
         if (!originalUpdatedDate) throw new Error('Falta la fecha de actualización original');
-        await alumnoService.update(editingAlumno.id, alumnoData, originalUpdatedDate);
+        const editInscripcionData =
+          values.cursoId || values.estadoInscripcion
+            ? {
+                id: editingAlumno.inscripcionId,
+                curso_id: values.cursoId,
+                ciclo_id: values.cicloId,
+                numero_orden: values.numeroOrden,
+                numero_inscripcion: values.numeroInscripcion || '',
+                fecha_inscripcion: values.fechaInscripcion ? values.fechaInscripcion.format('YYYY-MM-DD') : '',
+                fecha_ingreso: values.fechaIngreso ? values.fechaIngreso.format('YYYY-MM-DD') : '',
+                fecha_egreso: values.fechaEgreso ? values.fechaEgreso.format('YYYY-MM-DD') : '',
+                estado: values.estadoInscripcion || 'Regular',
+              }
+            : undefined;
+
+        await alumnoService.updateIntegral(
+          editingAlumno.id,
+          {
+            alumno: alumnoData,
+            inscripcion: editInscripcionData,
+          },
+          originalUpdatedDate
+        );
         message.success('Ficha del alumno actualizada con éxito');
+        void fetchAlumnos();
       } else {
         const responsableData = values.responsableDni
           ? {
@@ -219,7 +261,7 @@ export const AlumnoList: React.FC = () => {
             }
           : undefined;
 
-        const inscripcionData =
+        const createInscripcionData =
           values.cursoId && values.cicloId
             ? {
                 curso_id: values.cursoId,
@@ -237,12 +279,13 @@ export const AlumnoList: React.FC = () => {
 
         await alumnoService.createIntegral({
           alumno: alumnoData,
-          inscripcion: inscripcionData,
+          inscripcion: createInscripcionData,
           responsable: responsableData,
           vinculo,
         });
 
         message.success('Alumno registrado, inscrito y vinculado exitosamente');
+        void fetchAlumnos();
       }
       handleCloseModal();
     } catch (error: unknown) {
@@ -269,19 +312,38 @@ export const AlumnoList: React.FC = () => {
       key: 'estudiante',
       render: (_, record) => {
         const initials = `${record.apellidos.charAt(0)}${record.nombres.charAt(0)}`.toUpperCase();
+        const isBaja = record.estadoInscripcion === 'Baja';
+
         return (
-          <Space size="middle" style={{ cursor: 'pointer' }}>
+          <Space size="middle" style={{ cursor: 'pointer' }} onClick={() => handleOpenDetail(record)}>
             <Avatar
               size={40}
               className="student-avatar"
-              style={{ background: getAvatarGradient(record.apellidos + record.nombres) }}
+              style={{
+                background: isBaja
+                  ? 'linear-gradient(135deg, #ef4444, #991b1b)'
+                  : getAvatarGradient(record.apellidos + record.nombres),
+              }}
             >
               {initials}
             </Avatar>
             <div>
-              <span className="student-name" style={{ color: '#1e40af', fontWeight: 600 }}>
-                {record.apellidos}, {record.nombres}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span className="student-name" style={{ color: isBaja ? '#b91c1c' : '#1e40af', fontWeight: 600 }}>
+                  {record.apellidos}, {record.nombres}
+                </span>
+                {isBaja && (
+                  <Tooltip
+                    title={`Baja registrada: ${
+                      record.fechaEgreso ? dayjs(record.fechaEgreso).format('DD/MM/YYYY') : 'Sin fecha especificada'
+                    }`}
+                  >
+                    <Tag color="error" style={{ borderRadius: 6, fontWeight: 700, fontSize: 11, margin: 0 }}>
+                      Baja {record.fechaEgreso ? `(${dayjs(record.fechaEgreso).format('DD/MM/YY')})` : ''}
+                    </Tag>
+                  </Tooltip>
+                )}
+              </div>
               <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
                 {record.nacionalidad ? `${record.nacionalidad}` : 'Estudiante'}
                 {record.sexo ? ` • ${record.sexo}` : ''}
@@ -384,7 +446,7 @@ export const AlumnoList: React.FC = () => {
     {
       title: 'Acciones',
       key: 'acciones',
-      width: 130,
+      width: 150,
       align: 'right',
       render: (_, record) => (
         <Space size="small" onClick={(e) => e.stopPropagation()}>
@@ -404,6 +466,26 @@ export const AlumnoList: React.FC = () => {
               aria-label="Editar alumno"
             />
           </Tooltip>
+          {record.estadoInscripcion !== 'Baja' ? (
+            <Tooltip title="Dar de baja al estudiante">
+              <Button
+                type="text"
+                danger
+                icon={<UserDeleteOutlined style={{ color: '#dc2626' }} />}
+                onClick={() => {
+                  setBajaModalAlumno(record);
+                  setIsBajaModalVisible(true);
+                }}
+                aria-label="Dar de baja al alumno"
+              />
+            </Tooltip>
+          ) : (
+            <Tooltip title={`Baja registrada: ${record.fechaEgreso ? dayjs(record.fechaEgreso).format('DD/MM/YYYY') : 'Sin fecha'}`}>
+              <Tag color="error" style={{ margin: 0, fontSize: 11, cursor: 'default', fontWeight: 600 }}>
+                Baja
+              </Tag>
+            </Tooltip>
+          )}
           <Tooltip title="Eliminar alumno">
             <Popconfirm
               title="¿Eliminar registro de alumno?"
@@ -423,155 +505,112 @@ export const AlumnoList: React.FC = () => {
 
   return (
     <div>
-      {/* KPI Cards Row */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={8}>
-          <Card className="kpi-card" bodyStyle={{ padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                  Total Registrados
-                </Text>
-                <Statistic
-                  value={totalItems}
-                  valueStyle={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-heading)' }}
-                  suffix={<Text type="secondary" style={{ fontSize: 13, fontWeight: 400 }}>alumnos</Text>}
-                />
-              </div>
-              <div className="kpi-icon-wrapper kpi-total">
-                <UserOutlined />
-              </div>
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={8}>
-          <Card className="kpi-card" bodyStyle={{ padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                  Ciclo Lectivo Activo
-                </Text>
-                <Statistic
-                  value={cicloActual ? cicloActual.ano : 2026}
-                  valueStyle={{ fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-heading)' }}
-                  prefix={<CalendarOutlined style={{ fontSize: 20, marginRight: 6, color: '#0284c7' }} />}
-                />
-              </div>
-              <div className="kpi-icon-wrapper kpi-ciclo">
-                <CalendarOutlined />
-              </div>
-            </div>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={8}>
-          <Card className="kpi-card" bodyStyle={{ padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <Text type="secondary" style={{ fontSize: 13, fontWeight: 500 }}>
-                  Distribución por Grados
-                </Text>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                  <Badge status="processing" color="#4f46e5" />
-                  <Text strong style={{ fontSize: 18, fontFamily: 'var(--font-heading)' }}>
-                    7 Grados Primarios
-                  </Text>
-                </div>
-              </div>
-              <div className="kpi-icon-wrapper kpi-sync">
-                <BookOutlined />
-              </div>
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
       {/* Header Title Section */}
-      <div className="page-heading">
-        <Title level={2} style={{ margin: 0 }}>
-          Directorio de Alumnos
-        </Title>
-        <span className="page-subtitle">
-          Consultá y ordená alumnos por su grado correspondiente o hacé click para ver su ficha completa.
-        </span>
+      <div className="cys-page-header" style={{ marginBottom: 20 }}>
+        <div className="cys-page-header-icon">
+          <TeamOutlined />
+        </div>
+        <div className="cys-page-header-content">
+          <Title level={2} className="cys-page-header-title">
+            Directorio de Alumnos
+          </Title>
+          <Text className="cys-page-header-subtitle">
+            Consultá y ordená alumnos por su grado correspondiente o hacé click para ver su ficha completa.
+          </Text>
+        </div>
       </div>
 
       {/* Toolbar & Filters */}
-      <div className="toolbar">
-        <Space size="middle" wrap>
-          <Input.Search
-            placeholder="Buscar por nombre, apellido, DNI, legajo..."
-            allowClear
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            style={{ width: 300 }}
-            prefix={<SearchOutlined style={{ color: '#2563eb' }} />}
-            className="toolbar-search"
-          />
-          <Select
-            value={selectedGradeFilter}
-            onChange={(val) => setSelectedGradeFilter(val)}
-            style={{ width: 180 }}
-            placeholder="Filtrar por grado"
-            options={[
-              { value: 'all', label: 'Todos los grados' },
-              ...ALL_GRADES.map((num) => {
-                const config = GRADE_PALETTE[num];
-                return {
-                  value: num,
-                  label: (
-                    <Space size={6} align="center">
-                      <span
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          backgroundColor: config.textColor,
-                          display: 'inline-block',
-                        }}
-                      />
-                      <span>{config.label}</span>
-                    </Space>
-                  ),
-                };
-              }),
-            ]}
-          />
-          <Tooltip title="Actualizar lista">
-            <Button icon={<ReloadOutlined />} onClick={fetchAlumnos} loading={loading} />
-          </Tooltip>
-          {searchTerm && (
-            <Tag closable onClose={() => setInputValue('')} color="blue" style={{ borderRadius: 6, padding: '4px 8px' }}>
-              Búsqueda: "{searchTerm}"
-            </Tag>
-          )}
-          {selectedGradeFilter !== 'all' && (
-            <Tag closable onClose={() => setSelectedGradeFilter('all')} color="orange" style={{ borderRadius: 6, padding: '4px 8px' }}>
-              Grado: {GRADE_PALETTE[selectedGradeFilter as GradeNumber]?.label}
-            </Tag>
-          )}
-        </Space>
-
-        <Space size="middle">
+      <div className="toolbar" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {/* Fila 1: Filtro de Estado de Cursada */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
           <Segmented
-            value={viewMode}
-            onChange={(val) => setViewMode(val as 'table' | 'grid')}
+            value={estadoFilter}
+            onChange={(val) => setEstadoFilter(val as 'REGULARES' | 'BAJAS' | 'TODOS')}
             options={[
-              { label: 'Tabla', value: 'table', icon: <UnorderedListOutlined /> },
-              { label: 'Tarjetas', value: 'grid', icon: <AppstoreOutlined /> },
+              { label: `Cursantes Activos (${counts.regulares})`, value: 'REGULARES' },
+              { label: `Bajas del Ciclo (${counts.bajas})`, value: 'BAJAS' },
+              { label: `Todos (${counts.total})`, value: 'TODOS' },
             ]}
           />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            size="large"
-            onClick={() => handleOpenModal()}
-            className="btn-primary-gradient"
-          >
-            Nuevo alumno
-          </Button>
-        </Space>
+
+          <Space size="middle">
+            <Segmented
+              value={viewMode}
+              onChange={(val) => setViewMode(val as 'table' | 'grid')}
+              options={[
+                { label: 'Tabla', value: 'table', icon: <UnorderedListOutlined /> },
+                { label: 'Tarjetas', value: 'grid', icon: <AppstoreOutlined /> },
+              ]}
+            />
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              size="large"
+              onClick={() => handleOpenModal()}
+              className="btn-primary-gradient"
+            >
+              Nuevo alumno
+            </Button>
+          </Space>
+        </div>
+
+        {/* Fila 2: Búsqueda y Filtro de Grado */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <Space size="middle" wrap>
+            <Input.Search
+              placeholder="Buscar por nombre, apellido, DNI, legajo..."
+              allowClear
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              style={{ width: 300 }}
+              prefix={<SearchOutlined style={{ color: '#2563eb' }} />}
+              className="toolbar-search"
+            />
+            <Select
+              value={selectedGradeFilter}
+              onChange={(val) => setSelectedGradeFilter(val)}
+              style={{ width: 180 }}
+              placeholder="Filtrar por grado"
+              options={[
+                { value: 'all', label: 'Todos los grados' },
+                ...ALL_GRADES.map((num) => {
+                  const config = GRADE_PALETTE[num];
+                  return {
+                    value: num,
+                    label: (
+                      <Space size={6} align="center">
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: '50%',
+                            backgroundColor: config.textColor,
+                            display: 'inline-block',
+                          }}
+                        />
+                        <span>{config.label}</span>
+                      </Space>
+                    ),
+                  };
+                }),
+              ]}
+            />
+            <Tooltip title="Actualizar lista">
+              <Button icon={<ReloadOutlined />} onClick={fetchAlumnos} loading={loading} />
+            </Tooltip>
+            {searchTerm && (
+              <Tag closable onClose={() => setInputValue('')} color="blue" style={{ borderRadius: 6, padding: '4px 8px' }}>
+                Búsqueda: "{searchTerm}"
+              </Tag>
+            )}
+            {selectedGradeFilter !== 'all' && (
+              <Tag closable onClose={() => setSelectedGradeFilter('all')} color="orange" style={{ borderRadius: 6, padding: '4px 8px' }}>
+                Grado: {GRADE_PALETTE[selectedGradeFilter as GradeNumber]?.label}
+              </Tag>
+            )}
+          </Space>
+        </div>
       </div>
 
       {/* Selected rows banner */}
@@ -614,7 +653,9 @@ export const AlumnoList: React.FC = () => {
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={
-                    selectedGradeFilter !== 'all'
+                    estadoFilter === 'BAJAS'
+                      ? 'No hay alumnos dados de baja en este ciclo'
+                      : selectedGradeFilter !== 'all'
                       ? `No hay alumnos registrados en ${GRADE_PALETTE[selectedGradeFilter].label}`
                       : searchTerm
                       ? `No se encontraron alumnos para "${searchTerm}"`
@@ -630,7 +671,7 @@ export const AlumnoList: React.FC = () => {
             pagination={{
               current: currentPage,
               pageSize: 50,
-              total: selectedGradeFilter === 'all' ? totalItems : displayedAlumnos.length,
+              total: selectedGradeFilter === 'all' && estadoFilter === 'TODOS' ? totalItems : displayedAlumnos.length,
               onChange: (page) => setCurrentPage(page),
               showSizeChanger: false,
               showTotal: (total) => (
@@ -648,7 +689,9 @@ export const AlumnoList: React.FC = () => {
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
-                  selectedGradeFilter !== 'all'
+                  estadoFilter === 'BAJAS'
+                    ? 'No hay alumnos dados de baja en este ciclo'
+                    : selectedGradeFilter !== 'all'
                     ? `No hay alumnos registrados en ${GRADE_PALETTE[selectedGradeFilter].label}`
                     : searchTerm
                     ? `No se encontraron alumnos para "${searchTerm}"`
@@ -661,6 +704,7 @@ export const AlumnoList: React.FC = () => {
               {displayedAlumnos.map((alumno) => {
                 const initials = `${alumno.apellidos.charAt(0)}${alumno.nombres.charAt(0)}`.toUpperCase();
                 const gradeConfig = getGradeColorConfig(alumno.cursoNombre);
+                const isBaja = alumno.estadoInscripcion === 'Baja';
 
                 return (
                   <Col xs={24} sm={12} md={8} lg={6} key={alumno.id}>
@@ -669,13 +713,18 @@ export const AlumnoList: React.FC = () => {
                       bodyStyle={{ padding: 20 }}
                       hoverable
                       onClick={() => handleOpenDetail(alumno)}
-                      style={{ cursor: 'pointer' }}
+                      style={{
+                        cursor: 'pointer',
+                        borderTop: isBaja ? '3px solid #ef4444' : undefined,
+                      }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                         <Avatar
                           size={46}
                           style={{
-                            background: getAvatarGradient(alumno.apellidos + alumno.nombres),
+                            background: isBaja
+                              ? 'linear-gradient(135deg, #ef4444, #991b1b)'
+                              : getAvatarGradient(alumno.apellidos + alumno.nombres),
                             fontWeight: 700,
                             boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
                           }}
@@ -683,7 +732,12 @@ export const AlumnoList: React.FC = () => {
                           {initials}
                         </Avatar>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          {/* Tag de Grado con color temático */}
+                          {/* Tag de Baja o Grado */}
+                          {isBaja && (
+                            <Tag color="error" style={{ borderRadius: 6, fontWeight: 700, fontSize: 11, margin: 0 }}>
+                              Baja {alumno.fechaEgreso ? `• ${dayjs(alumno.fechaEgreso).format('DD/MM/YY')}` : ''}
+                            </Tag>
+                          )}
                           {alumno.cursoNombre ? (
                             <Tag
                               style={{
@@ -710,7 +764,7 @@ export const AlumnoList: React.FC = () => {
                         </div>
                       </div>
 
-                      <Title level={5} style={{ margin: '0 0 4px 0', fontSize: 15, color: '#1e40af' }}>
+                      <Title level={5} style={{ margin: '0 0 4px 0', fontSize: 15, color: isBaja ? '#b91c1c' : '#1e40af' }}>
                         {alumno.apellidos}, {alumno.nombres}
                       </Title>
 
@@ -724,14 +778,29 @@ export const AlumnoList: React.FC = () => {
                       </Space>
 
                       <div className="student-card-actions" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          type="default"
-                          icon={<EyeOutlined style={{ color: '#2563eb' }} />}
-                          onClick={() => handleOpenDetail(alumno)}
-                          style={{ width: '100%', borderRadius: 8, fontWeight: 600, color: '#2563eb' }}
-                        >
-                          Ver Ficha Completa
-                        </Button>
+                        <Space style={{ width: '100%' }}>
+                          <Button
+                            type="default"
+                            icon={<EyeOutlined style={{ color: '#2563eb' }} />}
+                            onClick={() => handleOpenDetail(alumno)}
+                            style={{ flex: 1, borderRadius: 8, fontWeight: 600, color: '#2563eb' }}
+                          >
+                            Ver Ficha
+                          </Button>
+                          {!isBaja && (
+                            <Tooltip title="Dar de baja">
+                              <Button
+                                danger
+                                icon={<UserDeleteOutlined />}
+                                onClick={() => {
+                                  setBajaModalAlumno(alumno);
+                                  setIsBajaModalVisible(true);
+                                }}
+                                style={{ borderRadius: 8 }}
+                              />
+                            </Tooltip>
+                          )}
+                        </Space>
                       </div>
                     </Card>
                   </Col>
@@ -757,6 +826,26 @@ export const AlumnoList: React.FC = () => {
         onClose={handleCloseDetail}
         onEdit={(alumnoToEdit) => handleOpenModal(alumnoToEdit)}
         onDelete={handleDelete}
+        onBaja={(alumnoToBaja) => {
+          setBajaModalAlumno(alumnoToBaja);
+          setIsBajaModalVisible(true);
+        }}
+      />
+
+      {/* Modal de Acción Rápida para Dar de Baja */}
+      <DarDeBajaModal
+        visible={isBajaModalVisible}
+        alumno={bajaModalAlumno}
+        onClose={() => {
+          setIsBajaModalVisible(false);
+          setBajaModalAlumno(null);
+        }}
+        onSuccess={() => {
+          void fetchAlumnos();
+          if (selectedDetailAlumno && bajaModalAlumno && selectedDetailAlumno.id === bajaModalAlumno.id) {
+            handleCloseDetail();
+          }
+        }}
       />
     </div>
   );

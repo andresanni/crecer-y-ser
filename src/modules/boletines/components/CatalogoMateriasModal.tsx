@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Input, Button, List, Typography, Space, App, Tag, Empty, Spin } from 'antd';
 import { PlusOutlined, BookOutlined } from '@ant-design/icons';
 import { boletinService } from '../services/boletin.service';
-import type { Materia } from '../models/boletin.model';
+import { type Materia, esMateriaConducta } from '../models/boletin.model';
 
 interface Props {
   open: boolean;
@@ -91,7 +91,7 @@ export const CatalogoMateriasModal: React.FC<Props> = ({
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0, fontSize: 13 }}>
-          Aquí se gestionan las materias disponibles para todo el colegio. Luego podrás asignarlas
+          Aquí se gestionan las materias y áreas formativas disponibles para todo el colegio. Luego podrás asignarlas
           a los cursos correspondientes.
         </Typography.Paragraph>
 
@@ -105,7 +105,7 @@ export const CatalogoMateriasModal: React.FC<Props> = ({
           }}
         >
           <Typography.Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
-            Nueva Materia
+            Nueva Materia o Área Formativa
           </Typography.Text>
           <Space.Compact style={{ width: '100%' }}>
             <Input
@@ -124,6 +124,27 @@ export const CatalogoMateriasModal: React.FC<Props> = ({
               Agregar
             </Button>
           </Space.Compact>
+
+          {/* Sugerencias de Áreas Formativas / Conducta */}
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Typography.Text type="secondary" style={{ fontSize: 11.5 }}>
+              Áreas formativas del boletín:
+            </Typography.Text>
+            <Tag
+              color="cyan"
+              style={{ cursor: 'pointer', borderRadius: 4, fontSize: 11, fontWeight: 600 }}
+              onClick={() => setNuevoNombre('Trabajo en el Aula')}
+            >
+              + Trabajo en el Aula
+            </Tag>
+            <Tag
+              color="cyan"
+              style={{ cursor: 'pointer', borderRadius: 4, fontSize: 11, fontWeight: 600 }}
+              onClick={() => setNuevoNombre('Convivencia')}
+            >
+              + Convivencia
+            </Tag>
+          </div>
         </div>
 
         {/* Buscador */}
@@ -157,6 +178,11 @@ export const CatalogoMateriasModal: React.FC<Props> = ({
                       #{idx + 1}
                     </Typography.Text>
                     <Typography.Text strong>{materia.nombre}</Typography.Text>
+                    {esMateriaConducta(materia.nombre) && (
+                      <Tag color="cyan" style={{ fontSize: 10, padding: '0 4px', borderRadius: 4, fontWeight: 600 }}>
+                        Formativa
+                      </Tag>
+                    )}
                   </Space>
                 </List.Item>
               )}

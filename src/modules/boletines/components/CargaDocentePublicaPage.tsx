@@ -214,51 +214,128 @@ export const CargaDocentePublicaPage: React.FC = () => {
         }}
         bodyStyle={{ padding: '18px 24px' }}
       >
-        <Row justify="space-between" align="middle" gutter={[16, 12]}>
-          <Col xs={24} md={16}>
-            <Space size={8} align="center" style={{ marginBottom: 4 }}>
-              <CheckCircleFilled style={{ color: '#6ee7b7', fontSize: 16 }} />
-              <Text style={{ color: '#bfdbfe', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                Acceso Docente Autorizado
-              </Text>
-            </Space>
-            <Title level={3} style={{ color: '#ffffff', margin: 0, letterSpacing: '-0.3px' }}>
-              {tokenData.docenteNombre}
-            </Title>
-            <Text style={{ color: '#e0e7ff', fontSize: 13.5, fontWeight: 500 }}>
-              Carga de boletín
-            </Text>
+        <Row justify="space-between" align="middle" gutter={[16, 16]}>
+          <Col xs={24} lg={13}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 14,
+                  background: '#ffffff',
+                  padding: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+                  flexShrink: 0,
+                }}
+              >
+                <img
+                  src="/isotype.png"
+                  alt="Colegio Crecer y Ser"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                />
+              </div>
+
+              <div>
+                <Space size={6} align="center" style={{ marginBottom: 2 }}>
+                  <CheckCircleFilled style={{ color: '#6ee7b7', fontSize: 13 }} />
+                  <Text style={{ color: '#bfdbfe', fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    Colegio Crecer y Ser • Acceso Docente
+                  </Text>
+                </Space>
+                <Title level={3} style={{ color: '#ffffff', margin: 0, letterSpacing: '-0.3px', fontSize: 22, fontWeight: 700 }}>
+                  {tokenData.docenteNombre}
+                </Title>
+                <Text style={{ color: '#e0e7ff', fontSize: 13.5, fontWeight: 500 }}>
+                  Carga de boletín
+                </Text>
+              </div>
+            </div>
           </Col>
 
-          <Col xs={24} md={8} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Col xs={24} lg={11} style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
               {curso && (
-                <Tag style={{ background: 'rgba(255, 255, 255, 0.22)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.35)', fontSize: 13, padding: '5px 12px', borderRadius: 8, fontWeight: 700 }}>
-                  <UserOutlined style={{ marginRight: 5 }} />
-                  {curso.nombre} ({curso.turno})
+                <Tag
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.22)',
+                    color: '#ffffff',
+                    border: '1.5px solid rgba(255, 255, 255, 0.4)',
+                    fontSize: 14.5,
+                    padding: '6px 14px',
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    margin: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <UserOutlined style={{ fontSize: 15 }} />
+                  <span>{curso.nombre} ({curso.turno})</span>
                 </Tag>
               )}
               {periodo && (
-                <Tag style={{ background: 'rgba(255, 255, 255, 0.22)', color: '#ffffff', border: '1px solid rgba(255, 255, 255, 0.35)', fontSize: 13, padding: '5px 12px', borderRadius: 8, fontWeight: 700 }}>
-                  <CalendarOutlined style={{ marginRight: 5 }} />
-                  {periodo.nombre}
+                <Tag
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.22)',
+                    color: '#ffffff',
+                    border: '1.5px solid rgba(255, 255, 255, 0.4)',
+                    fontSize: 14.5,
+                    padding: '6px 14px',
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    margin: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <CalendarOutlined style={{ fontSize: 15 }} />
+                  <span>{periodo.nombre}</span>
                 </Tag>
               )}
               {tokenData.materiaNombre && (
-                <Tag style={{ background: '#10b981', color: '#ffffff', border: 'none', fontSize: 13, padding: '5px 12px', borderRadius: 8, fontWeight: 700 }}>
-                  <BookOutlined style={{ marginRight: 5 }} />
-                  {tokenData.materiaNombre}
+                <Tag
+                  style={{
+                    background: '#10b981',
+                    color: '#ffffff',
+                    border: '1.5px solid #34d399',
+                    fontSize: 14.5,
+                    padding: '6px 14px',
+                    borderRadius: 10,
+                    fontWeight: 700,
+                    margin: 0,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  <BookOutlined style={{ fontSize: 15 }} />
+                  <span>{tokenData.materiaNombre}</span>
                 </Tag>
               )}
             </div>
 
             <Tooltip title="Actualizar datos">
               <Button
-                icon={<ReloadOutlined style={{ color: '#ffffff' }} />}
+                icon={<ReloadOutlined style={{ color: '#ffffff', fontSize: 15 }} />}
                 type="text"
                 onClick={() => setReloadCounter((c) => c + 1)}
                 loading={loadingData}
-                style={{ background: 'rgba(255, 255, 255, 0.2)', borderRadius: 8 }}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.22)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.35)',
+                  borderRadius: 10,
+                  height: 38,
+                  width: 38,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
               />
             </Tooltip>
           </Col>

@@ -87,7 +87,7 @@ export const alumnoService = {
           sort: '-created',
         });
 
-        const inscMap = new Map<string, { curso_id?: string; estado?: string; expand?: { curso_id?: { id: string; nombre: string; turno: string; expand?: { nivel_id?: { nombre: string } } } } }>();
+        const inscMap = new Map<string, any>();
         for (const insc of inscripciones) {
           const current = inscMap.get(insc.alumno_id);
           if (!current || (current.estado !== 'Regular' && insc.estado === 'Regular')) {
@@ -105,6 +105,12 @@ export const alumnoService = {
               item.nivelNombre = cursoExp?.expand?.nivel_id?.nombre;
               item.turno = cursoExp?.turno;
               item.estadoInscripcion = insc.estado;
+              item.fechaEgreso = insc.fecha_egreso || undefined;
+              item.fechaIngreso = insc.fecha_ingreso || undefined;
+              item.numeroOrden = insc.numero_orden ?? null;
+              item.numeroInscripcion = insc.numero_inscripcion || undefined;
+              item.inscripcionId = insc.id || undefined;
+              item.cicloId = insc.ciclo_id || undefined;
             }
           }
         }
@@ -296,6 +302,116 @@ export const alumnoService = {
 
     const record = await pb.collection(COLLECTION_NAME).update<AlumnoRecord>(id, data);
     return alumnoAdapter(record);
+  },
+
+  /**
+   * Actualiza integralmente al alumno y su inscripción activa al curso.
+   */
+  updateIntegral: async (
+    id: string,
+    params: {
+      alumno: Partial<Omit<AlumnoRecord, 'id' | 'created' | 'updated'>>;
+      inscripcion?: {
+        id?: string;
+        curso_id?: string;
+        ciclo_id?: string;
+        numero_orden?: number;
+        numero_inscripcion?: string;
+        fecha_inscripcion?: string;
+        fecha_ingreso?: string;
+        fecha_egreso?: string;
+        estado?: EstadoInscripcion;
+      };
+    },
+    originalUpdatedDate: string
+  ): Promise<Alumno> => {
+    // 1. Chequeo OCC y actualización del registro de alumno
+    const currentRecord = await pb.collection(COLLECTION_NAME).getOne(id, { fields: 'updated' });
+    if (currentRecord.updated !== originalUpdatedDate) {
+      throw new Error('El registro fue modificado por otro usuario. Por favor, refresca los datos.');
+    }
+
+    await pb.collection(COLLECTION_NAME).update<AlumnoRecord>(id, params.alumno);
+
+    // 2. Actualizar o crear inscripción si se incluyeron datos
+    if (params.inscripcion && (params.inscripcion.curso_id || params.inscripcion.estado)) {
+      let targetInscId = params.inscripcion.id;
+      if (!targetInscId) {
+        try {
+          const list = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList({
+            filter: `alumno_id = "${id}"`,
+            sort: '-created',
+          });
+          const active = list.find((i) => i.estado === 'Regular') || list[0];
+          if (active) targetInscId = active.id;
+        } catch {
+          // Ignorar
+        }
+      }
+
+      if (targetInscId) {
+        await pb.collection(COLLECTION_INSCRIPCIONES).update(targetInscId, {
+          ...(params.inscripcion.curso_id ? { curso_id: params.inscripcion.curso_id } : {}),
+          ...(params.inscripcion.ciclo_id ? { ciclo_id: params.inscripcion.ciclo_id } : {}),
+          numero_orden: params.inscripcion.numero_orden || null,
+          numero_inscripcion: params.inscripcion.numero_inscripcion || '',
+          fecha_inscripcion: params.inscripcion.fecha_inscripcion || '',
+          fecha_ingreso: params.inscripcion.fecha_ingreso || '',
+          fecha_egreso: params.inscripcion.fecha_egreso || '',
+          estado: params.inscripcion.estado || 'Regular',
+        });
+      } else if (params.inscripcion.curso_id && params.inscripcion.ciclo_id) {
+        await pb.collection(COLLECTION_INSCRIPCIONES).create({
+          alumno_id: id,
+          curso_id: params.inscripcion.curso_id,
+          ciclo_id: params.inscripcion.ciclo_id,
+          numero_orden: params.inscripcion.numero_orden || null,
+          numero_inscripcion: params.inscripcion.numero_inscripcion || '',
+          fecha_inscripcion: params.inscripcion.fecha_inscripcion || '',
+          fecha_ingreso: params.inscripcion.fecha_ingreso || '',
+          fecha_egreso: params.inscripcion.fecha_egreso || '',
+          estado: params.inscripcion.estado || 'Regular',
+        });
+      }
+    }
+
+    // 3. Obtener el alumno actualizado con su información expandida
+    const fullUpdated = await pb.collection(COLLECTION_NAME).getOne<AlumnoRecord>(id, {
+      expand: 'inscripciones_via_alumno_id.curso_id.nivel_id',
+    });
+
+    return alumnoAdapter(fullUpdated);
+  },
+
+  /**
+   * Registra la baja de un estudiante asociando la fecha de egreso en su inscripción activa.
+   */
+  darDeBaja: async (alumnoId: string, fechaEgreso: string, inscripcionId?: string): Promise<void> => {
+    let targetInscId = inscripcionId;
+
+    if (!targetInscId) {
+      try {
+        const inscripciones = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList({
+          filter: `alumno_id = "${alumnoId}"`,
+          sort: '-created',
+        });
+        const active = inscripciones.find((i) => i.estado === 'Regular') || inscripciones[0];
+        if (active) {
+          targetInscId = active.id;
+        }
+      } catch (e) {
+        console.error('Error al buscar inscripción activa del alumno para baja:', e);
+      }
+    }
+
+    if (targetInscId) {
+      await pb.collection(COLLECTION_INSCRIPCIONES).update(targetInscId, {
+        estado: 'Baja',
+        fecha_egreso: fechaEgreso,
+      });
+    } else {
+      throw new Error('No se encontró una inscripción activa para registrar la baja del estudiante.');
+    }
   },
 
   delete: async (id: string): Promise<boolean> => {

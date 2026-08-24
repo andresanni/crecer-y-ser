@@ -18,7 +18,9 @@ import {
   LinkOutlined,
   CalendarOutlined,
   IdcardOutlined,
+  TableOutlined,
 } from '@ant-design/icons';
+import { useSearchParams } from 'react-router-dom';
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
 import { GestorEnlacesModal } from './GestorEnlacesModal';
@@ -36,12 +38,15 @@ const { Title, Text } = Typography;
 export const PlanillaCalificacionesPage: React.FC = () => {
   const { message } = App.useApp();
   const { cicloActual } = useAppStore();
+  const [searchParams] = useSearchParams();
+  const urlCursoId = searchParams.get('curso');
+  const urlPeriodoId = searchParams.get('periodo');
 
   // Estados de Contexto y Filtros
   const [cursos, setCursos] = useState<Curso[]>([]);
-  const [selectedCursoId, setSelectedCursoId] = useState<string | null>(null);
+  const [selectedCursoId, setSelectedCursoId] = useState<string | null>(urlCursoId);
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
-  const [selectedPeriodoId, setSelectedPeriodoId] = useState<string | null>(null);
+  const [selectedPeriodoId, setSelectedPeriodoId] = useState<string | null>(urlPeriodoId);
 
   // Datos del Curso activo
   const [cursoMaterias, setCursoMaterias] = useState<CursoMateria[]>([]);
@@ -67,7 +72,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
         if (!active) return;
         setCursos(data);
         if (data.length > 0) {
-          setSelectedCursoId((prev) => prev || data[0].id);
+          setSelectedCursoId((prev) => prev || urlCursoId || data[0].id);
         }
       } catch (err) {
         console.error(err);
@@ -80,7 +85,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [message, reloadCounter]);
+  }, [message, reloadCounter, urlCursoId]);
 
   // 2. Cargar Períodos del Ciclo Activo
   useEffect(() => {
@@ -93,7 +98,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
         if (!active) return;
         setPeriodos(data);
         if (data.length > 0) {
-          setSelectedPeriodoId((prev) => prev || data[0].id);
+          setSelectedPeriodoId((prev) => prev || urlPeriodoId || data[0].id);
         }
       } catch (err) {
         console.error(err);
@@ -170,13 +175,18 @@ export const PlanillaCalificacionesPage: React.FC = () => {
           gap: 12,
         }}
       >
-        <div>
-          <Title level={2} style={{ margin: 0 }}>
-            Planilla de Calificaciones y Boletines
-          </Title>
-          <Text type="secondary">
-            Carga y evaluación pedagógica integral por alumno con criterios oficiales, asistencia y apoyos.
-          </Text>
+        <div className="cys-page-header">
+          <div className="cys-page-header-icon">
+            <TableOutlined />
+          </div>
+          <div className="cys-page-header-content">
+            <Title level={2} className="cys-page-header-title">
+              Planilla de Calificaciones y Boletines
+            </Title>
+            <Text className="cys-page-header-subtitle">
+              Carga y evaluación pedagógica integral por alumno con criterios oficiales, asistencia y apoyos.
+            </Text>
+          </div>
         </div>
 
         <Space size="middle" wrap>

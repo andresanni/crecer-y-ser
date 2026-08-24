@@ -26,12 +26,9 @@ import {
   SearchOutlined,
   PhoneOutlined,
   MailOutlined,
-  CheckCircleOutlined,
-  UserAddOutlined,
   ReloadOutlined,
   BookOutlined,
   HomeOutlined,
-  KeyOutlined,
   LockOutlined,
   GlobalOutlined,
   SolutionOutlined,
@@ -123,8 +120,9 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('alumno');
 
-  // Observador reactivo de fecha de nacimiento usando Form.useWatch de Ant Design
+  // Observadores reactivos usando Form.useWatch de Ant Design
   const fechaNacimientoValue = Form.useWatch('fechaNacimiento', form);
+  const estadoInscripcionValue = Form.useWatch('estadoInscripcion', form);
 
   // Estados para cursos y ciclos lectivos
   const [cursos, setCursos] = useState<Curso[]>([]);
@@ -207,6 +205,13 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         domicilio: initialValues.domicilio,
         usuarioAcadeu: initialValues.usuarioAcadeu,
         claveAcadeu: initialValues.claveAcadeu,
+        cursoId: initialValues.cursoId,
+        cicloId: initialValues.cicloId,
+        numeroOrden: initialValues.numeroOrden ?? undefined,
+        numeroInscripcion: initialValues.numeroInscripcion,
+        fechaIngreso: initialValues.fechaIngreso ? dayjs(initialValues.fechaIngreso) : null,
+        fechaEgreso: initialValues.fechaEgreso ? dayjs(initialValues.fechaEgreso) : null,
+        estadoInscripcion: (initialValues.estadoInscripcion as EstadoInscripcion) || 'Regular',
       });
     } else if (visible && !initialValues) {
       form.resetFields();
@@ -262,6 +267,16 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
     [form, lastSearchedDni, dniSearched]
   );
 
+  const handleValuesChange = (changedValues: Partial<AlumnoFormValues>) => {
+    if ('estadoInscripcion' in changedValues) {
+      if (changedValues.estadoInscripcion !== 'Baja') {
+        form.setFieldValue('fechaEgreso', null);
+      } else if (!form.getFieldValue('fechaEgreso')) {
+        form.setFieldValue('fechaEgreso', dayjs());
+      }
+    }
+  };
+
   const handleClearResponsable = () => {
     setExistingResponsable(null);
     setDniSearched(false);
@@ -311,16 +326,9 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
 
   // Render Pestaña 1: Datos del Alumno
   const renderTabAlumno = () => (
-    <div style={{ paddingTop: 8 }}>
-      <Space align="center" style={{ marginBottom: 16 }}>
-        <UserOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-        <Text strong style={{ fontSize: 15, color: '#1e293b', fontFamily: 'var(--font-heading)' }}>
-          Información Personal y Legajo
-        </Text>
-      </Space>
-
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
+    <div style={{ paddingTop: 4 }}>
+      <Row gutter={14}>
+        <Col xs={24} sm={12} md={7}>
           <Form.Item
             name="apellidos"
             label="Apellidos del Alumno"
@@ -329,7 +337,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Input prefix={<UserOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Pérez García" />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12}>
+        <Col xs={24} sm={12} md={7}>
           <Form.Item
             name="nombres"
             label="Nombres del Alumno"
@@ -338,10 +346,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Input prefix={<UserOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Mateo Valentín" />
           </Form.Item>
         </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col xs={24} sm={8}>
+        <Col xs={24} sm={12} md={5}>
           <Form.Item
             name="dni"
             label={
@@ -354,21 +359,31 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             }
             rules={[
               { required: true, message: 'Por favor ingrese el DNI' },
-              { pattern: /^[0-9]+$/, message: 'Solo se permiten números sin puntos' },
+              { pattern: /^[0-9]+$/, message: 'Solo números sin puntos' },
             ]}
           >
             <Input prefix={<IdcardOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. 45123890" maxLength={10} />
           </Form.Item>
         </Col>
+        <Col xs={24} sm={12} md={5}>
+          <Form.Item
+            name="numeroLegajo"
+            label="Nº de Legajo"
+          >
+            <Input prefix={<IdcardOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. 2026-001" />
+          </Form.Item>
+        </Col>
+      </Row>
 
-        <Col xs={24} sm={10}>
+      <Row gutter={14}>
+        <Col xs={24} sm={12} md={7}>
           <Form.Item
             name="fechaNacimiento"
             label={
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 6 }}>
                 <span>Fecha de Nacimiento</span>
                 {edadCalculada !== null && (
-                  <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 600 }}>
+                  <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 600, fontSize: 11, padding: '0 5px' }}>
                     {edadCalculada} {edadCalculada === 1 ? 'año' : 'años'}
                   </Tag>
                 )}
@@ -384,73 +399,35 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             />
           </Form.Item>
         </Col>
-
-        <Col xs={24} sm={6}>
-          <Form.Item
-            name="numeroLegajo"
-            label={
-              <span>
-                Legajo{' '}
-                <Text type="secondary" style={{ fontSize: 11 }}>
-                  (Opcional)
-                </Text>
-              </span>
-            }
-          >
-            <Input prefix={<IdcardOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. 2026-001" />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
-          <Form.Item name="nacionalidad" label="Nacionalidad">
-            <Input prefix={<GlobalOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Argentina" />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
+        <Col xs={24} sm={12} md={5}>
           <Form.Item name="sexo" label="Sexo">
             <Select placeholder="Seleccione sexo" options={SEXO_OPTIONS} />
           </Form.Item>
         </Col>
-      </Row>
-
-      {/* Sección Contacto y Domicilio */}
-      <Space align="center" style={{ marginTop: 12, marginBottom: 12 }}>
-        <HomeOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-        <Text strong style={{ fontSize: 14, color: '#1e293b' }}>
-          Contacto y Ubicación
-        </Text>
-      </Space>
-
-      <Row gutter={16}>
-        <Col xs={24} sm={10}>
-          <Form.Item name="telefono" label="Teléfono del Alumno">
+        <Col xs={24} sm={12} md={6}>
+          <Form.Item name="nacionalidad" label="Nacionalidad">
+            <Input prefix={<GlobalOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Argentina" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Form.Item name="telefono" label="Teléfono">
             <Input prefix={<PhoneOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. +54 9 11 1234-5678" />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={14}>
+      </Row>
+
+      <Row gutter={14}>
+        <Col xs={24} md={12}>
           <Form.Item name="domicilio" label="Domicilio">
             <Input prefix={<HomeOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Av. San Martín 1234, CABA" />
           </Form.Item>
         </Col>
-      </Row>
-
-      {/* Sección Credenciales Acadeu */}
-      <Space align="center" style={{ marginTop: 12, marginBottom: 12 }}>
-        <KeyOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-        <Text strong style={{ fontSize: 14, color: '#1e293b' }}>
-          Credenciales Institucionales (Acadeu)
-        </Text>
-      </Space>
-
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
+        <Col xs={24} sm={12} md={6}>
           <Form.Item name="usuarioAcadeu" label="Usuario Acadeu">
             <Input prefix={<UserOutlined style={{ color: '#2563eb' }} />} placeholder="Ej. alumno.perez" />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12}>
+        <Col xs={24} sm={12} md={6}>
           <Form.Item name="claveAcadeu" label="Clave Acadeu">
             <Input.Password prefix={<LockOutlined style={{ color: '#2563eb' }} />} placeholder="Contraseña de acceso" />
           </Form.Item>
@@ -461,22 +438,15 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
 
   // Render Pestaña 2: Inscripción y Curso (solo en alta)
   const renderTabInscripcion = () => (
-    <div style={{ paddingTop: 8 }}>
-      <Space align="center" style={{ marginBottom: 16 }}>
-        <BookOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-        <Text strong style={{ fontSize: 15, color: '#1e293b', fontFamily: 'var(--font-heading)' }}>
-          Matrícula y Asignación de Curso
-        </Text>
-      </Space>
-
+    <div style={{ paddingTop: 4 }}>
       {loadingMetadata ? (
         <div style={{ textAlign: 'center', padding: '30px 0' }}>
           <Spin tip="Cargando cursos y ciclos lectivos disponibles..." />
         </div>
       ) : (
         <>
-          <Row gutter={16}>
-            <Col xs={24} sm={14}>
+          <Row gutter={14}>
+            <Col xs={24} sm={12} md={10}>
               <Form.Item
                 name="cursoId"
                 label="Curso a Asignar"
@@ -494,7 +464,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={10}>
+            <Col xs={24} sm={12} md={7}>
               <Form.Item
                 name="cicloId"
                 label={
@@ -516,37 +486,60 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
                 />
               </Form.Item>
             </Col>
-          </Row>
 
-          <Row gutter={16}>
-            <Col xs={24} sm={8}>
-              <Form.Item name="numeroOrden" label="Nº de Orden">
-                <InputNumber min={1} max={999} style={{ width: '100%' }} placeholder="Ej. 15" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={8}>
-              <Form.Item name="numeroInscripcion" label="Nº de Inscripción">
-                <Input placeholder="Ej. MAT-2026-045" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={8}>
+            <Col xs={24} sm={12} md={7}>
               <Form.Item name="estadoInscripcion" label="Estado de Cursada">
                 <Select options={ESTADO_INSCRIPCION_OPTIONS} defaultValue="Regular" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="fechaInscripcion" label="Fecha de Inscripción">
+          {estadoInscripcionValue === 'Baja' && (
+            <Alert
+              type="error"
+              showIcon
+              style={{ marginBottom: 14, borderRadius: 8 }}
+              message="Estudiante en Estado de Baja"
+              description="Indique la fecha de egreso/retiro del alumno de la institución. Este campo es obligatorio para mantener la trazabilidad de bajas escolares."
+            />
+          )}
+
+          <Row gutter={14}>
+            <Col xs={24} sm={12} md={estadoInscripcionValue === 'Baja' ? 4 : 5}>
+              <Form.Item name="numeroOrden" label="Nº de Orden">
+                <InputNumber min={1} max={999} style={{ width: '100%' }} placeholder="Ej. 15" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={estadoInscripcionValue === 'Baja' ? 5 : 7}>
+              <Form.Item name="numeroInscripcion" label="Nº de Inscripción">
+                <Input placeholder="Ej. MAT-2026-045" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={estadoInscripcionValue === 'Baja' ? 5 : 6}>
+              <Form.Item name="fechaInscripcion" label="Fecha Inscripción">
                 <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="DD/MM/AAAA" />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="fechaIngreso" label="Fecha de Ingreso">
+            <Col xs={24} sm={12} md={estadoInscripcionValue === 'Baja' ? 5 : 6}>
+              <Form.Item name="fechaIngreso" label="Fecha Ingreso">
                 <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="DD/MM/AAAA" />
               </Form.Item>
             </Col>
+            {estadoInscripcionValue === 'Baja' && (
+              <Col xs={24} sm={12} md={5}>
+                <Form.Item
+                  name="fechaEgreso"
+                  label={<span style={{ color: '#dc2626', fontWeight: 600 }}>Fecha Egreso / Baja *</span>}
+                  rules={[{ required: true, message: 'La fecha de baja es obligatoria' }]}
+                >
+                  <DatePicker
+                    format="DD/MM/YYYY"
+                    style={{ width: '100%', borderColor: '#ef4444' }}
+                    placeholder="DD/MM/AAAA"
+                  />
+                </Form.Item>
+              </Col>
+            )}
           </Row>
         </>
       )}
@@ -555,32 +548,13 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
 
   // Render Pestaña 3: Responsable y Vínculo (solo en alta)
   const renderTabResponsable = () => (
-    <div style={{ paddingTop: 8 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <Space align="center">
-          <TeamOutlined style={{ color: '#2563eb', fontSize: 16 }} />
-          <Text strong style={{ fontSize: 15, color: '#1e293b', fontFamily: 'var(--font-heading)' }}>
-            Datos del Responsable o Tutor Legal
-          </Text>
-        </Space>
-
-        {existingResponsable ? (
-          <Tag color="success" icon={<CheckCircleOutlined />}>
-            Responsable Existente Reutilizado
-          </Tag>
-        ) : dniSearched ? (
-          <Tag color="processing" icon={<UserAddOutlined />}>
-            Nuevo Responsable
-          </Tag>
-        ) : null}
-      </div>
-
+    <div style={{ paddingTop: 4 }}>
       {/* Alertas de DNI encontrado / no encontrado */}
       {existingResponsable && (
         <Alert
           type="success"
           showIcon
-          style={{ marginBottom: 16, borderRadius: 10 }}
+          style={{ marginBottom: 12, borderRadius: 10 }}
           message={
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <span>
@@ -602,14 +576,14 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         <Alert
           type="info"
           showIcon
-          style={{ marginBottom: 16, borderRadius: 10 }}
+          style={{ marginBottom: 12, borderRadius: 10 }}
           message="DNI no registrado previamente"
           description="Complete los datos a continuación para registrar al responsable y asociarlo al estudiante."
         />
       )}
 
-      <Row gutter={16}>
-        <Col xs={24} sm={14}>
+      <Row gutter={14}>
+        <Col xs={24} sm={12} md={9}>
           <Form.Item
             name="responsableDni"
             label={
@@ -647,7 +621,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
           </Form.Item>
         </Col>
 
-        <Col xs={24} sm={10}>
+        <Col xs={24} sm={12} md={7}>
           <Form.Item
             name="vinculo"
             label="Vínculo / Parentesco"
@@ -656,10 +630,20 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Select placeholder="Ej. Madre, Padre, Tutor" options={VINCULO_OPTIONS} allowClear showSearch />
           </Form.Item>
         </Col>
+
+        <Col xs={24} sm={12} md={8}>
+          <Form.Item name="responsableTelefono" label="Teléfono de Contacto">
+            <Input
+              prefix={<PhoneOutlined style={{ color: '#2563eb' }} />}
+              placeholder="Ej. +54 9 11 1234-5678"
+              disabled={Boolean(existingResponsable)}
+            />
+          </Form.Item>
+        </Col>
       </Row>
 
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
+      <Row gutter={14}>
+        <Col xs={24} sm={12} md={8}>
           <Form.Item
             name="responsableApellidos"
             label="Apellidos del Responsable"
@@ -672,7 +656,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12}>
+        <Col xs={24} sm={12} md={8}>
           <Form.Item
             name="responsableNombres"
             label="Nombres del Responsable"
@@ -685,40 +669,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             />
           </Form.Item>
         </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
-          <Form.Item name="responsableNacionalidad" label="Nacionalidad">
-            <Input
-              prefix={<GlobalOutlined style={{ color: '#2563eb' }} />}
-              placeholder="Ej. Argentina"
-              disabled={Boolean(existingResponsable)}
-            />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Form.Item name="responsableProfesion" label="Profesión u Ocupación">
-            <Input
-              prefix={<SolutionOutlined style={{ color: '#2563eb' }} />}
-              placeholder="Ej. Docente, Empleado/a"
-              disabled={Boolean(existingResponsable)}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
-          <Form.Item name="responsableTelefono" label="Teléfono de Contacto">
-            <Input
-              prefix={<PhoneOutlined style={{ color: '#2563eb' }} />}
-              placeholder="Ej. +54 9 11 1234-5678"
-              disabled={Boolean(existingResponsable)}
-            />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12}>
+        <Col xs={24} sm={12} md={8}>
           <Form.Item
             name="responsableEmail"
             label="Correo Electrónico"
@@ -727,6 +678,27 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Input
               prefix={<MailOutlined style={{ color: '#2563eb' }} />}
               placeholder="Ej. laura.garcia@email.com"
+              disabled={Boolean(existingResponsable)}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={14}>
+        <Col xs={24} sm={12} md={12}>
+          <Form.Item name="responsableNacionalidad" label="Nacionalidad">
+            <Input
+              prefix={<GlobalOutlined style={{ color: '#2563eb' }} />}
+              placeholder="Ej. Argentina"
+              disabled={Boolean(existingResponsable)}
+            />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12} md={12}>
+          <Form.Item name="responsableProfesion" label="Profesión u Ocupación">
+            <Input
+              prefix={<SolutionOutlined style={{ color: '#2563eb' }} />}
+              placeholder="Ej. Docente, Empleado/a"
               disabled={Boolean(existingResponsable)}
             />
           </Form.Item>
@@ -746,18 +718,18 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       ),
       children: renderTabAlumno(),
     },
+    {
+      key: 'inscripcion',
+      label: (
+        <span>
+          <BookOutlined />
+          2. Inscripción y Cursada
+        </span>
+      ),
+      children: renderTabInscripcion(),
+    },
     ...(!isEditing
       ? [
-          {
-            key: 'inscripcion',
-            label: (
-              <span>
-                <BookOutlined />
-                2. Inscripción y Curso
-              </span>
-            ),
-            children: renderTabInscripcion(),
-          },
           {
             key: 'responsable',
             label: (
@@ -775,6 +747,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
   return (
     <Modal
       open={visible}
+      style={{ top: 12 }}
       title={
         <div style={{ paddingBottom: 4 }}>
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 700, color: '#0f172a' }}>
@@ -782,13 +755,13 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
           </span>
           <Text type="secondary" style={{ display: 'block', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
             {isEditing
-              ? 'Actualice los datos personales y académicos del estudiante.'
+              ? 'Actualice los datos personales y de cursada del estudiante.'
               : 'Registre los datos del estudiante, su inscripción al curso y el responsable en un solo paso.'}
           </Text>
         </div>
       }
       className="form-modal"
-      width={780}
+      width={940}
       destroyOnClose
       onCancel={handleModalClose}
       footer={[
@@ -834,7 +807,8 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         form={form}
         layout="vertical"
         name="alumnoForm"
-        requiredMark="optional"
+        requiredMark={false}
+        onValuesChange={handleValuesChange}
         style={{ paddingTop: 4 }}
       >
         <Form.Item name="responsableId" hidden>

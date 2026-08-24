@@ -17,6 +17,12 @@ export interface AlumnoRecord {
     inscripciones_via_alumno_id?: Array<{
       id: string;
       curso_id: string;
+      ciclo_id?: string;
+      numero_orden?: number;
+      numero_inscripcion?: string;
+      fecha_inscripcion?: string;
+      fecha_ingreso?: string;
+      fecha_egreso?: string;
       estado: string;
       expand?: {
         curso_id?: {
@@ -52,12 +58,18 @@ export interface Alumno {
   nivelNombre?: string;
   turno?: string;
   estadoInscripcion?: string;
+  fechaEgreso?: string;
+  fechaIngreso?: string;
+  numeroOrden?: number | null;
+  numeroInscripcion?: string;
+  inscripcionId?: string;
+  cicloId?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export const alumnoAdapter = (record: AlumnoRecord): Alumno => {
-  // Extraer información de curso si viene expandida
+  // Extraer información de curso si viene expandida (preferir Regular o la más reciente)
   const activeInsc = record.expand?.inscripciones_via_alumno_id?.find(
     (i) => i.estado === 'Regular'
   ) || record.expand?.inscripciones_via_alumno_id?.[0];
@@ -82,6 +94,12 @@ export const alumnoAdapter = (record: AlumnoRecord): Alumno => {
     nivelNombre: cursoRecord?.expand?.nivel_id?.nombre || undefined,
     turno: cursoRecord?.turno || undefined,
     estadoInscripcion: activeInsc?.estado || undefined,
+    fechaEgreso: activeInsc?.fecha_egreso || undefined,
+    fechaIngreso: activeInsc?.fecha_ingreso || undefined,
+    numeroOrden: activeInsc?.numero_orden ?? null,
+    numeroInscripcion: activeInsc?.numero_inscripcion || undefined,
+    inscripcionId: activeInsc?.id || undefined,
+    cicloId: activeInsc?.ciclo_id || undefined,
     createdAt: record.created,
     updatedAt: record.updated,
   };

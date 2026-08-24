@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, List, Typography, Space, App, Tag, Empty, Spin, Button, Input, Checkbox } from 'antd';
 import { PlusOutlined, SearchOutlined, BookOutlined } from '@ant-design/icons';
 import { boletinService } from '../services/boletin.service';
-import type { Materia } from '../models/boletin.model';
+import { type Materia, esMateriaConducta } from '../models/boletin.model';
 
 interface Props {
   open: boolean;
@@ -101,7 +101,7 @@ export const MateriaSelectorModal: React.FC<Props> = ({
       width={560}
       destroyOnClose
       footer={[
-        <Button key="cancel" onClick={onClose}>
+        <Button key="cancel" onClick={onClose} disabled={saving}>
           Cancelar
         </Button>,
         <Button
@@ -111,17 +111,17 @@ export const MateriaSelectorModal: React.FC<Props> = ({
           loading={saving}
           disabled={selectedIds.length === 0}
         >
-          Agregar ({selectedIds.length})
+          Agregar Seleccionadas ({selectedIds.length})
         </Button>,
       ]}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            Selecciona una o más materias del catálogo para incorporarlas al plan de estudio:
+            Selecciona las materias o áreas formativas que deseas dictar en este curso:
           </Typography.Text>
           <Button
-            type="link"
+            type="dashed"
             size="small"
             icon={<BookOutlined />}
             onClick={() => {
@@ -162,6 +162,7 @@ export const MateriaSelectorModal: React.FC<Props> = ({
               dataSource={availableMaterias}
               renderItem={(materia) => {
                 const isChecked = selectedIds.includes(materia.id);
+                const esConducta = esMateriaConducta(materia.nombre);
                 return (
                   <List.Item
                     key={materia.id}
@@ -175,6 +176,11 @@ export const MateriaSelectorModal: React.FC<Props> = ({
                       <Space>
                         <Checkbox checked={isChecked} />
                         <Typography.Text strong={isChecked}>{materia.nombre}</Typography.Text>
+                        {esConducta && (
+                          <Tag color="cyan" style={{ fontSize: 10, padding: '0 4px', borderRadius: 4, fontWeight: 600 }}>
+                            Formativa
+                          </Tag>
+                        )}
                       </Space>
                       {isChecked && <Tag color="blue">Seleccionada</Tag>}
                     </Space>

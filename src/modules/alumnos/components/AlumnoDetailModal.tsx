@@ -14,6 +14,7 @@ import {
   Col,
   Tooltip,
   Popconfirm,
+  Alert,
 } from 'antd';
 import {
   UserOutlined,
@@ -28,11 +29,13 @@ import {
   MailOutlined,
   GlobalOutlined,
   CheckCircleOutlined,
+  CloseCircleOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
   ManOutlined,
   WomanOutlined,
   DeleteOutlined,
+  UserDeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
@@ -49,6 +52,7 @@ interface AlumnoDetailModalProps {
   onClose: () => void;
   onEdit: (alumno: Alumno) => void;
   onDelete: (id: string) => void;
+  onBaja?: (alumno: Alumno) => void;
 }
 
 const getAvatarGradient = (str: string) => {
@@ -72,6 +76,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
   onClose,
   onEdit,
   onDelete,
+  onBaja,
 }) => {
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
   const [responsables, setResponsables] = useState<
@@ -126,6 +131,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
   if (!alumno) return null;
 
   const initials = `${alumno.apellidos.charAt(0)}${alumno.nombres.charAt(0)}`.toUpperCase();
+  const isBaja = alumno.estadoInscripcion === 'Baja';
 
   const tabItems = [
     {
@@ -368,6 +374,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
               {inscripciones.map((insc) => {
                 const isRegular = insc.estado === 'Regular';
                 const isLibre = insc.estado === 'Libre';
+                const isBajaInsc = insc.estado === 'Baja';
                 const statusColor = isRegular ? 'green' : isLibre ? 'orange' : 'red';
 
                 return (
@@ -375,10 +382,13 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                     key={insc.id}
                     className="detail-sub-card"
                     size="small"
+                    style={{
+                      borderTop: isBajaInsc ? '3px solid #ef4444' : undefined,
+                    }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                       <div>
-                        <Text strong style={{ fontSize: 16, color: '#0f172a' }}>
+                        <Text strong style={{ fontSize: 16, color: isBajaInsc ? '#b91c1c' : '#0f172a' }}>
                           {insc.cursoNombre || 'Curso no asignado'}
                         </Text>
                         {insc.nivelNombre && (
@@ -393,25 +403,25 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                     </div>
 
                     <Row gutter={[16, 12]}>
-                      <Col xs={12} sm={6}>
+                      <Col xs={12} sm={isBajaInsc ? 4 : 6}>
                         <div className="detail-data-tile">
                           <span className="detail-tile-label">CICLO LECTIVO</span>
                           <span className="detail-tile-value">{insc.cicloAno || '-'}</span>
                         </div>
                       </Col>
-                      <Col xs={12} sm={6}>
+                      <Col xs={12} sm={isBajaInsc ? 4 : 6}>
                         <div className="detail-data-tile">
                           <span className="detail-tile-label">Nº DE ORDEN</span>
                           <span className="detail-tile-value">{insc.numeroOrden ?? '-'}</span>
                         </div>
                       </Col>
-                      <Col xs={12} sm={6}>
+                      <Col xs={12} sm={isBajaInsc ? 4 : 6}>
                         <div className="detail-data-tile">
                           <span className="detail-tile-label">Nº INSCRIPCIÓN</span>
                           <span className="detail-tile-value">{insc.numeroInscripcion || '-'}</span>
                         </div>
                       </Col>
-                      <Col xs={12} sm={6}>
+                      <Col xs={12} sm={isBajaInsc ? 4 : 6}>
                         <div className="detail-data-tile">
                           <span className="detail-tile-label">FECHA DE INGRESO</span>
                           <span className="detail-tile-value">
@@ -419,6 +429,16 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                           </span>
                         </div>
                       </Col>
+                      {isBajaInsc && (
+                        <Col xs={12} sm={8}>
+                          <div className="detail-data-tile">
+                            <span className="detail-tile-label" style={{ color: '#dc2626' }}>FECHA DE BAJA / EGRESO</span>
+                            <span className="detail-tile-value" style={{ color: '#dc2626', fontWeight: 700 }}>
+                              {insc.fechaEgreso ? dayjs(insc.fechaEgreso).format('DD/MM/YYYY') : 'Sin fecha registrada'}
+                            </span>
+                          </div>
+                        </Col>
+                      )}
                     </Row>
                   </Card>
                 );
@@ -571,6 +591,20 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
             Eliminar Alumno
           </Button>
         </Popconfirm>,
+        !isBaja && onBaja ? (
+          <Button
+            key="baja"
+            danger
+            icon={<UserDeleteOutlined />}
+            style={{ borderRadius: 10, fontWeight: 600 }}
+            onClick={() => {
+              handleModalClose();
+              onBaja(alumno);
+            }}
+          >
+            Dar de Baja
+          </Button>
+        ) : null,
         <Button key="close" size="large" onClick={handleModalClose} style={{ borderRadius: 10, fontWeight: 600 }}>
           Cerrar
         </Button>,
@@ -597,10 +631,14 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
         <Avatar
           size={64}
           style={{
-            background: getAvatarGradient(alumno.apellidos + alumno.nombres),
+            background: isBaja
+              ? 'linear-gradient(135deg, #ef4444, #991b1b)'
+              : getAvatarGradient(alumno.apellidos + alumno.nombres),
             fontSize: 22,
             fontWeight: 800,
-            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+            boxShadow: isBaja
+              ? '0 4px 14px rgba(239, 68, 68, 0.35)'
+              : '0 4px 14px rgba(37, 99, 235, 0.25)',
             border: '2px solid #ffffff',
             flexShrink: 0,
           }}
@@ -609,7 +647,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
         </Avatar>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-            <Title level={3} style={{ margin: 0, color: '#0f172a', letterSpacing: '-0.5px' }}>
+            <Title level={3} style={{ margin: 0, color: isBaja ? '#991b1b' : '#0f172a', letterSpacing: '-0.5px' }}>
               {alumno.apellidos}, {alumno.nombres}
             </Title>
             <Tag color="blue" style={{ borderRadius: 8, fontWeight: 700, fontSize: 13, padding: '2px 10px' }}>
@@ -644,12 +682,35 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                 <span>{alumno.nacionalidad}</span>
               </span>
             )}
-            <Tag color="success" icon={<CheckCircleOutlined />} style={{ borderRadius: 6, fontWeight: 600 }}>
-              Activo en Sistema
-            </Tag>
+            {isBaja ? (
+              <Tag
+                color="error"
+                icon={<CloseCircleOutlined />}
+                style={{ borderRadius: 6, fontWeight: 700, padding: '2px 8px' }}
+              >
+                Baja registrada {alumno.fechaEgreso ? `el ${dayjs(alumno.fechaEgreso).format('DD/MM/YYYY')}` : ''}
+              </Tag>
+            ) : (
+              <Tag color="success" icon={<CheckCircleOutlined />} style={{ borderRadius: 6, fontWeight: 600 }}>
+                {alumno.estadoInscripcion || 'Regular'}
+              </Tag>
+            )}
           </Space>
         </div>
       </div>
+
+      {/* Alerta si el estudiante está dado de baja */}
+      {isBaja && (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginTop: 14, borderRadius: 10 }}
+          message={<strong>Estudiante en Estado de Baja</strong>}
+          description={`Baja registrada oficialmente el ${
+            alumno.fechaEgreso ? dayjs(alumno.fechaEgreso).format('DD/MM/YYYY') : 'día correspondiente'
+          }. El alumno no forma parte de la cursada regular activa.`}
+        />
+      )}
 
       {/* Tabs con toda la información desglosada */}
       <Tabs defaultActiveKey="personales" items={tabItems} className="detail-tabs" />

@@ -571,13 +571,14 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                   <div style={{ flex: 1 }}>
                     <Input.TextArea
                       autoFocus
-                      rows={2}
+                      autoSize={{ minRows: 2, maxRows: 4 }}
                       placeholder={`Redacte el Criterio #${criterio.orden_visual} (Ej: Participación, comprensión, etc.)`}
                       value={criterio.nombre}
                       onChange={(e) => handleInputChange(index, e.target.value)}
-                      maxLength={180}
+                      maxLength={250}
+                      showCount
                       disabled={saving}
-                      style={{ resize: 'none', borderRadius: 6 }}
+                      style={{ borderRadius: 6, marginBottom: 4 }}
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
                       <Tag color="processing" style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
