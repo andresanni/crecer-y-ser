@@ -14,6 +14,7 @@ import {
   Space,
   Tag,
   Tabs,
+  Steps,
   InputNumber,
   Spin,
 } from 'antd';
@@ -34,6 +35,8 @@ import {
   SolutionOutlined,
   RightOutlined,
   LeftOutlined,
+  CheckOutlined,
+  UserAddOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
@@ -85,6 +88,7 @@ interface AlumnoFormModalProps {
   onClose: () => void;
   onSubmit: (values: AlumnoFormValues, originalUpdatedDate?: string) => Promise<void>;
   initialValues?: Alumno | null;
+  initialTab?: string;
 }
 
 const VINCULO_OPTIONS = [
@@ -115,10 +119,19 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
   onClose,
   onSubmit,
   initialValues,
+  initialTab = 'alumno',
 }) => {
   const [form] = Form.useForm<AlumnoFormValues>();
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('alumno');
+  const [currentStep, setCurrentStep] = useState<number>(0);
+  const [activeEditTab, setActiveEditTab] = useState<string>(initialTab || 'alumno');
+
+  // Sincronizar activeEditTab cuando se pasa initialTab al abrir el modal
+  useEffect(() => {
+    if (visible && initialTab) {
+      setActiveEditTab(initialTab);
+    }
+  }, [visible, initialTab]);
 
   // Observadores reactivos usando Form.useWatch de Ant Design
   const fechaNacimientoValue = Form.useWatch('fechaNacimiento', form);
@@ -134,6 +147,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
   const [existingResponsable, setExistingResponsable] = useState<Responsable | null>(null);
   const [dniSearched, setDniSearched] = useState(false);
   const [lastSearchedDni, setLastSearchedDni] = useState('');
+  const [loadingResponsable, setLoadingResponsable] = useState(false);
 
   const isEditing = Boolean(initialValues);
 
@@ -213,8 +227,57 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         fechaEgreso: initialValues.fechaEgreso ? dayjs(initialValues.fechaEgreso) : null,
         estadoInscripcion: (initialValues.estadoInscripcion as EstadoInscripcion) || 'Regular',
       });
+
+      // Cargar el responsable vinculado del alumno
+      setLoadingResponsable(true);
+      responsableService
+        .getByAlumnoId(initialValues.id)
+        .then((responsables) => {
+          if (responsables && responsables.length > 0) {
+            const primary = responsables[0];
+            setExistingResponsable(primary.responsable);
+            setDniSearched(true);
+            setLastSearchedDni(primary.responsable.dni);
+            form.setFieldsValue({
+              responsableId: primary.responsable.id,
+              responsableDni: primary.responsable.dni,
+              responsableApellidos: primary.responsable.apellidos,
+              responsableNombres: primary.responsable.nombres,
+              responsableNacionalidad: primary.responsable.nacionalidad || 'Argentina',
+              responsableProfesion: primary.responsable.profesion || '',
+              responsableTelefono: primary.responsable.telefono || '',
+              responsableEmail: primary.responsable.email || '',
+              vinculo: primary.vinculo || 'Madre',
+            });
+          } else {
+            setExistingResponsable(null);
+            setDniSearched(false);
+            setLastSearchedDni('');
+            form.setFieldsValue({
+              responsableId: undefined,
+              responsableDni: '',
+              responsableApellidos: '',
+              responsableNombres: '',
+              responsableNacionalidad: 'Argentina',
+              responsableProfesion: '',
+              responsableTelefono: '',
+              responsableEmail: '',
+              vinculo: 'Madre',
+            });
+          }
+        })
+        .catch((err) => {
+          console.error('Error al cargar responsable vinculado:', err);
+        })
+        .finally(() => {
+          setLoadingResponsable(false);
+        });
     } else if (visible && !initialValues) {
       form.resetFields();
+      setExistingResponsable(null);
+      setDniSearched(false);
+      setLastSearchedDni('');
+      setLoadingResponsable(false);
     }
   }, [visible, initialValues, form]);
 
@@ -223,7 +286,8 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
     setExistingResponsable(null);
     setDniSearched(false);
     setLastSearchedDni('');
-    setActiveTab('alumno');
+    setCurrentStep(0);
+    setActiveEditTab('alumno');
     onClose();
   };
 
@@ -294,6 +358,51 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
     });
   };
 
+  // Validaciones por etapa en el asistente
+  const handleNextStep = async () => {
+    try {
+      if (currentStep === 0) {
+        await form.validateFields(['apellidos', 'nombres', 'dni', 'fechaNacimiento']);
+        setCurrentStep(1);
+      } else if (currentStep === 1) {
+        const fieldsToValidate = ['cursoId', 'cicloId'];
+        if (form.getFieldValue('estadoInscripcion') === 'Baja') {
+          fieldsToValidate.push('fechaEgreso');
+        }
+        await form.validateFields(fieldsToValidate);
+        setCurrentStep(2);
+      }
+    } catch (info) {
+      console.log('Validación de etapa fallida:', info);
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep((prev) => prev - 1);
+    }
+  };
+
+  const handleStepChange = async (targetStep: number) => {
+    if (targetStep < currentStep) {
+      setCurrentStep(targetStep);
+    } else if (targetStep === currentStep + 1) {
+      await handleNextStep();
+    } else if (targetStep === 2 && currentStep === 0) {
+      try {
+        await form.validateFields(['apellidos', 'nombres', 'dni', 'fechaNacimiento']);
+        const fieldsToValidate = ['cursoId', 'cicloId'];
+        if (form.getFieldValue('estadoInscripcion') === 'Baja') {
+          fieldsToValidate.push('fechaEgreso');
+        }
+        await form.validateFields(fieldsToValidate);
+        setCurrentStep(2);
+      } catch (info) {
+        console.log('Validación previa fallida:', info);
+      }
+    }
+  };
+
   const handleOk = () => {
     form
       .validateFields()
@@ -308,18 +417,27 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       })
       .catch((info) => {
         console.log('Validación fallida:', info);
-        // Si hay error en campos de otra pestaña, orientar al usuario
         const errorFields = info.errorFields || [];
         const alumnoFieldNames = ['dni', 'apellidos', 'nombres', 'fechaNacimiento'];
-        const inscripcionFieldNames = ['cursoId', 'cicloId'];
+        const inscripcionFieldNames = ['cursoId', 'cicloId', 'fechaEgreso'];
         const responsableFieldNames = ['responsableDni', 'responsableApellidos', 'responsableNombres', 'vinculo'];
 
-        if (errorFields.some((f: { name: string[] }) => alumnoFieldNames.includes(f.name[0]))) {
-          setActiveTab('alumno');
-        } else if (errorFields.some((f: { name: string[] }) => inscripcionFieldNames.includes(f.name[0]))) {
-          setActiveTab('inscripcion');
-        } else if (errorFields.some((f: { name: string[] }) => responsableFieldNames.includes(f.name[0]))) {
-          setActiveTab('responsable');
+        if (isEditing) {
+          if (errorFields.some((f: { name: string[] }) => alumnoFieldNames.includes(f.name[0]))) {
+            setActiveEditTab('alumno');
+          } else if (errorFields.some((f: { name: string[] }) => inscripcionFieldNames.includes(f.name[0]))) {
+            setActiveEditTab('inscripcion');
+          } else if (errorFields.some((f: { name: string[] }) => responsableFieldNames.includes(f.name[0]))) {
+            setActiveEditTab('responsable');
+          }
+        } else {
+          if (errorFields.some((f: { name: string[] }) => alumnoFieldNames.includes(f.name[0]))) {
+            setCurrentStep(0);
+          } else if (errorFields.some((f: { name: string[] }) => inscripcionFieldNames.includes(f.name[0]))) {
+            setCurrentStep(1);
+          } else if (errorFields.some((f: { name: string[] }) => responsableFieldNames.includes(f.name[0]))) {
+            setCurrentStep(2);
+          }
         }
       });
   };
@@ -327,6 +445,65 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
   // Render Pestaña 1: Datos del Alumno
   const renderTabAlumno = () => (
     <div style={{ paddingTop: 4 }}>
+      {/* Banner de Estado de Datos en Modo Edición */}
+      {isEditing && (
+        <div
+          style={{
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            padding: '8px 12px',
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Campos Registrados:
+            </Text>
+            <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+              DNI: {initialValues?.dni || 'Cargado'}
+            </Tag>
+            {initialValues?.telefono ? (
+              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Teléfono: {initialValues.telefono}
+              </Tag>
+            ) : (
+              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                ⚠️ Sin Teléfono
+              </Tag>
+            )}
+            {initialValues?.domicilio ? (
+              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Domicilio Cargado
+              </Tag>
+            ) : (
+              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                ⚠️ Sin Domicilio
+              </Tag>
+            )}
+            {initialValues?.usuarioAcadeu ? (
+              <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Acadeu: {initialValues.usuarioAcadeu}
+              </Tag>
+            ) : (
+              <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Sin usuario Acadeu
+              </Tag>
+            )}
+          </div>
+          {edadCalculada !== null && (
+            <Tag color="cyan" style={{ margin: 0, borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
+              {edadCalculada} {edadCalculada === 1 ? 'año' : 'años'}
+            </Tag>
+          )}
+        </div>
+      )}
+
       <Row gutter={14}>
         <Col xs={24} sm={12} md={7}>
           <Form.Item
@@ -436,9 +613,66 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
     </div>
   );
 
-  // Render Pestaña 2: Inscripción y Curso (solo en alta)
+  // Render Pestaña 2: Inscripción y Curso
   const renderTabInscripcion = () => (
     <div style={{ paddingTop: 4 }}>
+      {/* Banner de Estado de Cursada en Modo Edición */}
+      {isEditing && (
+        <div
+          style={{
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            padding: '8px 12px',
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Estado de Matrícula:
+            </Text>
+            {initialValues?.cursoNombre ? (
+              <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                {initialValues.cursoNombre} {initialValues.turno ? `(${initialValues.turno})` : ''}
+              </Tag>
+            ) : (
+              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                ⚠️ Sin Curso Asignado
+              </Tag>
+            )}
+            <Tag
+              color={initialValues?.estadoInscripcion === 'Baja' ? 'error' : 'success'}
+              style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+            >
+              Cursada: {initialValues?.estadoInscripcion || 'Regular'}
+            </Tag>
+            {initialValues?.numeroOrden ? (
+              <Tag color="purple" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Nº de Orden: #{initialValues.numeroOrden}
+              </Tag>
+            ) : (
+              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                ⚠️ Sin Nº de Orden
+              </Tag>
+            )}
+            {initialValues?.numeroInscripcion ? (
+              <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Matrícula: {initialValues.numeroInscripcion}
+              </Tag>
+            ) : (
+              <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Sin Matrícula
+              </Tag>
+            )}
+          </div>
+        </div>
+      )}
+
       {loadingMetadata ? (
         <div style={{ textAlign: 'center', padding: '30px 0' }}>
           <Spin tip="Cargando cursos y ciclos lectivos disponibles..." />
@@ -546,11 +780,74 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
     </div>
   );
 
-  // Render Pestaña 3: Responsable y Vínculo (solo en alta)
+  // Render Pestaña 3: Responsable y Vínculo
   const renderTabResponsable = () => (
     <div style={{ paddingTop: 4 }}>
-      {/* Alertas de DNI encontrado / no encontrado */}
-      {existingResponsable && (
+      {/* Loading de responsable en modo edición */}
+      {isEditing && loadingResponsable && (
+        <div style={{ textAlign: 'center', padding: '14px 0' }}>
+          <Spin tip="Cargando datos del responsable vinculado..." />
+        </div>
+      )}
+
+      {/* Banner de Estado de Datos del Responsable en Modo Edición */}
+      {isEditing && !loadingResponsable && (
+        <div
+          style={{
+            background: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            borderRadius: 10,
+            padding: '8px 12px',
+            marginBottom: 14,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Datos del Responsable:
+            </Text>
+            {form.getFieldValue('responsableDni') || existingResponsable?.dni ? (
+              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                DNI: {form.getFieldValue('responsableDni') || existingResponsable?.dni}
+              </Tag>
+            ) : (
+              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                ⚠️ Sin DNI
+              </Tag>
+            )}
+            {form.getFieldValue('responsableTelefono') || existingResponsable?.telefono ? (
+              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Teléfono Cargado
+              </Tag>
+            ) : (
+              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                ⚠️ Sin Teléfono
+              </Tag>
+            )}
+            {form.getFieldValue('responsableEmail') || existingResponsable?.email ? (
+              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Email Cargado
+              </Tag>
+            ) : (
+              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                ⚠️ Sin Email
+              </Tag>
+            )}
+            {form.getFieldValue('vinculo') && (
+              <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                Vínculo: {form.getFieldValue('vinculo')}
+              </Tag>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Alertas solo en Modo Alta (!isEditing) */}
+      {!isEditing && existingResponsable && (
         <Alert
           type="success"
           showIcon
@@ -561,7 +858,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
                 <strong>
                   {existingResponsable.apellidos}, {existingResponsable.nombres}
                 </strong>{' '}
-                (DNI: {existingResponsable.dni}) ya está registrado.
+                (DNI: {existingResponsable.dni}) ya está registrado en el sistema.
               </span>
               <Button size="small" icon={<ReloadOutlined />} onClick={handleClearResponsable}>
                 Buscar otro DNI
@@ -572,7 +869,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         />
       )}
 
-      {dniSearched && !existingResponsable && (
+      {!isEditing && dniSearched && !existingResponsable && (
         <Alert
           type="info"
           showIcon
@@ -583,45 +880,44 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       )}
 
       <Row gutter={14}>
-        <Col xs={24} sm={12} md={9}>
+        <Col xs={24} sm={12} md={isEditing ? 7 : 9}>
           <Form.Item
             name="responsableDni"
-            label={
-              <span>
-                DNI del Responsable{' '}
-                <Tooltip title="Ingrese el DNI y presione 'Buscar' para consultar la base">
-                  <QuestionCircleOutlined style={{ color: '#94a3b8', fontSize: 12 }} />
-                </Tooltip>
-              </span>
-            }
+            label="DNI del Responsable"
             rules={[
               { required: !isEditing, message: 'Por favor ingrese el DNI del responsable' },
               { pattern: /^[0-9]+$/, message: 'Solo números sin puntos' },
             ]}
           >
-            <Space.Compact style={{ width: '100%' }}>
+            {isEditing ? (
               <Input
                 prefix={<IdcardOutlined style={{ color: '#2563eb' }} />}
                 placeholder="Ej. 30123456"
                 maxLength={10}
-                onBlur={() => handleSearchResponsable()}
-                onPressEnter={() => handleSearchResponsable()}
-                disabled={Boolean(existingResponsable)}
               />
-              <Button
-                type="primary"
-                icon={<SearchOutlined />}
-                loading={searchingDni}
-                onClick={() => handleSearchResponsable()}
-                disabled={Boolean(existingResponsable)}
-              >
-                Buscar
-              </Button>
-            </Space.Compact>
+            ) : (
+              <Space.Compact style={{ width: '100%' }}>
+                <Input
+                  prefix={<IdcardOutlined style={{ color: '#2563eb' }} />}
+                  placeholder="Ej. 30123456"
+                  maxLength={10}
+                  onBlur={() => handleSearchResponsable()}
+                  onPressEnter={() => handleSearchResponsable()}
+                />
+                <Button
+                  type="primary"
+                  icon={<SearchOutlined />}
+                  loading={searchingDni}
+                  onClick={() => handleSearchResponsable()}
+                >
+                  Buscar
+                </Button>
+              </Space.Compact>
+            )}
           </Form.Item>
         </Col>
 
-        <Col xs={24} sm={12} md={7}>
+        <Col xs={24} sm={12} md={isEditing ? 8 : 7}>
           <Form.Item
             name="vinculo"
             label="Vínculo / Parentesco"
@@ -631,12 +927,11 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
           </Form.Item>
         </Col>
 
-        <Col xs={24} sm={12} md={8}>
+        <Col xs={24} sm={12} md={isEditing ? 9 : 8}>
           <Form.Item name="responsableTelefono" label="Teléfono de Contacto">
             <Input
               prefix={<PhoneOutlined style={{ color: '#2563eb' }} />}
               placeholder="Ej. +54 9 11 1234-5678"
-              disabled={Boolean(existingResponsable)}
             />
           </Form.Item>
         </Col>
@@ -652,7 +947,6 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Input
               prefix={<UserOutlined style={{ color: '#2563eb' }} />}
               placeholder="Ej. García"
-              disabled={Boolean(existingResponsable)}
             />
           </Form.Item>
         </Col>
@@ -665,7 +959,6 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Input
               prefix={<UserOutlined style={{ color: '#2563eb' }} />}
               placeholder="Ej. Laura Elena"
-              disabled={Boolean(existingResponsable)}
             />
           </Form.Item>
         </Col>
@@ -678,7 +971,6 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Input
               prefix={<MailOutlined style={{ color: '#2563eb' }} />}
               placeholder="Ej. laura.garcia@email.com"
-              disabled={Boolean(existingResponsable)}
             />
           </Form.Item>
         </Col>
@@ -690,7 +982,6 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Input
               prefix={<GlobalOutlined style={{ color: '#2563eb' }} />}
               placeholder="Ej. Argentina"
-              disabled={Boolean(existingResponsable)}
             />
           </Form.Item>
         </Col>
@@ -699,7 +990,6 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <Input
               prefix={<SolutionOutlined style={{ color: '#2563eb' }} />}
               placeholder="Ej. Docente, Empleado/a"
-              disabled={Boolean(existingResponsable)}
             />
           </Form.Item>
         </Col>
@@ -707,41 +997,69 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
     </div>
   );
 
-  const tabItems = [
+  // Tabs para modo edición con subtítulos de estado verticalizados
+  const editTabItems = [
     {
       key: 'alumno',
       label: (
-        <span>
-          <UserOutlined />
-          1. Datos del Alumno
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+            <UserOutlined style={{ fontSize: 13.5 }} />
+            <span>1. Datos del Alumno</span>
+          </span>
+          <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, marginTop: 2, paddingLeft: 19 }}>
+            ✓ Ficha Completa
+          </span>
+        </div>
       ),
       children: renderTabAlumno(),
     },
     {
       key: 'inscripcion',
       label: (
-        <span>
-          <BookOutlined />
-          2. Inscripción y Cursada
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+            <BookOutlined style={{ fontSize: 13.5 }} />
+            <span>2. Inscripción y Cursada</span>
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              marginTop: 2,
+              paddingLeft: 19,
+              color: initialValues?.cursoNombre ? '#2563eb' : '#d97706',
+            }}
+          >
+            {initialValues?.cursoNombre ? `• ${initialValues.cursoNombre}` : '⚠️ Sin Curso'}
+          </span>
+        </div>
       ),
       children: renderTabInscripcion(),
     },
-    ...(!isEditing
-      ? [
-          {
-            key: 'responsable',
-            label: (
-              <span>
-                <TeamOutlined />
-                3. Responsable y Vínculo
-              </span>
-            ),
-            children: renderTabResponsable(),
-          },
-        ]
-      : []),
+    {
+      key: 'responsable',
+      label: (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+            <TeamOutlined style={{ fontSize: 13.5 }} />
+            <span>3. Responsable y Vínculo</span>
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              marginTop: 2,
+              paddingLeft: 19,
+              color: existingResponsable || form.getFieldValue('responsableDni') ? '#16a34a' : '#d97706',
+            }}
+          >
+            {existingResponsable || form.getFieldValue('responsableDni') ? '✓ Tutor Vinculado' : '⚠️ Sin Responsable'}
+          </span>
+        </div>
+      ),
+      children: renderTabResponsable(),
+    },
   ];
 
   return (
@@ -749,15 +1067,44 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       open={visible}
       style={{ top: 12 }}
       title={
-        <div style={{ paddingBottom: 4 }}>
-          <span style={{ fontFamily: 'var(--font-heading)', fontSize: 19, fontWeight: 700, color: '#0f172a' }}>
-            {isEditing ? 'Editar Ficha del Alumno' : 'Alta Integral de Alumno'}
-          </span>
-          <Text type="secondary" style={{ display: 'block', fontSize: 13, fontWeight: 400, marginTop: 2 }}>
-            {isEditing
-              ? 'Actualice los datos personales y de cursada del estudiante.'
-              : 'Registre los datos del estudiante, su inscripción al curso y el responsable en un solo paso.'}
-          </Text>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                background: isEditing
+                  ? 'linear-gradient(135deg, #0284c7, #0ea5e9)'
+                  : 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                fontSize: 18,
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.22)',
+                flexShrink: 0,
+              }}
+            >
+              {isEditing ? <SolutionOutlined /> : <UserAddOutlined />}
+            </div>
+            <div>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+                {isEditing ? 'Editar Ficha del Alumno' : 'Alta Integral de Alumno'}
+              </span>
+              <Text type="secondary" style={{ display: 'block', fontSize: 12.5, fontWeight: 400, marginTop: 1 }}>
+                {isEditing
+                  ? 'Actualice los datos personales y de cursada del estudiante.'
+                  : 'Formulario secuencial en 3 etapas: Alumno, Curso y Responsable Legal.'}
+              </Text>
+            </div>
+          </div>
+
+          {!isEditing && (
+            <Tag color="blue" style={{ borderRadius: 6, fontWeight: 700, fontSize: 12, padding: '3px 10px' }}>
+              Paso {currentStep + 1} de 3
+            </Tag>
+          )}
         </div>
       }
       className="form-modal"
@@ -768,45 +1115,45 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         <Button key="back" onClick={handleModalClose} disabled={submitting}>
           Cancelar
         </Button>,
-        !isEditing && activeTab !== 'alumno' ? (
+        !isEditing && currentStep > 0 ? (
           <Button
             key="prev"
             icon={<LeftOutlined />}
-            onClick={() => {
-              if (activeTab === 'responsable') setActiveTab('inscripcion');
-              else if (activeTab === 'inscripcion') setActiveTab('alumno');
-            }}
+            onClick={handlePrevStep}
+            disabled={submitting}
           >
             Anterior
           </Button>
         ) : null,
-        !isEditing && activeTab !== 'responsable' ? (
+        !isEditing && currentStep < 2 ? (
           <Button
             key="next"
-            type="default"
-            onClick={() => {
-              if (activeTab === 'alumno') setActiveTab('inscripcion');
-              else if (activeTab === 'inscripcion') setActiveTab('responsable');
-            }}
+            type="primary"
+            onClick={handleNextStep}
+            disabled={submitting}
+            className="btn-primary-gradient"
           >
-            Siguiente <RightOutlined />
+            {currentStep === 0 ? 'Continuar a Curso' : 'Continuar a Responsable'} <RightOutlined />
           </Button>
-        ) : null,
-        <Button
-          key="submit"
-          type="primary"
-          loading={submitting}
-          onClick={handleOk}
-          className="btn-primary-gradient"
-        >
-          {isEditing ? 'Guardar Cambios' : 'Registrar e Inscribir'}
-        </Button>,
+        ) : (
+          <Button
+            key="submit"
+            type="primary"
+            loading={submitting}
+            onClick={handleOk}
+            icon={<CheckOutlined />}
+            className="btn-primary-gradient"
+          >
+            {isEditing ? 'Guardar Cambios' : 'Registrar e Inscribir Alumno'}
+          </Button>
+        ),
       ]}
     >
       <Form
         form={form}
         layout="vertical"
         name="alumnoForm"
+        preserve={true}
         requiredMark={false}
         onValuesChange={handleValuesChange}
         style={{ paddingTop: 4 }}
@@ -815,13 +1162,208 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
           <Input />
         </Form.Item>
 
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-          type="card"
-          tabBarStyle={{ marginBottom: 16 }}
-        />
+        {isEditing ? (
+          <Tabs
+            activeKey={activeEditTab}
+            onChange={setActiveEditTab}
+            items={editTabItems}
+            type="card"
+            tabBarStyle={{ marginBottom: 16 }}
+          />
+        ) : (
+          <>
+            <Steps
+              current={currentStep}
+              onChange={handleStepChange}
+              size="small"
+              className="cys-form-steps"
+              style={{
+                marginBottom: 16,
+                padding: '10px 14px',
+                background: '#f8fafc',
+                borderRadius: 12,
+                border: '1px solid #f1f5f9',
+              }}
+              items={[
+                {
+                  title: '1. Datos del Alumno',
+                  description: 'Ficha personal',
+                  icon:
+                    currentStep > 0 ? (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#10b981',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          fontSize: 13,
+                        }}
+                      >
+                        <CheckOutlined />
+                      </div>
+                    ) : currentStep === 0 ? (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#2563eb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          fontSize: 13,
+                        }}
+                      >
+                        <UserOutlined />
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#f1f5f9',
+                          border: '1px solid #cbd5e1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#64748b',
+                          fontSize: 13,
+                        }}
+                      >
+                        <UserOutlined />
+                      </div>
+                    ),
+                },
+                {
+                  title: '2. Inscripción y Curso',
+                  description: 'Matrícula y grado',
+                  icon:
+                    currentStep > 1 ? (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#10b981',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          fontSize: 13,
+                        }}
+                      >
+                        <CheckOutlined />
+                      </div>
+                    ) : currentStep === 1 ? (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#2563eb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          fontSize: 13,
+                        }}
+                      >
+                        <BookOutlined />
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#f1f5f9',
+                          border: '1px solid #cbd5e1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#64748b',
+                          fontSize: 13,
+                        }}
+                      >
+                        <BookOutlined />
+                      </div>
+                    ),
+                },
+                {
+                  title: '3. Responsable y Vínculo',
+                  description: 'Tutor legal',
+                  icon:
+                    currentStep > 2 ? (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#10b981',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          fontSize: 13,
+                        }}
+                      >
+                        <CheckOutlined />
+                      </div>
+                    ) : currentStep === 2 ? (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#2563eb',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          fontSize: 13,
+                        }}
+                      >
+                        <TeamOutlined />
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: '50%',
+                          background: '#f1f5f9',
+                          border: '1px solid #cbd5e1',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#64748b',
+                          fontSize: 13,
+                        }}
+                      >
+                        <TeamOutlined />
+                      </div>
+                    ),
+                },
+              ]}
+            />
+
+            <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
+              {renderTabAlumno()}
+            </div>
+            <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+              {renderTabInscripcion()}
+            </div>
+            <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
+              {renderTabResponsable()}
+            </div>
+          </>
+        )}
       </Form>
     </Modal>
   );

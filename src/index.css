@@ -1457,6 +1457,33 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
   border-bottom-left-radius: 0 !important;
 }
 
+/* Steps Wizard in Form Modal */
+.cys-form-steps {
+  transition: all 0.2s ease;
+}
+
+.cys-form-steps .ant-steps-item-title {
+  font-family: var(--font-heading) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #1e293b !important;
+}
+
+.cys-form-steps .ant-steps-item-description {
+  font-size: 11.5px !important;
+  color: #64748b !important;
+}
+
+.cys-form-steps .ant-steps-item-custom .ant-steps-item-icon {
+  background: transparent !important;
+  border: none !important;
+  line-height: 1 !important;
+}
+
+.cys-form-steps .ant-steps-item-custom .ant-steps-item-icon > .ant-steps-icon {
+  line-height: 1 !important;
+}
+
 /* Modal Dark Theme Overrides */
 .theme-dark .form-modal .ant-modal-content,
 body.theme-dark .form-modal .ant-modal-content {
@@ -1542,6 +1569,22 @@ body.theme-dark .form-modal .ant-btn-default:hover {
   background: rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
   border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+.theme-dark .cys-form-steps,
+body.theme-dark .cys-form-steps {
+  background: #0f172a !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.theme-dark .cys-form-steps .ant-steps-item-title,
+body.theme-dark .cys-form-steps .ant-steps-item-title {
+  color: #f1f5f9 !important;
+}
+
+.theme-dark .cys-form-steps .ant-steps-item-description,
+body.theme-dark .cys-form-steps .ant-steps-item-description {
+  color: #94a3b8 !important;
 }
 
 /* Tooltip Customization - Harmonized Slate System */

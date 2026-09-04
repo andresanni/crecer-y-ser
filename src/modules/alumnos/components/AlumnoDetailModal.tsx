@@ -36,6 +36,7 @@ import {
   WomanOutlined,
   DeleteOutlined,
   UserDeleteOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
@@ -50,7 +51,7 @@ interface AlumnoDetailModalProps {
   alumno: Alumno | null;
   visible: boolean;
   onClose: () => void;
-  onEdit: (alumno: Alumno) => void;
+  onEdit: (alumno: Alumno, initialTab?: string) => void;
   onDelete: (id: string) => void;
   onBaja?: (alumno: Alumno) => void;
 }
@@ -84,10 +85,17 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
   >([]);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('alumno');
 
   const handleModalClose = () => {
     setShowPassword(false);
     onClose();
+  };
+
+  const handleEdit = (targetTab: string = activeTab) => {
+    if (!alumno) return;
+    handleModalClose();
+    onEdit(alumno, targetTab);
   };
 
   // Cargar inscripciones y responsables asociados
@@ -95,6 +103,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
     if (!visible || !alumno) return;
 
     let isMounted = true;
+    setActiveTab('alumno');
     const loadDetails = async () => {
       try {
         setLoading(true);
@@ -132,46 +141,119 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
 
   const initials = `${alumno.apellidos.charAt(0)}${alumno.nombres.charAt(0)}`.toUpperCase();
   const isBaja = alumno.estadoInscripcion === 'Baja';
+  const primaryResponsable = responsables.length > 0 ? responsables[0] : null;
 
   const tabItems = [
     {
-      key: 'personales',
+      key: 'alumno',
       label: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-          <UserOutlined />
-          Datos Personales y Contacto
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+            <UserOutlined style={{ fontSize: 13.5 }} />
+            <span>1. Datos del Alumno</span>
+          </span>
+          <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, marginTop: 2, paddingLeft: 19 }}>
+            ✓ Ficha Completa
+          </span>
+        </div>
       ),
       children: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+          {/* Barra de Resumen de Estado de Datos */}
+          <div
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Campos Registrados:
+              </Text>
+              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                DNI: {alumno.dni || 'Cargado'}
+              </Tag>
+              {alumno.telefono ? (
+                <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  Teléfono: {alumno.telefono}
+                </Tag>
+              ) : (
+                <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  ⚠️ Sin Teléfono
+                </Tag>
+              )}
+              {alumno.domicilio ? (
+                <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  Domicilio Cargado
+                </Tag>
+              ) : (
+                <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  ⚠️ Sin Domicilio
+                </Tag>
+              )}
+              {alumno.usuarioAcadeu ? (
+                <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  Acadeu: {alumno.usuarioAcadeu}
+                </Tag>
+              ) : (
+                <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  Sin usuario Acadeu
+                </Tag>
+              )}
+            </div>
+            {edad !== null && (
+              <Tag color="cyan" style={{ margin: 0, borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
+                {edad} {edad === 1 ? 'año' : 'años'}
+              </Tag>
+            )}
+          </div>
+
           {/* Card 1: Identificación y Datos Personales */}
           <Card
             className="detail-section-card"
             size="small"
             title={
-              <Space size={8} style={{ color: '#1e40af', fontWeight: 700 }}>
-                <IdcardOutlined style={{ color: '#2563eb' }} />
-                <span>Identificación y Filiación</span>
-              </Space>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <Space size={8} style={{ color: '#0d9488', fontWeight: 700 }}>
+                  <IdcardOutlined style={{ color: '#0d9488' }} />
+                  <span>Identificación y Filiación</span>
+                </Space>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEdit('alumno')}
+                  style={{ color: '#0d9488', fontWeight: 600, padding: 0 }}
+                >
+                  Editar
+                </Button>
+              </div>
             }
           >
-            <Row gutter={[20, 16]}>
-              <Col xs={24} sm={12} md={8}>
+            <Row gutter={[16, 14]}>
+              <Col xs={24} sm={12} md={6}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">APELLIDOS</span>
                   <span className="detail-tile-value">{alumno.apellidos || '-'}</span>
                 </div>
               </Col>
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">NOMBRES</span>
                   <span className="detail-tile-value">{alumno.nombres || '-'}</span>
                 </div>
               </Col>
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">DOCUMENTO (DNI)</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span className="detail-tile-value highlight">{alumno.dni || '-'}</span>
                     {alumno.dni && (
                       <Text copyable={{ text: alumno.dni, tooltips: ['Copiar DNI', '¡Copiado!'] }} />
@@ -179,39 +261,41 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                   </div>
                 </div>
               </Col>
-
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">Nº DE LEGAJO</span>
                   <div>
                     {alumno.numeroLegajo ? (
-                      <Tag color="cyan" style={{ fontWeight: 700, borderRadius: 6, fontSize: 13, padding: '2px 8px' }}>
+                      <Tag color="cyan" style={{ fontWeight: 700, borderRadius: 6, fontSize: 12, padding: '1px 8px' }}>
                         {alumno.numeroLegajo}
                       </Tag>
                     ) : (
-                      <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>Sin legajo asignado</Text>
+                      <Space size={4}>
+                        <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>Sin legajo</Text>
+                        <Button type="link" size="small" style={{ padding: 0, fontSize: 12 }} onClick={() => handleEdit('alumno')}>
+                          + Asignar
+                        </Button>
+                      </Space>
                     )}
                   </div>
                 </div>
               </Col>
-
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">FECHA DE NACIMIENTO</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <span className="detail-tile-value">
                       {alumno.fechaNacimiento ? dayjs(alumno.fechaNacimiento).format('DD/MM/YYYY') : '-'}
                     </span>
                     {edad !== null && (
-                      <Tag color="blue" style={{ borderRadius: 6, fontWeight: 600 }}>
+                      <Tag color="cyan" style={{ borderRadius: 6, fontWeight: 600, fontSize: 11 }}>
                         {edad} {edad === 1 ? 'año' : 'años'}
                       </Tag>
                     )}
                   </div>
                 </div>
               </Col>
-
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">SEXO</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -224,12 +308,11 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                   </div>
                 </div>
               </Col>
-
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">NACIONALIDAD</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <GlobalOutlined style={{ color: '#0284c7' }} />
+                    <GlobalOutlined style={{ color: '#0d9488' }} />
                     <span className="detail-tile-value">{alumno.nacionalidad || 'Argentina'}</span>
                   </div>
                 </div>
@@ -242,16 +325,27 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
             className="detail-section-card"
             size="small"
             title={
-              <Space size={8} style={{ color: '#1e40af', fontWeight: 700 }}>
-                <HomeOutlined style={{ color: '#2563eb' }} />
-                <span>Contacto y Domicilio</span>
-              </Space>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <Space size={8} style={{ color: '#0d9488', fontWeight: 700 }}>
+                  <HomeOutlined style={{ color: '#0d9488' }} />
+                  <span>Contacto y Domicilio</span>
+                </Space>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEdit('alumno')}
+                  style={{ color: '#0d9488', fontWeight: 600, padding: 0 }}
+                >
+                  Editar
+                </Button>
+              </div>
             }
           >
-            <Row gutter={[20, 16]}>
+            <Row gutter={[16, 14]}>
               <Col xs={24} sm={12}>
                 <div className="detail-data-tile">
-                  <span className="detail-tile-label">TELÉFONO DE CONTACTO</span>
+                  <span className="detail-tile-label">TELÉFONO DEL ALUMNO</span>
                   <div>
                     {alumno.telefono ? (
                       <a
@@ -269,57 +363,83 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                         {alumno.telefono}
                       </a>
                     ) : (
-                      <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>Sin registrar</Text>
+                      <Space size={4}>
+                        <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>Sin registrar</Text>
+                        <Button type="link" size="small" style={{ padding: 0, fontSize: 12 }} onClick={() => handleEdit('alumno')}>
+                          + Completar
+                        </Button>
+                      </Space>
                     )}
                   </div>
                 </div>
               </Col>
-
               <Col xs={24} sm={12}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">DOMICILIO DECLARADO</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <HomeOutlined style={{ color: '#2563eb' }} />
-                    <span className="detail-tile-value">
-                      {alumno.domicilio || <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>Sin registrar</Text>}
-                    </span>
+                    <HomeOutlined style={{ color: '#0d9488' }} />
+                    {alumno.domicilio ? (
+                      <span className="detail-tile-value">{alumno.domicilio}</span>
+                    ) : (
+                      <Space size={4}>
+                        <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>Sin registrar</Text>
+                        <Button type="link" size="small" style={{ padding: 0, fontSize: 12 }} onClick={() => handleEdit('alumno')}>
+                          + Completar
+                        </Button>
+                      </Space>
+                    )}
                   </div>
                 </div>
               </Col>
             </Row>
           </Card>
 
-          {/* Card 3: Credenciales de Plataforma Escolar (Acadeu) */}
+          {/* Card 3: Credenciales Acadeu */}
           <Card
             className="detail-section-card acadeu-card"
             size="small"
             title={
-              <Space size={8} style={{ color: '#4338ca', fontWeight: 700 }}>
-                <KeyOutlined style={{ color: '#6366f1' }} />
-                <span>Credenciales de Plataforma Escolar (Acadeu)</span>
-              </Space>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                <Space size={8} style={{ color: '#4338ca', fontWeight: 700 }}>
+                  <KeyOutlined style={{ color: '#6366f1' }} />
+                  <span>Credenciales de Plataforma Escolar (Acadeu)</span>
+                </Space>
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEdit('alumno')}
+                  style={{ color: '#4338ca', fontWeight: 600, padding: 0 }}
+                >
+                  Editar
+                </Button>
+              </div>
             }
           >
-            <Row gutter={[20, 16]}>
+            <Row gutter={[16, 14]}>
               <Col xs={24} sm={12}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">USUARIO ACADEU</span>
                   <div>
                     {alumno.usuarioAcadeu ? (
                       <Space>
-                        <Tag color="purple" style={{ fontWeight: 600, borderRadius: 6, padding: '3px 8px', fontSize: 13 }}>
+                        <Tag color="purple" style={{ fontWeight: 600, borderRadius: 6, padding: '2px 8px', fontSize: 13 }}>
                           <KeyOutlined style={{ marginRight: 4 }} />
                           {alumno.usuarioAcadeu}
                         </Tag>
                         <Text copyable={{ text: alumno.usuarioAcadeu, tooltips: ['Copiar usuario', '¡Copiado!'] }} />
                       </Space>
                     ) : (
-                      <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>No configurado</Text>
+                      <Space size={4}>
+                        <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>No configurado</Text>
+                        <Button type="link" size="small" style={{ padding: 0, fontSize: 12 }} onClick={() => handleEdit('alumno')}>
+                          + Configurar
+                        </Button>
+                      </Space>
                     )}
                   </div>
                 </div>
               </Col>
-
               <Col xs={24} sm={12}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">CLAVE ACADEU</span>
@@ -340,7 +460,12 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                         <Text copyable={{ text: alumno.claveAcadeu, tooltips: ['Copiar clave', '¡Copiado!'] }} />
                       </Space>
                     ) : (
-                      <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>No configurada</Text>
+                      <Space size={4}>
+                        <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>No configurada</Text>
+                        <Button type="link" size="small" style={{ padding: 0, fontSize: 12 }} onClick={() => handleEdit('alumno')}>
+                          + Configurar
+                        </Button>
+                      </Space>
                     )}
                   </div>
                 </div>
@@ -351,26 +476,108 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
       ),
     },
     {
-      key: 'inscripciones',
+      key: 'inscripcion',
       label: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-          <BookOutlined />
-          Cursada e Inscripciones ({inscripciones.length})
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+            <BookOutlined style={{ fontSize: 13.5 }} />
+            <span>2. Inscripción y Cursada</span>
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              marginTop: 2,
+              paddingLeft: 19,
+              color: alumno.cursoNombre ? '#2563eb' : '#d97706',
+            }}
+          >
+            {alumno.cursoNombre ? `• ${alumno.cursoNombre}` : '⚠️ Sin Curso'}
+          </span>
+        </div>
       ),
       children: (
-        <div style={{ paddingTop: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+          {/* Barra de Resumen de Estado de Cursada */}
+          <div
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Estado de Matrícula:
+              </Text>
+              {alumno.cursoNombre ? (
+                <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                  {alumno.cursoNombre} {alumno.turno ? `(${alumno.turno})` : ''}
+                </Tag>
+              ) : (
+                <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  ⚠️ Sin Curso Asignado
+                </Tag>
+              )}
+              <Tag
+                color={alumno.estadoInscripcion === 'Baja' ? 'error' : 'success'}
+                style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+              >
+                Cursada: {alumno.estadoInscripcion || 'Regular'}
+              </Tag>
+              {alumno.numeroOrden ? (
+                <Tag color="purple" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  Nº de Orden: #{alumno.numeroOrden}
+                </Tag>
+              ) : (
+                <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  ⚠️ Sin Nº de Orden
+                </Tag>
+              )}
+              {alumno.numeroInscripcion ? (
+                <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  Matrícula: {alumno.numeroInscripcion}
+                </Tag>
+              ) : (
+                <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                  Sin Matrícula
+                </Tag>
+              )}
+            </div>
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit('inscripcion')}
+              style={{ color: '#2563eb', fontWeight: 600, padding: 0 }}
+            >
+              Editar Cursada
+            </Button>
+          </div>
+
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <div style={{ textAlign: 'center', padding: '30px 0' }}>
               <Spin tip="Cargando historial de cursada..." />
             </div>
           ) : inscripciones.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="El alumno no posee inscripciones registradas."
-            />
+            <Card className="detail-section-card" size="small" style={{ textAlign: 'center', padding: '24px 0' }}>
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="El alumno no posee inscripciones activas registradas."
+              >
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => handleEdit('inscripcion')} style={{ borderRadius: 8 }}>
+                  Asignar Curso e Inscribir
+                </Button>
+              </Empty>
+            </Card>
           ) : (
-            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
               {inscripciones.map((insc) => {
                 const isRegular = insc.estado === 'Regular';
                 const isLibre = insc.estado === 'Libre';
@@ -383,7 +590,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                     className="detail-sub-card"
                     size="small"
                     style={{
-                      borderTop: isBajaInsc ? '3px solid #ef4444' : undefined,
+                      borderTop: isBajaInsc ? '3px solid #ef4444' : '3px solid #2563eb',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
@@ -449,112 +656,238 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
       ),
     },
     {
-      key: 'responsables',
+      key: 'responsable',
       label: (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-          <TeamOutlined />
-          Responsables y Vínculos ({responsables.length})
-        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+            <TeamOutlined style={{ fontSize: 13.5 }} />
+            <span>3. Responsable y Vínculo</span>
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              marginTop: 2,
+              paddingLeft: 19,
+              color: responsables.length > 0 ? '#16a34a' : '#d97706',
+            }}
+          >
+            {responsables.length > 0 ? '✓ Tutor Vinculado' : '⚠️ Sin Responsable'}
+          </span>
+        </div>
       ),
       children: (
-        <div style={{ paddingTop: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <Spin tip="Cargando responsables..." />
+            <div style={{ textAlign: 'center', padding: '30px 0' }}>
+              <Spin tip="Cargando datos del responsable..." />
             </div>
           ) : responsables.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description="No hay responsables asociados a este alumno."
-            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <Alert
+                type="warning"
+                showIcon
+                style={{ borderRadius: 10 }}
+                message={<strong>Alumno sin Responsable Legal vinculado</strong>}
+                description="Este estudiante aún no tiene un tutor o responsable registrado en el sistema. Los datos de contacto familiar son indispensables para el seguimiento pedagógico y las comunicaciones escolares."
+                action={
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => handleEdit('responsable')}
+                    style={{ borderRadius: 8, fontWeight: 600 }}
+                  >
+                    Asociar Responsable
+                  </Button>
+                }
+              />
+            </div>
           ) : (
-            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-              {responsables.map((item) => (
-                <Card
-                  key={item.relationId}
-                  className="detail-sub-card"
-                  size="small"
+            <>
+              {/* Barra de Resumen de Estado de Datos del Responsable */}
+              {primaryResponsable && (
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 10,
+                    padding: '8px 12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                  }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <Space size="middle">
-                      <Avatar
-                        size={42}
-                        style={{
-                          background: getAvatarGradient(item.responsable.apellidos + item.responsable.nombres),
-                          fontWeight: 800,
-                          fontSize: 15,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                        }}
-                      >
-                        {item.responsable.apellidos.charAt(0)}
-                        {item.responsable.nombres.charAt(0)}
-                      </Avatar>
-                      <div>
-                        <Text strong style={{ fontSize: 15, color: '#0f172a' }}>
-                          {item.responsable.apellidos}, {item.responsable.nombres}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                          DNI: {item.responsable.dni || '-'}
-                        </Text>
-                      </div>
-                    </Space>
-
-                    <Tag color="geekblue" style={{ fontWeight: 700, borderRadius: 6, padding: '3px 10px', fontSize: 13 }}>
-                      {item.vinculo}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Datos del Responsable:
+                    </Text>
+                    <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                      DNI: {primaryResponsable.responsable.dni || 'Cargado'}
+                    </Tag>
+                    {primaryResponsable.responsable.telefono ? (
+                      <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                        Teléfono: {primaryResponsable.responsable.telefono}
+                      </Tag>
+                    ) : (
+                      <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                        ⚠️ Sin Teléfono
+                      </Tag>
+                    )}
+                    {primaryResponsable.responsable.email ? (
+                      <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                        Email: {primaryResponsable.responsable.email}
+                      </Tag>
+                    ) : (
+                      <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                        ⚠️ Sin Email
+                      </Tag>
+                    )}
+                    <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+                      Vínculo: {primaryResponsable.vinculo}
                     </Tag>
                   </div>
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={() => handleEdit('responsable')}
+                    style={{ color: '#2563eb', fontWeight: 600, padding: 0 }}
+                  >
+                    Editar Tutor
+                  </Button>
+                </div>
+              )}
 
-                  <Row gutter={[16, 12]}>
-                    <Col xs={24} sm={12}>
-                      <div className="detail-data-tile">
-                        <span className="detail-tile-label">TELÉFONO</span>
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                {responsables.map((item) => (
+                  <Card
+                    key={item.relationId}
+                    className="detail-sub-card"
+                    size="small"
+                    style={{ borderTop: '3px solid #0284c7' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <Space size="middle">
+                        <Avatar
+                          size={46}
+                          style={{
+                            background: getAvatarGradient(item.responsable.apellidos + item.responsable.nombres),
+                            fontWeight: 800,
+                            fontSize: 16,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          }}
+                        >
+                          {item.responsable.apellidos.charAt(0)}
+                          {item.responsable.nombres.charAt(0)}
+                        </Avatar>
                         <div>
-                          {item.responsable.telefono ? (
-                            <a href={`tel:${item.responsable.telefono}`} style={{ color: '#0d9488', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <PhoneOutlined />
-                              {item.responsable.telefono}
-                            </a>
-                          ) : (
-                            <Text type="secondary">-</Text>
-                          )}
+                          <Text strong style={{ fontSize: 16, color: '#0f172a' }}>
+                            {item.responsable.apellidos}, {item.responsable.nombres}
+                          </Text>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                              DNI: {item.responsable.dni || '-'}
+                            </Text>
+                            {item.responsable.dni && (
+                              <Text copyable={{ text: item.responsable.dni, tooltips: ['Copiar DNI', '¡Copiado!'] }} />
+                            )}
+                          </div>
                         </div>
+                      </Space>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <Tag color="geekblue" style={{ fontWeight: 700, borderRadius: 6, padding: '3px 10px', fontSize: 13 }}>
+                          {item.vinculo}
+                        </Tag>
+                        <Button
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() => handleEdit('responsable')}
+                          style={{ borderRadius: 6 }}
+                        >
+                          Editar
+                        </Button>
                       </div>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <div className="detail-data-tile">
-                        <span className="detail-tile-label">CORREO ELECTRÓNICO</span>
-                        <div>
-                          {item.responsable.email ? (
-                            <a href={`mailto:${item.responsable.email}`} style={{ color: '#2563eb', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <MailOutlined />
-                              {item.responsable.email}
-                            </a>
-                          ) : (
-                            <Text type="secondary">-</Text>
-                          )}
+                    </div>
+
+                    <Row gutter={[16, 12]}>
+                      <Col xs={24} sm={12}>
+                        <div className="detail-data-tile">
+                          <span className="detail-tile-label">TELÉFONO DE CONTACTO</span>
+                          <div>
+                            {item.responsable.telefono ? (
+                              <a
+                                href={`tel:${item.responsable.telefono}`}
+                                style={{
+                                  color: '#0d9488',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                }}
+                              >
+                                <PhoneOutlined />
+                                {item.responsable.telefono}
+                              </a>
+                            ) : (
+                              <Space size={4}>
+                                <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>Sin registrar</Text>
+                                <Button type="link" size="small" style={{ padding: 0, fontSize: 12 }} onClick={() => handleEdit('responsable')}>
+                                  + Agregar
+                                </Button>
+                              </Space>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Col>
-                    {item.responsable.profesion && (
+                      </Col>
+                      <Col xs={24} sm={12}>
+                        <div className="detail-data-tile">
+                          <span className="detail-tile-label">CORREO ELECTRÓNICO</span>
+                          <div>
+                            {item.responsable.email ? (
+                              <a
+                                href={`mailto:${item.responsable.email}`}
+                                style={{
+                                  color: '#2563eb',
+                                  fontWeight: 600,
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                }}
+                              >
+                                <MailOutlined />
+                                {item.responsable.email}
+                              </a>
+                            ) : (
+                              <Space size={4}>
+                                <Text type="secondary" style={{ fontStyle: 'italic', fontSize: 13 }}>Sin registrar</Text>
+                                <Button type="link" size="small" style={{ padding: 0, fontSize: 12 }} onClick={() => handleEdit('responsable')}>
+                                  + Agregar
+                                </Button>
+                              </Space>
+                            )}
+                          </div>
+                        </div>
+                      </Col>
                       <Col xs={24} sm={12}>
                         <div className="detail-data-tile">
                           <span className="detail-tile-label">PROFESIÓN U OCUPACIÓN</span>
-                          <span className="detail-tile-value">{item.responsable.profesion}</span>
+                          <span className="detail-tile-value">{item.responsable.profesion || 'No especificada'}</span>
                         </div>
                       </Col>
-                    )}
-                    {item.responsable.nacionalidad && (
                       <Col xs={24} sm={12}>
                         <div className="detail-data-tile">
                           <span className="detail-tile-label">NACIONALIDAD</span>
-                          <span className="detail-tile-value">{item.responsable.nacionalidad}</span>
+                          <span className="detail-tile-value">{item.responsable.nacionalidad || 'Argentina'}</span>
                         </div>
                       </Col>
-                    )}
-                  </Row>
-                </Card>
-              ))}
-            </Space>
+                    </Row>
+                  </Card>
+                ))}
+              </Space>
+            </>
           )}
         </div>
       ),
@@ -565,10 +898,10 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
     <Modal
       open={visible}
       onCancel={handleModalClose}
-      width={860}
-      style={{ top: 10, maxWidth: '95vw' }}
+      width={880}
+      style={{ top: 12, maxWidth: '96vw' }}
       className="student-detail-modal"
-      closable={false}
+      closable={true}
       footer={[
         <Popconfirm
           key="delete"
@@ -615,10 +948,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
           icon={<EditOutlined />}
           className="btn-primary-gradient"
           style={{ borderRadius: 10, fontWeight: 600 }}
-          onClick={() => {
-            handleModalClose();
-            onEdit(alumno);
-          }}
+          onClick={() => handleEdit(activeTab)}
         >
           Editar Ficha del Alumno
         </Button>,
@@ -629,12 +959,12 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
       {/* Cabecera visual del Alumno */}
       <div className="detail-header-banner">
         <Avatar
-          size={64}
+          size={58}
           style={{
             background: isBaja
               ? 'linear-gradient(135deg, #ef4444, #991b1b)'
               : getAvatarGradient(alumno.apellidos + alumno.nombres),
-            fontSize: 22,
+            fontSize: 20,
             fontWeight: 800,
             boxShadow: isBaja
               ? '0 4px 14px rgba(239, 68, 68, 0.35)'
@@ -646,15 +976,41 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
           {initials}
         </Avatar>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-            <Title level={3} style={{ margin: 0, color: isBaja ? '#991b1b' : '#0f172a', letterSpacing: '-0.5px' }}>
-              {alumno.apellidos}, {alumno.nombres}
-            </Title>
-            <Tag color="blue" style={{ borderRadius: 8, fontWeight: 700, fontSize: 13, padding: '2px 10px' }}>
-              DNI: {alumno.dni}
-            </Tag>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Title level={3} style={{ margin: 0, color: isBaja ? '#991b1b' : '#0f172a', letterSpacing: '-0.5px' }}>
+                {alumno.apellidos}, {alumno.nombres}
+              </Title>
+              <Tag color="blue" style={{ borderRadius: 6, fontWeight: 700, fontSize: 12, padding: '1px 8px' }}>
+                DNI: {alumno.dni}
+              </Tag>
+            </div>
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              className="btn-primary-gradient"
+              onClick={() => handleEdit(activeTab)}
+              style={{ borderRadius: 8, fontWeight: 600, fontSize: 13 }}
+            >
+              Editar Ficha
+            </Button>
           </div>
-          <Space size={10} wrap>
+          <Space size={8} wrap style={{ marginTop: 6 }}>
+            {alumno.cursoNombre && (
+              <Tag
+                icon={<BookOutlined />}
+                style={{
+                  borderRadius: 6,
+                  padding: '2px 8px',
+                  fontWeight: 600,
+                  color: '#2563eb',
+                  background: '#eff6ff',
+                  borderColor: '#bfdbfe',
+                }}
+              >
+                {alumno.cursoNombre} {alumno.turno ? `(${alumno.turno})` : ''}
+              </Tag>
+            )}
             {alumno.numeroLegajo && (
               <Tag
                 icon={<IdcardOutlined />}
@@ -688,7 +1044,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
                 icon={<CloseCircleOutlined />}
                 style={{ borderRadius: 6, fontWeight: 700, padding: '2px 8px' }}
               >
-                Baja registrada {alumno.fechaEgreso ? `el ${dayjs(alumno.fechaEgreso).format('DD/MM/YYYY')}` : ''}
+                Baja {alumno.fechaEgreso ? `el ${dayjs(alumno.fechaEgreso).format('DD/MM/YYYY')}` : ''}
               </Tag>
             ) : (
               <Tag color="success" icon={<CheckCircleOutlined />} style={{ borderRadius: 6, fontWeight: 600 }}>
@@ -704,7 +1060,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
         <Alert
           type="error"
           showIcon
-          style={{ marginTop: 14, borderRadius: 10 }}
+          style={{ marginBottom: 12, borderRadius: 10 }}
           message={<strong>Estudiante en Estado de Baja</strong>}
           description={`Baja registrada oficialmente el ${
             alumno.fechaEgreso ? dayjs(alumno.fechaEgreso).format('DD/MM/YYYY') : 'día correspondiente'
@@ -713,7 +1069,12 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
       )}
 
       {/* Tabs con toda la información desglosada */}
-      <Tabs defaultActiveKey="personales" items={tabItems} className="detail-tabs" />
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key)}
+        items={tabItems}
+        className="detail-tabs"
+      />
     </Modal>
   );
 };

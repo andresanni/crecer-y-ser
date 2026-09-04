@@ -179,17 +179,17 @@ export const alumnoService = {
     // 1. PASO 1: Crear Alumno
     try {
       createdAlumnoRecord = await pb.collection(COLLECTION_NAME).create<AlumnoRecord>({
-        numero_legajo: params.alumno.numero_legajo || '',
-        dni: params.alumno.dni.trim(),
-        apellidos: params.alumno.apellidos.trim(),
-        nombres: params.alumno.nombres.trim(),
+        numero_legajo: (params.alumno.numero_legajo || '').trim(),
+        dni: (params.alumno.dni || '').trim(),
+        apellidos: (params.alumno.apellidos || '').trim(),
+        nombres: (params.alumno.nombres || '').trim(),
         fecha_nacimiento: params.alumno.fecha_nacimiento,
-        nacionalidad: params.alumno.nacionalidad || '',
-        sexo: params.alumno.sexo || '',
-        telefono: params.alumno.telefono || '',
-        domicilio: params.alumno.domicilio || '',
-        usuario_acadeu: params.alumno.usuario_acadeu || '',
-        clave_acadeu: params.alumno.clave_acadeu || '',
+        nacionalidad: (params.alumno.nacionalidad || '').trim(),
+        sexo: (params.alumno.sexo || '').trim(),
+        telefono: (params.alumno.telefono || '').trim(),
+        domicilio: (params.alumno.domicilio || '').trim(),
+        usuario_acadeu: (params.alumno.usuario_acadeu || '').trim(),
+        clave_acadeu: (params.alumno.clave_acadeu || '').trim(),
       });
     } catch (error) {
       throw new Error(
@@ -322,6 +322,17 @@ export const alumnoService = {
         fecha_egreso?: string;
         estado?: EstadoInscripcion;
       };
+      responsable?: {
+        id?: string;
+        dni: string;
+        apellidos: string;
+        nombres: string;
+        nacionalidad?: string;
+        profesion?: string;
+        telefono?: string;
+        email?: string;
+      };
+      vinculo?: string;
     },
     originalUpdatedDate: string
   ): Promise<Alumno> => {
@@ -375,7 +386,72 @@ export const alumnoService = {
       }
     }
 
-    // 3. Obtener el alumno actualizado con su información expandida
+    // 3. Actualizar o Vincular Responsable si se incluyeron datos
+    if (params.responsable && params.responsable.dni?.trim()) {
+      let responsableId = params.responsable.id;
+      const sanitizedDni = params.responsable.dni.trim().replace(/"/g, '\\"');
+
+      if (!responsableId) {
+        try {
+          const existing = await pb
+            .collection(COLLECTION_RESPONSABLES)
+            .getFirstListItem(`dni = "${sanitizedDni}"`);
+          responsableId = existing.id;
+        } catch {
+          // No existe, creamos el nuevo responsable
+          const newResp = await pb.collection(COLLECTION_RESPONSABLES).create({
+            dni: params.responsable.dni.trim(),
+            apellidos: (params.responsable.apellidos || '').trim(),
+            nombres: (params.responsable.nombres || '').trim(),
+            nacionalidad: (params.responsable.nacionalidad || '').trim(),
+            profesion: (params.responsable.profesion || '').trim(),
+            telefono: (params.responsable.telefono || '').trim(),
+            email: (params.responsable.email || '').trim(),
+          });
+          responsableId = newResp.id;
+        }
+      } else {
+        // Actualizar datos del responsable existente
+        try {
+          await pb.collection(COLLECTION_RESPONSABLES).update(responsableId, {
+            apellidos: (params.responsable.apellidos || '').trim(),
+            nombres: (params.responsable.nombres || '').trim(),
+            nacionalidad: (params.responsable.nacionalidad || '').trim(),
+            profesion: (params.responsable.profesion || '').trim(),
+            telefono: (params.responsable.telefono || '').trim(),
+            email: (params.responsable.email || '').trim(),
+          });
+        } catch (e) {
+          console.error('Error al actualizar datos del responsable:', e);
+        }
+      }
+
+      // Asegurar la relación alumno-responsable
+      if (responsableId) {
+        try {
+          const existingRels = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).getFullList({
+            filter: `alumno_id = "${id}"`,
+          });
+          const matchRel = existingRels.find((r) => r.responsable_id === responsableId) || existingRels[0];
+          if (matchRel) {
+            await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).update(matchRel.id, {
+              responsable_id: responsableId,
+              vinculo: (params.vinculo || 'Tutor/a').trim(),
+            });
+          } else {
+            await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).create({
+              alumno_id: id,
+              responsable_id: responsableId,
+              vinculo: (params.vinculo || 'Tutor/a').trim(),
+            });
+          }
+        } catch (e) {
+          console.error('Error al actualizar relación alumno_responsable:', e);
+        }
+      }
+    }
+
+    // 4. Obtener el alumno actualizado con su información expandida
     const fullUpdated = await pb.collection(COLLECTION_NAME).getOne<AlumnoRecord>(id, {
       expand: 'inscripciones_via_alumno_id.curso_id.nivel_id',
     });
