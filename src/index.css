@@ -3,13 +3,33 @@
 :root {
   --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --primary-color: #2563eb;
-  --primary-hover: #1d4ed8;
-  --bg-gradient-light: radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%),
-                       radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.06) 0px, transparent 50%),
+  
+  /* Brand Identity Tokens (from Crecer y Ser logo) */
+  --cys-brand-royal: #0a1936;
+  --cys-brand-royal-primary: #1d4ed8;
+  --cys-brand-royal-dark: #1e40af;
+  --cys-brand-blue-base: #2563eb;
+  --cys-brand-blue-hover: #3b82f6;
+  --cys-brand-sky: #0284c7;
+  --cys-brand-coral: #e11d48;
+  --cys-brand-amber: #f59e0b;
+  --cys-brand-emerald: #10b981;
+
+  /* Surfaces & Shadows */
+  --bg-gradient-light: radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.07) 0px, transparent 50%),
+                       radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.05) 0px, transparent 50%),
                        #f8fafc;
-  --card-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
-  --card-hover-shadow: 0 12px 30px -4px rgba(37, 99, 235, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
+  --card-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+  --card-hover-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(226, 232, 240, 0.8);
+}
+
+.theme-dark {
+  --glass-bg: rgba(15, 23, 42, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --card-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+  --card-hover-shadow: 0 12px 30px -4px rgba(37, 99, 235, 0.25);
 }
 
 * {
@@ -76,9 +96,9 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 /* Sidebar */
 .app-sider {
   padding: 0 !important;
-  background: #0d1b3e !important;
+  background: linear-gradient(180deg, #09152e 0%, #0d1f45 50%, #0a1733 100%) !important;
   border-right: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 2px 0 16px rgba(15, 23, 42, 0.06);
+  box-shadow: 4px 0 24px rgba(10, 25, 54, 0.15);
   position: sticky !important;
   top: 0;
   height: 100vh;
@@ -352,11 +372,11 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 
 /* Header */
 .app-header {
-  height: 72px !important;
+  height: 70px !important;
   line-height: normal !important;
   padding: 0 32px !important;
-  background: rgba(255, 255, 255, 0.85) !important;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  background: var(--glass-bg) !important;
+  border-bottom: 1px solid var(--glass-border);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   display: flex;
@@ -365,11 +385,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   position: sticky;
   top: 0;
   z-index: 100;
-}
-
-.theme-dark .app-header {
-  background: rgba(15, 23, 42, 0.85) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .header-left {
@@ -506,12 +522,12 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 
 .ant-segmented-item-selected {
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
 }
 
 .ant-segmented-item-selected .ant-segmented-item-icon,
 .ant-segmented-item-selected .ant-segmented-item-label {
-  color: #0d9488 !important;
+  color: var(--cys-brand-royal-primary) !important;
 }
 
 .theme-dark .ant-segmented-item-selected .ant-segmented-item-icon,

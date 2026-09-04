@@ -44,6 +44,7 @@ import { inscripcionService } from '../../inscripciones/services/inscripcion.ser
 import type { Inscripcion } from '../../inscripciones/models/inscripcion.model';
 import { responsableService } from '../../responsables/services/responsable.service';
 import type { Responsable } from '../../responsables/models/responsable.model';
+import { getAvatarGradient } from '../../../theme';
 
 const { Title, Text } = Typography;
 
@@ -55,21 +56,6 @@ interface AlumnoDetailModalProps {
   onDelete: (id: string) => void;
   onBaja?: (alumno: Alumno) => void;
 }
-
-const getAvatarGradient = (str: string) => {
-  const colors = [
-    'linear-gradient(135deg, #1e40af, #2563eb)',
-    'linear-gradient(135deg, #0d9488, #10b981)',
-    'linear-gradient(135deg, #0369a1, #0284c7)',
-    'linear-gradient(135deg, #4f46e5, #6366f1)',
-    'linear-gradient(135deg, #d97706, #f59e0b)',
-  ];
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-};
 
 export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = ({
   alumno,

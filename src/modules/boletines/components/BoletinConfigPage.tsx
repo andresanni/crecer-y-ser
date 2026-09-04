@@ -309,9 +309,9 @@ export const BoletinConfigPage: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header Institucional */}
-      <div className="cys-page-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div className="cys-page-header-icon" style={{ background: '#2563eb', color: '#ffffff' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div className="cys-page-header">
+          <div className="cys-page-header-icon">
             <ScheduleOutlined />
           </div>
           <div className="cys-page-header-content">

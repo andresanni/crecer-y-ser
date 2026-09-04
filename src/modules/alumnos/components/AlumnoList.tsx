@@ -46,23 +46,9 @@ import {
   ALL_GRADES,
   type GradeNumber,
 } from '../utils/gradeColors';
+import { getAvatarGradient } from '../../../theme';
 
 const { Title, Text } = Typography;
-
-const getAvatarGradient = (str: string) => {
-  const colors = [
-    'linear-gradient(135deg, #1e40af, #2563eb)',
-    'linear-gradient(135deg, #0d9488, #10b981)',
-    'linear-gradient(135deg, #0369a1, #0284c7)',
-    'linear-gradient(135deg, #4f46e5, #6366f1)',
-    'linear-gradient(135deg, #d97706, #f59e0b)',
-  ];
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return colors[Math.abs(hash) % colors.length];
-};
 
 export const AlumnoList: React.FC = () => {
   const { message } = App.useApp();
