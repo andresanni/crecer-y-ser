@@ -1,3 +1,5 @@
+import { useModalSessionKey } from '../../../shared/hooks/useModalSessionKey';
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Modal,
@@ -114,7 +116,14 @@ const ESTADO_INSCRIPCION_OPTIONS: { label: string; value: EstadoInscripcion }[] 
   { label: 'Baja', value: 'Baja' },
 ];
 
-export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
+export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = (props) => {
+  const sessionKey = useModalSessionKey(props.visible);
+  return (
+    <AlumnoFormModalSession key={`${sessionKey}:${props.initialValues?.id ?? 'new'}:${props.initialTab ?? 'alumno'}`} {...props} />
+  );
+};
+
+const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
   visible,
   onClose,
   onSubmit,
@@ -125,13 +134,6 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [activeEditTab, setActiveEditTab] = useState<string>(initialTab || 'alumno');
-
-  // Sincronizar activeEditTab cuando se pasa initialTab al abrir el modal
-  useEffect(() => {
-    if (visible && initialTab) {
-      setActiveEditTab(initialTab);
-    }
-  }, [visible, initialTab]);
 
   // Observadores reactivos usando Form.useWatch de Ant Design
   const fechaNacimientoValue = Form.useWatch('fechaNacimiento', form);
@@ -147,7 +149,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
   const [existingResponsable, setExistingResponsable] = useState<Responsable | null>(null);
   const [dniSearched, setDniSearched] = useState(false);
   const [lastSearchedDni, setLastSearchedDni] = useState('');
-  const [loadingResponsable, setLoadingResponsable] = useState(false);
+  const [loadingResponsable, setLoadingResponsable] = useState(Boolean(initialValues));
 
   const isEditing = Boolean(initialValues);
 
@@ -205,6 +207,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
 
   // Sincronizar campos del formulario con initialValues al editar
   useEffect(() => {
+    let active = true;
     if (visible && initialValues) {
       const birthDate = initialValues.fechaNacimiento ? dayjs(initialValues.fechaNacimiento) : null;
       form.setFieldsValue({
@@ -229,10 +232,10 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       });
 
       // Cargar el responsable vinculado del alumno
-      setLoadingResponsable(true);
       responsableService
         .getByAlumnoId(initialValues.id)
         .then((responsables) => {
+          if (!active) return;
           if (responsables && responsables.length > 0) {
             const primary = responsables[0];
             setExistingResponsable(primary.responsable);
@@ -267,18 +270,15 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
           }
         })
         .catch((err) => {
-          console.error('Error al cargar responsable vinculado:', err);
+          if (active) console.error('Error al cargar responsable vinculado:', err);
         })
         .finally(() => {
-          setLoadingResponsable(false);
+          if (active) setLoadingResponsable(false);
         });
     } else if (visible && !initialValues) {
       form.resetFields();
-      setExistingResponsable(null);
-      setDniSearched(false);
-      setLastSearchedDni('');
-      setLoadingResponsable(false);
     }
+    return () => { active = false; };
   }, [visible, initialValues, form]);
 
   const handleModalClose = () => {
@@ -449,8 +449,8 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       {isEditing && (
         <div
           style={{
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            background: "var(--cys-color-fill-quaternary)",
+            border: "1px solid var(--cys-color-border-secondary)",
             borderRadius: 10,
             padding: '8px 12px',
             marginBottom: 14,
@@ -461,43 +461,43 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             gap: 8,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div className={ui.wrappingRow}>
+            <Text strong className={ui.sectionLabel}>
               Campos Registrados:
             </Text>
-            <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+            <Tag color="success" className={ui.strongTag}>
               DNI: {initialValues?.dni || 'Cargado'}
             </Tag>
             {initialValues?.telefono ? (
-              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="success" className={ui.compactTag}>
                 Teléfono: {initialValues.telefono}
               </Tag>
             ) : (
-              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="warning" className={ui.compactTag}>
                 ⚠️ Sin Teléfono
               </Tag>
             )}
             {initialValues?.domicilio ? (
-              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="success" className={ui.compactTag}>
                 Domicilio Cargado
               </Tag>
             ) : (
-              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="warning" className={ui.compactTag}>
                 ⚠️ Sin Domicilio
               </Tag>
             )}
             {initialValues?.usuarioAcadeu ? (
-              <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="blue" className={ui.compactTag}>
                 Acadeu: {initialValues.usuarioAcadeu}
               </Tag>
             ) : (
-              <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="default" className={ui.compactTag}>
                 Sin usuario Acadeu
               </Tag>
             )}
           </div>
           {edadCalculada !== null && (
-            <Tag color="cyan" style={{ margin: 0, borderRadius: 6, fontWeight: 700, fontSize: 11 }}>
+            <Tag color="cyan" className={ui.statusTag}>
               {edadCalculada} {edadCalculada === 1 ? 'año' : 'años'}
             </Tag>
           )}
@@ -511,7 +511,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             label="Apellidos del Alumno"
             rules={[{ required: true, message: 'Por favor ingrese los apellidos' }]}
           >
-            <Input prefix={<UserOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Pérez García" />
+            <Input prefix={<UserOutlined className={ui.success} />} placeholder="Ej. Pérez García" />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12} md={7}>
@@ -520,7 +520,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             label="Nombres del Alumno"
             rules={[{ required: true, message: 'Por favor ingrese los nombres' }]}
           >
-            <Input prefix={<UserOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Mateo Valentín" />
+            <Input prefix={<UserOutlined className={ui.success} />} placeholder="Ej. Mateo Valentín" />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12} md={5}>
@@ -530,7 +530,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
               <span>
                 DNI{' '}
                 <Tooltip title="Documento Nacional de Identidad del alumno sin puntos">
-                  <QuestionCircleOutlined style={{ color: '#94a3b8', fontSize: 12 }} />
+                  <QuestionCircleOutlined style={{ color: 'var(--cys-color-text-secondary)', fontSize: 12 }} />
                 </Tooltip>
               </span>
             }
@@ -539,7 +539,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
               { pattern: /^[0-9]+$/, message: 'Solo números sin puntos' },
             ]}
           >
-            <Input prefix={<IdcardOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. 45123890" maxLength={10} />
+            <Input prefix={<IdcardOutlined className={ui.success} />} placeholder="Ej. 45123890" maxLength={10} />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12} md={5}>
@@ -547,7 +547,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             name="numeroLegajo"
             label="Nº de Legajo"
           >
-            <Input prefix={<IdcardOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. 2026-001" />
+            <Input prefix={<IdcardOutlined className={ui.success} />} placeholder="Ej. 2026-001" />
           </Form.Item>
         </Col>
       </Row>
@@ -570,9 +570,9 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
           >
             <DatePicker
               format="DD/MM/YYYY"
-              style={{ width: '100%' }}
+              className={ui.fullWidth}
               placeholder="DD/MM/AAAA"
-              suffixIcon={<CalendarOutlined style={{ color: '#0d9488' }} />}
+              suffixIcon={<CalendarOutlined className={ui.success} />}
             />
           </Form.Item>
         </Col>
@@ -583,12 +583,12 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         </Col>
         <Col xs={24} sm={12} md={6}>
           <Form.Item name="nacionalidad" label="Nacionalidad">
-            <Input prefix={<GlobalOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Argentina" />
+            <Input prefix={<GlobalOutlined className={ui.success} />} placeholder="Ej. Argentina" />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12} md={6}>
           <Form.Item name="telefono" label="Teléfono">
-            <Input prefix={<PhoneOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. +54 9 11 1234-5678" />
+            <Input prefix={<PhoneOutlined className={ui.success} />} placeholder="Ej. +54 9 11 1234-5678" />
           </Form.Item>
         </Col>
       </Row>
@@ -596,17 +596,17 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       <Row gutter={14}>
         <Col xs={24} md={12}>
           <Form.Item name="domicilio" label="Domicilio">
-            <Input prefix={<HomeOutlined style={{ color: '#0d9488' }} />} placeholder="Ej. Av. San Martín 1234, CABA" />
+            <Input prefix={<HomeOutlined className={ui.success} />} placeholder="Ej. Av. San Martín 1234, CABA" />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12} md={6}>
           <Form.Item name="usuarioAcadeu" label="Usuario Acadeu">
-            <Input prefix={<UserOutlined style={{ color: '#2563eb' }} />} placeholder="Ej. alumno.perez" />
+            <Input prefix={<UserOutlined className={ui.primary} />} placeholder="Ej. alumno.perez" />
           </Form.Item>
         </Col>
         <Col xs={24} sm={12} md={6}>
           <Form.Item name="claveAcadeu" label="Clave Acadeu">
-            <Input.Password prefix={<LockOutlined style={{ color: '#2563eb' }} />} placeholder="Contraseña de acceso" />
+            <Input.Password prefix={<LockOutlined className={ui.primary} />} placeholder="Contraseña de acceso" />
           </Form.Item>
         </Col>
       </Row>
@@ -620,8 +620,8 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       {isEditing && (
         <div
           style={{
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            background: "var(--cys-color-fill-quaternary)",
+            border: "1px solid var(--cys-color-border-secondary)",
             borderRadius: 10,
             padding: '8px 12px',
             marginBottom: 14,
@@ -632,40 +632,40 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             gap: 8,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div className={ui.wrappingRow}>
+            <Text strong className={ui.sectionLabel}>
               Estado de Matrícula:
             </Text>
             {initialValues?.cursoNombre ? (
-              <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+              <Tag color="blue" className={ui.strongTag}>
                 {initialValues.cursoNombre} {initialValues.turno ? `(${initialValues.turno})` : ''}
               </Tag>
             ) : (
-              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="warning" className={ui.compactTag}>
                 ⚠️ Sin Curso Asignado
               </Tag>
             )}
             <Tag
               color={initialValues?.estadoInscripcion === 'Baja' ? 'error' : 'success'}
-              style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}
+              className={ui.strongTag}
             >
               Cursada: {initialValues?.estadoInscripcion || 'Regular'}
             </Tag>
             {initialValues?.numeroOrden ? (
-              <Tag color="purple" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="purple" className={ui.compactTag}>
                 Nº de Orden: #{initialValues.numeroOrden}
               </Tag>
             ) : (
-              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="warning" className={ui.compactTag}>
                 ⚠️ Sin Nº de Orden
               </Tag>
             )}
             {initialValues?.numeroInscripcion ? (
-              <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="default" className={ui.compactTag}>
                 Matrícula: {initialValues.numeroInscripcion}
               </Tag>
             ) : (
-              <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="default" className={ui.compactTag}>
                 Sin Matrícula
               </Tag>
             )}
@@ -702,7 +702,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
               <Form.Item
                 name="cicloId"
                 label={
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div className={ui.tightRow}>
                     <span>Ciclo Lectivo</span>
                     <Tag color="blue" style={{ fontSize: 11, borderRadius: 4 }}>
                       Activo
@@ -741,7 +741,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
           <Row gutter={14}>
             <Col xs={24} sm={12} md={estadoInscripcionValue === 'Baja' ? 4 : 5}>
               <Form.Item name="numeroOrden" label="Nº de Orden">
-                <InputNumber min={1} max={999} style={{ width: '100%' }} placeholder="Ej. 15" />
+                <InputNumber min={1} max={999} className={ui.fullWidth} placeholder="Ej. 15" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12} md={estadoInscripcionValue === 'Baja' ? 5 : 7}>
@@ -751,19 +751,19 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             </Col>
             <Col xs={24} sm={12} md={estadoInscripcionValue === 'Baja' ? 5 : 6}>
               <Form.Item name="fechaInscripcion" label="Fecha Inscripción">
-                <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="DD/MM/AAAA" />
+                <DatePicker format="DD/MM/YYYY" className={ui.fullWidth} placeholder="DD/MM/AAAA" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12} md={estadoInscripcionValue === 'Baja' ? 5 : 6}>
               <Form.Item name="fechaIngreso" label="Fecha Ingreso">
-                <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} placeholder="DD/MM/AAAA" />
+                <DatePicker format="DD/MM/YYYY" className={ui.fullWidth} placeholder="DD/MM/AAAA" />
               </Form.Item>
             </Col>
             {estadoInscripcionValue === 'Baja' && (
               <Col xs={24} sm={12} md={5}>
                 <Form.Item
                   name="fechaEgreso"
-                  label={<span style={{ color: '#dc2626', fontWeight: 600 }}>Fecha Egreso / Baja *</span>}
+                  label={<span style={{ color: 'var(--cys-color-error-text)', fontWeight: 600 }}>Fecha Egreso / Baja *</span>}
                   rules={[{ required: true, message: 'La fecha de baja es obligatoria' }]}
                 >
                   <DatePicker
@@ -794,8 +794,8 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
       {isEditing && !loadingResponsable && (
         <div
           style={{
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            background: "var(--cys-color-fill-quaternary)",
+            border: "1px solid var(--cys-color-border-secondary)",
             borderRadius: 10,
             padding: '8px 12px',
             marginBottom: 14,
@@ -806,39 +806,39 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             gap: 8,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <Text strong style={{ fontSize: 11.5, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div className={ui.wrappingRow}>
+            <Text strong className={ui.sectionLabel}>
               Datos del Responsable:
             </Text>
             {form.getFieldValue('responsableDni') || existingResponsable?.dni ? (
-              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+              <Tag color="success" className={ui.strongTag}>
                 DNI: {form.getFieldValue('responsableDni') || existingResponsable?.dni}
               </Tag>
             ) : (
-              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="warning" className={ui.compactTag}>
                 ⚠️ Sin DNI
               </Tag>
             )}
             {form.getFieldValue('responsableTelefono') || existingResponsable?.telefono ? (
-              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="success" className={ui.compactTag}>
                 Teléfono Cargado
               </Tag>
             ) : (
-              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="warning" className={ui.compactTag}>
                 ⚠️ Sin Teléfono
               </Tag>
             )}
             {form.getFieldValue('responsableEmail') || existingResponsable?.email ? (
-              <Tag color="success" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="success" className={ui.compactTag}>
                 Email Cargado
               </Tag>
             ) : (
-              <Tag color="warning" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="warning" className={ui.compactTag}>
                 ⚠️ Sin Email
               </Tag>
             )}
             {form.getFieldValue('vinculo') && (
-              <Tag color="blue" style={{ margin: 0, borderRadius: 6, fontSize: 11 }}>
+              <Tag color="blue" className={ui.compactTag}>
                 Vínculo: {form.getFieldValue('vinculo')}
               </Tag>
             )}
@@ -891,14 +891,14 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
           >
             {isEditing ? (
               <Input
-                prefix={<IdcardOutlined style={{ color: '#2563eb' }} />}
+                prefix={<IdcardOutlined className={ui.primary} />}
                 placeholder="Ej. 30123456"
                 maxLength={10}
               />
             ) : (
-              <Space.Compact style={{ width: '100%' }}>
+              <Space.Compact className={ui.fullWidth}>
                 <Input
-                  prefix={<IdcardOutlined style={{ color: '#2563eb' }} />}
+                  prefix={<IdcardOutlined className={ui.primary} />}
                   placeholder="Ej. 30123456"
                   maxLength={10}
                   onBlur={() => handleSearchResponsable()}
@@ -930,7 +930,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         <Col xs={24} sm={12} md={isEditing ? 9 : 8}>
           <Form.Item name="responsableTelefono" label="Teléfono de Contacto">
             <Input
-              prefix={<PhoneOutlined style={{ color: '#2563eb' }} />}
+              prefix={<PhoneOutlined className={ui.primary} />}
               placeholder="Ej. +54 9 11 1234-5678"
             />
           </Form.Item>
@@ -945,7 +945,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             rules={[{ required: !isEditing, message: 'Por favor ingrese los apellidos' }]}
           >
             <Input
-              prefix={<UserOutlined style={{ color: '#2563eb' }} />}
+              prefix={<UserOutlined className={ui.primary} />}
               placeholder="Ej. García"
             />
           </Form.Item>
@@ -957,7 +957,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             rules={[{ required: !isEditing, message: 'Por favor ingrese los nombres' }]}
           >
             <Input
-              prefix={<UserOutlined style={{ color: '#2563eb' }} />}
+              prefix={<UserOutlined className={ui.primary} />}
               placeholder="Ej. Laura Elena"
             />
           </Form.Item>
@@ -969,7 +969,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             rules={[{ type: 'email', message: 'Ingrese un correo electrónico válido' }]}
           >
             <Input
-              prefix={<MailOutlined style={{ color: '#2563eb' }} />}
+              prefix={<MailOutlined className={ui.primary} />}
               placeholder="Ej. laura.garcia@email.com"
             />
           </Form.Item>
@@ -980,7 +980,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         <Col xs={24} sm={12} md={12}>
           <Form.Item name="responsableNacionalidad" label="Nacionalidad">
             <Input
-              prefix={<GlobalOutlined style={{ color: '#2563eb' }} />}
+              prefix={<GlobalOutlined className={ui.primary} />}
               placeholder="Ej. Argentina"
             />
           </Form.Item>
@@ -988,7 +988,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
         <Col xs={24} sm={12} md={12}>
           <Form.Item name="responsableProfesion" label="Profesión u Ocupación">
             <Input
-              prefix={<SolutionOutlined style={{ color: '#2563eb' }} />}
+              prefix={<SolutionOutlined className={ui.primary} />}
               placeholder="Ej. Docente, Empleado/a"
             />
           </Form.Item>
@@ -1007,7 +1007,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
             <UserOutlined style={{ fontSize: 13.5 }} />
             <span>1. Datos del Alumno</span>
           </span>
-          <span style={{ fontSize: 11, color: '#16a34a', fontWeight: 600, marginTop: 2, paddingLeft: 19 }}>
+          <span style={{ fontSize: 11, color: "var(--cys-color-success-text)", fontWeight: 600, marginTop: 2, paddingLeft: 19 }}>
             ✓ Ficha Completa
           </span>
         </div>
@@ -1028,7 +1028,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
               fontWeight: 600,
               marginTop: 2,
               paddingLeft: 19,
-              color: initialValues?.cursoNombre ? '#2563eb' : '#d97706',
+              color: initialValues?.cursoNombre ? "var(--cys-color-primary-text)" : "var(--cys-color-warning-text)",
             }}
           >
             {initialValues?.cursoNombre ? `• ${initialValues.cursoNombre}` : '⚠️ Sin Curso'}
@@ -1051,7 +1051,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
               fontWeight: 600,
               marginTop: 2,
               paddingLeft: 19,
-              color: existingResponsable || form.getFieldValue('responsableDni') ? '#16a34a' : '#d97706',
+              color: existingResponsable || form.getFieldValue('responsableDni') ? "var(--cys-color-success-text)" : "var(--cys-color-warning-text)",
             }}
           >
             {existingResponsable || form.getFieldValue('responsableDni') ? '✓ Tutor Vinculado' : '⚠️ Sin Responsable'}
@@ -1089,7 +1089,7 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
               {isEditing ? <SolutionOutlined /> : <UserAddOutlined />}
             </div>
             <div>
-              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: 'var(--cys-color-text)' }}>
                 {isEditing ? 'Editar Ficha del Alumno' : 'Alta Integral de Alumno'}
               </span>
               <Text type="secondary" style={{ display: 'block', fontSize: 12.5, fontWeight: 400, marginTop: 1 }}>
@@ -1180,9 +1180,9 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
               style={{
                 marginBottom: 16,
                 padding: '10px 14px',
-                background: '#f8fafc',
+                background: "var(--cys-color-fill-quaternary)",
                 borderRadius: 12,
-                border: '1px solid #f1f5f9',
+                border: "1px solid var(--cys-color-border-secondary)",
               }}
               items={[
                 {
@@ -1227,12 +1227,12 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
                           width: 26,
                           height: 26,
                           borderRadius: '50%',
-                          background: '#f1f5f9',
-                          border: '1px solid #cbd5e1',
+                          background: "var(--cys-color-fill-tertiary)",
+                          border: "1px solid var(--cys-color-border)",
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#64748b',
+                          color: 'var(--cys-color-text-description)',
                           fontSize: 13,
                         }}
                       >
@@ -1282,12 +1282,12 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
                           width: 26,
                           height: 26,
                           borderRadius: '50%',
-                          background: '#f1f5f9',
-                          border: '1px solid #cbd5e1',
+                          background: "var(--cys-color-fill-tertiary)",
+                          border: "1px solid var(--cys-color-border)",
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#64748b',
+                          color: 'var(--cys-color-text-description)',
                           fontSize: 13,
                         }}
                       >
@@ -1337,12 +1337,12 @@ export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = ({
                           width: 26,
                           height: 26,
                           borderRadius: '50%',
-                          background: '#f1f5f9',
-                          border: '1px solid #cbd5e1',
+                          background: "var(--cys-color-fill-tertiary)",
+                          border: "1px solid var(--cys-color-border)",
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#64748b',
+                          color: 'var(--cys-color-text-description)',
                           fontSize: 13,
                         }}
                       >

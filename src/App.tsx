@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ConfigProvider, App as AntdApp } from 'antd';
+import esES from 'antd/locale/es_ES';
+import dayjs from 'dayjs';
+import 'dayjs/locale/es';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from './shared/components/MainLayout';
 import { AlumnoList } from './modules/alumnos/components/AlumnoList';
@@ -14,6 +17,8 @@ import { LandingPage } from './modules/landing/LandingPage';
 import { ThemeContext } from './core/themeContext';
 import { getAntdTheme } from './theme';
 import './index.css';
+
+dayjs.locale('es');
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -32,7 +37,7 @@ function App() {
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-      <ConfigProvider theme={getAntdTheme(isDarkMode)}>
+      <ConfigProvider locale={esES} theme={getAntdTheme(isDarkMode)}>
         <AntdApp>
           <BrowserRouter>
             <Routes>
@@ -59,5 +64,4 @@ function App() {
 }
 
 export default App;
-
 

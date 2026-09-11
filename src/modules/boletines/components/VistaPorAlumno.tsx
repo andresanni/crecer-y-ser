@@ -1,5 +1,7 @@
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
+  Alert,
   Card,
   Select,
   Button,
@@ -117,7 +119,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   }, [valoresEscala]);
 
   // Alumno seleccionado actualmente
-  const [selectedInscripcionId, setSelectedInscripcionId] = useState<string | null>(null);
+  const [requestedInscripcionId, setSelectedInscripcionId] = useState<string | null>(null);
+  const selectedInscripcionId = alumnos.some((alumno) => alumno.inscripcionId === requestedInscripcionId)
+    ? requestedInscripcionId
+    : alumnos[0]?.inscripcionId ?? null;
 
   // Criterios de todas las materias del curso { cursoMateriaId: CriterioEvaluacion[] }
   const [criteriosMap, setCriteriosMap] = useState<Record<string, CriterioEvaluacion[]>>({});
@@ -191,13 +196,6 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const [loadingEvaluaciones, setLoadingEvaluaciones] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
 
-  // Inicializar con el primer alumno
-  useEffect(() => {
-    if (alumnos.length > 0 && !selectedInscripcionId) {
-      setSelectedInscripcionId(alumnos[0].inscripcionId);
-    }
-  }, [alumnos, selectedInscripcionId]);
-
   // 1. Cargar criterios de todas las materias del curso en lote
   useEffect(() => {
     const loadCriterios = async () => {
@@ -255,61 +253,71 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   }, [selectedInscripcionId]);
 
   // 2. Cargar evaluaciones y asistencia para el alumno seleccionado
-  const loadAlumnoData = useCallback(async () => {
-    if (!selectedInscripcionId || !periodoId) return;
-
-    try {
-      setLoadingEvaluaciones(true);
-
-      // Cargar evaluaciones de materias
-      const evalMap = await boletinService.getEvaluacionesByInscripcionAndPeriodo(
-        selectedInscripcionId,
-        periodoId
-      );
-
-      const newMateriasState: Record<string, MateriaAlumnoState> = {};
-      for (const cm of cursoMaterias) {
-        const ev = evalMap[cm.id];
-        newMateriasState[cm.id] = {
-          evaluacionMateriaId: ev?.evaluacionMateriaId,
-          ppi: ev?.ppi ?? false,
-          calificacionGeneralId: ev?.calificacionGeneralId ?? null,
-          criteriosValores: ev?.criteriosValores ? { ...ev.criteriosValores } : {},
-          isModified: false,
-        };
-      }
-      setMateriasState(newMateriasState);
-
-      // Cargar cierre de asistencia
-      const cierre = await boletinService.getCierrePeriodoAlumno(selectedInscripcionId, periodoId);
-      setAsistenciaState({
-        cierreId: cierre?.id,
-        asistencias: cierre?.asistencias ?? 0,
-        inasistencias: cierre?.inasistencias ?? 0,
-        llegadasTarde: cierre?.llegadasTarde ?? 0,
-        observaciones: cierre?.observaciones || '',
-        isModified: false,
-      });
-
-      // Cargar datos de apoyo escolar de la inscripción activa
-      const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
-      setApoyoState({
-        promocionoConAcompanamiento: curAlu?.promocionoConAcompanamiento || '-',
-        poseeApoyos: curAlu?.poseeApoyos || '-',
-        cualesApoyos: curAlu?.cualesApoyos || '',
-        isModified: false,
-      });
-    } catch (err) {
-      console.error(err);
-      message.error('Error al cargar la libreta del alumno');
-    } finally {
-      setLoadingEvaluaciones(false);
-    }
-  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message]);
-
+  const [alumnoRevision, setAlumnoRevision] = useState(0);
+  const loadAlumnoData = () => setAlumnoRevision((value) => value + 1);
+  const alumnoRequestKey = [selectedInscripcionId, periodoId, alumnoRevision].join(':');
+  const [alumnoResult, setAlumnoResult] = useState({ key: '', failed: false });
+  const alumnoDataReady = alumnoResult.key === alumnoRequestKey && !alumnoResult.failed && !loadingEvaluaciones;
   useEffect(() => {
-    void loadAlumnoData();
-  }, [loadAlumnoData]);
+    let active = true;
+    const fetchAlumnoData = async () => {
+      if (!selectedInscripcionId || !periodoId) return;
+
+      try {
+        setLoadingEvaluaciones(true);
+
+        // Cargar evaluaciones de materias
+        const evalMap = await boletinService.getEvaluacionesByInscripcionAndPeriodo(
+          selectedInscripcionId,
+          periodoId
+        );
+
+        const newMateriasState: Record<string, MateriaAlumnoState> = {};
+        for (const cm of cursoMaterias) {
+          const ev = evalMap[cm.id];
+          newMateriasState[cm.id] = {
+            evaluacionMateriaId: ev?.evaluacionMateriaId,
+            ppi: ev?.ppi ?? false,
+            calificacionGeneralId: ev?.calificacionGeneralId ?? null,
+            criteriosValores: ev?.criteriosValores ? { ...ev.criteriosValores } : {},
+            isModified: false,
+          };
+        }
+
+        // Cargar cierre de asistencia
+        const cierre = await boletinService.getCierrePeriodoAlumno(selectedInscripcionId, periodoId);
+        if (!active) return;
+        setMateriasState(newMateriasState);
+        setAsistenciaState({
+          cierreId: cierre?.id,
+          asistencias: cierre?.asistencias ?? 0,
+          inasistencias: cierre?.inasistencias ?? 0,
+          llegadasTarde: cierre?.llegadasTarde ?? 0,
+          observaciones: cierre?.observaciones || '',
+          isModified: false,
+        });
+
+        // Cargar datos de apoyo escolar de la inscripción activa
+        const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
+        setApoyoState({
+          promocionoConAcompanamiento: curAlu?.promocionoConAcompanamiento || '-',
+          poseeApoyos: curAlu?.poseeApoyos || '-',
+          cualesApoyos: curAlu?.cualesApoyos || '',
+          isModified: false,
+        });
+        setAlumnoResult({ key: alumnoRequestKey, failed: false });
+      } catch (err) {
+        if (!active) return;
+        console.error(err);
+        setAlumnoResult({ key: alumnoRequestKey, failed: true });
+        message.error('Error al cargar la libreta del alumno');
+      } finally {
+        if (active) setLoadingEvaluaciones(false);
+      }
+    };
+    void fetchAlumnoData();
+    return () => { active = false; };
+  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey]);
 
   // Manejadores de cambios
   const handleCriterioChange = (
@@ -418,7 +426,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
   // Guardar datos del alumno actual
   const handleSave = async () => {
-    if (!selectedInscripcionId || !periodoId) return;
+    if (!selectedInscripcionId || !periodoId || !alumnoDataReady) return;
 
     try {
       setSaving(true);
@@ -646,8 +654,30 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return <Empty description="No hay alumnos inscriptos en este curso." />;
   }
 
+  if (!alumnoDataReady) {
+    const failed = alumnoResult.key === alumnoRequestKey && alumnoResult.failed;
+    return (
+      <Card>
+        {failed ? (
+          <Alert
+            type="error"
+            showIcon
+            title="No se pudo cargar la libreta del alumno"
+            description="Reintentá la carga para continuar con la evaluación."
+            action={<Button onClick={loadAlumnoData}>Reintentar</Button>}
+          />
+        ) : (
+          <div className={ui.loadingPanel}>
+            <Spin />
+            <Typography.Text type="secondary">Cargando la libreta del alumno…</Typography.Text>
+          </div>
+        )}
+      </Card>
+    );
+  }
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className={ui.page}>
       {/* 1. Barra Superior Unificada de Navegación del Aula y Tira de Alumnos */}
       <Card
         style={{
@@ -655,7 +685,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           background: 'var(--cys-color-bg-container, #ffffff)',
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
         }}
-        bodyStyle={{ padding: '10px 14px' }}
+        styles={{ body: { padding: '10px 14px' } }}
       >
         <div
           style={{
@@ -700,7 +730,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 style={{
                   flexShrink: 0,
                   opacity: canScrollPillsLeft ? 1 : 0.35,
-                  border: '1px solid #cbd5e1',
+                  border: "1px solid var(--cys-color-border)",
                 }}
               />
             </Tooltip>
@@ -742,8 +772,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       gap: 6,
                       padding: '5px 11px',
                       borderRadius: 20,
-                      border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                      background: isSelected ? '#eff6ff' : '#f8fafc',
+                      border: isSelected ? '2px solid #2563eb' : "1px solid var(--cys-color-border-secondary)",
+                      background: isSelected ? "var(--cys-color-primary-bg)" : "var(--cys-color-fill-quaternary)",
                       boxShadow: isSelected ? '0 2px 8px rgba(37, 99, 235, 0.18)' : 'none',
                       cursor: 'pointer',
                       whiteSpace: 'nowrap',
@@ -752,10 +782,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                     }}
                   >
-                    <span style={{ fontWeight: 700, fontSize: 11.5, color: isSelected ? '#1e40af' : '#64748b' }}>
+                    <span style={{ fontWeight: 700, fontSize: 11.5, color: isSelected ? "var(--cys-color-primary-text)" : "var(--cys-color-text-description)" }}>
                       {alu.numeroOrden ? `${alu.numeroOrden}.` : `${idx + 1}.`}
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: isSelected ? 700 : 500, color: isSelected ? '#1e40af' : '#1e293b' }}>
+                    <span style={{ fontSize: 12, fontWeight: isSelected ? 700 : 500, color: isSelected ? "var(--cys-color-primary-text)" : "var(--cys-color-text)" }}>
                       {alu.apellidos} {alu.nombres ? alu.nombres.charAt(0) + '.' : ''}
                     </span>
                     <span
@@ -768,15 +798,15 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                         padding: '1px 6px',
                         borderRadius: 10,
                         background: isCompleto
-                          ? '#dcfce7'
+                          ? "var(--cys-color-success-bg)"
                           : isProgreso
-                          ? '#fef3c7'
-                          : '#f1f5f9',
+                          ? "var(--cys-color-warning-bg)"
+                          : "var(--cys-color-fill-tertiary)",
                         color: isCompleto
-                          ? '#15803d'
+                          ? "var(--cys-color-success-text)"
                           : isProgreso
-                          ? '#b45309'
-                          : '#94a3b8',
+                          ? "var(--cys-color-warning-text)"
+                          : "var(--cys-color-text-secondary)",
                       }}
                     >
                       {isCompleto ? '✓ 100%' : `${porcentaje}%`}
@@ -797,7 +827,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 style={{
                   flexShrink: 0,
                   opacity: canScrollPillsRight ? 1 : 0.35,
-                  border: '1px solid #cbd5e1',
+                  border: "1px solid var(--cys-color-border)",
                 }}
               />
             </Tooltip>
@@ -819,7 +849,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           {/* Acciones Globales: Guía del Curso y Guardar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <Button
-              icon={<DashboardOutlined style={{ color: '#2563eb' }} />}
+              icon={<DashboardOutlined className={ui.primary} />}
               onClick={() => setDrawerResumenOpen(true)}
               style={{ borderRadius: 8, fontWeight: 600 }}
             >
@@ -852,7 +882,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             gap: 12,
             padding: '10px 16px',
             borderRadius: 12,
-            background: 'rgba(255, 255, 255, 0.95)',
+            background: 'var(--cys-color-bg-container)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
             border: '1px solid rgba(37, 99, 235, 0.22)',
@@ -870,17 +900,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             overlayStyle={{ width: 340 }}
             content={
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, borderBottom: '1px solid #f1f5f9' }}>
-                  <Typography.Text strong style={{ fontSize: 13, color: '#0f172a' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, borderBottom: "1px solid var(--cys-color-border-secondary)" }}>
+                  <Typography.Text strong style={{ fontSize: 13, color: 'var(--cys-color-text)' }}>
                     Seleccionar Alumno
                   </Typography.Text>
-                  <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                  <Typography.Text type="secondary" className={ui.smallText}>
                     {alumnos.length} estudiantes
                   </Typography.Text>
                 </div>
 
                 <Input
-                  prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+                  prefix={<SearchOutlined style={{ color: 'var(--cys-color-text-secondary)' }} />}
                   placeholder="Buscar por apellido o N° de orden..."
                   value={studentSearchQuery}
                   onChange={(e) => setStudentSearchQuery(e.target.value)}
@@ -928,8 +958,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             padding: '8px 10px',
                             borderRadius: 8,
                             cursor: 'pointer',
-                            background: isSelected ? '#eff6ff' : 'transparent',
-                            border: isSelected ? '1px solid #bfdbfe' : '1px solid transparent',
+                            background: isSelected ? "var(--cys-color-primary-bg)" : 'transparent',
+                            border: isSelected ? "1px solid var(--cys-color-primary-border)" : '1px solid transparent',
                             transition: 'all 0.15s ease',
                           }}
                           onMouseEnter={(e) => {
@@ -945,8 +975,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                                 width: 22,
                                 height: 22,
                                 borderRadius: 6,
-                                background: isSelected ? '#2563eb' : '#f1f5f9',
-                                color: isSelected ? '#ffffff' : '#475569',
+                                background: isSelected ? '#2563eb' : "var(--cys-color-fill-tertiary)",
+                                color: isSelected ? '#ffffff' : "var(--cys-color-text-description)",
                                 fontWeight: 700,
                                 fontSize: 11,
                                 display: 'inline-flex',
@@ -961,7 +991,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               strong={isSelected}
                               style={{
                                 fontSize: 12.5,
-                                color: isSelected ? '#1e40af' : '#1e293b',
+                                color: isSelected ? "var(--cys-color-primary-text)" : "var(--cys-color-text)",
                                 whiteSpace: 'nowrap',
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -1014,18 +1044,18 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               >
                 {currentAlumno.numeroOrden || <UserOutlined />}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Typography.Text strong style={{ fontSize: 15, color: '#0f172a' }}>
+              <div className={ui.tightRow}>
+                <Typography.Text strong style={{ fontSize: 15, color: 'var(--cys-color-text)' }}>
                   {currentAlumno.nombreCompleto}
                 </Typography.Text>
-                <DownOutlined style={{ fontSize: 11, color: '#2563eb', marginTop: 1 }} />
+                <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', marginTop: 1 }} />
               </div>
             </div>
           </Popover>
 
           {/* Progreso del Estudiante y Período Escolar */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className={ui.inlineControls}>
               <Tag
                 color={stats.percent === 100 ? 'green' : 'blue'}
                 style={{ fontWeight: 700, margin: 0, fontSize: 11.5, padding: '2px 8px' }}
@@ -1041,7 +1071,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               />
             </div>
 
-            <Tag color="purple" style={{ borderRadius: 6, fontSize: 11, margin: 0, fontWeight: 600 }}>
+            <Tag color="purple" className={ui.strongTag}>
               {periodo?.nombre || 'Período Activo'}
             </Tag>
           </div>
@@ -1051,17 +1081,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       <Card
         style={{
           borderRadius: 12,
-          border: apoyoState.isModified ? '1px solid #3b82f6' : '1px solid #e2e8f0',
+          border: apoyoState.isModified ? '1px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
           background: 'var(--cys-color-bg-container, #ffffff)',
           boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)',
           transition: 'all 0.2s ease',
         }}
-        bodyStyle={{ padding: '12px 16px' }}
+        styles={{ body: { padding: '12px 16px' } }}
       >
         <div style={{ marginBottom: 12 }}>
           <Space size={6} align="center">
-            <SafetyCertificateOutlined style={{ color: '#2563eb', fontSize: 15 }} />
-            <Typography.Text strong style={{ fontSize: 13.5, color: '#1e293b' }}>
+            <SafetyCertificateOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 15 }} />
+            <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
               Apoyos e Integración Escolar (Trayectoria Anual)
             </Typography.Text>
           </Space>
@@ -1072,8 +1102,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Col xs={24} lg={14}>
             <div
               style={{
-                background: isPrimerBimestre ? 'rgba(240, 253, 244, 0.7)' : '#f8fafc',
-                border: isPrimerBimestre ? '1px solid #86efac' : '1px solid #e2e8f0',
+                background: isPrimerBimestre ? 'var(--cys-color-success-bg)' : "var(--cys-color-fill-quaternary)",
+                border: isPrimerBimestre ? '1px solid #86efac' : "1px solid var(--cys-color-border-secondary)",
                 borderRadius: 10,
                 padding: '10px 14px',
                 height: '100%',
@@ -1082,8 +1112,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
                 <Space size={4}>
-                  {!isPrimerBimestre && <LockOutlined style={{ color: '#94a3b8', fontSize: 12 }} />}
-                  <Typography.Text strong style={{ fontSize: 12.5, color: isPrimerBimestre ? '#166534' : '#64748b' }}>
+                  {!isPrimerBimestre && <LockOutlined style={{ color: 'var(--cys-color-text-secondary)', fontSize: 12 }} />}
+                  <Typography.Text strong style={{ fontSize: 12.5, color: isPrimerBimestre ? "var(--cys-color-success-text)" : "var(--cys-color-text-description)" }}>
                     1. Dispositivos de Apoyo / Acompañamiento
                   </Typography.Text>
                 </Space>
@@ -1094,9 +1124,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     margin: 0,
                     fontWeight: 700,
                     padding: '1px 8px',
-                    background: isPrimerBimestre ? 'rgba(34, 197, 94, 0.12)' : '#f1f5f9',
-                    color: isPrimerBimestre ? '#15803d' : '#94a3b8',
-                    border: isPrimerBimestre ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid #cbd5e1',
+                    background: isPrimerBimestre ? 'rgba(34, 197, 94, 0.12)' : "var(--cys-color-fill-tertiary)",
+                    color: isPrimerBimestre ? "var(--cys-color-success-text)" : "var(--cys-color-text-secondary)",
+                    border: isPrimerBimestre ? '1px solid rgba(34, 197, 94, 0.3)' : "1px solid var(--cys-color-border)",
                   }}
                 >
                   1ER BIMESTRE
@@ -1106,7 +1136,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               <Row gutter={[12, 10]} align="middle">
                 <Col xs={24} sm={10}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <Typography.Text style={{ fontSize: 11.5, color: isPrimerBimestre ? '#475569' : '#94a3b8', fontWeight: 600 }}>
+                    <Typography.Text style={{ fontSize: 11.5, color: isPrimerBimestre ? "var(--cys-color-text-description)" : "var(--cys-color-text-secondary)", fontWeight: 600 }}>
                       ¿Posee apoyos?
                     </Typography.Text>
                     <Tooltip title={!isPrimerBimestre ? 'Los dispositivos de apoyo se establecen al inicio del ciclo lectivo en el 1° Bimestre.' : undefined}>
@@ -1116,7 +1146,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                           onChange={(val) => handleApoyoChange('poseeApoyos', val)}
                           size="middle"
                           disabled={!isPrimerBimestre}
-                          style={{ width: '100%' }}
+                          className={ui.fullWidth}
                           options={[
                             { value: 'SI', label: 'Sí' },
                             { value: 'NO', label: 'No' },
@@ -1133,7 +1163,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     <Typography.Text
                       style={{
                         fontSize: 11.5,
-                        color: isPrimerBimestre && apoyoState.poseeApoyos === 'SI' ? '#475569' : '#94a3b8',
+                        color: isPrimerBimestre && apoyoState.poseeApoyos === 'SI' ? "var(--cys-color-text-description)" : "var(--cys-color-text-secondary)",
                         fontWeight: 600,
                       }}
                     >
@@ -1163,8 +1193,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Col xs={24} lg={10}>
             <div
               style={{
-                background: isCuartoBimestre ? 'rgba(239, 246, 255, 0.7)' : '#f8fafc',
-                border: isCuartoBimestre ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+                background: isCuartoBimestre ? 'var(--cys-color-primary-bg)' : "var(--cys-color-fill-quaternary)",
+                border: isCuartoBimestre ? '1px solid #93c5fd' : "1px solid var(--cys-color-border-secondary)",
                 borderRadius: 10,
                 padding: '10px 14px',
                 height: '100%',
@@ -1173,8 +1203,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
                 <Space size={4}>
-                  {isCuartoBimestre ? <FlagOutlined style={{ color: '#2563eb', fontSize: 12 }} /> : <LockOutlined style={{ color: '#94a3b8', fontSize: 12 }} />}
-                  <Typography.Text strong style={{ fontSize: 12.5, color: isCuartoBimestre ? '#1e40af' : '#64748b' }}>
+                  {isCuartoBimestre ? <FlagOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 12 }} /> : <LockOutlined style={{ color: 'var(--cys-color-text-secondary)', fontSize: 12 }} />}
+                  <Typography.Text strong style={{ fontSize: 12.5, color: isCuartoBimestre ? "var(--cys-color-primary-text)" : "var(--cys-color-text-description)" }}>
                     2. Promoción con Acompañamiento
                   </Typography.Text>
                 </Space>
@@ -1185,9 +1215,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     margin: 0,
                     fontWeight: 700,
                     padding: '1px 8px',
-                    background: isCuartoBimestre ? 'rgba(37, 99, 235, 0.12)' : '#f1f5f9',
-                    color: isCuartoBimestre ? '#1d4ed8' : '#94a3b8',
-                    border: isCuartoBimestre ? '1px solid rgba(37, 99, 235, 0.3)' : '1px solid #cbd5e1',
+                    background: isCuartoBimestre ? 'rgba(37, 99, 235, 0.12)' : "var(--cys-color-fill-tertiary)",
+                    color: isCuartoBimestre ? "var(--cys-color-primary-text)" : "var(--cys-color-text-secondary)",
+                    border: isCuartoBimestre ? '1px solid rgba(37, 99, 235, 0.3)' : "1px solid var(--cys-color-border)",
                   }}
                 >
                   4TO BIMESTRE
@@ -1195,7 +1225,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <Typography.Text style={{ fontSize: 11.5, color: isCuartoBimestre ? '#475569' : '#94a3b8', fontWeight: 600 }}>
+                <Typography.Text style={{ fontSize: 11.5, color: isCuartoBimestre ? "var(--cys-color-text-description)" : "var(--cys-color-text-secondary)", fontWeight: 600 }}>
                   ¿Promocionó con acompañamiento?
                 </Typography.Text>
                 <Tooltip
@@ -1211,7 +1241,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       onChange={(val) => handleApoyoChange('promocionoConAcompanamiento', val)}
                       size="middle"
                       disabled={!isCuartoBimestre}
-                      style={{ width: '100%' }}
+                      className={ui.fullWidth}
                       options={[
                         { value: 'SI', label: 'Sí' },
                         { value: 'NO', label: 'No' },
@@ -1228,11 +1258,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
       {/* 4. Listado de Materias del Alumno */}
       {loadingEvaluaciones || loadingCriterios ? (
-        <Card style={{ textAlign: 'center', padding: 60, borderRadius: 16 }}>
+        <Card className={ui.loadingPanel}>
           <Spin tip="Cargando materias del estudiante..." />
         </Card>
       ) : cursoMaterias.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 40, borderRadius: 16 }}>
+        <Card className={ui.emptyPanel}>
           <Empty description="No hay materias asignadas a este curso." />
         </Card>
       ) : (
@@ -1256,11 +1286,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 key={cm.id}
                 style={{
                   borderRadius: 14,
-                  border: mat.isModified ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
+                  border: mat.isModified ? '1.5px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
                   boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
                   transition: 'all 0.2s ease',
                 }}
-                bodyStyle={{ padding: '16px 20px' }}
+                styles={{ body: { padding: '16px 20px' } }}
               >
                 {/* Encabezado de la Materia (Título + Estado + Switch PPI o Tag Formativa) */}
                 <div
@@ -1283,7 +1313,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#2563eb',
+                        color: 'var(--cys-color-primary-text)',
                         fontWeight: 700,
                         fontSize: 12,
                       }}
@@ -1291,17 +1321,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       {matIdx + 1}
                     </div>
                     <div>
-                      <Typography.Text strong style={{ fontSize: 14.5, color: '#0f172a' }}>
-                        <BookOutlined style={{ marginRight: 6, color: '#2563eb' }} />
+                      <Typography.Text strong style={{ fontSize: 14.5, color: 'var(--cys-color-text)' }}>
+                        <BookOutlined style={{ marginRight: 6, color: 'var(--cys-color-primary-text)' }} />
                         {cm.materiaNombre}
                       </Typography.Text>
                     </div>
                     {isMateriaComplete ? (
-                      <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
+                      <Tag color="success" icon={<CheckCircleOutlined />} className={ui.compactTag}>
                         Completa
                       </Tag>
                     ) : (
-                      <Tag color="warning" icon={<ExclamationCircleOutlined />} style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
+                      <Tag color="warning" icon={<ExclamationCircleOutlined />} className={ui.compactTag}>
                         Incompleta
                       </Tag>
                     )}
@@ -1335,7 +1365,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
                 {/* 5 Criterios Pedagógicos de la Materia + Calificación General */}
                 {crits.length === 0 ? (
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  <Typography.Text type="secondary" className={ui.caption}>
                     Esta materia no tiene criterios pedagógicos configurados en la malla curricular.
                   </Typography.Text>
                 ) : (
@@ -1350,7 +1380,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'space-between',
-                              background: '#f8fafc',
+                              background: "var(--cys-color-fill-quaternary)",
                               padding: '7px 14px',
                               borderRadius: 8,
                               gap: 12,
@@ -1358,8 +1388,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             }}
                           >
                             <div style={{ flex: 1, minWidth: 200 }}>
-                              <Typography.Text style={{ fontSize: 14, color: '#1e293b', fontWeight: 500, lineHeight: 1.4 }}>
-                                <span style={{ fontWeight: 700, color: '#2563eb', marginRight: 8, fontSize: 14.5 }}>
+                              <Typography.Text style={{ fontSize: 14, color: 'var(--cys-color-text)', fontWeight: 500, lineHeight: 1.4 }}>
+                                <span style={{ fontWeight: 700, color: 'var(--cys-color-primary-text)', marginRight: 8, fontSize: 14.5 }}>
                                   {num}.
                                 </span>
                                 {crit.nombre}
@@ -1457,11 +1487,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Card
             style={{
               borderRadius: 14,
-              border: asistenciaState.isModified ? '1.5px solid #7c3aed' : '1px solid #e2e8f0',
-              background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.02), #ffffff)',
+              border: asistenciaState.isModified ? '1.5px solid #7c3aed' : "1px solid var(--cys-color-border-secondary)",
+              background: 'var(--cys-color-bg-container)',
               boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
             }}
-            bodyStyle={{ padding: '18px 20px' }}
+            styles={{ body: { padding: '18px 20px' } }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <ClockCircleOutlined style={{ color: '#7c3aed', fontSize: 18 }} />
@@ -1469,7 +1499,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 <Typography.Title level={5} style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#7c3aed' }}>
                   Cierre Bimestral & Asistencia del Estudiante
                 </Typography.Title>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                <Typography.Text type="secondary" className={ui.caption}>
                   Registro de asistencia y concepto pedagógico general del período.
                 </Typography.Text>
               </div>
@@ -1477,14 +1507,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
             <Row gutter={[16, 16]}>
               <Col xs={24} sm={8}>
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                  <Typography.Text strong style={{ fontSize: 12, color: '#64748b' }}>
+                <Space orientation="vertical" size={4} className={ui.fullWidth}>
+                  <Typography.Text strong className={ui.secondaryCaption}>
                     ASISTENCIAS
                   </Typography.Text>
                   <InputNumber
                     min={0}
                     max={180}
-                    style={{ width: '100%' }}
+                    className={ui.fullWidth}
                     value={asistenciaState.asistencias}
                     onChange={(val) => handleAsistenciaChange('asistencias', val ?? 0)}
                   />
@@ -1492,14 +1522,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               </Col>
 
               <Col xs={12} sm={8}>
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                  <Typography.Text strong style={{ fontSize: 12, color: '#64748b' }}>
+                <Space orientation="vertical" size={4} className={ui.fullWidth}>
+                  <Typography.Text strong className={ui.secondaryCaption}>
                     INASISTENCIAS
                   </Typography.Text>
                   <InputNumber
                     min={0}
                     max={180}
-                    style={{ width: '100%' }}
+                    className={ui.fullWidth}
                     value={asistenciaState.inasistencias}
                     onChange={(val) => handleAsistenciaChange('inasistencias', val ?? 0)}
                   />
@@ -1507,14 +1537,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               </Col>
 
               <Col xs={12} sm={8}>
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                  <Typography.Text strong style={{ fontSize: 12, color: '#64748b' }}>
+                <Space orientation="vertical" size={4} className={ui.fullWidth}>
+                  <Typography.Text strong className={ui.secondaryCaption}>
                     LLEGADAS TARDE
                   </Typography.Text>
                   <InputNumber
                     min={0}
                     max={180}
-                    style={{ width: '100%' }}
+                    className={ui.fullWidth}
                     value={asistenciaState.llegadasTarde}
                     onChange={(val) => handleAsistenciaChange('llegadasTarde', val ?? 0)}
                   />
@@ -1522,8 +1552,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               </Col>
 
               <Col xs={24}>
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                  <Typography.Text strong style={{ fontSize: 12, color: '#64748b' }}>
+                <Space orientation="vertical" size={4} className={ui.fullWidth}>
+                  <Typography.Text strong className={ui.secondaryCaption}>
                     OBSERVACIONES GENERALES DEL PERÍODO
                   </Typography.Text>
                   <Input.TextArea
@@ -1565,9 +1595,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           }}
         >
           <Space size={8}>
-            <ExclamationCircleOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+            <ExclamationCircleOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 18 }} />
             <div>
-              <Typography.Text strong style={{ fontSize: 13.5, color: '#0f172a', display: 'block', lineHeight: 1.25 }}>
+              <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)', display: 'block', lineHeight: 1.25 }}>
                 Cambios pendientes sin guardar
               </Typography.Text>
               <Typography.Text type="secondary" style={{ fontSize: 11.5 }}>
@@ -1601,8 +1631,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       {/* 6. Drawer de Resumen y Monitoreo del Curso */}
       <Drawer
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <DashboardOutlined style={{ color: '#2563eb', fontSize: 18 }} />
+          <div className={ui.inlineControls}>
+            <DashboardOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 18 }} />
             <div>
               <Typography.Text strong style={{ fontSize: 15 }}>
                 Guía de Carga y Monitoreo del Curso
@@ -1618,23 +1648,23 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         onClose={() => setDrawerResumenOpen(false)}
         open={drawerResumenOpen}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className={ui.page}>
           {/* Tarjetas KPI de Estado: Pendientes vs Completos */}
           <Row gutter={[12, 12]}>
             <Col span={12}>
               <div
                 style={{
-                  background: '#f8fafc',
-                  border: '1px solid #cbd5e1',
+                  background: "var(--cys-color-fill-quaternary)",
+                  border: "1px solid var(--cys-color-border)",
                   borderRadius: 12,
                   padding: '14px 16px',
                   textAlign: 'center',
                 }}
               >
-                <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+                <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--cys-color-text-description)' }}>
                   Pendientes
                 </Typography.Text>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#334155', marginTop: 2 }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--cys-color-text)', marginTop: 2 }}>
                   {progresoResumen.totalAlumnos - progresoResumen.completadosCount}
                 </div>
               </div>
@@ -1642,17 +1672,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             <Col span={12}>
               <div
                 style={{
-                  background: '#f0fdf4',
+                  background: "var(--cys-color-success-bg)",
                   border: '1px solid #86efac',
                   borderRadius: 12,
                   padding: '14px 16px',
                   textAlign: 'center',
                 }}
               >
-                <Typography.Text style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: '#166534' }}>
+                <Typography.Text style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: "var(--cys-color-success-text)" }}>
                   Completos
                 </Typography.Text>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#15803d', marginTop: 2 }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--cys-color-success-text)', marginTop: 2 }}>
                   {progresoResumen.completadosCount}
                 </div>
               </div>
@@ -1693,21 +1723,21 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       setDrawerResumenOpen(false);
                     }}
                     style={{
-                      border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                      border: isSelected ? '2px solid #2563eb' : "1px solid var(--cys-color-border-secondary)",
                       borderRadius: 12,
                       padding: '12px 14px',
-                      background: isSelected ? '#f8fafc' : '#ffffff',
+                      background: isSelected ? "var(--cys-color-fill-quaternary)" : "var(--cys-color-bg-container)",
                       boxShadow: '0 1px 4px rgba(0,0,0,0.02)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontWeight: 700, color: isSelected ? '#2563eb' : '#64748b', fontSize: 13 }}>
+                      <div className={ui.inlineControls}>
+                        <span style={{ fontWeight: 700, color: isSelected ? "var(--cys-color-primary-text)" : "var(--cys-color-text-description)", fontSize: 13 }}>
                           {alu.numeroOrden ? `${alu.numeroOrden}.` : '•'}
                         </span>
-                        <Typography.Text strong style={{ fontSize: 13.5, color: '#0f172a' }}>
+                        <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
                           {alu.nombreCompleto}
                         </Typography.Text>
                       </div>

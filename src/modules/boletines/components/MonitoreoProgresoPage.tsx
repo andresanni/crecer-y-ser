@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { MetricCard } from '../../../shared/components/MetricCard';
+import ui from '../../../shared/styles/ui.module.css';
+import { PageHeader } from '../../../shared/components/PageHeader';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Row,
@@ -25,7 +28,6 @@ import {
   CopyOutlined,
   EyeOutlined,
   TeamOutlined,
-  WarningOutlined,
   DownOutlined,
   UpOutlined,
 } from '@ant-design/icons';
@@ -41,7 +43,7 @@ import type {
 } from '../models/boletin.model';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export const MonitoreoProgresoPage: React.FC = () => {
   const { message } = App.useApp();
@@ -111,24 +113,27 @@ export const MonitoreoProgresoPage: React.FC = () => {
   }, [cicloActual?.id, message]);
 
   // 2. Cargar Datos de Monitoreo Global
-  const loadMonitoreo = useCallback(async () => {
-    if (!selectedPeriodoId) return;
-
-    try {
-      setLoading(true);
-      const res = await boletinService.getMonitoreoInstitucional(selectedPeriodoId);
-      setData(res);
-    } catch (err) {
-      console.error(err);
-      message.error('Error al cargar datos de monitoreo institucional');
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedPeriodoId, message]);
-
+  const [monitoreoRevision, setMonitoreoRevision] = useState(0);
+  const loadMonitoreo = () => setMonitoreoRevision((value) => value + 1);
   useEffect(() => {
-    void loadMonitoreo();
-  }, [loadMonitoreo]);
+    if (!selectedPeriodoId) return;
+    let active = true;
+    const fetchMonitoreo = async () => {
+      try {
+        setLoading(true);
+        const res = await boletinService.getMonitoreoInstitucional(selectedPeriodoId);
+        if (active) setData(res);
+      } catch (err) {
+        if (!active) return;
+        console.error(err);
+        message.error('Error al cargar datos de monitoreo institucional');
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    void fetchMonitoreo();
+    return () => { active = false; };
+  }, [selectedPeriodoId, monitoreoRevision, message]);
 
   const selectedPeriodo = useMemo(
     () => periodos.find((p) => p.id === selectedPeriodoId),
@@ -156,35 +161,13 @@ export const MonitoreoProgresoPage: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className={ui.pageSpacious}>
       {/* 1. Encabezado Institucional y Barra de Acciones */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
-        <div className="cys-page-header">
-          <div className="cys-page-header-icon">
-            <DashboardOutlined />
-          </div>
-          <div className="cys-page-header-content">
-            <Title level={2} className="cys-page-header-title">
-              Monitoreo y Seguimiento Institucional
-            </Title>
-            <Text className="cys-page-header-subtitle">
-              Sondeo visual en tiempo real del cumplimiento y avance de carga docente de boletines.
-            </Text>
-          </div>
-        </div>
-
+      <PageHeader title="Monitoreo de boletines" description="Seguimiento del avance de carga por curso y materia." icon={<DashboardOutlined />} actions={
         <Space size="middle" wrap>
           {/* Selector de Bimestre */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Text strong style={{ fontSize: 13, color: '#475569' }}>
+          <div className={ui.inlineControls}>
+            <Text strong style={{ fontSize: 13, color: 'var(--cys-color-text-description)' }}>
               Bimestre / Período:
             </Text>
             <Select
@@ -199,7 +182,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
           </div>
 
           <Button
-            icon={<LinkOutlined style={{ color: '#2563eb' }} />}
+            icon={<LinkOutlined className={ui.primary} />}
             onClick={() => {
               setSelectedCursoForModal(null);
               setGestorModalOpen(true);
@@ -217,137 +200,22 @@ export const MonitoreoProgresoPage: React.FC = () => {
             />
           </Tooltip>
         </Space>
-      </div>
+      } />
 
-      {/* 2. Tarjetas KPI de Resumen Global de la Escuela */}
       <Row gutter={[16, 16]}>
-        {/* Progreso Global del Colegio */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{
-              borderRadius: 14,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-              border: '1px solid #e2e8f0',
-              height: '100%',
-            }}
-            bodyStyle={{ padding: '16px 20px' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase' }}>
-                Avance Global Escuela
-              </Text>
-              <Tag color="blue" style={{ margin: 0, fontWeight: 700 }}>
-                {data.porcentajeGlobalColegio}%
-              </Tag>
-            </div>
-
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>
-              {data.completadosColegio} / {data.totalAlumnosColegio}
-            </div>
-            <Text type="secondary" style={{ fontSize: 11.5, display: 'block', marginBottom: 10 }}>
-              Alumnos con boletín 100% completo en {selectedPeriodo?.nombre || 'este período'}
-            </Text>
-
-            <Progress
-              percent={data.porcentajeGlobalColegio}
-              showInfo={false}
-              strokeColor={{
-                '0%': '#2563eb',
-                '100%': '#10b981',
-              }}
-              size="small"
-            />
-          </Card>
+          <MetricCard title="Avance global" value={`${data.completadosColegio} / ${data.totalAlumnosColegio}`} description={`Alumnos con boletín completo en ${selectedPeriodo?.nombre || 'este período'}.`} loading={loading}>
+            <Progress percent={data.porcentajeGlobalColegio} size="small" />
+          </MetricCard>
         </Col>
-
-        {/* Grados 100% Listos */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{
-              borderRadius: 14,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-              border: '1px solid #bbf7d0',
-              background: 'linear-gradient(135deg, rgba(240, 253, 244, 0.6), #ffffff)',
-              height: '100%',
-            }}
-            bodyStyle={{ padding: '16px 20px' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>
-                Grados Listos
-              </Text>
-              <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 16 }} />
-            </div>
-
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#15803d', marginBottom: 4 }}>
-              {data.cursosCompletosCount} / {data.cursos.length}
-            </div>
-            <Text style={{ fontSize: 11.5, color: '#15803d', display: 'block' }}>
-              Cursos con todas sus materias y asistencias completadas al 100%.
-            </Text>
-          </Card>
+          <MetricCard title="Grados listos" value={`${data.cursosCompletosCount} / ${data.cursos.length}`} description="Cursos con materias y asistencias completas." tone="success" loading={loading} />
         </Col>
-
-        {/* Grados en Carga Activa */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{
-              borderRadius: 14,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-              border: '1px solid #fde68a',
-              background: 'linear-gradient(135deg, rgba(254, 252, 232, 0.6), #ffffff)',
-              height: '100%',
-            }}
-            bodyStyle={{ padding: '16px 20px' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: 700, color: '#854d0e', textTransform: 'uppercase' }}>
-                En Carga Activa
-              </Text>
-              <ClockCircleOutlined style={{ color: '#d97706', fontSize: 16 }} />
-            </div>
-
-            <div style={{ fontSize: 26, fontWeight: 800, color: '#b45309', marginBottom: 4 }}>
-              {data.cursosEnProgresoCount}
-            </div>
-            <Text style={{ fontSize: 11.5, color: '#b45309', display: 'block' }}>
-              Grados donde las docentes están cargando notas activamente.
-            </Text>
-          </Card>
+          <MetricCard title="En carga activa" value={data.cursosEnProgresoCount} description="Grados con carga de notas en curso." tone="warning" loading={loading} />
         </Col>
-
-        {/* Grados Sin Iniciar / Alerta de Convocatoria */}
         <Col xs={24} sm={12} lg={6}>
-          <Card
-            style={{
-              borderRadius: 14,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-              border: data.cursosSinIniciarCount > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0',
-              background: data.cursosSinIniciarCount > 0 ? 'linear-gradient(135deg, rgba(254, 242, 242, 0.6), #ffffff)' : '#ffffff',
-              height: '100%',
-            }}
-            bodyStyle={{ padding: '16px 20px' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 12, fontWeight: 700, color: data.cursosSinIniciarCount > 0 ? '#991b1b' : '#64748b', textTransform: 'uppercase' }}>
-                Sin Iniciar / Alerta
-              </Text>
-              {data.cursosSinIniciarCount > 0 ? (
-                <WarningOutlined style={{ color: '#dc2626', fontSize: 16 }} />
-              ) : (
-                <CheckCircleOutlined style={{ color: '#16a34a', fontSize: 16 }} />
-              )}
-            </div>
-
-            <div style={{ fontSize: 26, fontWeight: 800, color: data.cursosSinIniciarCount > 0 ? '#dc2626' : '#64748b', marginBottom: 4 }}>
-              {data.cursosSinIniciarCount}
-            </div>
-            <Text style={{ fontSize: 11.5, color: data.cursosSinIniciarCount > 0 ? '#b91c1c' : '#64748b', display: 'block' }}>
-              {data.cursosSinIniciarCount > 0
-                ? `${data.cursosSinIniciarCount} grado(s) aún sin carga iniciada. Conviene convocar a las docentes.`
-                : 'Todas las docentes ya iniciaron o completaron su carga.'}
-            </Text>
-          </Card>
+          <MetricCard title="Sin iniciar" value={data.cursosSinIniciarCount} description={data.cursosSinIniciarCount > 0 ? 'Grados que todavía no iniciaron la carga.' : 'Todos los grados iniciaron la carga.'} tone={data.cursosSinIniciarCount > 0 ? 'error' : 'success'} loading={loading} />
         </Col>
       </Row>
 
@@ -365,7 +233,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
           ]}
         />
 
-        <Text type="secondary" style={{ fontSize: 12 }}>
+        <Text type="secondary" className={ui.caption}>
           Mostrando {cursosFiltrados.length} de {data.cursos.length} grados
         </Text>
       </div>
@@ -376,7 +244,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
           <Spin size="large" tip="Calculando estado de avance de la escuela..." />
         </Card>
       ) : cursosFiltrados.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 60, borderRadius: 16 }}>
+        <Card className={ui.loadingPanel}>
           <Empty description="No hay grados en esta categoría de filtro." />
         </Card>
       ) : (
@@ -394,13 +262,13 @@ export const MonitoreoProgresoPage: React.FC = () => {
                   style={{
                     borderRadius: 14,
                     borderTop: `4px solid ${gradeConfig.textColor}`,
-                    borderRight: '1px solid #e2e8f0',
-                    borderBottom: '1px solid #e2e8f0',
-                    borderLeft: '1px solid #e2e8f0',
+                    borderRight: '1px solid var(--cys-color-border-secondary)',
+                    borderBottom: '1px solid var(--cys-color-border-secondary)',
+                    borderLeft: '1px solid var(--cys-color-border-secondary)',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
                     background: 'var(--cys-color-bg-container, #ffffff)',
                   }}
-                  bodyStyle={{ padding: '16px 18px' }}
+                  styles={{ body: { padding: '16px 18px' } }}
                 >
                   {/* Encabezado del Grado */}
                   <div
@@ -413,7 +281,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                       gap: 8,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div className={ui.inlineControls}>
                       <Tag
                         style={{
                           backgroundColor: gradeConfig.bgColor,
@@ -428,7 +296,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                       >
                         {gradeConfig.label}
                       </Tag>
-                      <Typography.Text strong style={{ fontSize: 15, color: '#0f172a' }}>
+                      <Typography.Text strong style={{ fontSize: 15, color: 'var(--cys-color-text)' }}>
                         {cur.cursoNombre}
                       </Typography.Text>
                     </div>
@@ -457,12 +325,12 @@ export const MonitoreoProgresoPage: React.FC = () => {
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <Space size={6}>
-                        <TeamOutlined style={{ color: '#64748b' }} />
-                        <Text style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                        <TeamOutlined style={{ color: 'var(--cys-color-text-description)' }} />
+                        <Text style={{ fontSize: 12, fontWeight: 600, color: 'var(--cys-color-text)' }}>
                           {cur.alumnosCompletos} de {cur.totalAlumnos} alumnos listos
                         </Text>
                       </Space>
-                      <Text strong style={{ fontSize: 12.5, color: isCompleto ? '#15803d' : isEnProgreso ? '#b45309' : '#64748b' }}>
+                      <Text strong style={{ fontSize: 12.5, color: isCompleto ? 'var(--cys-color-success-text)' : isEnProgreso ? 'var(--cys-color-warning-text)' : "var(--cys-color-text-description)" }}>
                         {cur.porcentaje}%
                       </Text>
                     </div>
@@ -475,17 +343,17 @@ export const MonitoreoProgresoPage: React.FC = () => {
                     />
 
                     <div style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 11 }}>
-                      <span style={{ color: '#16a34a', fontWeight: 600 }}>🟢 {cur.alumnosCompletos} Listos</span>
-                      <span style={{ color: '#d97706', fontWeight: 600 }}>🟡 {cur.alumnosEnProgreso} En Curso</span>
-                      <span style={{ color: '#64748b', fontWeight: 600 }}>⚪ {cur.alumnosSinIniciar} Pendientes</span>
+                      <span style={{ color: 'var(--cys-color-success-text)', fontWeight: 600 }}>🟢 {cur.alumnosCompletos} Listos</span>
+                      <span style={{ color: 'var(--cys-color-warning-text)', fontWeight: 600 }}>🟡 {cur.alumnosEnProgreso} En Curso</span>
+                      <span style={{ color: 'var(--cys-color-text-description)', fontWeight: 600 }}>⚪ {cur.alumnosSinIniciar} Pendientes</span>
                     </div>
                   </div>
 
                   {/* Banner de Estado del Magic Link */}
                   <div
                     style={{
-                      background: cur.tokenDocente ? '#f0fdf4' : '#fffbeb',
-                      border: cur.tokenDocente ? '1px solid #bbf7d0' : '1px solid #fde68a',
+                      background: cur.tokenDocente ? 'var(--cys-color-success-bg)' : 'var(--cys-color-warning-bg)',
+                      border: cur.tokenDocente ? '1px solid var(--cys-color-success-border)' : '1px solid var(--cys-color-warning-border)',
                       borderRadius: 8,
                       padding: '6px 10px',
                       display: 'flex',
@@ -496,9 +364,9 @@ export const MonitoreoProgresoPage: React.FC = () => {
                       gap: 6,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <LinkOutlined style={{ color: cur.tokenDocente ? '#16a34a' : '#d97706', fontSize: 13 }} />
-                      <Text strong style={{ fontSize: 11.5, color: cur.tokenDocente ? '#166534' : '#854d0e' }}>
+                    <div className={ui.tightRow}>
+                      <LinkOutlined style={{ color: cur.tokenDocente ? 'var(--cys-color-success-text)' : 'var(--cys-color-warning-text)', fontSize: 13 }} />
+                      <Text strong style={{ fontSize: 11.5, color: cur.tokenDocente ? 'var(--cys-color-success-text)' : 'var(--cys-color-warning-text)' }}>
                         {cur.tokenDocente
                           ? `Docente: ${cur.tokenDocente.docenteNombre || 'Docente de Grado'}`
                           : 'Sin enlace mágico generado'}
@@ -537,7 +405,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                       type="text"
                       icon={isExpanded ? <UpOutlined /> : <DownOutlined />}
                       onClick={() => toggleExpandCurso(cur.cursoId)}
-                      style={{ fontSize: 11.5, fontWeight: 600, color: '#475569', padding: '0 4px' }}
+                      style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--cys-color-text-description)', padding: '0 4px' }}
                     >
                       {isExpanded ? 'Ocultar materias' : `Ver materias (${cur.materias.length})`}
                     </Button>
@@ -557,7 +425,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
 
                   {/* Sección Expandible: Desglose de Materias */}
                   {isExpanded && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px dashed #e2e8f0' }}>
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--cys-color-border-secondary)" }}>
                       <div
                         style={{
                           display: 'flex',
@@ -579,14 +447,14 @@ export const MonitoreoProgresoPage: React.FC = () => {
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                background: '#f8fafc',
+                                background: 'var(--cys-color-fill-quaternary)',
                                 padding: '5px 8px',
                                 borderRadius: 6,
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--cys-color-border-secondary)',
                               }}
                             >
                               <div style={{ flex: 1, minWidth: 100 }}>
-                                <Text strong style={{ fontSize: 11, color: '#1e293b', display: 'block' }}>
+                                <Text strong style={{ fontSize: 11, color: 'var(--cys-color-text)', display: 'block' }}>
                                   {m.materiaNombre}
                                 </Text>
                                 {m.docenteNombre && (
@@ -596,8 +464,8 @@ export const MonitoreoProgresoPage: React.FC = () => {
                                 )}
                               </div>
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <Text style={{ fontSize: 10.5, color: '#64748b' }}>
+                              <div className={ui.tightRow}>
+                                <Text style={{ fontSize: 10.5, color: 'var(--cys-color-text-description)' }}>
                                   {m.alumnosEvaluados}/{m.totalAlumnos}
                                 </Text>
 

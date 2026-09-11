@@ -1,3 +1,5 @@
+import { useModalSessionKey } from '../../../shared/hooks/useModalSessionKey';
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Modal,
@@ -45,7 +47,14 @@ interface GestorEnlacesModalProps {
   activePeriodoId: string | null;
 }
 
-export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
+export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = (props) => {
+  const sessionKey = useModalSessionKey(props.open);
+  return (
+    <GestorEnlacesModalSession key={sessionKey + ':' + props.activeCursoId + ':' + props.activePeriodoId} {...props} />
+  );
+};
+
+const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
   open,
   onClose,
   cursos,
@@ -57,7 +66,7 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
   const [form] = Form.useForm();
 
   const [tokens, setTokens] = useState<TokenAccesoDocente[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [creating, setCreating] = useState<boolean>(false);
   const [materiasDisponibles, setMateriasDisponibles] = useState<CursoMateria[]>([]);
 
@@ -76,8 +85,16 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
   }, [message]);
 
   useEffect(() => {
+    let active = true;
     if (open) {
-      loadTokens();
+      boletinService.getTokensAccesoDocente()
+        .then((data) => { if (active) setTokens(data); })
+        .catch((err) => {
+          if (!active) return;
+          console.error(err);
+          message.error('Error al cargar enlaces docentes');
+        })
+        .finally(() => { if (active) setLoading(false); });
       form.setFieldsValue({
         cursoId: activeCursoId || (cursos.length > 0 ? cursos[0].id : undefined),
         periodoId: activePeriodoId || (periodos.length > 0 ? periodos[0].id : undefined),
@@ -86,11 +103,13 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
         fechaExpiracion: null,
       });
     }
-  }, [open, activeCursoId, activePeriodoId, cursos, periodos, loadTokens, form]);
+    return () => { active = false; };
+  }, [open, activeCursoId, activePeriodoId, cursos, periodos, message, form]);
 
   // Cargar materias según el curso seleccionado en el formulario
   const watchedCursoId = Form.useWatch('cursoId', form);
   useEffect(() => {
+    let active = true;
     const loadMateriasCurso = async () => {
       if (!watchedCursoId) {
         setMateriasDisponibles([]);
@@ -98,12 +117,13 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
       }
       try {
         const mats = await boletinService.getMateriasByCurso(watchedCursoId);
-        setMateriasDisponibles(mats);
+        if (active) setMateriasDisponibles(mats);
       } catch (err) {
         console.error(err);
       }
     };
-    loadMateriasCurso();
+    void loadMateriasCurso();
+    return () => { active = false; };
   }, [watchedCursoId]);
 
   // Generar un nuevo enlace mágico
@@ -195,11 +215,11 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
       key: 'docente',
       render: (_, record) => (
         <div>
-          <Typography.Text strong style={{ fontSize: 13.5, color: '#0f172a', display: 'block' }}>
-            <UserOutlined style={{ marginRight: 6, color: '#2563eb' }} />
+          <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)', display: 'block' }}>
+            <UserOutlined style={{ marginRight: 6, color: 'var(--cys-color-primary-text)' }} />
             {record.docenteNombre || 'Docente sin especificar'}
           </Typography.Text>
-          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+          <Typography.Text type="secondary" className={ui.smallText}>
             Token: <span style={{ fontFamily: 'monospace' }}>{record.token.slice(0, 10)}...</span>
           </Typography.Text>
         </div>
@@ -245,7 +265,7 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
         const exp = dayjs(record.fechaExpiracion);
         const isExpired = dayjs().isAfter(exp);
         return (
-          <Tag color={isExpired ? 'error' : 'default'} style={{ fontSize: 11 }}>
+          <Tag color={isExpired ? 'error' : 'default'} className={ui.smallText}>
             {isExpired ? 'Expiró: ' : 'Hasta: '}
             {exp.format('DD/MM/YYYY')}
           </Tag>
@@ -280,7 +300,7 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
           <Tooltip title="Compartir por WhatsApp">
             <Button
               size="small"
-              icon={<WhatsAppOutlined style={{ color: '#16a34a' }} />}
+              icon={<WhatsAppOutlined style={{ color: "var(--cys-color-success-text)" }} />}
               onClick={() => handleShareWhatsApp(record)}
             />
           </Tooltip>
@@ -327,7 +347,7 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
             <Typography.Text strong style={{ fontSize: 16, display: 'block' }}>
               Gestor de Enlaces Mágicos para Docentes
             </Typography.Text>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            <Typography.Text type="secondary" className={ui.caption}>
               Permite a los maestros cargar calificaciones sin usuario ni contraseña de forma aislada y segura.
             </Typography.Text>
           </div>
@@ -340,12 +360,12 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
           size="small"
           style={{
             borderRadius: 12,
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            background: "var(--cys-color-fill-quaternary)",
+            border: "1px solid var(--cys-color-border-secondary)",
           }}
           title={
             <Space size={6}>
-              <PlusCircleOutlined style={{ color: '#2563eb' }} />
+              <PlusCircleOutlined className={ui.primary} />
               <span style={{ fontSize: 13.5, fontWeight: 600 }}>Emitir Nuevo Enlace de Carga</span>
             </Space>
           }
@@ -411,7 +431,7 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
                 <Form.Item label="Fecha de Expiración" name="fechaExpiracion">
                   <DatePicker
                     placeholder="Sin límite"
-                    style={{ width: '100%' }}
+                    className={ui.fullWidth}
                     format="DD/MM/YYYY"
                     disabledDate={(d) => d && d.isBefore(dayjs().startOf('day'))}
                   />
@@ -436,8 +456,8 @@ export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = ({
 
         {/* Tabla de Enlaces Emitidos */}
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Typography.Text strong style={{ fontSize: 13.5, color: '#334155' }}>
+          <div className={ui.sectionHeading}>
+            <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
               Enlaces Emitidos ({tokens.length})
             </Typography.Text>
             <Typography.Text type="secondary" style={{ fontSize: 11.5 }}>

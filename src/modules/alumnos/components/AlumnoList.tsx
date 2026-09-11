@@ -1,3 +1,6 @@
+import { AlumnoFilters } from './AlumnoFilters';
+import ui from '../../../shared/styles/ui.module.css';
+import { PageHeader } from '../../../shared/components/PageHeader';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Table,
@@ -6,7 +9,6 @@ import {
   Space,
   App,
   Popconfirm,
-  Input,
   Card,
   Tag,
   Row,
@@ -16,17 +18,14 @@ import {
   Empty,
   Tooltip,
   Badge,
-  Select,
 } from 'antd';
 import {
   EditOutlined,
   DeleteOutlined,
   PlusOutlined,
-  SearchOutlined,
   IdcardOutlined,
   UnorderedListOutlined,
   AppstoreOutlined,
-  ReloadOutlined,
   EyeOutlined,
   TeamOutlined,
   UserDeleteOutlined,
@@ -321,8 +320,8 @@ export const AlumnoList: React.FC = () => {
               {initials}
             </Avatar>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <span className="student-name" style={{ color: isBaja ? '#b91c1c' : '#1e40af', fontWeight: 600 }}>
+              <div className={ui.wrappingRow}>
+                <span className="student-name" style={{ color: isBaja ? "var(--cys-color-error-text)" : "var(--cys-color-primary-text)", fontWeight: 600 }}>
                   {record.apellidos}, {record.nombres}
                 </span>
                 {isBaja && (
@@ -331,7 +330,7 @@ export const AlumnoList: React.FC = () => {
                       record.fechaEgreso ? dayjs(record.fechaEgreso).format('DD/MM/YYYY') : 'Sin fecha especificada'
                     }`}
                   >
-                    <Tag color="error" style={{ borderRadius: 6, fontWeight: 700, fontSize: 11, margin: 0 }}>
+                    <Tag color="error" className={ui.statusTag}>
                       Baja {record.fechaEgreso ? `(${dayjs(record.fechaEgreso).format('DD/MM/YY')})` : ''}
                     </Tag>
                   </Tooltip>
@@ -364,9 +363,9 @@ export const AlumnoList: React.FC = () => {
               style={{
                 borderRadius: 6,
                 fontSize: 12,
-                color: '#94a3b8',
-                background: '#f1f5f9',
-                border: '1px solid #e2e8f0',
+                color: 'var(--cys-color-text-secondary)',
+                background: "var(--cys-color-fill-tertiary)",
+                border: "1px solid var(--cys-color-border-secondary)",
               }}
             >
               Sin Grado
@@ -417,7 +416,7 @@ export const AlumnoList: React.FC = () => {
             fontSize: 12,
             fontWeight: 600,
             background: 'rgba(13, 148, 136, 0.08)',
-            color: '#0d9488',
+            color: "var(--cys-color-success-text)",
             border: '1px solid rgba(13, 148, 136, 0.2)',
           }}
         >
@@ -446,7 +445,7 @@ export const AlumnoList: React.FC = () => {
           <Tooltip title="Ver ficha completa">
             <Button
               type="text"
-              icon={<EyeOutlined style={{ color: '#2563eb' }} />}
+              icon={<EyeOutlined className={ui.primary} />}
               onClick={() => handleOpenDetail(record)}
               aria-label="Ver ficha del alumno"
             />
@@ -464,7 +463,7 @@ export const AlumnoList: React.FC = () => {
               <Button
                 type="text"
                 danger
-                icon={<UserDeleteOutlined style={{ color: '#dc2626' }} />}
+                icon={<UserDeleteOutlined style={{ color: 'var(--cys-color-error-text)' }} />}
                 onClick={() => {
                   setBajaModalAlumno(record);
                   setIsBajaModalVisible(true);
@@ -497,31 +496,13 @@ export const AlumnoList: React.FC = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className={ui.page}>
       {/* 1. Header & Primary Actions */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-        }}
-      >
-        <div className="cys-page-header">
-          <div className="cys-page-header-icon">
-            <TeamOutlined />
-          </div>
-          <div className="cys-page-header-content">
-            <Title level={2} className="cys-page-header-title">
-              Directorio de Alumnos
-            </Title>
-            <Text className="cys-page-header-subtitle">
-              Consultá y ordená alumnos por su grado correspondiente o hacé click para ver su ficha completa.
-            </Text>
-          </div>
-        </div>
-
+      <PageHeader
+        title="Directorio de alumnos"
+        description="Consultá la matrícula, encontrá un alumno y accedé a su ficha."
+        icon={<TeamOutlined />}
+        actions={
         <Space size="middle" wrap>
           {/* Toggle Vista Tabla / Tarjetas */}
           <Segmented
@@ -539,225 +520,37 @@ export const AlumnoList: React.FC = () => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => handleOpenModal()}
-            className="btn-primary-gradient"
-            style={{ fontWeight: 600, height: 38, borderRadius: 10 }}
           >
             Nuevo alumno
           </Button>
         </Space>
-      </div>
+        }
+      />
 
-      {/* 2. Barra Unificada de Filtros y Búsqueda */}
-      <Card
-        style={{
-          borderRadius: 14,
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-          border: '1px solid #e2e8f0',
-        }}
-        bodyStyle={{ padding: '12px 16px' }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: 12,
-          }}
-        >
-          {/* Lado Izquierdo: Filtro de Estado Cursantes Activos / Bajas / Todos */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Segmented
-              value={estadoFilter}
-              onChange={(val) => setEstadoFilter(val as 'REGULARES' | 'BAJAS' | 'TODOS')}
-              options={[
-                {
-                  label: (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          backgroundColor: '#10b981',
-                          display: 'inline-block',
-                        }}
-                      />
-                      <span>Cursantes Activos</span>
-                      <Tag
-                        bordered={false}
-                        color="success"
-                        style={{
-                          margin: 0,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          borderRadius: 6,
-                          padding: '0 5px',
-                          lineHeight: '18px',
-                        }}
-                      >
-                        {counts.regulares}
-                      </Tag>
-                    </span>
-                  ),
-                  value: 'REGULARES',
-                },
-                {
-                  label: (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span>Bajas del Ciclo</span>
-                      <Tag
-                        bordered={false}
-                        color={counts.bajas > 0 ? 'error' : 'default'}
-                        style={{
-                          margin: 0,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          borderRadius: 6,
-                          padding: '0 5px',
-                          lineHeight: '18px',
-                        }}
-                      >
-                        {counts.bajas}
-                      </Tag>
-                    </span>
-                  ),
-                  value: 'BAJAS',
-                },
-                {
-                  label: (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <span>Todos</span>
-                      <Tag
-                        bordered={false}
-                        style={{
-                          margin: 0,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          borderRadius: 6,
-                          padding: '0 5px',
-                          lineHeight: '18px',
-                        }}
-                      >
-                        {counts.total}
-                      </Tag>
-                    </span>
-                  ),
-                  value: 'TODOS',
-                },
-              ]}
-            />
-          </div>
-
-          {/* Lado Derecho: Buscador, Filtro de Grado y Botón de Recarga */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <Input.Search
-              placeholder="Buscar por nombre, apellido, DNI, legajo..."
-              allowClear
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              style={{ width: 280 }}
-              prefix={<SearchOutlined style={{ color: '#2563eb' }} />}
-            />
-
-            <Select
-              value={selectedGradeFilter}
-              onChange={(val) => setSelectedGradeFilter(val)}
-              style={{ width: 175 }}
-              placeholder="Filtrar por grado"
-              options={[
-                { value: 'all', label: 'Todos los grados' },
-                ...ALL_GRADES.map((num) => {
-                  const config = GRADE_PALETTE[num];
-                  return {
-                    value: num,
-                    label: (
-                      <Space size={6} align="center">
-                        <span
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            backgroundColor: config.textColor,
-                            display: 'inline-block',
-                          }}
-                        />
-                        <span>{config.label}</span>
-                      </Space>
-                    ),
-                  };
-                }),
-              ]}
-            />
-
-            <Tooltip title="Actualizar lista">
-              <Button icon={<ReloadOutlined />} onClick={fetchAlumnos} loading={loading} style={{ borderRadius: 8 }} />
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* Fila de Filtros Activos (si hay búsqueda o filtro por grado) */}
-        {(searchTerm || selectedGradeFilter !== 'all') && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginTop: 10,
-              paddingTop: 10,
-              borderTop: '1px solid #f1f5f9',
-              flexWrap: 'wrap',
-            }}
-          >
-            <Text type="secondary" style={{ fontSize: 12, fontWeight: 500 }}>
-              Filtros activos:
-            </Text>
-            {searchTerm && (
-              <Tag
-                closable
-                onClose={() => setInputValue('')}
-                color="blue"
-                style={{ borderRadius: 6, padding: '2px 8px', fontSize: 12 }}
-              >
-                Búsqueda: "{searchTerm}"
-              </Tag>
-            )}
-            {selectedGradeFilter !== 'all' && (
-              <Tag
-                closable
-                onClose={() => setSelectedGradeFilter('all')}
-                color="orange"
-                style={{ borderRadius: 6, padding: '2px 8px', fontSize: 12 }}
-              >
-                Grado: {GRADE_PALETTE[selectedGradeFilter as GradeNumber]?.label}
-              </Tag>
-            )}
-            <Button
-              type="link"
-              size="small"
-              onClick={() => {
-                setInputValue('');
-                setSelectedGradeFilter('all');
-              }}
-              style={{ fontSize: 12, padding: 0 }}
-            >
-              Limpiar filtros
-            </Button>
-          </div>
-        )}
-      </Card>
+      <AlumnoFilters
+        counts={counts}
+        status={estadoFilter}
+        onStatusChange={setEstadoFilter}
+        query={inputValue}
+        appliedQuery={searchTerm}
+        onQueryChange={setInputValue}
+        grade={selectedGradeFilter}
+        onGradeChange={setSelectedGradeFilter}
+        loading={loading}
+        onRefresh={fetchAlumnos}
+      />
 
       {/* Selected rows banner */}
       {selectedRowKeys.length > 0 && (
-        <Card style={{ marginBottom: 16, background: '#eff6ff', borderColor: '#bfdbfe', borderRadius: 12 }} bodyStyle={{ padding: '10px 16px' }}>
+        <Card style={{ marginBottom: 16, background: "var(--cys-color-primary-bg)", borderColor: "var(--cys-color-primary-border)", borderRadius: 12 }} styles={{ body: { padding: '10px 16px' } }}>
           <Space style={{ justifyContent: 'space-between', width: '100%' }}>
             <Space size={8}>
               <Badge count={selectedRowKeys.length} style={{ backgroundColor: '#2563eb', fontWeight: 700 }} />
-              <Text strong style={{ color: '#1e40af' }}>
+              <Text strong style={{ color: 'var(--cys-color-primary-text)' }}>
                 {selectedRowKeys.length === 1 ? 'alumno seleccionado' : 'alumnos seleccionados'}
               </Text>
             </Space>
-            <Button size="small" type="link" onClick={() => setSelectedRowKeys([])} style={{ fontWeight: 600 }}>
+            <Button size="small" type="link" onClick={() => setSelectedRowKeys([])} className={ui.strong}>
               Desmarcar todos
             </Button>
           </Space>
@@ -844,7 +637,7 @@ export const AlumnoList: React.FC = () => {
                   <Col xs={24} sm={12} md={8} lg={6} key={alumno.id}>
                     <Card
                       className="student-grid-card"
-                      bodyStyle={{ padding: 20, display: 'flex', flexDirection: 'column', height: '100%' }}
+                      styles={{ body: { padding: 20, display: 'flex', flexDirection: 'column', height: '100%' } }}
                       hoverable
                       onClick={() => handleOpenDetail(alumno)}
                       style={{
@@ -869,7 +662,7 @@ export const AlumnoList: React.FC = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                           {/* Tag de Baja o Grado */}
                           {isBaja && (
-                            <Tag color="error" style={{ borderRadius: 6, fontWeight: 700, fontSize: 11, margin: 0 }}>
+                            <Tag color="error" className={ui.statusTag}>
                               Baja {alumno.fechaEgreso ? `• ${dayjs(alumno.fechaEgreso).format('DD/MM/YY')}` : ''}
                             </Tag>
                           )}
@@ -889,7 +682,7 @@ export const AlumnoList: React.FC = () => {
                               {alumno.cursoNombre}
                             </Tag>
                           ) : (
-                            <Tag style={{ borderRadius: 6, fontSize: 11, margin: 0, color: '#94a3b8' }}>
+                            <Tag style={{ borderRadius: 6, fontSize: 11, margin: 0, color: 'var(--cys-color-text-secondary)' }}>
                               Sin Grado
                             </Tag>
                           )}
@@ -906,7 +699,7 @@ export const AlumnoList: React.FC = () => {
                           fontSize: 15,
                           lineHeight: '21px',
                           height: '42px',
-                          color: isBaja ? '#b91c1c' : '#1e40af',
+                          color: isBaja ? "var(--cys-color-error-text)" : "var(--cys-color-primary-text)",
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
@@ -917,22 +710,22 @@ export const AlumnoList: React.FC = () => {
                         {alumno.apellidos}, {alumno.nombres}
                       </Title>
 
-                      <Space direction="vertical" size={4} style={{ width: '100%', marginBottom: 16 }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
+                      <Space orientation="vertical" size={4} style={{ width: '100%', marginBottom: 16 }}>
+                        <Text type="secondary" className={ui.caption}>
                           DNI: <strong className="student-dni">{alumno.dni}</strong>
                         </Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
+                        <Text type="secondary" className={ui.caption}>
                           {alumno.nacionalidad || 'Estudiante'} {alumno.sexo ? `• ${alumno.sexo}` : ''}
                         </Text>
                       </Space>
 
                       <div className="student-card-actions" style={{ marginTop: 'auto' }} onClick={(e) => e.stopPropagation()}>
-                        <Space style={{ width: '100%' }}>
+                        <Space className={ui.fullWidth}>
                           <Button
                             type="default"
-                            icon={<EyeOutlined style={{ color: '#2563eb' }} />}
+                            icon={<EyeOutlined className={ui.primary} />}
                             onClick={() => handleOpenDetail(alumno)}
-                            style={{ flex: 1, borderRadius: 8, fontWeight: 600, color: '#2563eb' }}
+                            style={{ flex: 1, borderRadius: 8, fontWeight: 600, color: 'var(--cys-color-primary-text)' }}
                           >
                             Ver Ficha
                           </Button>

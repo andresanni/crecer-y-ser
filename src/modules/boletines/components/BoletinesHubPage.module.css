@@ -1,0 +1,14 @@
+.page { display: flex; flex-direction: column; gap: 24px; }
+.summary { border-top: 3px solid var(--cys-color-warning); }
+.summary .summaryTitle { font-size: 20px; margin-top: 0; }
+.actionCard { display: flex; flex-direction: column; height: 100%; }
+.actionCard .cardBody { display: flex; flex-direction: column; flex: 1; gap: 16px; }
+.cardTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; font-size: 24px; }
+.calificaciones { color: var(--cys-color-primary-text); background: var(--cys-color-primary-bg); }
+.monitoreo { color: var(--cys-color-success-text); background: var(--cys-color-success-bg); }
+.constructor { color: var(--cys-color-warning-text); background: var(--cys-color-warning-bg); }
+.actionCard .cardTitle { font-size: 20px; margin: 0; }
+.features { display: grid; gap: 10px; list-style: none; padding: 16px; margin: auto 0 0; border-radius: 12px; background: var(--cys-color-fill-quaternary); }
+.features li { display: flex; align-items: baseline; gap: 8px; color: var(--cys-color-text-secondary); font-size: 13px; }
+.features li > :first-child { color: var(--cys-color-success-text); }

@@ -1,0 +1,10 @@
+.body { padding: 14px 18px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; }
+.searchControls { display: flex; align-items: center; flex: 1; justify-content: flex-end; gap: 10px; min-width: 360px; }
+.search { flex: 1; max-width: 440px; min-width: 240px; }
+.grade { width: 180px; flex-shrink: 0; }
+.activeFilters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--cys-color-border-secondary); }
+@media (max-width: 767px) {
+  .searchControls { min-width: 0; flex-wrap: wrap; }
+  .search { flex-basis: 100%; max-width: none; min-width: 0; }
+}

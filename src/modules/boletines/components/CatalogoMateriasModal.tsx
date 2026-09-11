@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useModalSessionKey } from '../../../shared/hooks/useModalSessionKey';
+import ui from '../../../shared/styles/ui.module.css';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Modal, Input, Button, List, Typography, Space, App, Tag, Empty, Spin } from 'antd';
 import { PlusOutlined, BookOutlined } from '@ant-design/icons';
 import { boletinService } from '../services/boletin.service';
@@ -10,21 +12,27 @@ interface Props {
   onMateriaCreated?: (materia: Materia) => void;
 }
 
-export const CatalogoMateriasModal: React.FC<Props> = ({
+export const CatalogoMateriasModal: React.FC<Props> = (props) => {
+  const sessionKey = useModalSessionKey(props.open);
+  return (
+    <CatalogoMateriasModalSession key={sessionKey} {...props} />
+  );
+};
+
+const CatalogoMateriasModalSession: React.FC<Props> = ({
   open,
   onClose,
   onMateriaCreated,
 }) => {
   const { message } = App.useApp();
   const [materias, setMaterias] = useState<Materia[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [creating, setCreating] = useState(false);
   const [search, setSearch] = useState('');
 
-  const loadMaterias = async () => {
+  const loadMaterias = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await boletinService.getAllMaterias();
       setMaterias(data);
     } catch (err) {
@@ -33,15 +41,21 @@ export const CatalogoMateriasModal: React.FC<Props> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [message]);
 
   useEffect(() => {
-    if (open) {
-      loadMaterias();
-      setNuevoNombre('');
-      setSearch('');
-    }
-  }, [open]);
+    if (!open) return;
+    let active = true;
+    boletinService.getAllMaterias()
+      .then((data) => { if (active) setMaterias(data); })
+      .catch((err) => {
+        if (!active) return;
+        console.error(err);
+        message.error('Error al cargar el catálogo de materias');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [open, message]);
 
   const handleCrear = async () => {
     if (!nuevoNombre.trim()) {
@@ -74,7 +88,7 @@ export const CatalogoMateriasModal: React.FC<Props> = ({
     <Modal
       title={
         <Space size={8}>
-          <BookOutlined style={{ color: '#2563eb' }} />
+          <BookOutlined className={ui.primary} />
           <span>Catálogo General de Materias</span>
           <Tag color="blue">{materias.length} registradas</Tag>
         </Space>
@@ -101,13 +115,13 @@ export const CatalogoMateriasModal: React.FC<Props> = ({
             padding: 12,
             background: 'var(--cys-color-fill-quaternary, #f8fafc)',
             borderRadius: 10,
-            border: '1px solid var(--cys-color-border-secondary, #e2e8f0)',
+            border: "1px solid var(--cys-color-border-secondary, var(--cys-color-border-secondary))",
           }}
         >
           <Typography.Text strong style={{ fontSize: 13, display: 'block', marginBottom: 8 }}>
             Nueva Materia o Área Formativa
           </Typography.Text>
-          <Space.Compact style={{ width: '100%' }}>
+          <Space.Compact className={ui.fullWidth}>
             <Input
               placeholder="Ej: Prácticas del Lenguaje, Robótica..."
               value={nuevoNombre}

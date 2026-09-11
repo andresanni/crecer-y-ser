@@ -1,3 +1,4 @@
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useState, useEffect } from 'react';
 import {
   Modal,
@@ -84,8 +85,8 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
       onCancel={onClose}
       width={500}
       title={
-        <Space size={8} style={{ color: '#dc2626' }}>
-          <UserDeleteOutlined style={{ fontSize: 18, color: '#dc2626' }} />
+        <Space size={8} style={{ color: 'var(--cys-color-error-text)' }}>
+          <UserDeleteOutlined style={{ fontSize: 18, color: 'var(--cys-color-error-text)' }} />
           <span>Registrar Baja de Estudiante</span>
         </Space>
       }
@@ -100,7 +101,7 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
           icon={<UserDeleteOutlined />}
           loading={submitting}
           onClick={handleSubmit}
-          style={{ fontWeight: 600 }}
+          className={ui.strong}
         >
           Confirmar Baja
         </Button>,
@@ -114,8 +115,8 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            background: "var(--cys-color-fill-quaternary)",
+            border: "1px solid var(--cys-color-border-secondary)",
             borderRadius: 12,
             padding: '12px 14px',
           }}
@@ -132,20 +133,20 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
             {initials}
           </Avatar>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <Text strong style={{ fontSize: 14.5, color: '#0f172a', display: 'block' }}>
+            <Text strong style={{ fontSize: 14.5, color: 'var(--cys-color-text)', display: 'block' }}>
               {alumno.apellidos}, {alumno.nombres}
             </Text>
             <Space size={6} wrap style={{ marginTop: 2 }}>
-              <Tag color="blue" style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
+              <Tag color="blue" className={ui.compactTag}>
                 DNI: {alumno.dni}
               </Tag>
               {alumno.cursoNombre && (
-                <Tag color="purple" style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
+                <Tag color="purple" className={ui.compactTag}>
                   {alumno.cursoNombre}
                 </Tag>
               )}
               {alumno.numeroLegajo && (
-                <Tag icon={<IdcardOutlined />} style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
+                <Tag icon={<IdcardOutlined />} className={ui.compactTag}>
                   Legajo: {alumno.numeroLegajo}
                 </Tag>
               )}
@@ -157,7 +158,7 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
         <Alert
           type="warning"
           showIcon
-          icon={<WarningOutlined style={{ color: '#d97706' }} />}
+          icon={<WarningOutlined style={{ color: "var(--cys-color-warning-text)" }} />}
           style={{ borderRadius: 10 }}
           message="Cambio de estado de cursada"
           description="Al confirmar, el estudiante pasará a estado 'Baja' con la fecha indicada. Dejará de figurar en las listas activas de calificaciones y asistencia escolar."
@@ -168,8 +169,8 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
           <Form.Item
             name="fechaEgreso"
             label={
-              <span style={{ fontWeight: 600 }}>
-                <CalendarOutlined style={{ marginRight: 6, color: '#dc2626' }} />
+              <span className={ui.strong}>
+                <CalendarOutlined style={{ marginRight: 6, color: 'var(--cys-color-error-text)' }} />
                 Fecha de Egreso / Baja
               </span>
             }
@@ -180,7 +181,7 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
           >
             <DatePicker
               format="DD/MM/YYYY"
-              style={{ width: '100%' }}
+              className={ui.fullWidth}
               placeholder="DD/MM/AAAA"
               allowClear={false}
             />

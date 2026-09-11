@@ -1,0 +1,6 @@
+.card { height: 100%; border-top: 3px solid var(--metric-accent); }
+.body { display: flex; flex-direction: column; gap: 8px; padding: 18px 20px; }
+.primary { --metric-accent: var(--cys-color-primary); }
+.success { --metric-accent: var(--cys-color-success); }
+.warning { --metric-accent: var(--cys-color-warning); }
+.error { --metric-accent: var(--cys-color-error); }

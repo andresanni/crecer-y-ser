@@ -87,7 +87,7 @@ export const alumnoService = {
           sort: '-created',
         });
 
-        const inscMap = new Map<string, any>();
+        const inscMap = new Map<string, (typeof inscripciones)[number]>();
         for (const insc of inscripciones) {
           const current = inscMap.get(insc.alumno_id);
           if (!current || (current.estado !== 'Regular' && insc.estado === 'Regular')) {

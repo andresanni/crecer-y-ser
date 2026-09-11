@@ -1,3 +1,4 @@
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useState } from 'react';
 import { Form, Input, Button, App as AntdApp, Typography, Space, Tag } from 'antd';
 import {
@@ -37,7 +38,7 @@ export const Login: React.FC = () => {
     <div className="login-page">
       <div className="login-shell">
         <section className="login-intro">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div className={ui.splitRow}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div className="brand-logo-collapsed" style={{ width: 44, height: 44, margin: 0, padding: 4 }}>
                 <img src="/isotype.png" alt="Colegio Crecer y Ser" className="brand-logo-img" />
@@ -77,7 +78,7 @@ export const Login: React.FC = () => {
             <h1>Todo lo importante, más claro.</h1>
             <p>Una forma simple, moderna y cercana de acompañar la gestión y trayectoria de cada estudiante.</p>
 
-            <Space direction="vertical" size={12} style={{ marginTop: 28 }}>
+            <Space orientation="vertical" size={12} style={{ marginTop: 28 }}>
               <Space size={10} style={{ color: '#dbeafe', fontSize: 13 }}>
                 <CheckCircleOutlined style={{ color: '#60a5fa' }} />
                 <span>Sincronización de registros en tiempo real</span>
@@ -126,7 +127,7 @@ export const Login: React.FC = () => {
             >
               <Input
                 size="large"
-                prefix={<MailOutlined style={{ color: '#2563eb' }} />}
+                prefix={<MailOutlined className={ui.primary} />}
                 placeholder="nombre@institucion.edu.ar"
                 autoComplete="email"
               />
@@ -139,7 +140,7 @@ export const Login: React.FC = () => {
             >
               <Input.Password
                 size="large"
-                prefix={<LockOutlined style={{ color: '#2563eb' }} />}
+                prefix={<LockOutlined className={ui.primary} />}
                 placeholder="Tu contraseña de acceso"
                 autoComplete="current-password"
               />

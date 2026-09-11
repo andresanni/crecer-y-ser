@@ -1,3 +1,5 @@
+import { useModalSessionKey } from '../../../shared/hooks/useModalSessionKey';
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, List, Typography, Space, App, Tag, Empty, Spin, Alert } from 'antd';
 import {
@@ -15,32 +17,32 @@ interface Props {
   onClose: () => void;
 }
 
-export const PeriodosModal: React.FC<Props> = ({ open, onClose }) => {
+export const PeriodosModal: React.FC<Props> = (props) => {
+  const sessionKey = useModalSessionKey(props.open);
+  const cicloId = useAppStore((state) => state.cicloActual?.id);
+  return <PeriodosModalSession key={sessionKey + ':' + cicloId} {...props} />;
+};
+
+const PeriodosModalSession: React.FC<Props> = ({ open, onClose }) => {
   const { message } = App.useApp();
   const { cicloActual } = useAppStore();
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [initializing, setInitializing] = useState(false);
 
-  const loadPeriodos = async () => {
-    if (!cicloActual?.id) return;
-    try {
-      setLoading(true);
-      const data = await boletinService.getPeriodosByCiclo(cicloActual.id);
-      setPeriodos(data);
-    } catch (err) {
-      console.error(err);
-      message.error('Error al cargar los períodos del ciclo lectivo');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (open && cicloActual?.id) {
-      loadPeriodos();
-    }
-  }, [open, cicloActual?.id]);
+    if (!open || !cicloActual?.id) return;
+    let active = true;
+    boletinService.getPeriodosByCiclo(cicloActual.id)
+      .then((data) => { if (active) setPeriodos(data); })
+      .catch((err) => {
+        if (!active) return;
+        console.error(err);
+        message.error('Error al cargar los períodos del ciclo lectivo');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [open, cicloActual?.id, message]);
 
   const handleInitDefault = async () => {
     if (!cicloActual?.id) {
@@ -67,7 +69,7 @@ export const PeriodosModal: React.FC<Props> = ({ open, onClose }) => {
     <Modal
       title={
         <Space size={8}>
-          <CalendarOutlined style={{ color: '#2563eb' }} />
+          <CalendarOutlined className={ui.primary} />
           <span>Configuración de Períodos Escolares</span>
           {cicloActual && <Tag color="green">Ciclo {cicloActual.ano}</Tag>}
         </Space>
@@ -115,14 +117,14 @@ export const PeriodosModal: React.FC<Props> = ({ open, onClose }) => {
                   padding: 12,
                   background: 'var(--cys-color-fill-quaternary, #f8fafc)',
                   borderRadius: 10,
-                  border: '1px dashed var(--cys-color-border, #cbd5e1)',
+                  border: "1px dashed var(--cys-color-border, var(--cys-color-border))",
                 }}
               >
                 <div>
                   <Typography.Text strong style={{ display: 'block', fontSize: 13 }}>
                     Inicialización Automática
                   </Typography.Text>
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  <Typography.Text type="secondary" className={ui.caption}>
                     Crea los 4 bimestres reglamentarios (1° a 4° Bimestre)
                   </Typography.Text>
                 </div>

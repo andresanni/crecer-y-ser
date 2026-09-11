@@ -1,3 +1,5 @@
+import ui from '../../../shared/styles/ui.module.css';
+import { PageHeader } from '../../../shared/components/PageHeader';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
@@ -78,6 +80,7 @@ export const BoletinConfigPage: React.FC = () => {
 
   // 1. Cargar cursos al montar
   useEffect(() => {
+    let active = true;
     const loadCursos = async () => {
       try {
         setLoadingCursos(true);
@@ -85,6 +88,7 @@ export const BoletinConfigPage: React.FC = () => {
           boletinService.getCursos(),
           boletinService.getProgresoConstructorCursos(),
         ]);
+        if (!active) return;
         setCursos(data);
         setProgresoCursosMap(pMap);
         if (data.length > 0) {
@@ -92,54 +96,47 @@ export const BoletinConfigPage: React.FC = () => {
         }
       } catch (err) {
         console.error(err);
-        message.error('Error al cargar la lista de cursos');
+        if (active) message.error('Error al cargar la lista de cursos');
       } finally {
-        setLoadingCursos(false);
+        if (active) setLoadingCursos(false);
       }
     };
 
-    loadCursos();
-  }, []);
+    void loadCursos();
+    return () => { active = false; };
+  }, [message]);
 
   // 2. Cargar materias asignadas al curso seleccionado
-  const loadMateriasCurso = useCallback(async (cursoId: string) => {
-    try {
-      setLoadingMaterias(true);
-      const materias = await boletinService.getMateriasByCurso(cursoId);
-      setCursoMaterias(materias);
-
-      // Cargar conteo de criterios por cada materia del curso
-      const counts: Record<string, number> = {};
-      for (const cm of materias) {
-        const crits = await boletinService.getCriteriosByCursoMateria(cm.id);
-        counts[cm.id] = crits.length;
-      }
-      setCriteriosCounts(counts);
-
-      // Si la materia previamente seleccionada sigue estando, preservarla; si no, seleccionar la primera
-      setSelectedCursoMateria((prev) => {
-        if (prev) {
-          const match = materias.find((m) => m.id === prev.id);
-          if (match) return match;
-        }
-        return materias.length > 0 ? materias[0] : null;
-      });
-    } catch (err) {
-      console.error(err);
-      message.error('Error al cargar las materias del curso');
-    } finally {
-      setLoadingMaterias(false);
-    }
-  }, []);
-
+  const [materiasRevision, setMateriasRevision] = useState(0);
+  const loadMateriasCurso = () => setMateriasRevision((value) => value + 1);
   useEffect(() => {
-    if (selectedCursoId) {
-      loadMateriasCurso(selectedCursoId);
-    } else {
-      setCursoMaterias([]);
-      setSelectedCursoMateria(null);
-    }
-  }, [selectedCursoId, loadMateriasCurso]);
+    if (!selectedCursoId) return;
+    let active = true;
+    const fetchMaterias = async () => {
+      try {
+        setLoadingMaterias(true);
+        const materias = await boletinService.getMateriasByCurso(selectedCursoId);
+        const entries = await Promise.all(materias.map(async (materia) => {
+          const criterios = await boletinService.getCriteriosByCursoMateria(materia.id);
+          return [materia.id, criterios.length] as const;
+        }));
+        if (!active) return;
+        setCursoMaterias(materias);
+        setCriteriosCounts(Object.fromEntries(entries));
+        setSelectedCursoMateria((prev) => materias.find((materia) => materia.id === prev?.id) ?? materias[0] ?? null);
+      } catch (err) {
+        if (!active) return;
+        console.error(err);
+        setCursoMaterias([]);
+        setSelectedCursoMateria(null);
+        message.error('Error al cargar las materias del curso');
+      } finally {
+        if (active) setLoadingMaterias(false);
+      }
+    };
+    void fetchMaterias();
+    return () => { active = false; };
+  }, [selectedCursoId, materiasRevision, message]);
 
   // Reordenar materias
   const handleMoveMateria = async (index: number, direction: 'up' | 'down') => {
@@ -165,7 +162,7 @@ export const BoletinConfigPage: React.FC = () => {
     } catch (err) {
       console.error(err);
       message.error('Error al cambiar el orden');
-      if (selectedCursoId) loadMateriasCurso(selectedCursoId);
+      if (selectedCursoId) loadMateriasCurso();
     } finally {
       setReordering(false);
     }
@@ -177,7 +174,7 @@ export const BoletinConfigPage: React.FC = () => {
       await boletinService.removeMateriaFromCurso(cmId);
       message.success(`Materia "${nombre}" removida del curso`);
       if (selectedCursoId) {
-        await loadMateriasCurso(selectedCursoId);
+        loadMateriasCurso();
         loadProgresoGlobal();
       }
     } catch (err) {
@@ -198,7 +195,7 @@ export const BoletinConfigPage: React.FC = () => {
       width: 45,
       align: 'center',
       render: (val) => (
-        <Typography.Text strong style={{ color: '#64748b', fontSize: 12 }}>
+        <Typography.Text strong className={ui.secondaryCaption}>
           {val}
         </Typography.Text>
       ),
@@ -217,7 +214,7 @@ export const BoletinConfigPage: React.FC = () => {
             <Typography.Text
               strong
               style={{
-                color: isSelected ? '#2563eb' : undefined,
+                color: isSelected ? "var(--cys-color-primary-text)" : undefined,
                 fontSize: 14,
               }}
             >
@@ -307,28 +304,14 @@ export const BoletinConfigPage: React.FC = () => {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className={ui.pageSpacious}>
       {/* Header Institucional */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-        <div className="cys-page-header">
-          <div className="cys-page-header-icon">
-            <ScheduleOutlined />
-          </div>
-          <div className="cys-page-header-content">
-            <Typography.Title level={2} className="cys-page-header-title">
-              Constructor de Boletines y Malla Curricular
-            </Typography.Title>
-            <Typography.Text className="cys-page-header-subtitle">
-              Configuración anual de materias y 5 criterios oficiales de evaluación por curso.
-            </Typography.Text>
-          </div>
-        </div>
-
+      <PageHeader title="Constructor de boletines" description="Organizá materias, criterios de evaluación y períodos escolares." icon={<ScheduleOutlined />} actions={
         <Space size="small" wrap>
           <Button
             icon={<CalendarOutlined />}
             onClick={() => setOpenPeriodosModal(true)}
-            style={{ fontWeight: 600 }}
+            className={ui.strong}
           >
             Períodos Escolares
             {cicloActual && (
@@ -339,12 +322,12 @@ export const BoletinConfigPage: React.FC = () => {
           <Button
             icon={<BookOutlined />}
             onClick={() => setOpenCatalogoModal(true)}
-            style={{ fontWeight: 600 }}
+            className={ui.strong}
           >
             Catálogo de Materias
           </Button>
         </Space>
-      </div>
+      } />
 
       {/* Selector de Curso con Indicadores de Progreso */}
       <Card
@@ -353,18 +336,18 @@ export const BoletinConfigPage: React.FC = () => {
           background: 'var(--cys-color-bg-container, #ffffff)',
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.03)',
         }}
-        bodyStyle={{ padding: '16px 20px' }}
+        styles={{ body: { padding: '16px 20px' } }}
       >
         <Row gutter={[20, 16]} align="middle" justify="space-between">
           <Col xs={24} md={12} lg={11}>
-            <Space direction="vertical" size={6} style={{ width: '100%' }}>
-              <Typography.Text strong style={{ fontSize: 13, color: '#64748b' }}>
+            <Space orientation="vertical" size={6} className={ui.fullWidth}>
+              <Typography.Text strong style={{ fontSize: 13, color: 'var(--cys-color-text-description)' }}>
                 SELECCIONAR CURSO / DIVISIÓN
               </Typography.Text>
               <Select
                 showSearch
                 size="large"
-                style={{ width: '100%' }}
+                className={ui.fullWidth}
                 placeholder="Seleccione un curso para configurar..."
                 loading={loadingCursos}
                 value={selectedCursoId}
@@ -377,7 +360,7 @@ export const BoletinConfigPage: React.FC = () => {
                   let tagNode = null;
                   if (!prog || prog.estado === 'VACIO') {
                     tagNode = (
-                      <Tag color="default" style={{ margin: 0, fontSize: 11, borderRadius: 4 }}>
+                      <Tag color="default" className={ui.compactTag}>
                         Sin materias
                       </Tag>
                     );
@@ -407,8 +390,8 @@ export const BoletinConfigPage: React.FC = () => {
                     customRender: (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
                         <Space size={6}>
-                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{c.nombre}</span>
-                          <span style={{ fontSize: 12, color: '#64748b' }}>({c.nivelNombre || 'Nivel'} - {c.turno})</span>
+                          <span style={{ fontWeight: 600, color: 'var(--cys-color-text)' }}>{c.nombre}</span>
+                          <span className={ui.secondaryCaption}>({c.nivelNombre || 'Nivel'} - {c.turno})</span>
                         </Space>
                         {tagNode}
                       </div>
@@ -430,7 +413,7 @@ export const BoletinConfigPage: React.FC = () => {
                   background: 'var(--cys-color-fill-quaternary, #f8fafc)',
                   padding: '10px 16px',
                   borderRadius: 10,
-                  border: '1px solid var(--cys-color-border-secondary, #e2e8f0)',
+                  border: "1px solid var(--cys-color-border-secondary, var(--cys-color-border-secondary))",
                 }}
               >
                 <div
@@ -458,22 +441,22 @@ export const BoletinConfigPage: React.FC = () => {
                     {selectedProg?.estado === 'COMPLETO' ? (
                       <Badge
                         status="success"
-                        text={<strong style={{ color: '#059669', fontSize: 12.5 }}>Malla 100% Configurada</strong>}
+                        text={<strong style={{ color: 'var(--cys-color-success-text)', fontSize: 12.5 }}>Malla 100% Configurada</strong>}
                       />
                     ) : selectedProg?.estado === 'EN_PROGRESO' ? (
                       <Badge
                         status="processing"
-                        text={<strong style={{ color: '#2563eb', fontSize: 12.5 }}>En Construcción ({selectedProg.porcentaje}%)</strong>}
+                        text={<strong style={{ color: 'var(--cys-color-primary-text)', fontSize: 12.5 }}>En Construcción ({selectedProg.porcentaje}%)</strong>}
                       />
                     ) : selectedProg?.estado === 'SIN_CRITERIOS' ? (
                       <Badge
                         status="warning"
-                        text={<strong style={{ color: '#d97706', fontSize: 12.5 }}>Sin Criterios Cargados</strong>}
+                        text={<strong style={{ color: "var(--cys-color-warning-text)", fontSize: 12.5 }}>Sin Criterios Cargados</strong>}
                       />
                     ) : (
                       <Badge
                         status="default"
-                        text={<span style={{ color: '#64748b', fontSize: 12.5 }}>Sin materias asignadas</span>}
+                        text={<span style={{ color: 'var(--cys-color-text-description)', fontSize: 12.5 }}>Sin materias asignadas</span>}
                       />
                     )}
 
@@ -484,7 +467,7 @@ export const BoletinConfigPage: React.FC = () => {
                         icon={<ReloadOutlined />}
                         onClick={() => {
                           if (selectedCursoId) {
-                            loadMateriasCurso(selectedCursoId);
+                            loadMateriasCurso();
                             loadProgresoGlobal();
                           }
                         }}
@@ -538,8 +521,8 @@ export const BoletinConfigPage: React.FC = () => {
                 }}
               >
                 <Space size={8} style={{ minWidth: 0 }}>
-                  <AppstoreOutlined style={{ color: '#2563eb', fontSize: 17 }} />
-                  <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
+                  <AppstoreOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 17 }} />
+                  <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--cys-color-text)' }}>
                     Materias del Plan
                   </span>
                   {selectedCursoId && (
@@ -600,7 +583,7 @@ export const BoletinConfigPage: React.FC = () => {
             cursoMateria={selectedCursoMateria}
             onSaved={() => {
               if (selectedCursoId) {
-                loadMateriasCurso(selectedCursoId);
+                loadMateriasCurso();
                 loadProgresoGlobal();
               }
             }}
@@ -618,7 +601,7 @@ export const BoletinConfigPage: React.FC = () => {
           assignedMateriaIds={cursoMaterias.map((cm) => cm.materiaId)}
           onMateriasAdded={() => {
             if (selectedCursoId) {
-              loadMateriasCurso(selectedCursoId);
+              loadMateriasCurso();
               loadProgresoGlobal();
             }
           }}

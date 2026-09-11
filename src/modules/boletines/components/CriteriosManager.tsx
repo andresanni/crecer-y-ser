@@ -1,3 +1,4 @@
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
@@ -34,9 +35,13 @@ interface Props {
 
 const DEFAULT_SLOTS_COUNT = 5;
 
-export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => {
+export const CriteriosManager: React.FC<Props> = (props) => (
+  <CriteriosManagerSession key={props.cursoMateria?.id ?? 'none'} {...props} />
+);
+
+const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => {
   const { message } = App.useApp();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Estado de los slots de trabajo
@@ -64,29 +69,21 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
     setEditingIndices(new Set()); // Todos inician en solo lectura
   };
 
-  const loadCriterios = async (cmId: string) => {
-    try {
-      setLoading(true);
-      const data = await boletinService.getCriteriosByCursoMateria(cmId);
-      initSlots(data);
-    } catch (err) {
-      console.error(err);
-      message.error('Error al cargar los criterios de evaluación');
-      initSlots([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  const cursoMateriaId = cursoMateria?.id;
   useEffect(() => {
-    if (cursoMateria) {
-      loadCriterios(cursoMateria.id);
-    } else {
-      setCriterios([]);
-      setPersistedCriterios([]);
-      setEditingIndices(new Set());
-    }
-  }, [cursoMateria?.id]);
+    if (!cursoMateriaId) return;
+    let active = true;
+    boletinService.getCriteriosByCursoMateria(cursoMateriaId)
+      .then((data) => { if (active) initSlots(data); })
+      .catch((err) => {
+        if (!active) return;
+        console.error(err);
+        message.error('Error al cargar los criterios de evaluación');
+        initSlots([]);
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [cursoMateriaId, message]);
 
   // Detectar si hay cambios sin guardar con respecto a lo persistido
   const hasUnsavedChanges = useMemo(() => {
@@ -230,8 +227,8 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
         }}
       >
         <div style={{ padding: 40, maxWidth: 420 }}>
-          <BookOutlined style={{ fontSize: 48, color: '#94a3b8', marginBottom: 16 }} />
-          <Typography.Title level={4} style={{ color: '#475569', marginBottom: 8 }}>
+          <BookOutlined style={{ fontSize: 48, color: 'var(--cys-color-text-secondary)', marginBottom: 16 }} />
+          <Typography.Title level={4} style={{ color: 'var(--cys-color-text-description)', marginBottom: 8 }}>
             Selecciona una Materia
           </Typography.Title>
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>
@@ -253,7 +250,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
         boxShadow: '0 4px 16px rgba(0, 0, 0, 0.04)',
       }}
       headStyle={{ padding: '12px 18px' }}
-      bodyStyle={{ padding: '14px 18px 18px' }}
+      styles={{ body: { padding: '14px 18px 18px' } }}
       title={
         <div
           style={{
@@ -275,17 +272,17 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#2563eb',
+                color: 'var(--cys-color-primary-text)',
                 fontSize: 18,
               }}
             >
               <BookOutlined />
             </div>
             <div>
-              <Typography.Text strong style={{ fontSize: 16, color: '#0f172a', display: 'block', lineHeight: 1.2 }}>
+              <Typography.Text strong style={{ fontSize: 16, color: 'var(--cys-color-text)', display: 'block', lineHeight: 1.2 }}>
                 {cursoMateria.materiaNombre}
               </Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              <Typography.Text type="secondary" className={ui.caption}>
                 Indicadores de Logro y Criterios Oficiales
               </Typography.Text>
             </div>
@@ -323,19 +320,19 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
             border: '1px solid rgba(37, 99, 235, 0.15)',
             borderRadius: 8,
             fontSize: 12,
-            color: '#334155',
+            color: 'var(--cys-color-text)',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
           }}
         >
           <Space size={6} style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            <InfoCircleOutlined style={{ color: '#2563eb', fontSize: 13, flexShrink: 0 }} />
+            <InfoCircleOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 13, flexShrink: 0 }} />
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Configure los <strong>5 criterios</strong> de <em>{cursoMateria.materiaNombre}</em>.
             </span>
           </Space>
 
-          <Space size={4} style={{ fontSize: 11, color: '#64748b', flexShrink: 0 }}>
+          <Space size={4} style={{ fontSize: 11, color: 'var(--cys-color-text-description)', flexShrink: 0 }}>
             <span>Automáticos:</span>
             <Tag color="purple" style={{ margin: 0, fontSize: 11, padding: '0 5px', borderRadius: 4, lineHeight: '18px' }}>
               PPI
@@ -344,7 +341,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
               Calificación General
             </Tag>
             <Tooltip title="Los campos PPI (Inclusión) y Calificación General se generan de forma automática en la planilla docente, no es necesario agregarlos como criterios.">
-              <InfoCircleOutlined style={{ color: '#94a3b8', cursor: 'pointer', marginLeft: 2 }} />
+              <InfoCircleOutlined style={{ color: 'var(--cys-color-text-secondary)', cursor: 'pointer', marginLeft: 2 }} />
             </Tooltip>
           </Space>
         </div>
@@ -388,7 +385,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                         gap: 12,
                         padding: '10px 14px',
                         borderRadius: 10,
-                        border: '1px dashed #cbd5e1',
+                        border: "1px dashed var(--cys-color-border)",
                         background: 'var(--cys-color-fill-quaternary, #f8fafc)',
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
@@ -401,7 +398,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                           height: 28,
                           borderRadius: 6,
                           background: '#cbd5e1',
-                          color: '#475569',
+                          color: 'var(--cys-color-text-description)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -436,9 +433,9 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                       borderRadius: 10,
                       border: isModified
                         ? '1px solid #f59e0b'
-                        : '1px solid var(--cys-color-border, #e2e8f0)',
+                        : "1px solid var(--cys-color-border, var(--cys-color-border-secondary))",
                       background: isModified
-                        ? '#fffbeb'
+                        ? "var(--cys-color-warning-bg)"
                         : 'var(--cys-color-bg-container, #ffffff)',
                       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
                       transition: 'all 0.2s ease',
@@ -473,7 +470,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                             margin: 0,
                             fontSize: 13.5,
                             fontWeight: 500,
-                            color: '#1e293b',
+                            color: 'var(--cys-color-text)',
                             lineHeight: 1.45,
                             flex: 1,
                           }}
@@ -481,7 +478,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                           {criterio.nombre}
                         </Typography.Paragraph>
                         {isModified && (
-                          <Tag color="orange" style={{ margin: 0, fontSize: 11, borderRadius: 4 }}>
+                          <Tag color="orange" className={ui.compactTag}>
                             Pendiente de guardar
                           </Tag>
                         )}
@@ -510,7 +507,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                           <Button
                             size="small"
                             type="text"
-                            icon={<ArrowUpOutlined style={{ fontSize: 11 }} />}
+                            icon={<ArrowUpOutlined className={ui.smallText} />}
                             disabled={index === 0 || saving}
                             onClick={() => handleMove(index, 'up')}
                           />
@@ -519,7 +516,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                           <Button
                             size="small"
                             type="text"
-                            icon={<ArrowDownOutlined style={{ fontSize: 11 }} />}
+                            icon={<ArrowDownOutlined className={ui.smallText} />}
                             disabled={index === criterios.length - 1 || saving}
                             onClick={() => handleMove(index, 'down')}
                           />
@@ -581,7 +578,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                       style={{ borderRadius: 6, marginBottom: 4 }}
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
-                      <Tag color="processing" style={{ fontSize: 11, borderRadius: 4, margin: 0 }}>
+                      <Tag color="processing" className={ui.compactTag}>
                         Modo Edición
                       </Tag>
 
@@ -639,7 +636,7 @@ export const CriteriosManager: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                 ) : (
                   <Space size={6}>
                     <InfoCircleOutlined style={{ color: '#f59e0b', fontSize: 15 }} />
-                    <Typography.Text style={{ fontSize: 12.5, color: '#d97706', fontWeight: 600 }}>
+                    <Typography.Text style={{ fontSize: 12.5, color: "var(--cys-color-warning-text)", fontWeight: 600 }}>
                       Tienes cambios pendientes por guardar en esta materia
                     </Typography.Text>
                   </Space>

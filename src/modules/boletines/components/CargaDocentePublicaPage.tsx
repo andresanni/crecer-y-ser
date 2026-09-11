@@ -1,3 +1,4 @@
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -203,7 +204,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
   }
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className={ui.publicPage}>
       {/* Banner de Cabecera Docente */}
       <Card
         style={{
@@ -212,7 +213,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
           color: '#ffffff',
           boxShadow: '0 4px 14px rgba(30, 64, 175, 0.18)',
         }}
-        bodyStyle={{ padding: '18px 24px' }}
+        styles={{ body: { padding: '18px 24px' } }}
       >
         <Row justify="space-between" align="middle" gutter={[16, 16]}>
           <Col xs={24} lg={13}>
@@ -344,11 +345,11 @@ export const CargaDocentePublicaPage: React.FC = () => {
 
       {/* Contenido Principal: Carga Integral por Alumno */}
       {loadingData ? (
-        <Card style={{ textAlign: 'center', padding: 60, borderRadius: 16 }}>
+        <Card className={ui.loadingPanel}>
           <Spin tip="Cargando planilla de calificaciones y estudiantes..." />
         </Card>
       ) : alumnos.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 40, borderRadius: 16 }}>
+        <Card className={ui.emptyPanel}>
           <Text type="secondary">No se encontraron estudiantes regulares inscriptos en este curso.</Text>
         </Card>
       ) : (

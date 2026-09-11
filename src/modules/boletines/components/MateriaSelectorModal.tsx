@@ -1,3 +1,5 @@
+import { useModalSessionKey } from '../../../shared/hooks/useModalSessionKey';
+import ui from '../../../shared/styles/ui.module.css';
 import React, { useState, useEffect } from 'react';
 import { Modal, List, Typography, Space, App, Tag, Empty, Spin, Button, Input, Checkbox } from 'antd';
 import { PlusOutlined, SearchOutlined, BookOutlined } from '@ant-design/icons';
@@ -14,7 +16,14 @@ interface Props {
   onOpenCatalogoModal: () => void;
 }
 
-export const MateriaSelectorModal: React.FC<Props> = ({
+export const MateriaSelectorModal: React.FC<Props> = (props) => {
+  const sessionKey = useModalSessionKey(props.open);
+  return (
+    <MateriaSelectorModalSession key={`${sessionKey}:${props.cursoId}`} {...props} />
+  );
+};
+
+const MateriaSelectorModalSession: React.FC<Props> = ({
   open,
   onClose,
   cursoId,
@@ -26,30 +35,23 @@ export const MateriaSelectorModal: React.FC<Props> = ({
   const { message } = App.useApp();
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
 
-  const loadMaterias = async () => {
-    try {
-      setLoading(true);
-      const data = await boletinService.getAllMaterias();
-      setMaterias(data);
-    } catch (err) {
-      console.error(err);
-      message.error('Error al cargar catálogo de materias');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (open) {
-      loadMaterias();
-      setSelectedIds([]);
-      setSearch('');
-    }
-  }, [open]);
+    if (!open) return;
+    let active = true;
+    boletinService.getAllMaterias()
+      .then((data) => { if (active) setMaterias(data); })
+      .catch((err) => {
+        if (!active) return;
+        console.error(err);
+        message.error('Error al cargar el catálogo de materias');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [open, message]);
 
   // Filtramos las que NO están asignadas todavía al curso
   const availableMaterias = materias.filter(
@@ -92,7 +94,7 @@ export const MateriaSelectorModal: React.FC<Props> = ({
     <Modal
       title={
         <Space size={8}>
-          <PlusOutlined style={{ color: '#2563eb' }} />
+          <PlusOutlined className={ui.primary} />
           <span>Agregar Materias a {cursoNombre}</span>
         </Space>
       }
@@ -134,7 +136,7 @@ export const MateriaSelectorModal: React.FC<Props> = ({
         </div>
 
         <Input
-          prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+          prefix={<SearchOutlined style={{ color: 'var(--cys-color-text-secondary)' }} />}
           placeholder="Buscar materia..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}

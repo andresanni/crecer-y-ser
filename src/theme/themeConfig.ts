@@ -70,6 +70,13 @@ export const getAntdTheme = (isDarkMode: boolean): ThemeConfig => {
         headerBg: isDarkMode ? BRAND_COLORS.slate[900] : BRAND_COLORS.slate[50],
       },
       Menu: {
+        itemBorderRadius: 10,
+        itemHeight: 44,
+        itemMarginInline: 8,
+        iconSize: 18,
+        activeBarBorderWidth: 0,
+        itemSelectedColor: activeTokens?.colorPrimaryText,
+        subMenuItemSelectedColor: activeTokens?.colorPrimaryText,
         darkItemBg: 'transparent',
         darkItemSelectedBg: BRAND_COLORS.vibrantBlue.base,
         darkItemColor: BRAND_COLORS.slate[300],

@@ -1,3 +1,5 @@
+import ui from '../../../shared/styles/ui.module.css';
+import { PageHeader } from '../../../shared/components/PageHeader';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
@@ -33,7 +35,7 @@ import type {
 } from '../models/boletin.model';
 import { useAppStore } from '../../../store/appStore';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export const PlanillaCalificacionesPage: React.FC = () => {
   const { message } = App.useApp();
@@ -111,7 +113,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [cicloActual?.id, message, reloadCounter]);
+  }, [cicloActual?.id, message, reloadCounter, urlPeriodoId]);
 
   // 3. Al cambiar Curso: Cargar Materias del Curso, Escala y Alumnos
   useEffect(() => {
@@ -164,34 +166,12 @@ export const PlanillaCalificacionesPage: React.FC = () => {
 
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className={ui.page}>
       {/* Encabezado y Barra de Herramientas */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        <div className="cys-page-header">
-          <div className="cys-page-header-icon">
-            <TableOutlined />
-          </div>
-          <div className="cys-page-header-content">
-            <Title level={2} className="cys-page-header-title">
-              Planilla de Calificaciones y Boletines
-            </Title>
-            <Text className="cys-page-header-subtitle">
-              Carga y evaluación pedagógica integral por alumno con criterios oficiales, asistencia y apoyos.
-            </Text>
-          </div>
-        </div>
-
+      <PageHeader title="Carga de notas de boletines" description="Evaluación por alumno, asistencia y apoyos pedagógicos." icon={<TableOutlined />} actions={
         <Space size="middle" wrap>
           <Button
-            icon={<LinkOutlined style={{ color: '#2563eb' }} />}
+            icon={<LinkOutlined className={ui.primary} />}
             onClick={() => setGestorEnlacesOpen(true)}
             style={{ borderRadius: 8, fontWeight: 600 }}
           >
@@ -205,27 +185,27 @@ export const PlanillaCalificacionesPage: React.FC = () => {
             />
           </Tooltip>
         </Space>
-      </div>
+      } />
 
       {/* Barra de Filtros de Curso y Período */}
       <Card
         style={{
           borderRadius: 14,
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-          border: '1px solid #e2e8f0',
+          border: "1px solid var(--cys-color-border-secondary)",
         }}
-        bodyStyle={{ padding: '14px 18px' }}
+        styles={{ body: { padding: '14px 18px' } }}
       >
         <Row gutter={[16, 12]} align="middle">
           <Col xs={24} sm={12} md={8}>
-            <Space direction="vertical" size={2} style={{ width: '100%' }}>
-              <Text strong style={{ fontSize: 12, color: '#64748b' }}>
+            <Space orientation="vertical" size={2} className={ui.fullWidth}>
+              <Text strong className={ui.secondaryCaption}>
                 <IdcardOutlined style={{ marginRight: 4 }} />
                 CURSO / GRADO
               </Text>
               <Select
                 size="middle"
-                style={{ width: '100%' }}
+                className={ui.fullWidth}
                 placeholder="Seleccione curso..."
                 loading={loadingCursos}
                 value={selectedCursoId}
@@ -239,14 +219,14 @@ export const PlanillaCalificacionesPage: React.FC = () => {
           </Col>
 
           <Col xs={24} sm={12} md={8}>
-            <Space direction="vertical" size={2} style={{ width: '100%' }}>
-              <Text strong style={{ fontSize: 12, color: '#64748b' }}>
+            <Space orientation="vertical" size={2} className={ui.fullWidth}>
+              <Text strong className={ui.secondaryCaption}>
                 <CalendarOutlined style={{ marginRight: 4 }} />
                 PERÍODO ESCOLAR (BIMESTRE)
               </Text>
               <Select
                 size="middle"
-                style={{ width: '100%' }}
+                className={ui.fullWidth}
                 placeholder="Seleccione bimestre..."
                 loading={loadingPeriodos}
                 value={selectedPeriodoId}
@@ -276,7 +256,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
                     fontSize: 13,
                     padding: '5px 12px',
                     background: 'rgba(37, 99, 235, 0.08)',
-                    color: '#1d4ed8',
+                    color: 'var(--cys-color-primary-text)',
                     border: '1px solid rgba(37, 99, 235, 0.22)',
                     boxShadow: 'none',
                     display: 'inline-flex',
@@ -285,7 +265,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
                     margin: 0,
                   }}
                 >
-                  <CalendarOutlined style={{ fontSize: 13, color: '#2563eb' }} />
+                  <CalendarOutlined style={{ fontSize: 13, color: 'var(--cys-color-primary-text)' }} />
                   <span>{selectedPeriodo.numeroPeriodo}° Bimestre</span>
                 </Tag>
               )}
@@ -296,15 +276,15 @@ export const PlanillaCalificacionesPage: React.FC = () => {
 
       {/* Vista de Carga por Alumno (Única modalidad oficial) */}
       {!selectedCursoId ? (
-        <Card style={{ textAlign: 'center', padding: 40, borderRadius: 16 }}>
+        <Card className={ui.emptyPanel}>
           <Empty description="Seleccione un curso para visualizar la libreta de calificaciones" />
         </Card>
       ) : loadingCursoData ? (
-        <Card style={{ textAlign: 'center', padding: 60, borderRadius: 16 }}>
+        <Card className={ui.loadingPanel}>
           <Spin tip="Cargando materias y estudiantes del curso..." />
         </Card>
       ) : cursoMaterias.length === 0 ? (
-        <Card style={{ textAlign: 'center', padding: 40, borderRadius: 16 }}>
+        <Card className={ui.emptyPanel}>
           <Empty description="Este curso no tiene materias asignadas. Configure la malla curricular en el Constructor de Boletines." />
         </Card>
       ) : (
