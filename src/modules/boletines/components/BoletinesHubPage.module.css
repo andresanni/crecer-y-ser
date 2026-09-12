@@ -1,4 +1,3 @@
-.page { display: flex; flex-direction: column; gap: 24px; }
 .summary { border-top: 3px solid var(--cys-color-warning); }
 .summary .summaryTitle { font-size: 20px; margin-top: 0; }
 .actionCard { display: flex; flex-direction: column; height: 100%; }

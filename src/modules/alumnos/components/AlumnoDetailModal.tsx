@@ -151,14 +151,14 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         </div>
       ),
       children: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
           {/* Barra de Resumen de Estado de Datos */}
           <div
             style={{
               background: "var(--cys-color-fill-quaternary)",
               border: "1px solid var(--cys-color-border-secondary)",
               borderRadius: 10,
-              padding: '8px 12px',
+              padding: '6px 10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -230,7 +230,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
               </div>
             }
           >
-            <Row gutter={[16, 14]}>
+            <Row gutter={[16, 10]}>
               <Col xs={24} sm={12} md={6}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">APELLIDOS</span>
@@ -335,7 +335,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
               </div>
             }
           >
-            <Row gutter={[16, 14]}>
+            <Row gutter={[16, 10]}>
               <Col xs={24} sm={12}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">TELÉFONO DEL ALUMNO</span>
@@ -409,7 +409,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
               </div>
             }
           >
-            <Row gutter={[16, 14]}>
+            <Row gutter={[16, 10]}>
               <Col xs={24} sm={12}>
                 <div className="detail-data-tile">
                   <span className="detail-tile-label">USUARIO ACADEU</span>
@@ -490,14 +490,14 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         </div>
       ),
       children: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
           {/* Barra de Resumen de Estado de Cursada */}
           <div
             style={{
               background: "var(--cys-color-fill-quaternary)",
               border: "1px solid var(--cys-color-border-secondary)",
               borderRadius: 10,
-              padding: '8px 12px',
+              padding: '6px 10px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -670,7 +670,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         </div>
       ),
       children: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '30px 0' }}>
               <Spin tip="Cargando datos del responsable..." />
@@ -704,7 +704,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                     background: "var(--cys-color-fill-quaternary)",
                     border: "1px solid var(--cys-color-border-secondary)",
                     borderRadius: 10,
-                    padding: '8px 12px',
+                    padding: '6px 10px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -892,72 +892,67 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
       open={visible}
       onCancel={handleModalClose}
       width={880}
-      style={{ top: 12, maxWidth: '96vw' }}
+      style={{ top: 8, maxWidth: '96vw', paddingBottom: 8 }}
       className="student-detail-modal"
       closable={true}
-      footer={[
-        <Popconfirm
-          key="delete"
-          title="¿Eliminar registro de alumno?"
-          description="Esta acción eliminará de forma permanente al alumno del sistema. No se puede deshacer."
-          onConfirm={() => {
-            onDelete(alumno.id);
-            handleModalClose();
-          }}
-          okText="Sí, eliminar"
-          cancelText="Cancelar"
-          okButtonProps={{ danger: true }}
-        >
-          <Button
-            danger
-            type="text"
-            icon={<DeleteOutlined />}
-            style={{ fontWeight: 600, float: 'left' }}
-          >
-            Eliminar Alumno
-          </Button>
-        </Popconfirm>,
-        !isBaja && onBaja ? (
-          <Button
-            key="baja"
-            danger
-            icon={<UserDeleteOutlined />}
-            style={{ borderRadius: 10, fontWeight: 600 }}
-            onClick={() => {
-              handleModalClose();
-              onBaja(alumno);
-            }}
-          >
-            Dar de Baja
-          </Button>
-        ) : null,
-        <Button key="close" size="large" onClick={handleModalClose} style={{ borderRadius: 10, fontWeight: 600 }}>
-          Cerrar
-        </Button>,
-        <Button
-          key="edit"
-          type="primary"
-          size="large"
-          icon={<EditOutlined />}
-          className="btn-primary-gradient"
-          style={{ borderRadius: 10, fontWeight: 600 }}
-          onClick={() => handleEdit(activeTab)}
-        >
-          Editar Ficha del Alumno
-        </Button>,
-      ]}
+      footer={(
+        <div className="student-detail-footer">
+          <div className="student-management-actions" aria-label="Gestión del alumno">
+            {!isBaja && onBaja && (
+              <Button
+                danger
+                icon={<UserDeleteOutlined />}
+                onClick={() => {
+                  handleModalClose();
+                  onBaja(alumno);
+                }}
+              >
+                Dar de Baja
+              </Button>
+            )}
+            <Popconfirm
+              title="¿Eliminar registro de alumno?"
+              description="Esta acción eliminará de forma permanente al alumno del sistema. No se puede deshacer."
+              onConfirm={() => {
+                onDelete(alumno.id);
+                handleModalClose();
+              }}
+              okText="Sí, eliminar"
+              cancelText="Cancelar"
+              okButtonProps={{ danger: true }}
+            >
+              <Button danger type="text" icon={<DeleteOutlined />}>
+                Eliminar Alumno
+              </Button>
+            </Popconfirm>
+          </div>
+          <div className="student-primary-actions">
+            <Button onClick={handleModalClose}>
+              Cerrar
+            </Button>
+            <Button
+              type="primary"
+              icon={<EditOutlined />}
+              className="btn-primary-gradient"
+              onClick={() => handleEdit(activeTab)}
+            >
+              Editar Ficha del Alumno
+            </Button>
+          </div>
+        </div>
+      )}
       title={null}
       destroyOnClose
     >
       {/* Cabecera visual del Alumno */}
       <div className="detail-header-banner">
         <Avatar
-          size={58}
+          size={52}
           style={{
             background: isBaja
               ? 'linear-gradient(135deg, #ef4444, #991b1b)'
               : getAvatarGradient(alumno.apellidos + alumno.nombres),
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: 800,
             boxShadow: isBaja
               ? '0 4px 14px rgba(239, 68, 68, 0.35)'
@@ -969,7 +964,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
           {initials}
         </Avatar>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <Title level={3} style={{ margin: 0, color: isBaja ? "var(--cys-color-error-text)" : "var(--cys-color-text)", letterSpacing: '-0.5px' }}>
                 {alumno.apellidos}, {alumno.nombres}
@@ -978,15 +973,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                 DNI: {alumno.dni}
               </Tag>
             </div>
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              className="btn-primary-gradient"
-              onClick={() => handleEdit(activeTab)}
-              style={{ borderRadius: 8, fontWeight: 600, fontSize: 13 }}
-            >
-              Editar Ficha
-            </Button>
           </div>
           <Space size={8} wrap style={{ marginTop: 6 }}>
             {alumno.cursoNombre && (

@@ -1,6 +1,6 @@
 import { AlumnoFilters } from './AlumnoFilters';
 import ui from '../../../shared/styles/ui.module.css';
-import { PageHeader } from '../../../shared/components/PageHeader';
+import { SectionLayout } from '../../../shared/components/SectionLayout';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Table,
@@ -496,13 +496,10 @@ export const AlumnoList: React.FC = () => {
   ];
 
   return (
-    <div className={ui.page}>
-      {/* 1. Header & Primary Actions */}
-      <PageHeader
-        title="Directorio de alumnos"
-        description="Consultá la matrícula, encontrá un alumno y accedé a su ficha."
-        icon={<TeamOutlined />}
-        actions={
+    <SectionLayout
+      title="Directorio de alumnos"
+      icon={<TeamOutlined />}
+      actions={
         <Space size="middle" wrap>
           {/* Toggle Vista Tabla / Tarjetas */}
           <Segmented
@@ -524,8 +521,8 @@ export const AlumnoList: React.FC = () => {
             Nuevo alumno
           </Button>
         </Space>
-        }
-      />
+      }
+    >
 
       <AlumnoFilters
         counts={counts}
@@ -790,6 +787,6 @@ export const AlumnoList: React.FC = () => {
           }
         }}
       />
-    </div>
+    </SectionLayout>
   );
 };

@@ -1,5 +1,5 @@
 import ui from '../../../shared/styles/ui.module.css';
-import { PageHeader } from '../../../shared/components/PageHeader';
+import { SectionLayout } from '../../../shared/components/SectionLayout';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Card,
@@ -304,9 +304,7 @@ export const BoletinConfigPage: React.FC = () => {
   ];
 
   return (
-    <div className={ui.pageSpacious}>
-      {/* Header Institucional */}
-      <PageHeader title="Constructor de boletines" description="Organizá materias, criterios de evaluación y períodos escolares." icon={<ScheduleOutlined />} actions={
+    <SectionLayout title="Constructor de boletines" icon={<ScheduleOutlined />} actions={
         <Space size="small" wrap>
           <Button
             icon={<CalendarOutlined />}
@@ -327,7 +325,7 @@ export const BoletinConfigPage: React.FC = () => {
             Catálogo de Materias
           </Button>
         </Space>
-      } />
+      }>
 
       {/* Selector de Curso con Indicadores de Progreso */}
       <Card
@@ -618,6 +616,6 @@ export const BoletinConfigPage: React.FC = () => {
         open={openPeriodosModal}
         onClose={() => setOpenPeriodosModal(false)}
       />
-    </div>
+    </SectionLayout>
   );
 };

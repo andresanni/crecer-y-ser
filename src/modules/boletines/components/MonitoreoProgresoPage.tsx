@@ -1,6 +1,6 @@
 import { MetricCard } from '../../../shared/components/MetricCard';
 import ui from '../../../shared/styles/ui.module.css';
-import { PageHeader } from '../../../shared/components/PageHeader';
+import { SectionLayout } from '../../../shared/components/SectionLayout';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
@@ -161,9 +161,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
   };
 
   return (
-    <div className={ui.pageSpacious}>
-      {/* 1. Encabezado Institucional y Barra de Acciones */}
-      <PageHeader title="Monitoreo de boletines" description="Seguimiento del avance de carga por curso y materia." icon={<DashboardOutlined />} actions={
+    <SectionLayout title="Monitoreo de boletines" icon={<DashboardOutlined />} actions={
         <Space size="middle" wrap>
           {/* Selector de Bimestre */}
           <div className={ui.inlineControls}>
@@ -200,7 +198,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
             />
           </Tooltip>
         </Space>
-      } />
+      }>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
@@ -501,6 +499,6 @@ export const MonitoreoProgresoPage: React.FC = () => {
         activeCursoId={selectedCursoForModal}
         activePeriodoId={selectedPeriodoId}
       />
-    </div>
+    </SectionLayout>
   );
 };

@@ -42,18 +42,16 @@ export const MainLayout = () => {
         inlineCollapsed={compact}
         openKeys={compact ? undefined : openKeys}
         onOpenChange={(keys) => setMenuState({ pathname, openKeys: keys })}
-        selectedKeys={[pathname === '/app/boletines' ? 'boletines-overview' : currentSection?.key ?? '/app/alumnos']}
+        selectedKeys={[currentSection?.key ?? '/app/alumnos']}
         items={[
           sections[0],
           {
             ...sections[1],
-            children: [
-              { key: 'boletines-overview', label: 'Resumen', icon: <ScheduleOutlined /> },
-              ...sections.slice(2),
-            ],
+            onTitleClick: () => navigate('/app/boletines'),
+            children: sections.slice(2),
           },
         ]}
-        onClick={({ key }) => { navigate(key === 'boletines-overview' ? '/app/boletines' : key); setMobileOpen(false); }}
+        onClick={({ key }) => { navigate(key); setMobileOpen(false); }}
       />
       <div className={styles.navFooter}>
         {!compact && <span>Crecer juntos, cada día.</span>}
@@ -64,8 +62,8 @@ export const MainLayout = () => {
   return (
     <Layout className={`app-layout ${styles.shell}`}>
       <a className={styles.skipLink} href="#main-content">Saltar al contenido</a>
-      {isDesktop && <Layout.Sider className={styles.sider} theme="light" width={272} collapsedWidth={80} collapsed={collapsed}>{navigation(collapsed)}</Layout.Sider>}
-      <Drawer title="Crecer y Ser" placement="left" open={!isDesktop && mobileOpen} onClose={() => setMobileOpen(false)} size={280}>{navigation(false)}</Drawer>
+      {isDesktop && <Layout.Sider className={styles.sider} theme="light" width={240} collapsedWidth={72} collapsed={collapsed}>{navigation(collapsed)}</Layout.Sider>}
+      <Drawer title="Crecer y Ser" placement="left" open={!isDesktop && mobileOpen} onClose={() => setMobileOpen(false)} size={264}>{navigation(false)}</Drawer>
       <Layout className={styles.workspace}>
         <Layout.Header className={styles.header}>
           <Space>

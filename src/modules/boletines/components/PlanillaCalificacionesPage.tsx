@@ -1,5 +1,5 @@
 import ui from '../../../shared/styles/ui.module.css';
-import { PageHeader } from '../../../shared/components/PageHeader';
+import { SectionLayout } from '../../../shared/components/SectionLayout';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
@@ -166,9 +166,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
 
 
   return (
-    <div className={ui.page}>
-      {/* Encabezado y Barra de Herramientas */}
-      <PageHeader title="Carga de notas de boletines" description="Evaluación por alumno, asistencia y apoyos pedagógicos." icon={<TableOutlined />} actions={
+    <SectionLayout title="Carga de notas de boletines" icon={<TableOutlined />} actions={
         <Space size="middle" wrap>
           <Button
             icon={<LinkOutlined className={ui.primary} />}
@@ -185,7 +183,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
             />
           </Tooltip>
         </Space>
-      } />
+      }>
 
       {/* Barra de Filtros de Curso y Período */}
       <Card
@@ -307,6 +305,6 @@ export const PlanillaCalificacionesPage: React.FC = () => {
         activeCursoId={selectedCursoId}
         activePeriodoId={selectedPeriodoId}
       />
-    </div>
+    </SectionLayout>
   );
 };

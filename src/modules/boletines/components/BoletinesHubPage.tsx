@@ -1,4 +1,4 @@
-import { PageHeader } from '../../../shared/components/PageHeader';
+import { SectionLayout } from '../../../shared/components/SectionLayout';
 import React, { useEffect, useState } from 'react';
 import { Alert, Card, Row, Col, Typography, Tag, Button, Space, Spin, Tooltip, Statistic } from 'antd';
 import {
@@ -106,12 +106,10 @@ export const BoletinesHubPage: React.FC = () => {
   ];
 
   return (
-    <div className={styles.page}>
-      <PageHeader
-        title="Boletines y evaluación"
-        description="Calificaciones, seguimiento y organización curricular en un mismo lugar."
-        icon={<ScheduleOutlined />}
-        actions={
+    <SectionLayout
+      title="Boletines y evaluación"
+      icon={<ScheduleOutlined />}
+      actions={
           <Space wrap>
             {loading ? <Spin size="small" /> : <>
               <Tag color="blue" icon={<CalendarOutlined />}>{cicloActual ? `Ciclo ${cicloActual.ano}` : 'Sin ciclo activo'}</Tag>
@@ -121,8 +119,8 @@ export const BoletinesHubPage: React.FC = () => {
               <Button icon={<ReloadOutlined />} onClick={() => setRevision((value) => value + 1)} loading={loading} aria-label="Actualizar datos del módulo" />
             </Tooltip>
           </Space>
-        }
-      />
+      }
+    >
       <Card className={styles.summary}>
         <Row gutter={[24, 24]} align="middle">
           <Col xs={24} md={14}>
@@ -155,6 +153,6 @@ export const BoletinesHubPage: React.FC = () => {
           </Col>
         ))}
       </Row>
-    </div>
+    </SectionLayout>
   );
 };

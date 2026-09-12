@@ -1,8 +1,15 @@
 @import './styles/landing.css';
 
 :root {
-  --font-heading: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Global typography: new app sections should inherit these tokens. */
+  --font-heading: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-navigation: var(--font-heading);
+  --font-weight-section-title: 750;
+  --font-weight-navigation: 650;
+  --font-weight-navigation-active: 750;
+  --letter-spacing-section-title: -0.035em;
+  --letter-spacing-navigation: -0.012em;
   
   /* Brand Identity Tokens (from Crecer y Ser logo) */
   --cys-brand-royal: #0a1936;
@@ -48,6 +55,12 @@ body {
 
 h1, h2, h3, h4, h5, h6, .ant-typography-title {
   font-family: var(--font-heading) !important;
+}
+
+.section-title {
+  font-family: var(--font-heading) !important;
+  font-weight: var(--font-weight-section-title) !important;
+  letter-spacing: var(--letter-spacing-section-title) !important;
 }
 
 /* Reusable Utility Classes */
@@ -540,26 +553,114 @@ body.theme-dark .cys-select-calificacion-general .ant-select-selector {
    ========================================================================== */
 
 .student-detail-modal .ant-modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 16px);
+  overflow: hidden;
   border-radius: 20px !important;
-  padding: 16px 22px !important;
+  padding: 0 !important;
   box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.2) !important;
   border: 1px solid rgba(226, 232, 240, 0.8) !important;
 }
 
+.student-detail-modal .ant-modal-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 22px 8px !important;
+  overscroll-behavior: contain;
+}
+
+.student-detail-modal .ant-modal-footer {
+  flex-shrink: 0;
+  margin: 0 !important;
+  padding: 8px 22px 10px !important;
+  background: var(--cys-color-bg-container);
+  border-top: 1px solid var(--cys-color-border-secondary);
+}
+
 .student-detail-modal .ant-modal-close {
-  top: 12px !important;
-  right: 16px !important;
+  top: 18px !important;
+  right: 28px !important;
+  width: 32px !important;
+  height: 32px !important;
+  background: var(--cys-color-bg-container) !important;
+  border: 1px solid var(--cys-color-border-secondary);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  z-index: 2;
+}
+
+.student-detail-modal .ant-modal-close:hover {
+  color: var(--cys-color-primary-text) !important;
+  border-color: var(--cys-color-primary-border);
 }
 
 .detail-header-banner {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 8px 52px 8px 14px;
   background: linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(2, 132, 199, 0.04));
   border: 1px solid rgba(37, 99, 235, 0.12);
   border-radius: 12px;
   margin-bottom: 12px;
+}
+
+.student-detail-footer,
+.student-management-actions,
+.student-primary-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.student-detail-footer {
+  justify-content: space-between;
+}
+
+.student-detail-footer .ant-btn {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.student-management-actions {
+  padding-right: 12px;
+  border-right: 1px solid var(--cys-color-border-secondary);
+}
+
+@media (max-width: 700px) {
+  .student-detail-modal {
+    top: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .student-detail-modal .ant-modal-content {
+    max-height: calc(100dvh - 16px);
+  }
+
+  .student-detail-modal .ant-modal-body {
+    padding: 14px 14px 10px !important;
+  }
+
+  .student-detail-modal .ant-modal-footer {
+    padding: 10px 14px 12px !important;
+  }
+
+  .student-detail-footer {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .student-management-actions {
+    justify-content: flex-end;
+    padding-top: 8px;
+    padding-right: 0;
+    border-top: 1px solid var(--cys-color-border-secondary);
+    border-right: 0;
+  }
+
+  .student-primary-actions {
+    justify-content: flex-end;
+  }
 }
 
 .detail-header-chip {
@@ -576,12 +677,12 @@ body.theme-dark .cys-select-calificacion-general .ant-select-selector {
 }
 
 .detail-tabs .ant-tabs-nav {
-  margin-bottom: 8px !important;
+  margin-bottom: 6px !important;
 }
 
 .detail-tabs .ant-tabs-tab {
   font-size: 14px !important;
-  padding: 8px 14px !important;
+  padding: 6px 14px !important;
 }
 
 .detail-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
@@ -599,14 +700,14 @@ body.theme-dark .cys-select-calificacion-general .ant-select-selector {
 .detail-section-card .ant-card-head {
   border-bottom: 1px solid #f1f5f9 !important;
   padding: 0 16px !important;
-  min-height: 44px !important;
+  min-height: 40px !important;
   background: #f8fafc !important;
   border-top-left-radius: 14px !important;
   border-top-right-radius: 14px !important;
 }
 
 .detail-section-card .ant-card-body {
-  padding: 18px 20px !important;
+  padding: 12px 18px !important;
 }
 
 .detail-section-card.acadeu-card .ant-card-head {
@@ -1474,4 +1575,3 @@ body.theme-dark .cys-sticky-student-banner {
   border-color: rgba(59, 130, 246, 0.3) !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
 }
-

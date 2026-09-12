@@ -4,6 +4,7 @@
 *   **Framework:** React 18 / 19 + Vite.
 *   **Lenguaje:** TypeScript (Tipado estricto obligatorio).
 *   **UI Framework:** Ant Design (ANTD). Priorizar componentes nativos (Table, Form, Modal, Typography).
+*   **Layouts de la aplicación:** `MainLayout` es exclusivamente el shell global de `/app` (navegación, barra superior y área de rutas). Toda pantalla operativa renderizada dentro de ese shell debe usar `SectionLayout`, pasando `title`, `icon` y, cuando corresponda, `actions`; este componente centraliza el encabezado compacto y la separación con el contenido. Los encabezados de sección no llevan subtítulo descriptivo. No recrear esos márgenes ni renderizar `PageHeader` directamente desde cada módulo.
 *   **State Management:** Zustand para estado global.
 *   **Routing:** React Router v7.
 *   **Backend / BaaS:** PocketBase SDK (`pocketbase` npm package).
