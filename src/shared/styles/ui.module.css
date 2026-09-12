@@ -1,4 +1,4 @@
-/* Shared composition only. Ant Design component appearance belongs in themeConfig. */
+
 .fullWidth { width: 100%; }
 .primary { color: var(--cys-color-primary-text); }
 .success { color: var(--cys-color-success-text); }

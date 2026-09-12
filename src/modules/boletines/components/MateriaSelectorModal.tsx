@@ -53,7 +53,7 @@ const MateriaSelectorModalSession: React.FC<Props> = ({
     return () => { active = false; };
   }, [open, message]);
 
-  // Filtramos las que NO están asignadas todavía al curso
+
   const availableMaterias = materias.filter(
     (m) =>
       !assignedMateriaIds.includes(m.id) &&
@@ -74,7 +74,7 @@ const MateriaSelectorModalSession: React.FC<Props> = ({
 
     try {
       setSaving(true);
-      // Asignamos una por una con el orden correlativo
+
       let baseOrder = assignedMateriaIds.length + 1;
       for (const matId of selectedIds) {
         await boletinService.assignMateriaToCurso(cursoId, matId, baseOrder++);

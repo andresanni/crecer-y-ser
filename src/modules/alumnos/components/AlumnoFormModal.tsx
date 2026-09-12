@@ -50,7 +50,7 @@ import type { Curso, CicloLectivo, EstadoInscripcion } from '../../inscripciones
 const { Text } = Typography;
 
 export interface AlumnoFormValues {
-  // Pestaña 1: Datos del Alumno
+
   numeroLegajo?: string;
   dni: string;
   apellidos: string;
@@ -63,7 +63,7 @@ export interface AlumnoFormValues {
   usuarioAcadeu?: string;
   claveAcadeu?: string;
 
-  // Pestaña 2: Inscripción y Curso (Modo Alta)
+
   cursoId?: string;
   cicloId?: string;
   numeroOrden?: number;
@@ -73,7 +73,7 @@ export interface AlumnoFormValues {
   fechaEgreso?: dayjs.Dayjs | null;
   estadoInscripcion?: EstadoInscripcion;
 
-  // Pestaña 3: Responsable y Vínculo (Modo Alta)
+
   responsableId?: string;
   responsableDni?: string;
   responsableApellidos?: string;
@@ -135,16 +135,16 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [activeEditTab, setActiveEditTab] = useState<string>(initialTab || 'alumno');
 
-  // Observadores reactivos usando Form.useWatch de Ant Design
+
   const fechaNacimientoValue = Form.useWatch('fechaNacimiento', form);
   const estadoInscripcionValue = Form.useWatch('estadoInscripcion', form);
 
-  // Estados para cursos y ciclos lectivos
+
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [ciclos, setCiclos] = useState<CicloLectivo[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
 
-  // Estados para responsable
+
   const [searchingDni, setSearchingDni] = useState(false);
   const [existingResponsable, setExistingResponsable] = useState<Responsable | null>(null);
   const [dniSearched, setDniSearched] = useState(false);
@@ -153,7 +153,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
 
   const isEditing = Boolean(initialValues);
 
-  // Cálculo reactivo de edad a partir de la fecha seleccionada en el formulario
+
   const edadCalculada = useMemo(() => {
     if (!fechaNacimientoValue) return null;
     const date = dayjs.isDayjs(fechaNacimientoValue) ? fechaNacimientoValue : dayjs(fechaNacimientoValue);
@@ -162,7 +162,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     return years >= 0 ? years : null;
   }, [fechaNacimientoValue]);
 
-  // Cargar cursos y ciclos cuando se abre el modal
+
   useEffect(() => {
     if (!visible) return;
 
@@ -178,7 +178,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         setCursos(cursosList);
         setCiclos(ciclosList);
 
-        // Si es alta, preseleccionar ciclo lectivo activo y fecha actual
+
         if (!initialValues) {
           const cicloActivo = ciclosList.find((c) => c.actual) || ciclosList[0];
           form.setFieldsValue({
@@ -205,7 +205,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     };
   }, [visible, initialValues, form]);
 
-  // Sincronizar campos del formulario con initialValues al editar
+
   useEffect(() => {
     let active = true;
     if (visible && initialValues) {
@@ -231,7 +231,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         estadoInscripcion: (initialValues.estadoInscripcion as EstadoInscripcion) || 'Regular',
       });
 
-      // Cargar el responsable vinculado del alumno
+
       responsableService
         .getByAlumnoId(initialValues.id)
         .then((responsables) => {
@@ -291,7 +291,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     onClose();
   };
 
-  // Búsqueda de responsable por DNI
+
   const handleSearchResponsable = useCallback(
     async (dniToSearch?: string) => {
       const dni = (dniToSearch ?? form.getFieldValue('responsableDni') ?? '').toString().trim();
@@ -358,7 +358,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     });
   };
 
-  // Validaciones por etapa en el asistente
+
   const handleNextStep = async () => {
     try {
       if (currentStep === 0) {
@@ -442,10 +442,10 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       });
   };
 
-  // Render Pestaña 1: Datos del Alumno
+
   const renderTabAlumno = () => (
     <div style={{ paddingTop: 4 }}>
-      {/* Banner de Estado de Datos en Modo Edición */}
+      { }
       {isEditing && (
         <div
           style={{
@@ -613,10 +613,10 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     </div>
   );
 
-  // Render Pestaña 2: Inscripción y Curso
+
   const renderTabInscripcion = () => (
     <div style={{ paddingTop: 4 }}>
-      {/* Banner de Estado de Cursada en Modo Edición */}
+      { }
       {isEditing && (
         <div
           style={{
@@ -780,17 +780,17 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     </div>
   );
 
-  // Render Pestaña 3: Responsable y Vínculo
+
   const renderTabResponsable = () => (
     <div style={{ paddingTop: 4 }}>
-      {/* Loading de responsable en modo edición */}
+      { }
       {isEditing && loadingResponsable && (
         <div style={{ textAlign: 'center', padding: '14px 0' }}>
           <Spin tip="Cargando datos del responsable vinculado..." />
         </div>
       )}
 
-      {/* Banner de Estado de Datos del Responsable en Modo Edición */}
+      { }
       {isEditing && !loadingResponsable && (
         <div
           style={{
@@ -846,7 +846,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         </div>
       )}
 
-      {/* Alertas solo en Modo Alta (!isEditing) */}
+      { }
       {!isEditing && existingResponsable && (
         <Alert
           type="success"
@@ -997,7 +997,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     </div>
   );
 
-  // Tabs para modo edición con subtítulos de estado verticalizados
+
   const editTabItems = [
     {
       key: 'alumno',

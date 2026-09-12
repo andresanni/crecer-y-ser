@@ -66,7 +66,7 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
       onClose();
     } catch (error) {
       if (error && typeof error === 'object' && 'errorFields' in error) {
-        // Error de validación del formulario
+
         return;
       }
       console.error('Error al registrar baja de alumno:', error);
@@ -109,7 +109,7 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
       destroyOnClose
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
-        {/* Resumen del Alumno */}
+        { }
         <div
           style={{
             display: 'flex',
@@ -154,7 +154,7 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
           </div>
         </div>
 
-        {/* Alerta de advertencia institucional */}
+        { }
         <Alert
           type="warning"
           showIcon
@@ -164,7 +164,7 @@ export const DarDeBajaModal: React.FC<DarDeBajaModalProps> = ({
           description="Al confirmar, el estudiante pasará a estado 'Baja' con la fecha indicada. Dejará de figurar en las listas activas de calificaciones y asistencia escolar."
         />
 
-        {/* Formulario con Fecha de Baja */}
+        { }
         <Form form={form} layout="vertical">
           <Form.Item
             name="fechaEgreso"

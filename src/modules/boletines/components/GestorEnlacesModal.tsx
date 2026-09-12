@@ -70,7 +70,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
   const [creating, setCreating] = useState<boolean>(false);
   const [materiasDisponibles, setMateriasDisponibles] = useState<CursoMateria[]>([]);
 
-  // Cargar lista de tokens
+
   const loadTokens = useCallback(async () => {
     try {
       setLoading(true);
@@ -106,7 +106,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     return () => { active = false; };
   }, [open, activeCursoId, activePeriodoId, cursos, periodos, message, form]);
 
-  // Cargar materias según el curso seleccionado en el formulario
+
   const watchedCursoId = Form.useWatch('cursoId', form);
   useEffect(() => {
     let active = true;
@@ -126,7 +126,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     return () => { active = false; };
   }, [watchedCursoId]);
 
-  // Generar un nuevo enlace mágico
+
   const handleCreateToken = async () => {
     try {
       const values = await form.validateFields();
@@ -155,7 +155,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     }
   };
 
-  // Activar / Desactivar token
+
   const handleToggleActivo = async (tokenItem: TokenAccesoDocente, activo: boolean) => {
     try {
       await boletinService.toggleTokenAccesoDocente(tokenItem.id, activo);
@@ -169,7 +169,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     }
   };
 
-  // Eliminar token
+
   const handleDeleteToken = async (tokenId: string) => {
     try {
       await boletinService.deleteTokenAccesoDocente(tokenId);
@@ -181,7 +181,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     }
   };
 
-  // Copiar URL al portapapeles
+
   const getMagicLinkUrl = (tokenStr: string) => {
     const origin = window.location.origin;
     return `${origin}/carga?token=${tokenStr}`;
@@ -196,7 +196,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     });
   };
 
-  // Compartir por WhatsApp
+
   const handleShareWhatsApp = (tokenItem: TokenAccesoDocente) => {
     const url = getMagicLinkUrl(tokenItem.token);
     const materiaText = tokenItem.materiaNombre
@@ -355,7 +355,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
-        {/* Formulario de Emisión de Enlaces */}
+        { }
         <Card
           size="small"
           style={{
@@ -454,7 +454,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
           </Form>
         </Card>
 
-        {/* Tabla de Enlaces Emitidos */}
+        { }
         <div>
           <div className={ui.sectionHeading}>
             <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>

@@ -1,7 +1,7 @@
 # Guidelines de Frontend: Sistema "Crecer y Ser"
 
 ## 1. Stack Tecnológico
-*   **Framework:** React 18 / 19 + Vite.
+*   **Framework:** React 19 + Vite 8.
 *   **Lenguaje:** TypeScript (Tipado estricto obligatorio).
 *   **UI Framework:** Ant Design (ANTD). Priorizar componentes nativos (Table, Form, Modal, Typography).
 *   **Layouts de la aplicación:** `MainLayout` es exclusivamente el shell global de `/app` (navegación, barra superior y área de rutas). Toda pantalla operativa renderizada dentro de ese shell debe usar `SectionLayout`, pasando `title`, `icon` y, cuando corresponda, `actions`; este componente centraliza el encabezado compacto y la separación con el contenido. Los encabezados de sección no llevan subtítulo descriptivo. No recrear esos márgenes ni renderizar `PageHeader` directamente desde cada módulo.
@@ -18,6 +18,7 @@
     *   El modelo de dominio frontend (`camelCase`) se usa en componentes y estado de UI.
     *   Cada módulo debe implementar su adaptador (ej: `alumnoAdapter`) para transformar registros `*Record` a entidades de dominio.
 *   **Conexión Directa:** No existe un servidor Node.js intermedio. Los servicios consumen directamente el cliente centralizado [`pocketbase.ts`](file:///c:/Users/andyg/OneDrive/Documents/crecer-y-ser/src/core/pocketbase.ts).
+*   **Documentación del código:** No agregar comentarios en TypeScript, TSX, JavaScript, CSS, HTML o configuración. Usar nombres expresivos y registrar decisiones arquitectónicas duraderas en `docs/`.
 
 ## 3. Mapa de Colecciones (PocketBase) - Fuente de Verdad: `pb_schema.json`
 
@@ -61,6 +62,7 @@
     *   `llegadas_tarde` (*number*)
     *   `observaciones` (*text*)
 
-## 4. Módulo Actual en Desarrollo
-*   **Dominio:** `Alumnos`, `Inscripciones` y `Boletines`.
-*   **Objetivo:** Gestión completa de estudiantes, configuración curricular de cursos/materias y carga/generación del Boletín Oficial de Calificaciones.
+## 4. Estado Actual
+*   **Dominios activos:** `Alumnos`, `Responsables`, `Inscripciones`, `Boletines` y `Auth`.
+*   **UX/UI:** Modernización aprobada y fusionada en `master`; conservar la arquitectura centralizada documentada en `docs/ux-modernization.md`.
+*   **Calidad:** `npm run lint` y `npm run build` son obligatorios antes de integrar cambios.

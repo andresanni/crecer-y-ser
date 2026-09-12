@@ -50,7 +50,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
   const navigate = useNavigate();
   const { cicloActual } = useAppStore();
 
-  // Estados de datos
+
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [selectedPeriodoId, setSelectedPeriodoId] = useState<string | null>(null);
@@ -79,11 +79,11 @@ export const MonitoreoProgresoPage: React.FC = () => {
     }));
   };
 
-  // Modal Gestor de Enlaces Mágicos
+
   const [gestorModalOpen, setGestorModalOpen] = useState<boolean>(false);
   const [selectedCursoForModal, setSelectedCursoForModal] = useState<string | null>(null);
 
-  // 1. Cargar Períodos y Cursos
+
   useEffect(() => {
     let active = true;
     const fetchInitData = async () => {
@@ -112,7 +112,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
     };
   }, [cicloActual?.id, message]);
 
-  // 2. Cargar Datos de Monitoreo Global
+
   const [monitoreoRevision, setMonitoreoRevision] = useState(0);
   const loadMonitoreo = () => setMonitoreoRevision((value) => value + 1);
   useEffect(() => {
@@ -140,13 +140,13 @@ export const MonitoreoProgresoPage: React.FC = () => {
     [periodos, selectedPeriodoId]
   );
 
-  // Cursos filtrados
+
   const cursosFiltrados = useMemo(() => {
     if (filtroEstado === 'TODOS') return data.cursos;
     return data.cursos.filter((c) => c.estado === filtroEstado);
   }, [data.cursos, filtroEstado]);
 
-  // Copiar link mágico de la docente
+
   const handleCopyTokenLink = (tokenStr: string, docenteNombre?: string) => {
     const origin = window.location.origin;
     const publicUrl = `${origin}/carga?token=${tokenStr}`;
@@ -163,7 +163,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
   return (
     <SectionLayout title="Monitoreo de boletines" icon={<DashboardOutlined />} actions={
         <Space size="middle" wrap>
-          {/* Selector de Bimestre */}
+          { }
           <div className={ui.inlineControls}>
             <Text strong style={{ fontSize: 13, color: 'var(--cys-color-text-description)' }}>
               Bimestre / Período:
@@ -217,7 +217,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* 3. Filtro por Estado */}
+      { }
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <Segmented
           value={filtroEstado}
@@ -236,7 +236,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
         </Text>
       </div>
 
-      {/* 4. Parrilla de Grados (1° a 7° Grado con Colores Oficiales) */}
+      { }
       {loading ? (
         <Card style={{ textAlign: 'center', padding: 80, borderRadius: 16 }}>
           <Spin size="large" tip="Calculando estado de avance de la escuela..." />
@@ -268,7 +268,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                   }}
                   styles={{ body: { padding: '16px 18px' } }}
                 >
-                  {/* Encabezado del Grado */}
+                  { }
                   <div
                     style={{
                       display: 'flex',
@@ -299,7 +299,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                       </Typography.Text>
                     </div>
 
-                    {/* Badge de Estado Semafórico */}
+                    { }
                     {isCompleto ? (
                       <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontWeight: 700, fontSize: 11, padding: '1px 6px', borderRadius: 6, margin: 0 }}>
                         100% Completo
@@ -319,7 +319,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Barra de Progreso y Resumen de Alumnos */}
+                  { }
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                       <Space size={6}>
@@ -347,7 +347,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Banner de Estado del Magic Link */}
+                  { }
                   <div
                     style={{
                       background: cur.tokenDocente ? 'var(--cys-color-success-bg)' : 'var(--cys-color-warning-bg)',
@@ -396,7 +396,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Acciones de Tarjeta: Expansor de Materias y Botón Ver Planilla */}
+                  { }
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingTop: 4 }}>
                     <Button
                       size="small"
@@ -421,7 +421,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
                     </Button>
                   </div>
 
-                  {/* Sección Expandible: Desglose de Materias */}
+                  { }
                   {isExpanded && (
                     <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--cys-color-border-secondary)" }}>
                       <div
@@ -487,7 +487,7 @@ export const MonitoreoProgresoPage: React.FC = () => {
         </Row>
       )}
 
-      {/* 5. Modal Gestor de Enlaces Mágicos */}
+      { }
       <GestorEnlacesModal
         open={gestorModalOpen}
         onClose={() => {

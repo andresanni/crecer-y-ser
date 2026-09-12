@@ -69,7 +69,7 @@ export interface Alumno {
 }
 
 export const alumnoAdapter = (record: AlumnoRecord): Alumno => {
-  // Extraer información de curso si viene expandida (preferir Regular o la más reciente)
+
   const activeInsc = record.expand?.inscripciones_via_alumno_id?.find(
     (i) => i.estado === 'Regular'
   ) || record.expand?.inscripciones_via_alumno_id?.[0];

@@ -44,27 +44,27 @@ export const PlanillaCalificacionesPage: React.FC = () => {
   const urlCursoId = searchParams.get('curso');
   const urlPeriodoId = searchParams.get('periodo');
 
-  // Estados de Contexto y Filtros
+
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [selectedCursoId, setSelectedCursoId] = useState<string | null>(urlCursoId);
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [selectedPeriodoId, setSelectedPeriodoId] = useState<string | null>(urlPeriodoId);
 
-  // Datos del Curso activo
+
   const [cursoMaterias, setCursoMaterias] = useState<CursoMateria[]>([]);
   const [valoresEscala, setValoresEscala] = useState<ValorEscala[]>([]);
   const [alumnos, setAlumnos] = useState<AlumnoInscriptoRow[]>([]);
 
-  // Estados de Carga
+
   const [loadingCursos, setLoadingCursos] = useState(false);
   const [loadingPeriodos, setLoadingPeriodos] = useState(false);
   const [loadingCursoData, setLoadingCursoData] = useState(false);
   const [reloadCounter, setReloadCounter] = useState(0);
 
-  // Modal Gestor de Enlaces Mágicos
+
   const [gestorEnlacesOpen, setGestorEnlacesOpen] = useState(false);
 
-  // 1. Cargar Cursos
+
   useEffect(() => {
     let active = true;
     const fetchCursos = async () => {
@@ -89,7 +89,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
     };
   }, [message, reloadCounter, urlCursoId]);
 
-  // 2. Cargar Períodos del Ciclo Activo
+
   useEffect(() => {
     if (!cicloActual?.id) return;
     let active = true;
@@ -115,7 +115,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
     };
   }, [cicloActual?.id, message, reloadCounter, urlPeriodoId]);
 
-  // 3. Al cambiar Curso: Cargar Materias del Curso, Escala y Alumnos
+
   useEffect(() => {
     if (!selectedCursoId) return;
     let active = true;
@@ -185,7 +185,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
         </Space>
       }>
 
-      {/* Barra de Filtros de Curso y Período */}
+      { }
       <Card
         style={{
           borderRadius: 14,
@@ -272,7 +272,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
         </Row>
       </Card>
 
-      {/* Vista de Carga por Alumno (Única modalidad oficial) */}
+      { }
       {!selectedCursoId ? (
         <Card className={ui.emptyPanel}>
           <Empty description="Seleccione un curso para visualizar la libreta de calificaciones" />
@@ -296,7 +296,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
         />
       )}
 
-      {/* Modal Gestor de Enlaces Mágicos */}
+      { }
       <GestorEnlacesModal
         open={gestorEnlacesOpen}
         onClose={() => setGestorEnlacesOpen(false)}

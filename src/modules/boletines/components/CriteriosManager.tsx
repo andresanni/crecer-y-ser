@@ -44,14 +44,14 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Estado de los slots de trabajo
+
   const [criterios, setCriterios] = useState<CriterioFormItem[]>([]);
-  // Copia de respaldo de lo guardado en el servidor para detectar cambios
+
   const [persistedCriterios, setPersistedCriterios] = useState<CriterioFormItem[]>([]);
-  // Set con los índices que actualmente están en modo edición
+
   const [editingIndices, setEditingIndices] = useState<Set<number>>(new Set());
 
-  // Inicializar los 5 slots
+
   const initSlots = (initialData: CriterioEvaluacion[] = []) => {
     const slots: CriterioFormItem[] = [];
 
@@ -66,7 +66,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
 
     setCriterios(slots);
     setPersistedCriterios(JSON.parse(JSON.stringify(slots)));
-    setEditingIndices(new Set()); // Todos inician en solo lectura
+    setEditingIndices(new Set());
   };
 
   const cursoMateriaId = cursoMateria?.id;
@@ -85,7 +85,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
     return () => { active = false; };
   }, [cursoMateriaId, message]);
 
-  // Detectar si hay cambios sin guardar con respecto a lo persistido
+
   const hasUnsavedChanges = useMemo(() => {
     if (criterios.length !== persistedCriterios.length) return true;
     return criterios.some((c, idx) => {
@@ -159,7 +159,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
 
     setCriterios(copy);
 
-    // Si ambos elementos ya estaban persistidos y no hay textos editándose, persistimos el reorden inmediatamente
+
     const bothPersisted = Boolean(currentItem.id && targetItem.id);
     const noActiveEdits = editingIndices.size === 0 && !hasUnsavedChanges;
 
@@ -308,7 +308,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {/* Micro-banner conciso informativo en 1 sola fila */}
+        { }
         <div
           style={{
             display: 'flex',
@@ -369,11 +369,11 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
               const isModified = currentText !== persistedText;
               const isPersisted = Boolean(persistedCriterios[index]?.id) && Boolean(persistedText);
 
-              // ----------------------------------------------------
-              // ESTADO 1: SLOT NO EDITANDO (Solo Lectura o Vacío)
-              // ----------------------------------------------------
+
+
+
               if (!isEditing) {
-                // 1.A: Slot Vacío
+
                 if (!currentText) {
                   return (
                     <div
@@ -421,7 +421,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                   );
                 }
 
-                // 1.B: Slot con Contenido (Vista Solo Lectura con tarjeta limpia)
+
                 return (
                   <div
                     key={criterio.orden_visual}
@@ -441,7 +441,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                       transition: 'all 0.2s ease',
                     }}
                   >
-                    {/* Badge de Orden */}
+                    { }
                     <div
                       style={{
                         minWidth: 28,
@@ -462,7 +462,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                       {criterio.orden_visual}
                     </div>
 
-                    {/* Texto Solo Lectura */}
+                    { }
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <Typography.Paragraph
@@ -485,7 +485,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                       </div>
                     </div>
 
-                    {/* Acciones: Editar & Orden */}
+                    { }
                     <Space size={4} align="center">
                       <Tooltip title="Editar redacción de este criterio">
                         <Button
@@ -527,9 +527,9 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                 );
               }
 
-              // ----------------------------------------------------
-              // ESTADO 2: MODO EDICIÓN ACTIVO (Solo cuando isEditing === true)
-              // ----------------------------------------------------
+
+
+
               return (
                 <div
                   key={criterio.orden_visual}
@@ -545,7 +545,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  {/* Badge de Orden Editando */}
+                  { }
                   <div
                     style={{
                       minWidth: 28,
@@ -564,7 +564,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                     {criterio.orden_visual}
                   </div>
 
-                  {/* Input del Criterio */}
+                  { }
                   <div style={{ flex: 1 }}>
                     <Input.TextArea
                       autoFocus
@@ -623,7 +623,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
 
             <Divider style={{ margin: '10px 0 6px' }} />
 
-            {/* Footer de Guardar Cambios */}
+            { }
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
               <div>
                 {!hasUnsavedChanges ? (

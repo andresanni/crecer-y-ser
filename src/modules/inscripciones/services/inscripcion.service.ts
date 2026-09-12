@@ -16,9 +16,9 @@ const COLLECTION_CICLOS = 'ciclos_lectivos';
 const COLLECTION_INSCRIPCIONES = 'inscripciones';
 
 export const inscripcionService = {
-  /**
-   * Obtiene la lista completa de cursos disponibles junto con su nivel educativo.
-   */
+
+
+
   getCursos: async (): Promise<Curso[]> => {
     const records = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
       expand: 'nivel_id',
@@ -27,9 +27,9 @@ export const inscripcionService = {
     return records.map(cursoAdapter);
   },
 
-  /**
-   * Obtiene la lista de ciclos lectivos.
-   */
+
+
+
   getCiclos: async (): Promise<CicloLectivo[]> => {
     const records = await pb.collection(COLLECTION_CICLOS).getFullList<CicloLectivoRecord>({
       sort: '-ano',
@@ -37,9 +37,9 @@ export const inscripcionService = {
     return records.map(cicloLectivoAdapter);
   },
 
-  /**
-   * Obtiene el ciclo lectivo actual/activo.
-   */
+
+
+
   getCicloActual: async (): Promise<CicloLectivo | null> => {
     try {
       const record = await pb
@@ -51,9 +51,9 @@ export const inscripcionService = {
     }
   },
 
-  /**
-   * Registra una nueva inscripción para un alumno.
-   */
+
+
+
   create: async (
     data: Omit<InscripcionRecord, 'id' | 'created' | 'updated' | 'expand'>
   ): Promise<Inscripcion> => {
@@ -65,9 +65,9 @@ export const inscripcionService = {
     return inscripcionAdapter(record);
   },
 
-  /**
-   * Obtiene las inscripciones asociadas a un alumno.
-   */
+
+
+
   getByAlumnoId: async (alumnoId: string): Promise<Inscripcion[]> => {
     const records = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<InscripcionRecord>({
       filter: `alumno_id = "${alumnoId}"`,
@@ -77,9 +77,9 @@ export const inscripcionService = {
     return records.map(inscripcionAdapter);
   },
 
-  /**
-   * Actualiza una inscripción existente.
-   */
+
+
+
   update: async (
     id: string,
     data: Partial<Omit<InscripcionRecord, 'id' | 'created' | 'updated' | 'expand'>>
@@ -92,9 +92,9 @@ export const inscripcionService = {
     return inscripcionAdapter(record);
   },
 
-  /**
-   * Registra la baja de una inscripción con su fecha de egreso.
-   */
+
+
+
   darDeBaja: async (inscripcionId: string, fechaEgreso: string): Promise<Inscripcion> => {
     const record = await pb
       .collection(COLLECTION_INSCRIPCIONES)

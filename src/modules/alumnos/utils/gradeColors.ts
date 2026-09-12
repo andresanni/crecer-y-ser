@@ -15,7 +15,7 @@ export const GRADE_PALETTE: Record<GradeNumber, GradeColorConfig> = {
     gradeNumber: 1,
     label: '1° Grado',
     shortLabel: '1°',
-    textColor: '#ea580c', // Coral / Naranja cálido
+    textColor: '#ea580c',
     bgColor: 'rgba(234, 88, 12, 0.10)',
     borderColor: 'rgba(234, 88, 12, 0.35)',
     tagPreset: 'volcano',
@@ -24,7 +24,7 @@ export const GRADE_PALETTE: Record<GradeNumber, GradeColorConfig> = {
     gradeNumber: 2,
     label: '2° Grado',
     shortLabel: '2°',
-    textColor: '#d97706', // Ámbar / Dorado
+    textColor: '#d97706',
     bgColor: 'rgba(217, 119, 6, 0.10)',
     borderColor: 'rgba(217, 119, 6, 0.35)',
     tagPreset: 'gold',
@@ -33,7 +33,7 @@ export const GRADE_PALETTE: Record<GradeNumber, GradeColorConfig> = {
     gradeNumber: 3,
     label: '3° Grado',
     shortLabel: '3°',
-    textColor: '#059669', // Verde esmeralda
+    textColor: '#059669',
     bgColor: 'rgba(5, 150, 105, 0.10)',
     borderColor: 'rgba(5, 150, 105, 0.35)',
     tagPreset: 'green',
@@ -42,7 +42,7 @@ export const GRADE_PALETTE: Record<GradeNumber, GradeColorConfig> = {
     gradeNumber: 4,
     label: '4° Grado',
     shortLabel: '4°',
-    textColor: '#0d9488', // Teal / Turquesa
+    textColor: '#0d9488',
     bgColor: 'rgba(13, 148, 136, 0.10)',
     borderColor: 'rgba(13, 148, 136, 0.35)',
     tagPreset: 'cyan',
@@ -51,7 +51,7 @@ export const GRADE_PALETTE: Record<GradeNumber, GradeColorConfig> = {
     gradeNumber: 5,
     label: '5° Grado',
     shortLabel: '5°',
-    textColor: '#0284c7', // Azul cielo
+    textColor: '#0284c7',
     bgColor: 'rgba(2, 132, 199, 0.10)',
     borderColor: 'rgba(2, 132, 199, 0.35)',
     tagPreset: 'blue',
@@ -60,7 +60,7 @@ export const GRADE_PALETTE: Record<GradeNumber, GradeColorConfig> = {
     gradeNumber: 6,
     label: '6° Grado',
     shortLabel: '6°',
-    textColor: '#4f46e5', // Índigo / Azul real
+    textColor: '#4f46e5',
     bgColor: 'rgba(79, 70, 229, 0.10)',
     borderColor: 'rgba(79, 70, 229, 0.35)',
     tagPreset: 'geekblue',
@@ -69,7 +69,7 @@ export const GRADE_PALETTE: Record<GradeNumber, GradeColorConfig> = {
     gradeNumber: 7,
     label: '7° Grado',
     shortLabel: '7°',
-    textColor: '#9333ea', // Púrpura / Violeta
+    textColor: '#9333ea',
     bgColor: 'rgba(147, 51, 234, 0.10)',
     borderColor: 'rgba(147, 51, 234, 0.35)',
     tagPreset: 'purple',
@@ -80,7 +80,7 @@ export const DEFAULT_GRADE_CONFIG: GradeColorConfig = {
   gradeNumber: null,
   label: 'Sin Grado',
   shortLabel: 'S/G',
-  textColor: '#64748b', // Slate gris
+  textColor: '#64748b',
   bgColor: 'rgba(100, 116, 139, 0.10)',
   borderColor: 'rgba(100, 116, 139, 0.25)',
   tagPreset: 'default',
@@ -88,14 +88,14 @@ export const DEFAULT_GRADE_CONFIG: GradeColorConfig = {
 
 export const ALL_GRADES: GradeNumber[] = [1, 2, 3, 4, 5, 6, 7];
 
-/**
- * Extrae el número de grado (1 a 7) de un nombre de curso o texto descriptivo.
- */
+
+
+
 export const extractGradeNumber = (courseName?: string | null): GradeNumber | null => {
   if (!courseName) return null;
   const normalized = courseName.trim().toLowerCase();
 
-  // Patrones numéricos y textuales habituales
+
   if (/\b(1°|1ro|1er|1ero|primero?|primer)\b/i.test(normalized) || /^1[^\d]/.test(normalized) || normalized === '1') {
     return 1;
   }
@@ -118,7 +118,7 @@ export const extractGradeNumber = (courseName?: string | null): GradeNumber | nu
     return 7;
   }
 
-  // Búsqueda simple de dígito aislado
+
   const match = normalized.match(/[1-7]/);
   if (match) {
     const parsed = parseInt(match[0], 10);
@@ -130,9 +130,9 @@ export const extractGradeNumber = (courseName?: string | null): GradeNumber | nu
   return null;
 };
 
-/**
- * Obtiene la configuración visual y temática de color para un curso / grado.
- */
+
+
+
 export const getGradeColorConfig = (courseName?: string | null): GradeColorConfig => {
   const gradeNum = extractGradeNumber(courseName);
   if (gradeNum && GRADE_PALETTE[gradeNum]) {
@@ -141,9 +141,9 @@ export const getGradeColorConfig = (courseName?: string | null): GradeColorConfi
   return DEFAULT_GRADE_CONFIG;
 };
 
-/**
- * Función comparadora para ordenar cursos / grados numéricamente de 1° a 7°.
- */
+
+
+
 export const compareGrados = (courseA?: string | null, courseB?: string | null): number => {
   const numA = extractGradeNumber(courseA);
   const numB = extractGradeNumber(courseB);

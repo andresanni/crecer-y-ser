@@ -17,7 +17,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => {
-  // Suscribirse a los cambios de sesión de PocketBase
+
   pb.authStore.onChange((_token, model) => {
     set({ currentUser: pb.authStore.isValid ? model : null });
   });
@@ -26,23 +26,23 @@ export const useAppStore = create<AppState>((set) => {
     cicloActual: null,
     isCicloLoading: true,
     currentUser: pb.authStore.isValid ? pb.authStore.model : null,
-    
+
     checkAuth: () => {
       set({ currentUser: pb.authStore.isValid ? pb.authStore.model : null });
     },
-    
+
     fetchCicloActual: async () => {
       try {
         set({ isCicloLoading: true });
-        // Usamos el tipado para que el record coincida con nuestra interfaz
+
         const record = await pb.collection('ciclos_lectivos').getFirstListItem<CicloLectivo>('actual = true');
-        
-        set({ 
-          cicloActual: record, 
-          isCicloLoading: false 
+
+        set({
+          cicloActual: record,
+          isCicloLoading: false
         });
       } catch (error) {
-        // Manejo silencioso: en caso de que no haya ciclos cargados aún o falle la red
+
         console.error('No se pudo obtener el ciclo lectivo actual:', error);
         set({ isCicloLoading: false });
       }

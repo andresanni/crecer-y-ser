@@ -1,6 +1,6 @@
-/* ==========================================================================
-   LANDING PAGE STYLES (COLEGIO CRECER Y SER)
-   ========================================================================== */
+
+
+
 
 .landing-container {
   width: 100%;
@@ -17,7 +17,7 @@
   color: #f8fafc;
 }
 
-/* Header & Nav */
+
 .landing-header {
   position: sticky;
   top: 0;
@@ -167,7 +167,7 @@
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
-/* Sections General */
+
 .landing-section {
   padding: 90px 24px;
   position: relative;
@@ -223,7 +223,7 @@
   color: #94a3b8 !important;
 }
 
-/* Hero Section */
+
 .landing-hero {
   position: relative;
   padding: 100px 24px 120px 24px;
@@ -349,7 +349,7 @@
   font-size: 16px;
 }
 
-/* Hero Visual Card */
+
 .hero-visual-card {
   position: relative;
 }
@@ -458,7 +458,7 @@
   border-color: rgba(96, 165, 250, 0.3);
 }
 
-/* Feature Cards */
+
 .feature-card {
   background: #ffffff !important;
   border-radius: 20px !important;
@@ -516,7 +516,7 @@
   color: #94a3b8 !important;
 }
 
-/* Level Cards */
+
 .level-card {
   background: #ffffff !important;
   border-radius: 24px !important;
@@ -613,7 +613,7 @@
   color: #10b981;
 }
 
-/* News Cards */
+
 .news-card {
   background: #ffffff !important;
   border-radius: 20px !important;
@@ -662,7 +662,7 @@
   color: #94a3b8 !important;
 }
 
-/* Contact Section */
+
 .contact-title {
   font-size: 32px !important;
   font-weight: 800 !important;
@@ -727,7 +727,7 @@
   border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Footer */
+
 .landing-footer {
   background: #090d16;
   color: #f8fafc;
@@ -792,7 +792,7 @@
   gap: 16px;
 }
 
-/* Responsive Styles */
+
 @media (max-width: 992px) {
   .hero-title {
     font-size: 38px !important;

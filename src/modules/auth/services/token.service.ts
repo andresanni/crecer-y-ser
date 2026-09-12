@@ -8,9 +8,9 @@ import {
 const COLLECTION_TOKENS = 'tokens_acceso_docente';
 
 export const tokenService = {
-  /**
-   * Valida si un token existe, está activo y no ha expirado.
-   */
+
+
+
   validateToken: async (tokenValue: string): Promise<TokenAccesoDocente | null> => {
     try {
       const record = await pb
@@ -24,12 +24,12 @@ export const tokenService = {
 
       const token = tokenAccesoDocenteAdapter(record);
 
-      // Validar fecha de expiración si está configurada
+
       if (token.fechaExpiracion) {
         const expirationDate = new Date(token.fechaExpiracion);
         const now = new Date();
         if (now > expirationDate) {
-          // Desactivar proactivamente el token expirado
+
           await pb.collection(COLLECTION_TOKENS).update(token.id, { activo: false });
           return null;
         }
@@ -42,9 +42,9 @@ export const tokenService = {
     }
   },
 
-  /**
-   * Genera/Crea un nuevo token de acceso para un docente (requiere autenticación de administrador).
-   */
+
+
+
   createToken: async (data: {
     cursoId: string;
     periodoId: string;
@@ -52,7 +52,7 @@ export const tokenService = {
     docenteNombre: string;
     fechaExpiracion?: string;
   }): Promise<TokenAccesoDocente> => {
-    // Generar un token aleatorio
+
     const randomToken = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 16).toString(16)
     ).join('');
@@ -77,9 +77,9 @@ export const tokenService = {
     return tokenAccesoDocenteAdapter(record);
   },
 
-  /**
-   * Desactiva un token de acceso.
-   */
+
+
+
   deactivateToken: async (tokenId: string): Promise<boolean> => {
     try {
       await pb.collection(COLLECTION_TOKENS).update(tokenId, { activo: false });

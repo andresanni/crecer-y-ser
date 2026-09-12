@@ -1,14 +1,14 @@
-/**
- * Crecer y Ser - Paleta de Colores Institucionales y de Marca
- * Extraída directamente del imagotipo oficial del Colegio A-1134:
- * - Azul Real Colegial (Letras "Crecer" y "Colegio")
- * - Celeste Cielo / Bandera (Isotipo de mar y sol argentino)
- * - Rojo / Coral Cálido (Letra "y" y gorra)
- * - Dorado Solar (Sol del amanecer)
- */
+
+
+
+
+
+
+
+
 
 export const BRAND_COLORS = {
-  // Azules Institucionales
+
   royalBlue: {
     50: '#eef2ff',
     100: '#e0e7ff',
@@ -20,12 +20,12 @@ export const BRAND_COLORS = {
     700: '#4338ca',
     800: '#3730a3',
     900: '#1e1b4b',
-    deep: '#0a1936',      // Fondo Sidebar
-    primary: '#1d4ed8',   // Azul Principal Institucional
-    dark: '#1e40af',      // Hover / Active profundo
+    deep: '#0a1936',
+    primary: '#1d4ed8',
+    dark: '#1e40af',
   },
 
-  // Azul Vibrante Tecnológico (para interactividad, botones y foco en UI)
+
   vibrantBlue: {
     base: '#2563eb',
     hover: '#3b82f6',
@@ -34,7 +34,7 @@ export const BRAND_COLORS = {
     border: 'rgba(37, 99, 235, 0.25)',
   },
 
-  // Celeste / Cian Cielo (Identidad y Mar de la Bandera Argentina)
+
   sky: {
     50: '#f0f9ff',
     100: '#e0f2fe',
@@ -46,7 +46,7 @@ export const BRAND_COLORS = {
     700: '#0369a1',
   },
 
-  // Acento Rojo / Coral (Gorra y trazo "y" del logo)
+
   coral: {
     50: '#fff1f2',
     100: '#ffe4e6',
@@ -55,7 +55,7 @@ export const BRAND_COLORS = {
     700: '#be123c',
   },
 
-  // Dorado Solar (Sol del Isotipo)
+
   amber: {
     50: '#fffbeb',
     100: '#fef3c7',
@@ -64,7 +64,7 @@ export const BRAND_COLORS = {
     600: '#d97706',
   },
 
-  // Verde Esmeralda (Éxito y Alumnos Regulares)
+
   emerald: {
     50: '#ecfdf5',
     100: '#d1fae5',
@@ -73,7 +73,7 @@ export const BRAND_COLORS = {
     700: '#047857',
   },
 
-  // Rojo Peligro (Bajas / Errores)
+
   danger: {
     50: '#fef2f2',
     100: '#fee2e2',
@@ -82,7 +82,7 @@ export const BRAND_COLORS = {
     700: '#b91c1c',
   },
 
-  // Neutros Slate Modernos (Modo Claro & Oscuro)
+
   slate: {
     50: '#f8fafc',
     100: '#f1f5f9',

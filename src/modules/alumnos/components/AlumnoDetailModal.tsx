@@ -93,7 +93,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
     onEdit(alumno, targetTab);
   };
 
-  // Cargar inscripciones y responsables asociados
+
   useEffect(() => {
     if (!visible || !alumno) return;
 
@@ -121,7 +121,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
     };
   }, [visible, alumno]);
 
-  // Edad calculada
+
   const edad = useMemo(() => {
     if (!alumno?.fechaNacimiento) return null;
     const birth = dayjs(alumno.fechaNacimiento);
@@ -152,7 +152,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
       ),
       children: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
-          {/* Barra de Resumen de Estado de Datos */}
+          { }
           <div
             style={{
               background: "var(--cys-color-fill-quaternary)",
@@ -208,7 +208,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             )}
           </div>
 
-          {/* Card 1: Identificación y Datos Personales */}
+          { }
           <Card
             className="detail-section-card"
             size="small"
@@ -313,7 +313,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             </Row>
           </Card>
 
-          {/* Card 2: Contacto y Residencia */}
+          { }
           <Card
             className="detail-section-card"
             size="small"
@@ -387,7 +387,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             </Row>
           </Card>
 
-          {/* Card 3: Credenciales Acadeu */}
+          { }
           <Card
             className="detail-section-card acadeu-card"
             size="small"
@@ -491,7 +491,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
       ),
       children: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
-          {/* Barra de Resumen de Estado de Cursada */}
+          { }
           <div
             style={{
               background: "var(--cys-color-fill-quaternary)",
@@ -697,7 +697,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             </div>
           ) : (
             <>
-              {/* Barra de Resumen de Estado de Datos del Responsable */}
+              { }
               {primaryResponsable && (
                 <div
                   style={{
@@ -944,7 +944,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
       title={null}
       destroyOnClose
     >
-      {/* Cabecera visual del Alumno */}
+      { }
       <div className="detail-header-banner">
         <Avatar
           size={52}
@@ -1034,7 +1034,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         </div>
       </div>
 
-      {/* Alerta si el estudiante está dado de baja */}
+      { }
       {isBaja && (
         <Alert
           type="error"
@@ -1047,7 +1047,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         />
       )}
 
-      {/* Tabs con toda la información desglosada */}
+      { }
       <Tabs
         activeKey={activeTab}
         onChange={(key) => setActiveTab(key)}

@@ -1,8 +1,8 @@
 import type { CursoRecord } from '../../inscripciones/models/inscripcion.model';
 
-// ==========================================
-// 1. MATERIAS (Catálogo General)
-// ==========================================
+
+
+
 export interface MateriaRecord {
   id: string;
   created: string;
@@ -24,9 +24,9 @@ export const materiaAdapter = (record: MateriaRecord): Materia => ({
   updatedAt: record.updated,
 });
 
-// ==========================================
-// 2. PERIODOS (Bimestres por Ciclo Lectivo)
-// ==========================================
+
+
+
 export interface PeriodoRecord {
   id: string;
   created: string;
@@ -63,9 +63,9 @@ export const periodoAdapter = (record: PeriodoRecord): Periodo => ({
   updatedAt: record.updated,
 });
 
-// ==========================================
-// 3. CURSO_MATERIAS (Malla Curricular del Curso)
-// ==========================================
+
+
+
 export interface CursoMateriaRecord {
   id: string;
   created: string;
@@ -102,9 +102,9 @@ export const cursoMateriaAdapter = (record: CursoMateriaRecord): CursoMateria =>
   updatedAt: record.updated,
 });
 
-// ==========================================
-// 4. CRITERIOS_EVALUACION (5 Conceptos por Materia)
-// ==========================================
+
+
+
 export interface CriterioEvaluacionRecord {
   id: string;
   created: string;
@@ -135,16 +135,16 @@ export const criterioEvaluacionAdapter = (record: CriterioEvaluacionRecord): Cri
   updatedAt: record.updated,
 });
 
-// Tipos auxiliares para formularios del constructor
+
 export interface CriterioFormItem {
   id?: string;
   orden_visual: number;
   nombre: string;
 }
 
-// ==========================================
-// 5. ESCALAS DE CALIFICACIÓN Y VALORES
-// ==========================================
+
+
+
 export interface EscalaCalificacionRecord {
   id: string;
   created: string;
@@ -201,9 +201,9 @@ export const valorEscalaAdapter = (record: ValorEscalaRecord): ValorEscala => ({
   updatedAt: record.updated,
 });
 
-// =========================================================================
-// 6. EVALUACIONES_MATERIA (Cierre de materia por bimestre para un alumno)
-// =========================================================================
+
+
+
 export interface EvaluacionMateriaRecord {
   id: string;
   created: string;
@@ -249,9 +249,9 @@ export const evaluacionMateriaAdapter = (record: EvaluacionMateriaRecord): Evalu
   updatedAt: record.updated,
 });
 
-// =========================================================================
-// 7. EVALUACIONES_CRITERIOS (Respuesta a cada uno de los 5 conceptos)
-// =========================================================================
+
+
+
 export interface EvaluacionCriterioRecord {
   id: string;
   created: string;
@@ -290,9 +290,9 @@ export const evaluacionCriterioAdapter = (record: EvaluacionCriterioRecord): Eva
   updatedAt: record.updated,
 });
 
-// =========================================================================
-// 8. CIERRES_PERIODO_ALUMNO (Asistencias y observaciones globales del bimestre)
-// =========================================================================
+
+
+
 export interface CierrePeriodoAlumnoRecord {
   id: string;
   created: string;
@@ -335,9 +335,9 @@ export const cierrePeriodoAlumnoAdapter = (record: CierrePeriodoAlumnoRecord): C
   updatedAt: record.updated,
 });
 
-// =========================================================================
-// 9. MODELOS COMBINADOS DE DOMINIO PARA LA VISTA/CARGA DE CALIFICACIONES
-// =========================================================================
+
+
+
 export interface CalificacionCriterioItem {
   criterioId: string;
   criterioNombre: string;
@@ -372,9 +372,9 @@ export interface AlumnoInscriptoRow {
   cualesApoyos?: string;
 }
 
-// =========================================================================
-// 9. PROGRESO Y GUÍA VISUAL DE ALUMNOS (ESTADOS SEMAFÓRICOS)
-// =========================================================================
+
+
+
 export type EstadoProgresoAlumno = 'COMPLETO' | 'EN_PROGRESO' | 'SIN_INICIAR';
 
 export interface MateriaProgresoItem {
@@ -408,9 +408,9 @@ export interface ProgresoCursoResumen {
   porcentajeGlobal: number;
 }
 
-// =========================================================================
-// 9.1 MONITOREO Y SEGUIMIENTO INSTITUCIONAL (VISTA DIRECTIVA)
-// =========================================================================
+
+
+
 export type EstadoMonitoreoCurso = 'COMPLETO' | 'EN_PROGRESO' | 'SIN_INICIAR' | 'SIN_ENLACE';
 
 export interface MateriaMonitoreoResumen {
@@ -452,9 +452,9 @@ export interface MonitoreoInstitucionalData {
 }
 
 
-// =========================================================================
-// 10. TOKENS DE ACCESO EXTERNO DOCENTE (MAGIC LINKS / MODO KIOSCO)
-// =========================================================================
+
+
+
 export interface TokenAccesoDocenteRecord {
   id: string;
   created: string;
@@ -510,11 +510,11 @@ export const tokenAccesoDocenteAdapter = (record: TokenAccesoDocenteRecord): Tok
   updatedAt: record.updated,
 });
 
-/**
- * Determina si una materia corresponde a un área formativa / conductual
- * (ej: "TRABAJO EN EL AULA", "CONVIVENCIA"), las cuales evalúan sus 5 criterios
- * pedagógicos pero no llevan indicador de PPI ni Calificación General.
- */
+
+
+
+
+
 export const esMateriaConducta = (nombre?: string): boolean => {
   if (!nombre) return false;
   const n = nombre.trim().toUpperCase();
@@ -526,9 +526,9 @@ export const esMateriaConducta = (nombre?: string): boolean => {
   );
 };
 
-// =========================================================================
-// 11. PROGRESO GLOBAL DE CONSTRUCCIÓN DE MALLA CURRICULAR (POR CURSO)
-// =========================================================================
+
+
+
 export interface ProgresoConstructorCurso {
   cursoId: string;
   totalMaterias: number;

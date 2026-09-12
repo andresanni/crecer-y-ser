@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-/** Reset form state on opening; preserve the mounted modal during its close animation and focus return. */
+
 export function useModalSessionKey(open: boolean): number {
   const [session, setSession] = useState({ open, key: 0 });
   if (session.open !== open) {

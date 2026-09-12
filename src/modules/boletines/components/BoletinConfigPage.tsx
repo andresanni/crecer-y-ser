@@ -50,7 +50,7 @@ export const BoletinConfigPage: React.FC = () => {
   const { message } = App.useApp();
   const { cicloActual } = useAppStore();
 
-  // Estados de datos
+
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [selectedCursoId, setSelectedCursoId] = useState<string | null>(null);
   const [cursoMaterias, setCursoMaterias] = useState<CursoMateria[]>([]);
@@ -58,17 +58,17 @@ export const BoletinConfigPage: React.FC = () => {
   const [criteriosCounts, setCriteriosCounts] = useState<Record<string, number>>({});
   const [progresoCursosMap, setProgresoCursosMap] = useState<Record<string, ProgresoConstructorCurso>>({});
 
-  // Estados de carga
+
   const [loadingCursos, setLoadingCursos] = useState(false);
   const [loadingMaterias, setLoadingMaterias] = useState(false);
   const [reordering, setReordering] = useState(false);
 
-  // Modales
+
   const [openSelectorModal, setOpenSelectorModal] = useState(false);
   const [openCatalogoModal, setOpenCatalogoModal] = useState(false);
   const [openPeriodosModal, setOpenPeriodosModal] = useState(false);
 
-  // Cargar progreso global de construcción para todos los cursos
+
   const loadProgresoGlobal = useCallback(async () => {
     try {
       const pMap = await boletinService.getProgresoConstructorCursos();
@@ -78,7 +78,7 @@ export const BoletinConfigPage: React.FC = () => {
     }
   }, []);
 
-  // 1. Cargar cursos al montar
+
   useEffect(() => {
     let active = true;
     const loadCursos = async () => {
@@ -106,7 +106,7 @@ export const BoletinConfigPage: React.FC = () => {
     return () => { active = false; };
   }, [message]);
 
-  // 2. Cargar materias asignadas al curso seleccionado
+
   const [materiasRevision, setMateriasRevision] = useState(0);
   const loadMateriasCurso = () => setMateriasRevision((value) => value + 1);
   useEffect(() => {
@@ -138,7 +138,7 @@ export const BoletinConfigPage: React.FC = () => {
     return () => { active = false; };
   }, [selectedCursoId, materiasRevision, message]);
 
-  // Reordenar materias
+
   const handleMoveMateria = async (index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= cursoMaterias.length) return;
@@ -154,7 +154,7 @@ export const BoletinConfigPage: React.FC = () => {
 
       setCursoMaterias(copy);
 
-      // Actualizar en backend
+
       await boletinService.updateCursoMateriasOrder([
         { id: copy[index].id, orden_visual: copy[index].ordenVisual },
         { id: copy[targetIndex].id, orden_visual: copy[targetIndex].ordenVisual },
@@ -168,7 +168,7 @@ export const BoletinConfigPage: React.FC = () => {
     }
   };
 
-  // Quitar materia del curso
+
   const handleRemoveMateria = async (cmId: string, nombre: string) => {
     try {
       await boletinService.removeMateriaFromCurso(cmId);
@@ -186,7 +186,7 @@ export const BoletinConfigPage: React.FC = () => {
   const selectedCurso = cursos.find((c) => c.id === selectedCursoId);
   const selectedProg = selectedCursoId ? progresoCursosMap[selectedCursoId] : undefined;
 
-  // Columnas para la tabla de materias del curso
+
   const columns: ColumnsType<CursoMateria> = [
     {
       title: '#',
@@ -327,7 +327,7 @@ export const BoletinConfigPage: React.FC = () => {
         </Space>
       }>
 
-      {/* Selector de Curso con Indicadores de Progreso */}
+      { }
       <Card
         style={{
           borderRadius: 14,
@@ -474,7 +474,7 @@ export const BoletinConfigPage: React.FC = () => {
                   </Space>
                 </div>
 
-                {/* Barra de progreso de la malla del curso seleccionado */}
+                { }
                 {selectedProg && selectedProg.totalMaterias > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ flex: 1 }}>
@@ -496,9 +496,9 @@ export const BoletinConfigPage: React.FC = () => {
         </Row>
       </Card>
 
-      {/* Layout Master - Detail */}
+      { }
       <Row gutter={[20, 20]}>
-        {/* Columna Izquierda: Materias del Curso */}
+        { }
         <Col xs={24} lg={11} xl={10}>
           <Card
             style={{
@@ -575,7 +575,7 @@ export const BoletinConfigPage: React.FC = () => {
           </Card>
         </Col>
 
-        {/* Columna Derecha: Gestor de los 5 Criterios Oficiales */}
+        { }
         <Col xs={24} lg={13} xl={14}>
           <CriteriosManager
             cursoMateria={selectedCursoMateria}
@@ -589,7 +589,7 @@ export const BoletinConfigPage: React.FC = () => {
         </Col>
       </Row>
 
-      {/* Modales */}
+      { }
       {selectedCurso && (
         <MateriaSelectorModal
           open={openSelectorModal}

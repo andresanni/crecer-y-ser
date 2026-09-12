@@ -76,7 +76,7 @@ export const alumnoService = {
 
     const items = result.items.map(alumnoAdapter);
 
-    // Complementar con carga en lote de inscripciones si no vinieron por expand
+
     const unlinkedIds = items.filter((a) => !a.cursoNombre).map((a) => a.id);
     if (unlinkedIds.length > 0) {
       try {
@@ -131,10 +131,10 @@ export const alumnoService = {
     return alumnoAdapter(record);
   },
 
-  /**
-   * Registra integralmente al alumno con su inscripción al curso y vinculación de responsable.
-   * Ejecuta una secuencia controlada con rollback ante excepciones para evitar inconsistencias.
-   */
+
+
+
+
   createIntegral: async (
     params: CreateAlumnoIntegralParams
   ): Promise<{ alumno: Alumno; responsableId?: string; inscripcionId?: string }> => {
@@ -144,7 +144,7 @@ export const alumnoService = {
     let newlyCreatedInscripcionId: string | null = null;
     let responsableId: string | undefined = params.responsable?.id;
 
-    // Helper interno de compensación / rollback
+
     const rollback = async () => {
       if (newlyCreatedInscripcionId) {
         try {
@@ -176,7 +176,7 @@ export const alumnoService = {
       }
     };
 
-    // 1. PASO 1: Crear Alumno
+
     try {
       createdAlumnoRecord = await pb.collection(COLLECTION_NAME).create<AlumnoRecord>({
         numero_legajo: (params.alumno.numero_legajo || '').trim(),
@@ -200,7 +200,7 @@ export const alumnoService = {
       );
     }
 
-    // 2. PASO 2: Resolver o Crear Responsable (si se cargaron datos)
+
     if (params.responsable && params.responsable.dni?.trim()) {
       try {
         if (!responsableId) {
@@ -211,7 +211,7 @@ export const alumnoService = {
               .getFirstListItem(`dni = "${sanitizedDni}"`);
             responsableId = existing.id;
           } catch {
-            // No existe, creamos el nuevo responsable
+
             const newResp = await pb.collection(COLLECTION_RESPONSABLES).create({
               dni: params.responsable.dni.trim(),
               apellidos: params.responsable.apellidos.trim(),
@@ -235,7 +235,7 @@ export const alumnoService = {
         );
       }
 
-      // 3. PASO 3: Vincular en alumno_responable
+
       if (responsableId && createdAlumnoRecord) {
         try {
           const relRecord = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).create({
@@ -256,7 +256,7 @@ export const alumnoService = {
       }
     }
 
-    // 4. PASO 4: Crear Inscripción al Curso y Ciclo Lectivo
+
     if (params.inscripcion && params.inscripcion.curso_id && params.inscripcion.ciclo_id && createdAlumnoRecord) {
       try {
         const inscRecord = await pb.collection(COLLECTION_INSCRIPCIONES).create({
@@ -294,7 +294,7 @@ export const alumnoService = {
     data: Partial<Omit<AlumnoRecord, 'id' | 'created' | 'updated'>>,
     originalUpdatedDate: string
   ): Promise<Alumno> => {
-    // Chequeo de seguridad OCC (Optimistic Concurrency Control)
+
     const currentRecord = await pb.collection(COLLECTION_NAME).getOne(id, { fields: 'updated' });
     if (currentRecord.updated !== originalUpdatedDate) {
       throw new Error('El registro fue modificado por otro usuario. Por favor, refresca los datos.');
@@ -304,9 +304,9 @@ export const alumnoService = {
     return alumnoAdapter(record);
   },
 
-  /**
-   * Actualiza integralmente al alumno y su inscripción activa al curso.
-   */
+
+
+
   updateIntegral: async (
     id: string,
     params: {
@@ -336,7 +336,7 @@ export const alumnoService = {
     },
     originalUpdatedDate: string
   ): Promise<Alumno> => {
-    // 1. Chequeo OCC y actualización del registro de alumno
+
     const currentRecord = await pb.collection(COLLECTION_NAME).getOne(id, { fields: 'updated' });
     if (currentRecord.updated !== originalUpdatedDate) {
       throw new Error('El registro fue modificado por otro usuario. Por favor, refresca los datos.');
@@ -344,7 +344,7 @@ export const alumnoService = {
 
     await pb.collection(COLLECTION_NAME).update<AlumnoRecord>(id, params.alumno);
 
-    // 2. Actualizar o crear inscripción si se incluyeron datos
+
     if (params.inscripcion && (params.inscripcion.curso_id || params.inscripcion.estado)) {
       let targetInscId = params.inscripcion.id;
       if (!targetInscId) {
@@ -356,7 +356,7 @@ export const alumnoService = {
           const active = list.find((i) => i.estado === 'Regular') || list[0];
           if (active) targetInscId = active.id;
         } catch {
-          // Ignorar
+          targetInscId = undefined;
         }
       }
 
@@ -386,7 +386,7 @@ export const alumnoService = {
       }
     }
 
-    // 3. Actualizar o Vincular Responsable si se incluyeron datos
+
     if (params.responsable && params.responsable.dni?.trim()) {
       let responsableId = params.responsable.id;
       const sanitizedDni = params.responsable.dni.trim().replace(/"/g, '\\"');
@@ -398,7 +398,7 @@ export const alumnoService = {
             .getFirstListItem(`dni = "${sanitizedDni}"`);
           responsableId = existing.id;
         } catch {
-          // No existe, creamos el nuevo responsable
+
           const newResp = await pb.collection(COLLECTION_RESPONSABLES).create({
             dni: params.responsable.dni.trim(),
             apellidos: (params.responsable.apellidos || '').trim(),
@@ -411,7 +411,7 @@ export const alumnoService = {
           responsableId = newResp.id;
         }
       } else {
-        // Actualizar datos del responsable existente
+
         try {
           await pb.collection(COLLECTION_RESPONSABLES).update(responsableId, {
             apellidos: (params.responsable.apellidos || '').trim(),
@@ -426,7 +426,7 @@ export const alumnoService = {
         }
       }
 
-      // Asegurar la relación alumno-responsable
+
       if (responsableId) {
         try {
           const existingRels = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).getFullList({
@@ -451,7 +451,7 @@ export const alumnoService = {
       }
     }
 
-    // 4. Obtener el alumno actualizado con su información expandida
+
     const fullUpdated = await pb.collection(COLLECTION_NAME).getOne<AlumnoRecord>(id, {
       expand: 'inscripciones_via_alumno_id.curso_id.nivel_id',
     });
@@ -459,9 +459,9 @@ export const alumnoService = {
     return alumnoAdapter(fullUpdated);
   },
 
-  /**
-   * Registra la baja de un estudiante asociando la fecha de egreso en su inscripción activa.
-   */
+
+
+
   darDeBaja: async (alumnoId: string, fechaEgreso: string, inscripcionId?: string): Promise<void> => {
     let targetInscId = inscripcionId;
 

@@ -1,45 +1,45 @@
-# Sistema "Crecer y Ser"
+# Crecer y Ser
 
-Proyecto Frontend para el sistema "Crecer y Ser".
+Aplicación web de gestión escolar para alumnos, responsables, inscripciones, estructura curricular y boletines.
 
-## Tecnologías
+## Stack
 
-*   **React 18** + **Vite**
-*   **TypeScript** (Tipado estricto)
-*   **Ant Design (ANTD)** - Framework de UI
-*   **Zustand** - Manejo de Estado Global (próximamente)
-*   **React Router v6** - Enrutamiento
-*   **PocketBase** - Backend y SDK (`pocketbase`)
+- React 19 y TypeScript 6.
+- Vite 8.
+- Ant Design 6.
+- React Router 7.
+- Zustand 5.
+- PocketBase SDK.
 
-## Arquitectura
+## Funcionalidad principal
 
-*   **Vertical Slicing:** Organización del código por dominio (ej: `src/modules/alumnos`).
-*   **Patrón Adaptador:** Aislamiento de la UI frente a las respuestas de la API. Convirtiendo los `Records` de PocketBase en Modelos de Dominio limpios.
-*   **Conexión Directa:** El cliente consume directamente PocketBase mediante su SDK.
+- Directorio, alta, edición, ficha, baja y eliminación de alumnos.
+- Inscripciones, responsables y datos de cursada.
+- Constructor de materias, criterios y períodos.
+- Carga y monitoreo de boletines.
+- Acceso temporal para carga docente.
+- Autenticación, actualización en tiempo real y temas claro/oscuro.
 
-## Hitos Alcanzados
+## Desarrollo
 
-*   **Hito 1:**
-    *   Configuración y limpieza inicial del proyecto con Vite.
-    *   Definición de estructura base (`src/core`, `src/modules`, `src/shared`).
-    *   Integración del App Shell (`MainLayout`) con Ant Design y React Router.
-    *   **Módulo Alumnos:** CRUD completo (Listado, Creación, Edición y Eliminación) conectando a PocketBase.
+```bash
+npm install
+npm run dev
+```
 
-*   **Hito 2:**
-    *   **Autenticación:** Implementación de Login, protección de rutas y estado global con Zustand (sincronizado con SDK `authStore`).
-    *   **Control de Concurrencia Optimista (OCC):** Prevención de colisiones al editar el mismo registro simultáneamente.
-    *   **Tiempo Real (Realtime):** Suscripciones por WebSockets para actualización en vivo de las vistas, eliminando el "Doble Fetch" y mitigando "Ecos".
-    *   **Paginación y Búsqueda (Server-Side):** Optimización de la tabla de alumnos para escalar a grandes volúmenes de datos usando el motor de filtros de PocketBase.
-    *   **Estabilización y Tipado:** Implementación de variables de entorno locales y refactorización a tipado estricto (0 linter warnings).
+Validación local:
 
-## Instalación y Uso
+```bash
+npm run lint
+npm run build
+```
 
-1. Instalar dependencias:
-   ```bash
-   npm install
-   ```
+La conexión se configura mediante `VITE_POCKETBASE_URL`. Copiar `.env.example` a `.env` para el entorno local y no versionar credenciales.
 
-2. Levantar servidor de desarrollo:
-   ```bash
-   npm run dev
-   ```
+## Documentación
+
+- `AGENTS.md`: contrato compartido para herramientas de desarrollo asistido.
+- `docs/project-context.md`: estado funcional y arquitectura vigente.
+- `frontend_guidelines.md`: convenciones de frontend y mapa del modelo de datos.
+- `docs/ux-modernization.md`: sistema UX/UI aprobado.
+- `pb_schema.json`: esquema de PocketBase y fuente de verdad del backend.

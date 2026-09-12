@@ -1,8 +1,8 @@
-/**
- * Constantes y estilos reutilizables de la interfaz de usuario
- */
+
+
+
 export const THEME_CONSTANTS = {
-  // Gradientes institucionales
+
   gradients: {
     primary: 'linear-gradient(135deg, #1d4ed8, #2563eb)',
     primaryHover: 'linear-gradient(135deg, #1e40af, #1d4ed8)',
@@ -13,7 +13,7 @@ export const THEME_CONSTANTS = {
     amber: 'linear-gradient(135deg, #d97706, #f59e0b)',
   },
 
-  // Sombras refinadas
+
   shadows: {
     card: '0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05)',
     cardHover: '0 10px 25px -5px rgba(37, 99, 235, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05)',
@@ -22,7 +22,7 @@ export const THEME_CONSTANTS = {
     buttonPrimaryHover: '0 6px 18px rgba(37, 99, 235, 0.45)',
   },
 
-  // Glassmorphism
+
   glass: {
     light: {
       background: 'rgba(255, 255, 255, 0.85)',
@@ -39,9 +39,9 @@ export const THEME_CONSTANTS = {
   },
 } as const;
 
-/**
- * Generador consistente de gradientes para avatares a partir de un identificador/nombre
- */
+
+
+
 export const getAvatarGradient = (str: string): string => {
   const gradients = [
     'linear-gradient(135deg, #1d4ed8, #2563eb)',

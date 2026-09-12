@@ -109,7 +109,7 @@ const CatalogoMateriasModalSession: React.FC<Props> = ({
           a los cursos correspondientes.
         </Typography.Paragraph>
 
-        {/* Formulario de Alta Rápida */}
+        { }
         <div
           style={{
             padding: 12,
@@ -139,7 +139,7 @@ const CatalogoMateriasModalSession: React.FC<Props> = ({
             </Button>
           </Space.Compact>
 
-          {/* Sugerencias de Áreas Formativas / Conducta */}
+          { }
           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <Typography.Text type="secondary" style={{ fontSize: 11.5 }}>
               Áreas formativas del boletín:
@@ -161,7 +161,7 @@ const CatalogoMateriasModalSession: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Buscador */}
+        { }
         <Input.Search
           placeholder="Buscar en el catálogo..."
           value={search}
@@ -169,7 +169,7 @@ const CatalogoMateriasModalSession: React.FC<Props> = ({
           allowClear
         />
 
-        {/* Listado */}
+        { }
         {loading ? (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <Spin tip="Cargando materias..." />

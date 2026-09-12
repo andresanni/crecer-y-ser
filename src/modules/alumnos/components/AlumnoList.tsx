@@ -60,19 +60,19 @@ export const AlumnoList: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  // Filtro por Grado y Filtro por Estado de Cursada
+
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<GradeNumber | 'all'>('all');
   const [estadoFilter, setEstadoFilter] = useState<'REGULARES' | 'BAJAS' | 'TODOS'>('REGULARES');
 
-  // Modal para Crear / Editar Alumno
+
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingAlumno, setEditingAlumno] = useState<Alumno | null>(null);
 
-  // Modal para Ficha Completa del Alumno
+
   const [selectedDetailAlumno, setSelectedDetailAlumno] = useState<Alumno | null>(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
 
-  // Modal para Acción Rápida de Baja
+
   const [bajaModalAlumno, setBajaModalAlumno] = useState<Alumno | null>(null);
   const [isBajaModalVisible, setIsBajaModalVisible] = useState(false);
 
@@ -147,21 +147,21 @@ export const AlumnoList: React.FC = () => {
 
 
 
-  // Conteos para el segmented de estados
+
   const counts = useMemo(() => {
     const bajas = alumnos.filter((a) => a.estadoInscripcion === 'Baja').length;
     const regulares = alumnos.length - bajas;
     return { regulares, bajas, total: alumnos.length };
   }, [alumnos]);
 
-  // Lista filtrada según el grado seleccionado y el estado de cursada
+
   const displayedAlumnos = useMemo(() => {
     return alumnos.filter((a) => {
-      // 1. Filtro por Grado
+
       if (selectedGradeFilter !== 'all') {
         if (extractGradeNumber(a.cursoNombre) !== selectedGradeFilter) return false;
       }
-      // 2. Filtro por Estado de Cursada
+
       const isBaja = a.estadoInscripcion === 'Baja';
       if (estadoFilter === 'REGULARES') return !isBaja;
       if (estadoFilter === 'BAJAS') return isBaja;
@@ -297,7 +297,7 @@ export const AlumnoList: React.FC = () => {
     }
   };
 
-  // Columnas de la tabla: ESTUDIANTE, Grado, Legajo, DNI y Acciones
+
   const columns: ColumnsType<Alumno> = [
     {
       title: 'ESTUDIANTE',
@@ -501,7 +501,7 @@ export const AlumnoList: React.FC = () => {
       icon={<TeamOutlined />}
       actions={
         <Space size="middle" wrap>
-          {/* Toggle Vista Tabla / Tarjetas */}
+          { }
           <Segmented
             value={viewMode}
             onChange={(val) => setViewMode(val as 'table' | 'grid')}
@@ -512,7 +512,7 @@ export const AlumnoList: React.FC = () => {
             style={{ fontWeight: 500 }}
           />
 
-          {/* Botón Nuevo Alumno */}
+          { }
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -537,7 +537,7 @@ export const AlumnoList: React.FC = () => {
         onRefresh={fetchAlumnos}
       />
 
-      {/* Selected rows banner */}
+      { }
       {selectedRowKeys.length > 0 && (
         <Card style={{ marginBottom: 16, background: "var(--cys-color-primary-bg)", borderColor: "var(--cys-color-primary-border)", borderRadius: 12 }} styles={{ body: { padding: '10px 16px' } }}>
           <Space style={{ justifyContent: 'space-between', width: '100%' }}>
@@ -554,7 +554,7 @@ export const AlumnoList: React.FC = () => {
         </Card>
       )}
 
-      {/* Content View: Table vs Grid */}
+      { }
       {viewMode === 'table' ? (
         <Card className="students-card">
           <Table
@@ -657,7 +657,7 @@ export const AlumnoList: React.FC = () => {
                           {initials}
                         </Avatar>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          {/* Tag de Baja o Grado */}
+                          { }
                           {isBaja && (
                             <Tag color="error" className={ui.statusTag}>
                               Baja {alumno.fechaEgreso ? `• ${dayjs(alumno.fechaEgreso).format('DD/MM/YY')}` : ''}
@@ -750,7 +750,7 @@ export const AlumnoList: React.FC = () => {
         </div>
       )}
 
-      {/* Modal para Crear / Editar Alumno */}
+      { }
       <AlumnoFormModal
         visible={isModalVisible}
         onClose={handleCloseModal}
@@ -759,7 +759,7 @@ export const AlumnoList: React.FC = () => {
         initialTab={editingInitialTab}
       />
 
-      {/* Modal para Ficha Completa del Alumno */}
+      { }
       <AlumnoDetailModal
         visible={isDetailModalVisible}
         alumno={selectedDetailAlumno}
@@ -772,7 +772,7 @@ export const AlumnoList: React.FC = () => {
         }}
       />
 
-      {/* Modal de Acción Rápida para Dar de Baja */}
+      { }
       <DarDeBajaModal
         visible={isBajaModalVisible}
         alumno={bajaModalAlumno}

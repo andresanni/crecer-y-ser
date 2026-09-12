@@ -1,7 +1,7 @@
 @import './styles/landing.css';
 
 :root {
-  /* Global typography: new app sections should inherit these tokens. */
+
   --font-heading: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-navigation: var(--font-heading);
@@ -10,8 +10,8 @@
   --font-weight-navigation-active: 750;
   --letter-spacing-section-title: -0.035em;
   --letter-spacing-navigation: -0.012em;
-  
-  /* Brand Identity Tokens (from Crecer y Ser logo) */
+
+
   --cys-brand-royal: #0a1936;
   --cys-brand-royal-primary: #1d4ed8;
   --cys-brand-royal-dark: #1e40af;
@@ -22,7 +22,7 @@
   --cys-brand-amber: #f59e0b;
   --cys-brand-emerald: #10b981;
 
-  /* Surfaces & Shadows */
+
   --bg-gradient-light: radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.07) 0px, transparent 50%),
                        radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.05) 0px, transparent 50%),
                        #f8fafc;
@@ -63,7 +63,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   letter-spacing: var(--letter-spacing-section-title) !important;
 }
 
-/* Reusable Utility Classes */
+
 .btn-primary-gradient {
   background: linear-gradient(135deg, #1d4ed8, #2563eb) !important;
   border: none !important;
@@ -79,7 +79,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   transform: translateY(-1px);
 }
 
-/* Custom Scrollbar */
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -95,7 +95,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   background: rgba(148, 163, 184, 0.5);
 }
 
-/* Page Heading */
+
 .page-heading {
   margin-bottom: 24px;
 }
@@ -111,7 +111,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   font-size: 14px;
 }
 
-/* KPI Cards */
+
 .kpi-card {
   border: 1px solid rgba(226, 232, 240, 0.8);
   border-radius: 16px !important;
@@ -151,7 +151,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   color: #10b981;
 }
 
-/* Toolbar & Filter Bar */
+
 .toolbar {
   display: flex;
   justify-content: space-between;
@@ -165,7 +165,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   border-radius: 10px;
 }
 
-/* Segmented Control Styling */
+
 .ant-segmented {
   font-weight: 600;
 }
@@ -185,7 +185,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   color: #ffffff !important;
 }
 
-/* Students Card & Table - Edge-to-Edge Seamless Integration */
+
 .students-card {
   overflow: hidden !important;
   border: 1px solid rgba(226, 232, 240, 0.9) !important;
@@ -293,7 +293,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   padding-top: 12px;
 }
 
-/* Student Cards Grid View */
+
 .student-grid-card {
   border-radius: 16px !important;
   border: 1px solid rgba(226, 232, 240, 0.9);
@@ -308,7 +308,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   border-color: rgba(37, 99, 235, 0.35);
 }
 
-/* Custom Ultra-Slim Minimalist Scrollbar */
+
 .cys-criterios-scroll-list,
 .cys-materias-table .ant-table-body,
 .cys-materias-table .ant-table-content,
@@ -374,9 +374,9 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   background: rgba(255, 255, 255, 0.3) !important;
 }
 
-/* ==========================================================================
-   MATERIAS CAROUSEL TABS (.cys-materia-carousel-track)
-   ========================================================================== */
+
+
+
 
 .cys-materia-carousel-track::-webkit-scrollbar {
   display: none !important;
@@ -434,7 +434,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
   box-shadow: 0 4px 12px rgba(124, 58, 237, 0.25);
 }
 
-/* Dark Theme Overrides for Materia Pills */
+
 .theme-dark .cys-materia-tab-pill,
 body.theme-dark .cys-materia-tab-pill {
   background: #0f172a;
@@ -471,17 +471,17 @@ body.theme-dark .cys-materia-tab-pill.asistencias.active {
   border-color: #8b5cf6;
 }
 
-/* ==========================================================================
-   DISTINCT SUMMARY COLUMN: CALIFICACIÓN GENERAL (.cys-col-calificacion-general)
-   ========================================================================== */
 
-/* Header cell for Calificación General */
+
+
+
+
 .cys-materias-table .ant-table-thead > tr > th.cys-col-calificacion-general {
   background: linear-gradient(180deg, #ecfdf5, #f0fdf4) !important;
   border-left: 1px solid #a7f3d0 !important;
 }
 
-/* Body cells for Calificación General */
+
 .cys-materias-table .ant-table-tbody > tr > td.cys-col-calificacion-general {
   background: rgba(240, 253, 244, 0.4) !important;
   border-left: 1px solid rgba(16, 185, 129, 0.25) !important;
@@ -492,18 +492,18 @@ body.theme-dark .cys-materia-tab-pill.asistencias.active {
   border-left-color: #10b981 !important;
 }
 
-/* Row selection state on Calificación General column */
+
 .cys-materias-table .ant-table-tbody > tr.cys-table-row-selected > td.cys-col-calificacion-general {
   background: #d1fae5 !important;
 }
 
-/* Fixed Student column subtle right divider for clean visual separation */
+
 .cys-materias-table .ant-table-cell-fix-left-last {
   border-right: 2px solid #e2e8f0 !important;
   box-shadow: 4px 0 10px rgba(15, 23, 42, 0.04) !important;
 }
 
-/* Enhanced select inside Calificación General */
+
 .cys-select-calificacion-general .ant-select-selector {
   border: 1.5px solid rgba(16, 185, 129, 0.5) !important;
   background: #ffffff !important;
@@ -518,7 +518,7 @@ body.theme-dark .cys-materia-tab-pill.asistencias.active {
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
 }
 
-/* Dark Mode Overrides for Calificación General column */
+
 .theme-dark .cys-materias-table .ant-table-thead > tr > th.cys-col-calificacion-general,
 body.theme-dark .cys-materias-table .ant-table-thead > tr > th.cys-col-calificacion-general {
   background: linear-gradient(180deg, #064e3b, #022c22) !important;
@@ -548,9 +548,9 @@ body.theme-dark .cys-select-calificacion-general .ant-select-selector {
   background: #1e293b !important;
 }
 
-/* ==========================================================================
-   STUDENT DETAIL MODAL (FICHA DEL ALUMNO)
-   ========================================================================== */
+
+
+
 
 .student-detail-modal .ant-modal-content {
   display: flex;
@@ -756,9 +756,9 @@ body.theme-dark .cys-select-calificacion-general .ant-select-selector {
   border-color: rgba(37, 99, 235, 0.3) !important;
 }
 
-/* ==========================================================================
-   DARK THEME SYSTEM OVERRIDES (.theme-dark)
-   ========================================================================== */
+
+
+
 
 .theme-dark {
   background: #0f172a !important;
@@ -912,9 +912,9 @@ body.theme-dark .student-card-actions {
   color: #f8fafc !important;
 }
 
-/* ==========================================================================
-   CHECKBOX DESIGN SYSTEM (Light & Dark Modes)
-   ========================================================================== */
+
+
+
 
 .ant-checkbox-inner {
   width: 18px !important;
@@ -931,7 +931,7 @@ body.theme-dark .student-card-actions {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
 }
 
-/* Checked State */
+
 .ant-checkbox-checked .ant-checkbox-inner {
   background-color: #2563eb !important;
   border-color: #2563eb !important;
@@ -941,7 +941,7 @@ body.theme-dark .student-card-actions {
   border-color: #ffffff !important;
 }
 
-/* Indeterminate (Partial Selection) State */
+
 .ant-checkbox-indeterminate .ant-checkbox-inner {
   background-color: #2563eb !important;
   border-color: #2563eb !important;
@@ -960,7 +960,7 @@ body.theme-dark .student-card-actions {
   content: '' !important;
 }
 
-/* Dark Mode Checkbox Overrides */
+
 .theme-dark .ant-checkbox-inner,
 body.theme-dark .ant-checkbox-inner {
   background-color: #0f172a !important;
@@ -995,7 +995,7 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
   background: rgba(37, 99, 235, 0.2) !important;
 }
 
-/* Pagination in Dark Mode */
+
 .theme-dark .ant-pagination-item {
   background: #0f172a !important;
   border-color: rgba(255, 255, 255, 0.15) !important;
@@ -1021,7 +1021,7 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
   border-color: rgba(255, 255, 255, 0.15) !important;
 }
 
-/* Modal Styling - Unified Single-Card Surface */
+
 .form-modal .ant-modal-content {
   overflow: hidden !important;
   padding: 0 !important;
@@ -1093,7 +1093,7 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
   width: 100% !important;
 }
 
-/* Uniform Input, Select, DatePicker, InputNumber Heights & Borders in Form Modal */
+
 .form-modal .ant-input-affix-wrapper,
 .form-modal .ant-input:not(.ant-input-affix-wrapper .ant-input),
 .form-modal .ant-select-selector,
@@ -1140,7 +1140,7 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
   border-bottom-left-radius: 0 !important;
 }
 
-/* Steps Wizard in Form Modal */
+
 .cys-form-steps {
   transition: all 0.2s ease;
 }
@@ -1167,7 +1167,7 @@ body.theme-dark .ant-checkbox-indeterminate .ant-checkbox-inner::after {
   line-height: 1 !important;
 }
 
-/* Modal Dark Theme Overrides */
+
 .theme-dark .form-modal .ant-modal-content,
 body.theme-dark .form-modal .ant-modal-content {
   background: #1e293b !important;
@@ -1270,7 +1270,7 @@ body.theme-dark .cys-form-steps .ant-steps-item-description {
   color: #94a3b8 !important;
 }
 
-/* Tooltip Customization - Harmonized Slate System */
+
 .ant-tooltip-inner {
   font-size: 12px !important;
   font-weight: 500 !important;
@@ -1299,7 +1299,7 @@ body.theme-dark .ant-tooltip-arrow::before {
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
-/* Login Page Styling */
+
 .login-page {
   min-height: 100vh;
   display: grid;
@@ -1378,7 +1378,7 @@ body.theme-dark .ant-tooltip-arrow::before {
   margin-inline: auto;
 }
 
-/* Dark Mode Overrides for Login */
+
 .theme-dark .login-page,
 body.theme-dark .login-page {
   background: radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.15), transparent 40%),
@@ -1415,7 +1415,7 @@ body.theme-dark .login-form .ant-input-affix-wrapper {
   color: #f8fafc !important;
 }
 
-/* Pulsing Badge Indicator */
+
 .pulse-dot {
   display: inline-block;
   width: 8px;
@@ -1438,7 +1438,7 @@ body.theme-dark .login-form .ant-input-affix-wrapper {
   }
 }
 
-/* Media Queries */
+
 @media (max-width: 768px) {
   .toolbar {
     align-items: stretch;
@@ -1469,7 +1469,7 @@ body.theme-dark .login-form .ant-input-affix-wrapper {
   background: rgba(37, 99, 235, 0.04) !important;
 }
 
-/* Floating Action Bar Slide Up Animation & Styles */
+
 .cys-floating-action-bar {
   animation: cys-slide-up 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(8px);
@@ -1486,7 +1486,7 @@ body.theme-dark .login-form .ant-input-affix-wrapper {
   }
 }
 
-/* Dark theme overrides for floating action bar */
+
 .theme-dark .cys-floating-action-bar,
 body.theme-dark .cys-floating-action-bar {
   background: rgba(30, 41, 59, 0.95) !important;
@@ -1494,7 +1494,7 @@ body.theme-dark .cys-floating-action-bar {
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6) !important;
 }
 
-/* Styled Grade Selects - Clean & Professional */
+
 .cys-grade-select.cys-grade-destacado .ant-select-selector {
   background-color: #ffffff !important;
   border: 1.5px solid #10b981 !important;
@@ -1526,7 +1526,7 @@ body.theme-dark .cys-floating-action-bar {
   font-weight: 700 !important;
 }
 
-/* Dark theme variants */
+
 .theme-dark .cys-grade-select.cys-grade-destacado .ant-select-selector,
 body.theme-dark .cys-grade-select.cys-grade-destacado .ant-select-selector {
   background-color: rgba(6, 78, 59, 0.4) !important;
@@ -1558,7 +1558,7 @@ body.theme-dark .cys-grade-select.cys-grade-no-alcanzado .ant-select-selector {
   color: #f87171 !important;
 }
 
-/* Sticky Student Info Banner in VistaPorAlumno */
+
 .cys-sticky-student-banner {
   position: sticky !important;
   top: 10px;

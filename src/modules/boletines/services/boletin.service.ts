@@ -64,9 +64,9 @@ const COLLECTION_INSCRIPCIONES = 'inscripciones';
 const COLLECTION_TOKENS = 'tokens_acceso_docente';
 
 export const boletinService = {
-  // ==========================================
-  // CURSOS
-  // ==========================================
+
+
+
   getCursos: async (): Promise<Curso[]> => {
     const records = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
       expand: 'nivel_id',
@@ -75,9 +75,9 @@ export const boletinService = {
     return records.map(cursoAdapter);
   },
 
-  // ==========================================
-  // ESCALAS Y VALORES
-  // ==========================================
+
+
+
   getEscalasCalificacion: async (): Promise<EscalaCalificacion[]> => {
     const records = await pb.collection(COLLECTION_ESCALAS).getFullList<EscalaCalificacionRecord>({
       sort: 'nombre',
@@ -93,9 +93,9 @@ export const boletinService = {
     return records.map(valorEscalaAdapter);
   },
 
-  // ==========================================
-  // MATERIAS (Catálogo General)
-  // ==========================================
+
+
+
   getAllMaterias: async (): Promise<Materia[]> => {
     const records = await pb.collection(COLLECTION_MATERIAS).getFullList<MateriaRecord>({
       sort: 'nombre',
@@ -110,9 +110,9 @@ export const boletinService = {
     return materiaAdapter(record);
   },
 
-  // ==========================================
-  // CURSO_MATERIAS (Malla Curricular por Curso)
-  // ==========================================
+
+
+
   getMateriasByCurso: async (cursoId: string): Promise<CursoMateria[]> => {
     const records = await pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
       filter: `curso_id = "${cursoId}"`,
@@ -164,9 +164,9 @@ export const boletinService = {
     }
   },
 
-  // ==========================================
-  // CRITERIOS DE EVALUACIÓN (5 Conceptos por Materia)
-  // ==========================================
+
+
+
   getCriteriosByCursoMateria: async (cursoMateriaId: string): Promise<CriterioEvaluacion[]> => {
     const records = await pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>({
       filter: `curso_materia_id = "${cursoMateriaId}"`,
@@ -215,9 +215,9 @@ export const boletinService = {
     return boletinService.getCriteriosByCursoMateria(cursoMateriaId);
   },
 
-  // ==========================================
-  // PERIODOS (Bimestres)
-  // ==========================================
+
+
+
   getPeriodosByCiclo: async (cicloId: string): Promise<Periodo[]> => {
     const records = await pb.collection(COLLECTION_PERIODOS).getFullList<PeriodoRecord>({
       filter: `ciclo_id = "${cicloId}"`,
@@ -269,9 +269,9 @@ export const boletinService = {
     return boletinService.getPeriodosByCiclo(cicloId);
   },
 
-  // ==========================================
-  // EVALUACIONES MATERIA & CRITERIOS
-  // ==========================================
+
+
+
   getEvaluacionMateria: async (
     inscripcionId: string,
     cursoMateriaId: string,
@@ -344,7 +344,7 @@ export const boletinService = {
         });
     }
 
-    // Sincronizar criterios
+
     const existentesCriterios = await pb
       .collection(COLLECTION_EVALUACIONES_CRITERIOS)
       .getFullList<EvaluacionCriterioRecord>({
@@ -371,9 +371,9 @@ export const boletinService = {
     return evaluacionMateriaAdapter(evalMateriaRecord);
   },
 
-  // ==========================================
-  // CIERRES DE PERIODO POR ALUMNO
-  // ==========================================
+
+
+
   getCierrePeriodoAlumno: async (
     inscripcionId: string,
     periodoId: string
@@ -436,9 +436,9 @@ export const boletinService = {
     return cierrePeriodoAlumnoAdapter(record);
   },
 
-  // ==========================================
-  // MATRIZ DE CALIFICACIONES (CARGA DOCENTE BATCH)
-  // ==========================================
+
+
+
   getAlumnosRegularesByCurso: async (cursoId: string): Promise<AlumnoInscriptoRow[]> => {
     interface InscripcionRaw {
       id: string;
@@ -480,7 +480,7 @@ export const boletinService = {
       };
     });
 
-    // Ordenamiento robusto en TypeScript: por numero_orden asc (si está asignado), y luego alfabéticamente por Apellidos y Nombres
+
     return mapped.sort((a, b) => {
       if (a.numeroOrden !== null && b.numeroOrden !== null) {
         if (a.numeroOrden !== b.numeroOrden) {
@@ -497,9 +497,9 @@ export const boletinService = {
 
 
 
-  // ==========================================
-  // VISTA POR ALUMNO (CARGA INTEGRAL INDIVIDUAL)
-  // ==========================================
+
+
+
   getEvaluacionesByInscripcionAndPeriodo: async (
     inscripcionId: string,
     periodoId: string
@@ -586,7 +586,7 @@ export const boletinService = {
       map[r.curso_materia_id].push(criterioEvaluacionAdapter(r));
     }
 
-    // Ordenar criterios en cliente
+
     for (const cmId of Object.keys(map)) {
       map[cmId].sort((a, b) => (a.ordenVisual ?? 0) - (b.ordenVisual ?? 0));
     }
@@ -632,14 +632,14 @@ export const boletinService = {
     }
 
     try {
-      // 1. Obtener todas las evaluaciones_materia de ese período
+
       const evalRecords = await pb
         .collection(COLLECTION_EVALUACIONES_MATERIA)
         .getFullList<EvaluacionMateriaRecord>({
           filter: `periodo_id = "${periodoId}"`,
         });
 
-      // 2. Obtener los criterios de evaluación de esas evaluaciones en bloques
+
       const evalIds = evalRecords.map((e) => e.id);
       const critCountMap: Record<string, number> = {};
 
@@ -661,7 +661,7 @@ export const boletinService = {
         }
       }
 
-      // 3. Obtener los cierres de período (asistencias) del período
+
       const cierreRecords = await pb
         .collection(COLLECTION_CIERRES_PERIODO)
         .getFullList<CierrePeriodoAlumnoRecord>({
@@ -673,7 +673,7 @@ export const boletinService = {
         cierresMap[c.inscripcion_id] = true;
       }
 
-      // 4. Mapear evaluaciones estructuradas por inscripción y curso_materia
+
       const evalStructureMap: Record<
         string,
         Record<
@@ -697,7 +697,7 @@ export const boletinService = {
         };
       }
 
-      // 5. Calcular progreso individual para cada alumno
+
       const alumnosProgreso: Record<string, ProgresoAlumnoDetalle> = {};
       let completadosCount = 0;
       let enProgresoCount = 0;
@@ -795,9 +795,9 @@ export const boletinService = {
     }
   },
 
-  // ==========================================
-  // MONITOREO Y SEGUIMIENTO INSTITUCIONAL (DIRECTIVOS)
-  // ==========================================
+
+
+
   getMonitoreoInstitucional: async (
     periodoId: string
   ): Promise<MonitoreoInstitucionalData> => {
@@ -817,16 +817,16 @@ export const boletinService = {
     }
 
     try {
-      // 1. Obtener todos los cursos
+
       const cursosRecords = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
         sort: 'nombre',
       });
       const cursos = cursosRecords.map(cursoAdapter);
 
-      // Ordenar cursos por grado (1° a 7°)
+
       cursos.sort((a, b) => compareGrados(a.nombre, b.nombre));
 
-      // 2. Obtener inscripciones activas (no bajas) de todos los cursos
+
       const inscripcionesRecords = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<{
         id: string;
         curso_id: string;
@@ -836,7 +836,7 @@ export const boletinService = {
         filter: 'estado != "Baja"',
       });
 
-      // Mapear alumnos por curso
+
       const cursoInscripcionesMap: Record<string, string[]> = {};
       for (const cur of cursos) {
         cursoInscripcionesMap[cur.id] = [];
@@ -847,7 +847,7 @@ export const boletinService = {
         }
       }
 
-      // 3. Obtener todas las curso_materias
+
       const cmRecords = await pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
         expand: 'materia_id',
       });
@@ -863,14 +863,14 @@ export const boletinService = {
         }
       }
 
-      // 4. Obtener todos los criterios de evaluación
+
       const critRecords = await pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>();
       const criteriosMap: Record<string, number> = {};
       for (const cr of critRecords) {
         criteriosMap[cr.curso_materia_id] = (criteriosMap[cr.curso_materia_id] || 0) + 1;
       }
 
-      // 5. Obtener todos los tokens del período
+
       const tokenRecords = await pb.collection(COLLECTION_TOKENS).getFullList<TokenAccesoDocenteRecord>({
         filter: `periodo_id = "${periodoId}" && activo = true`,
         expand: 'curso_id,periodo_id,materia_id',
@@ -887,7 +887,7 @@ export const boletinService = {
         }
       }
 
-      // 6. Obtener todas las evaluaciones_materia del período
+
       const evalRecords = await pb.collection(COLLECTION_EVALUACIONES_MATERIA).getFullList<EvaluacionMateriaRecord>({
         filter: `periodo_id = "${periodoId}"`,
       });
@@ -925,7 +925,7 @@ export const boletinService = {
           : (hasCalGral && hasAllCrits);
       }
 
-      // 7. Obtener cierres de período
+
       const cierreRecords = await pb.collection(COLLECTION_CIERRES_PERIODO).getFullList<CierrePeriodoAlumnoRecord>({
         filter: `periodo_id = "${periodoId}"`,
       });
@@ -934,7 +934,7 @@ export const boletinService = {
         cierresMap[c.inscripcion_id] = true;
       }
 
-      // 8. Calcular resumen por curso y métricas globales
+
       let totalAlumnosColegio = 0;
       let completadosColegio = 0;
       let enProgresoColegio = 0;
@@ -1081,9 +1081,9 @@ export const boletinService = {
     }
   },
 
-  // ==========================================
-  // TOKENS DE ACCESO DOCENTE (MAGIC LINKS)
-  // ==========================================
+
+
+
   getTokensAccesoDocente: async (
     cursoId?: string,
     periodoId?: string
@@ -1179,9 +1179,9 @@ export const boletinService = {
     }
   },
 
-  // ==========================================
-  // PROGRESO DE CONSTRUCCIÓN DE MALLA POR CURSO
-  // ==========================================
+
+
+
   getProgresoConstructorCursos: async (): Promise<Record<string, ProgresoConstructorCurso>> => {
     try {
       const [cursoMaterias, criterios] = await Promise.all([
@@ -1193,13 +1193,13 @@ export const boletinService = {
         }),
       ]);
 
-      // Conteo de criterios por curso_materia_id
+
       const critsPorCm: Record<string, number> = {};
       for (const crit of criterios) {
         critsPorCm[crit.curso_materia_id] = (critsPorCm[crit.curso_materia_id] || 0) + 1;
       }
 
-      // Agrupar materias por curso_id
+
       const cmsPorCurso: Record<string, CursoMateriaRecord[]> = {};
       for (const cm of cursoMaterias) {
         if (!cmsPorCurso[cm.curso_id]) {

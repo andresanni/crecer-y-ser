@@ -40,12 +40,12 @@ export const CargaDocentePublicaPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const tokenQuery = searchParams.get('token');
 
-  // Estados de Validación de Token
+
   const [validating, setValidating] = useState<boolean>(true);
   const [tokenData, setTokenData] = useState<TokenAccesoDocente | null>(null);
   const [tokenError, setTokenError] = useState<string | null>(null);
 
-  // Datos del Curso y Período habilitados por el token
+
   const [curso, setCurso] = useState<Curso | null>(null);
   const [periodo, setPeriodo] = useState<Periodo | null>(null);
   const [cursoMaterias, setCursoMaterias] = useState<CursoMateria[]>([]);
@@ -55,7 +55,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
   const [loadingData, setLoadingData] = useState<boolean>(false);
   const [reloadCounter, setReloadCounter] = useState<number>(0);
 
-  // 1. Validar el token en el montaje
+
   useEffect(() => {
     const validateToken = async () => {
       if (!tokenQuery) {
@@ -83,7 +83,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
     void validateToken();
   }, [tokenQuery]);
 
-  // 2. Al validar token con éxito: Cargar datos del curso, materias y alumnos
+
   useEffect(() => {
     if (!tokenData) return;
     let active = true;
@@ -92,7 +92,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
       try {
         setLoadingData(true);
 
-        // Preconfigurar período con los datos del token expandido
+
         if (tokenData.periodoNombre || tokenData.periodoId) {
           let numPer = tokenData.numeroPeriodo || 1;
           try {
@@ -118,7 +118,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
           }
         }
 
-        // Cargar cursos para obtener escala y turno
+
         let cur: Curso | null = null;
         try {
           const cursosList = await boletinService.getCursos();
@@ -128,7 +128,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
           console.warn('[MagicLink] Error cargando cursos:', err);
         }
 
-        // Cargar materias del curso
+
         try {
           let materias = await boletinService.getMateriasByCurso(tokenData.cursoId);
           if (tokenData.materiaId) {
@@ -139,7 +139,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
           console.warn('[MagicLink] Error cargando materias:', err);
         }
 
-        // Cargar escala de calificación
+
         try {
           if (cur?.escalaId) {
             const vals = await boletinService.getValoresByEscala(cur.escalaId);
@@ -155,7 +155,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
           console.warn('[MagicLink] Error cargando escala:', err);
         }
 
-        // Cargar alumnos inscritos en el curso
+
         try {
           const regularAlumnos = await boletinService.getAlumnosRegularesByCurso(tokenData.cursoId);
           if (active) setAlumnos(regularAlumnos);
@@ -177,7 +177,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
     };
   }, [tokenData, message, reloadCounter]);
 
-  // Pantalla de validación en curso
+
   if (validating) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
@@ -188,7 +188,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
     );
   }
 
-  // Pantalla de error de token
+
   if (tokenError || !tokenData) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', padding: 20 }}>
@@ -205,7 +205,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
 
   return (
     <div className={ui.publicPage}>
-      {/* Banner de Cabecera Docente */}
+      { }
       <Card
         style={{
           borderRadius: 16,
@@ -343,7 +343,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
         </Row>
       </Card>
 
-      {/* Contenido Principal: Carga Integral por Alumno */}
+      { }
       {loadingData ? (
         <Card className={ui.loadingPanel}>
           <Spin tip="Cargando planilla de calificaciones y estudiantes..." />

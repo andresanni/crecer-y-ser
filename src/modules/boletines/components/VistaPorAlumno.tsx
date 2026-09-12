@@ -67,7 +67,7 @@ interface MateriaAlumnoState {
   evaluacionMateriaId?: string;
   ppi: boolean;
   calificacionGeneralId: string | null;
-  criteriosValores: Record<string, string>; // criterioId -> valorEscalaId
+  criteriosValores: Record<string, string>;
   isModified?: boolean;
 }
 
@@ -81,8 +81,8 @@ interface AsistenciaAlumnoState {
 }
 
 interface ApoyoInclusionState {
-  promocionoConAcompanamiento: string; // 'SI' | 'NO' | '-'
-  poseeApoyos: string; // 'SI' | 'NO' | '-'
+  promocionoConAcompanamiento: string;
+  poseeApoyos: string;
   cualesApoyos: string;
   isModified?: boolean;
 }
@@ -96,7 +96,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 }) => {
   const { message, modal } = App.useApp();
 
-  // Helper para asignar colores según la escala de notas
+
   const getEtiquetaColor = useCallback((etiqueta: string) => {
     const label = etiqueta.toLowerCase();
     if (label.includes('destacado')) return { color: '#047857' };
@@ -118,19 +118,19 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return 'cys-grade-select cys-grade-no-alcanzado';
   }, [valoresEscala]);
 
-  // Alumno seleccionado actualmente
+
   const [requestedInscripcionId, setSelectedInscripcionId] = useState<string | null>(null);
   const selectedInscripcionId = alumnos.some((alumno) => alumno.inscripcionId === requestedInscripcionId)
     ? requestedInscripcionId
     : alumnos[0]?.inscripcionId ?? null;
 
-  // Criterios de todas las materias del curso { cursoMateriaId: CriterioEvaluacion[] }
+
   const [criteriosMap, setCriteriosMap] = useState<Record<string, CriterioEvaluacion[]>>({});
   const [loadingCriterios, setLoadingCriterios] = useState<boolean>(false);
 
-  // Estado de evaluación de las materias para el alumno seleccionado
+
   const [materiasState, setMateriasState] = useState<Record<string, MateriaAlumnoState>>({});
-  // Estado de cierre de asistencias para el alumno seleccionado
+
   const [asistenciaState, setAsistenciaState] = useState<AsistenciaAlumnoState>({
     asistencias: 0,
     inasistencias: 0,
@@ -138,7 +138,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     observaciones: '',
     isModified: false,
   });
-  // Estado del informe sobre dispositivos de apoyo e integración escolar (anual en inscripciones)
+
   const [apoyoState, setApoyoState] = useState<ApoyoInclusionState>({
     promocionoConAcompanamiento: '-',
     poseeApoyos: '-',
@@ -146,7 +146,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     isModified: false,
   });
 
-  // Estados de Progreso del Curso (Guía Visual & Semáforos)
+
   const [progresoMap, setProgresoMap] = useState<Record<string, ProgresoAlumnoDetalle>>({});
   const [progresoResumen, setProgresoResumen] = useState<ProgresoCursoResumen>({
     totalAlumnos: alumnos.length,
@@ -158,7 +158,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const [drawerResumenOpen, setDrawerResumenOpen] = useState<boolean>(false);
   const [filtroDrawer, setFiltroDrawer] = useState<'TODOS' | 'PENDIENTES' | 'COMPLETOS'>('TODOS');
 
-  // Selector desplegable en el Sticky Banner
+
   const [stickySelectorOpen, setStickySelectorOpen] = useState<boolean>(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState<string>('');
 
@@ -172,7 +172,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     });
   }, [alumnos, studentSearchQuery]);
 
-  // Referencias para el scroll de la tira de alumnos
+
   const pillsContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollPillsLeft, setCanScrollPillsLeft] = useState(false);
   const [canScrollPillsRight, setCanScrollPillsRight] = useState(false);
@@ -196,7 +196,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const [loadingEvaluaciones, setLoadingEvaluaciones] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
 
-  // 1. Cargar criterios de todas las materias del curso en lote
+
   useEffect(() => {
     const loadCriterios = async () => {
       if (cursoMaterias.length === 0) return;
@@ -215,7 +215,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     void loadCriterios();
   }, [cursoMaterias, message]);
 
-  // 2. Cargar Progreso del Curso para la Guía Visual (Semáforos y Estadísticas)
+
   useEffect(() => {
     let active = true;
     const loadProgreso = async () => {
@@ -242,7 +242,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     };
   }, [alumnos, cursoMaterias, criteriosMap, periodoId, checkPillsScroll]);
 
-  // Auto-scroll de la píldora del alumno activo al centro de la tira
+
   useEffect(() => {
     if (selectedInscripcionId) {
       const pillEl = document.getElementById(`pill-student-${selectedInscripcionId}`);
@@ -252,7 +252,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     }
   }, [selectedInscripcionId]);
 
-  // 2. Cargar evaluaciones y asistencia para el alumno seleccionado
+
   const [alumnoRevision, setAlumnoRevision] = useState(0);
   const loadAlumnoData = () => setAlumnoRevision((value) => value + 1);
   const alumnoRequestKey = [selectedInscripcionId, periodoId, alumnoRevision].join(':');
@@ -266,7 +266,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       try {
         setLoadingEvaluaciones(true);
 
-        // Cargar evaluaciones de materias
+
         const evalMap = await boletinService.getEvaluacionesByInscripcionAndPeriodo(
           selectedInscripcionId,
           periodoId
@@ -284,7 +284,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           };
         }
 
-        // Cargar cierre de asistencia
+
         const cierre = await boletinService.getCierrePeriodoAlumno(selectedInscripcionId, periodoId);
         if (!active) return;
         setMateriasState(newMateriasState);
@@ -297,7 +297,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           isModified: false,
         });
 
-        // Cargar datos de apoyo escolar de la inscripción activa
+
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
         setApoyoState({
           promocionoConAcompanamiento: curAlu?.promocionoConAcompanamiento || '-',
@@ -319,7 +319,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return () => { active = false; };
   }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey]);
 
-  // Manejadores de cambios
+
   const handleCriterioChange = (
     cursoMateriaId: string,
     criterioId: string,
@@ -405,7 +405,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     field: 'promocionoConAcompanamiento' | 'poseeApoyos' | 'cualesApoyos',
     val: string
   ) => {
-    // Restringir edición según el bimestre
+
     if (field === 'promocionoConAcompanamiento' && !isCuartoBimestre) return;
     if ((field === 'poseeApoyos' || field === 'cualesApoyos') && !isPrimerBimestre) return;
 
@@ -418,20 +418,20 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     });
   };
 
-  // Detectar cambios pendientes
+
   const hasChanges = useMemo(() => {
     const matsModified = Object.values(materiasState).some((m) => m.isModified);
     return matsModified || asistenciaState.isModified || Boolean(apoyoState.isModified);
   }, [materiasState, asistenciaState, apoyoState]);
 
-  // Guardar datos del alumno actual
+
   const handleSave = async () => {
     if (!selectedInscripcionId || !periodoId || !alumnoDataReady) return;
 
     try {
       setSaving(true);
 
-      // 1. Guardar materias
+
       for (const cm of cursoMaterias) {
         const mat = materiasState[cm.id];
         if (!mat) continue;
@@ -451,7 +451,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         });
       }
 
-      // 2. Guardar asistencia
+
       await boletinService.saveCierrePeriodoAlumno({
         inscripcionId: selectedInscripcionId,
         periodoId,
@@ -461,7 +461,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         observaciones: asistenciaState.observaciones,
       });
 
-      // 3. Guardar informe sobre dispositivos de apoyo e integración escolar (inscripción)
+
       if (apoyoState.isModified) {
         await boletinService.updateInscripcionApoyos(selectedInscripcionId, {
           promocionoConAcompanamiento: apoyoState.promocionoConAcompanamiento,
@@ -469,7 +469,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           cualesApoyos: apoyoState.cualesApoyos,
         });
 
-        // Sincronizar en memoria en el array de alumnos
+
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
         if (curAlu) {
           curAlu.promocionoConAcompanamiento = apoyoState.promocionoConAcompanamiento;
@@ -480,7 +480,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         setApoyoState((prev) => ({ ...prev, isModified: false }));
       }
 
-      // Sincronizar estado de progreso del alumno en tiempo real en memoria
+
       const curInscId = selectedInscripcionId;
       const curAlu = alumnos.find((a) => a.inscripcionId === curInscId);
 
@@ -541,7 +541,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           },
         };
 
-        // Recalcular resumen global
+
         let compCount = 0;
         let progCount = 0;
         let sinCount = 0;
@@ -567,7 +567,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
       message.success('Calificaciones, asistencia y datos de apoyo del estudiante guardados con éxito');
 
-      // Marcar limpio
+
       setMateriasState((prev) => {
         const next: Record<string, MateriaAlumnoState> = {};
         for (const [k, v] of Object.entries(prev)) {
@@ -584,7 +584,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     }
   };
 
-  // Navegación de alumnos
+
   const currentIndex = alumnos.findIndex((a) => a.inscripcionId === selectedInscripcionId);
   const currentAlumno = alumnos[currentIndex];
   const isFirst = currentIndex <= 0;
@@ -613,7 +613,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const handlePrevStudent = () => navigateToStudent(currentIndex - 1);
   const handleNextStudent = () => navigateToStudent(currentIndex + 1);
 
-  // Estadísticas de progreso del alumno
+
   const stats = useMemo(() => {
     let completedCount = 0;
     for (const cm of cursoMaterias) {
@@ -638,7 +638,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return { completedCount, total, percent };
   }, [cursoMaterias, materiasState, criteriosMap]);
 
-  // Lista de alumnos filtrados para el Drawer
+
   const alumnosDrawerFiltrados = useMemo(() => {
     if (filtroDrawer === 'TODOS') return alumnos;
     return alumnos.filter((a) => {
@@ -678,7 +678,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
   return (
     <div className={ui.page}>
-      {/* 1. Barra Superior Unificada de Navegación del Aula y Tira de Alumnos */}
+      { }
       <Card
         style={{
           borderRadius: 14,
@@ -696,7 +696,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             flexWrap: 'nowrap',
           }}
         >
-          {/* Navegación y Tira Semafórica de Píldoras */}
+          { }
           <div
             style={{
               display: 'flex',
@@ -706,7 +706,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               minWidth: 0,
             }}
           >
-            {/* Botón Anterior */}
+            { }
             <Tooltip title="Alumno anterior">
               <Button
                 icon={<LeftOutlined />}
@@ -719,7 +719,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               </Button>
             </Tooltip>
 
-            {/* Flecha Scroll Izquierda */}
+            { }
             <Tooltip title="Desplazar lista a la izquierda">
               <Button
                 shape="circle"
@@ -735,7 +735,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               />
             </Tooltip>
 
-            {/* Carrusel de Píldoras de todos los Alumnos del Curso */}
+            { }
             <div
               ref={pillsContainerRef}
               onScroll={checkPillsScroll}
@@ -816,7 +816,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               })}
             </div>
 
-            {/* Flecha Scroll Derecha */}
+            { }
             <Tooltip title="Desplazar lista a la derecha">
               <Button
                 shape="circle"
@@ -832,7 +832,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               />
             </Tooltip>
 
-            {/* Botón Siguiente */}
+            { }
             <Tooltip title="Alumno siguiente">
               <Button
                 icon={<RightOutlined />}
@@ -846,7 +846,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </Tooltip>
           </div>
 
-          {/* Acciones Globales: Guía del Curso y Guardar */}
+          { }
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <Button
               icon={<DashboardOutlined className={ui.primary} />}
@@ -871,7 +871,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         </div>
       </Card>
 
-      {/* 2. Banner de Información del Estudiante Activo (Sticky Header Único) */}
+      { }
       {currentAlumno && (
         <div
           className="cys-sticky-student-banner"
@@ -891,7 +891,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             flexWrap: 'wrap',
           }}
         >
-          {/* Identidad del Estudiante Activo con Selector Desplegable de Acceso Rápido */}
+          { }
           <Popover
             open={stickySelectorOpen}
             onOpenChange={setStickySelectorOpen}
@@ -1053,7 +1053,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </div>
           </Popover>
 
-          {/* Progreso del Estudiante y Período Escolar */}
+          { }
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <div className={ui.inlineControls}>
               <Tag
@@ -1077,7 +1077,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           </div>
         </div>
       )}
-      {/* 3. Cuadro de Informe sobre Dispositivos de Apoyo e Integración Escolar (Abstracción Bimestral / Trayectoria Anual) */}
+      { }
       <Card
         style={{
           borderRadius: 12,
@@ -1098,7 +1098,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         </div>
 
         <Row gutter={[16, 14]}>
-          {/* 1. Bloque: Dispositivos de Apoyo (Carga en 1° Bimestre) */}
+          { }
           <Col xs={24} lg={14}>
             <div
               style={{
@@ -1189,7 +1189,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </div>
           </Col>
 
-          {/* 2. Bloque: Promoción con Acompañamiento (Carga en 4° Bimestre) */}
+          { }
           <Col xs={24} lg={10}>
             <div
               style={{
@@ -1256,7 +1256,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         </Row>
       </Card>
 
-      {/* 4. Listado de Materias del Alumno */}
+      { }
       {loadingEvaluaciones || loadingCriterios ? (
         <Card className={ui.loadingPanel}>
           <Spin tip="Cargando materias del estudiante..." />
@@ -1292,7 +1292,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 }}
                 styles={{ body: { padding: '16px 20px' } }}
               >
-                {/* Encabezado de la Materia (Título + Estado + Switch PPI o Tag Formativa) */}
+                { }
                 <div
                   style={{
                     display: 'flex',
@@ -1337,7 +1337,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     )}
                   </Space>
 
-                  {/* Switch PPI o Badge Formativa */}
+                  { }
                   {esConducta ? (
                     <Tag color="cyan" style={{ margin: 0, fontWeight: 700, borderRadius: 4, fontSize: 11 }}>
                       Conducta / Formativa
@@ -1363,7 +1363,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
                 <Divider style={{ margin: '8px 0 10px' }} />
 
-                {/* 5 Criterios Pedagógicos de la Materia + Calificación General */}
+                { }
                 {crits.length === 0 ? (
                   <Typography.Text type="secondary" className={ui.caption}>
                     Esta materia no tiene criterios pedagógicos configurados en la malla curricular.
@@ -1418,7 +1418,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       );
                     })}
 
-                    {/* Ítem Destacado Final: Calificación General de la Materia (Solo si no es pseudo-materia de conducta) */}
+                    { }
                     {!esConducta && (
                       <Col xs={24} sm={12} lg={24}>
                         <div
@@ -1483,7 +1483,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             );
           })}
 
-          {/* 4. Sección Final: Cierre Bimestral y Asistencias */}
+          { }
           <Card
             style={{
               borderRadius: 14,
@@ -1571,7 +1571,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         </div>
       )}
 
-      {/* 5. Barra de Acción Flotante para Cambios Pendientes */}
+      { }
       {hasChanges && (
         <div
           className="cys-floating-action-bar"
@@ -1628,7 +1628,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         </div>
       )}
 
-      {/* 6. Drawer de Resumen y Monitoreo del Curso */}
+      { }
       <Drawer
         title={
           <div className={ui.inlineControls}>
@@ -1649,7 +1649,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         open={drawerResumenOpen}
       >
         <div className={ui.page}>
-          {/* Tarjetas KPI de Estado: Pendientes vs Completos */}
+          { }
           <Row gutter={[12, 12]}>
             <Col span={12}>
               <div
@@ -1689,7 +1689,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </Col>
           </Row>
 
-          {/* Filtro por Estado */}
+          { }
           <Segmented
             block
             value={filtroDrawer}
@@ -1701,7 +1701,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             ]}
           />
 
-          {/* Listado de Estudiantes con Checklist */}
+          { }
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
             {alumnosDrawerFiltrados.length === 0 ? (
               <Empty description="No hay estudiantes en esta categoría de progreso." />

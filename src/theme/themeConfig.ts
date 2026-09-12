@@ -3,9 +3,9 @@ import type { ThemeConfig } from 'antd';
 import { lightTokens, darkTokens } from './tokens';
 import { BRAND_COLORS } from './colors';
 
-/**
- * Genera la configuración de tema centralizada para Ant Design ConfigProvider
- */
+
+
+
 export const getAntdTheme = (isDarkMode: boolean): ThemeConfig => {
   const activeTokens = isDarkMode ? darkTokens : lightTokens;
 
