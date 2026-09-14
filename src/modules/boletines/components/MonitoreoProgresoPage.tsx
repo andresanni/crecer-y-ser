@@ -25,7 +25,6 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   ExclamationCircleOutlined,
-  CopyOutlined,
   EyeOutlined,
   TeamOutlined,
   DownOutlined,
@@ -146,19 +145,6 @@ export const MonitoreoProgresoPage: React.FC = () => {
     return data.cursos.filter((c) => c.estado === filtroEstado);
   }, [data.cursos, filtroEstado]);
 
-
-  const handleCopyTokenLink = (tokenStr: string, docenteNombre?: string) => {
-    const origin = window.location.origin;
-    const publicUrl = `${origin}/carga?token=${tokenStr}`;
-    navigator.clipboard.writeText(publicUrl).then(
-      () => {
-        message.success(`Enlace copiado para ${docenteNombre || 'la docente'}`);
-      },
-      () => {
-        message.error('No se pudo copiar el enlace');
-      }
-    );
-  };
 
   return (
     <SectionLayout title="Monitoreo de boletines" icon={<DashboardOutlined />} actions={
@@ -374,11 +360,14 @@ export const MonitoreoProgresoPage: React.FC = () => {
                     {cur.tokenDocente ? (
                       <Button
                         size="small"
-                        icon={<CopyOutlined />}
-                        onClick={() => handleCopyTokenLink(cur.tokenDocente!.token, cur.tokenDocente!.docenteNombre)}
+                        icon={<LinkOutlined />}
+                        onClick={() => {
+                          setSelectedCursoForModal(cur.cursoId);
+                          setGestorModalOpen(true);
+                        }}
                         style={{ borderRadius: 6, fontSize: 10.5, fontWeight: 600, height: 24, padding: '0 8px' }}
                       >
-                        Copiar
+                        Gestionar
                       </Button>
                     ) : (
                       <Button

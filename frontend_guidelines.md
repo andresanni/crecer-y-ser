@@ -5,7 +5,9 @@
 *   **Lenguaje:** TypeScript (Tipado estricto obligatorio).
 *   **UI Framework:** Ant Design (ANTD). Priorizar componentes nativos (Table, Form, Modal, Typography).
 *   **Layouts de la aplicación:** `MainLayout` es exclusivamente el shell global de `/app` (navegación, barra superior y área de rutas). Toda pantalla operativa renderizada dentro de ese shell debe usar `SectionLayout`, pasando `title`, `icon` y, cuando corresponda, `actions`; este componente centraliza el encabezado compacto y la separación con el contenido. Los encabezados de sección no llevan subtítulo descriptivo. No recrear esos márgenes ni renderizar `PageHeader` directamente desde cada módulo.
+*   **Formularios modales:** Usar `FormModal` como marco visual y `FormModalSteps` cuando el flujo sea secuencial. Cada módulo conserva sus campos y grillas adaptativas, pero no redefine header, altura, scroll, footer ni estados visuales de las etapas.
 *   **State Management:** Zustand para estado global.
+*   **Carga de boletines:** La vista institucional y la ruta por enlace mágico comparten `VistaPorAlumno`. Las diferencias de alcance se expresan mediante `GradebookAccessPolicy` y `GradebookDataSource`; no duplicar el editor ni dispersar verificaciones de ruta o sesión dentro de sus controles. El origen institucional usa colecciones autenticadas y el origen docente usa únicamente `/api/cys/docente/*`.
 *   **Routing:** React Router v7.
 *   **Backend / BaaS:** PocketBase SDK (`pocketbase` npm package).
     *   URL del servidor: `https://alumnos-api.duckdns.org`
@@ -17,14 +19,14 @@
     *   El modelo `*Record` refleja los campos exactos de PocketBase (`snake_case`, IDs de relaciones, `created`, `updated`).
     *   El modelo de dominio frontend (`camelCase`) se usa en componentes y estado de UI.
     *   Cada módulo debe implementar su adaptador (ej: `alumnoAdapter`) para transformar registros `*Record` a entidades de dominio.
-*   **Conexión Directa:** No existe un servidor Node.js intermedio. Los servicios consumen directamente el cliente centralizado [`pocketbase.ts`](file:///c:/Users/andyg/OneDrive/Documents/crecer-y-ser/src/core/pocketbase.ts).
+*   **Conexión PocketBase:** No existe un servidor Node.js intermedio. Las pantallas institucionales consumen colecciones autenticadas mediante [`pocketbase.ts`](file:///c:/Users/andyg/OneDrive/Documents/crecer-y-ser/src/core/pocketbase.ts). La carga docente consume sólo el gateway versionado en `pb_hooks`; su contrato está en `docs/pocketbase-api.md`.
 *   **Documentación del código:** No agregar comentarios en TypeScript, TSX, JavaScript, CSS, HTML o configuración. Usar nombres expresivos y registrar decisiones arquitectónicas duraderas en `docs/`.
 
 ## 3. Mapa de Colecciones (PocketBase) - Fuente de Verdad: `pb_schema.json`
 
 ### 👤 Usuarios y Autenticación
 *   **`users`**: Autenticación del sistema escolar.
-*   **`tokens_acceso_docente`**: Tokens de acceso temporal para docentes (Magic Links) para la carga batch sin requerir cuenta (`token`, `curso_id`, `periodo_id`, `materia_id`, `docente_nombre`, `activo`, `fecha_expiracion`).
+*   **`tokens_acceso_docente`**: Credenciales temporales para docentes sin cuenta (`token`, `token_hash`, `token_prefijo`, `curso_id`, `periodo_id`, `materia_id`, `docente_nombre`, `activo`, `fecha_expiracion`). Los enlaces nuevos conservan sólo el hash del secreto; `token` permanece durante la transición por compatibilidad de esquema y contiene también el hash en los registros nuevos.
 
 ### 🏛️ Estructura Institucional y Académica
 *   **`ciclos_lectivos`**: Años lectivos (`ano`, `actual`).

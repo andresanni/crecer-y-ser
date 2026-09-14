@@ -1,4 +1,5 @@
 import pb from '../../../core/pocketbase';
+import { ClientResponseError } from 'pocketbase';
 import {
   cursoAdapter,
   type Curso,
@@ -42,13 +43,12 @@ import {
   type CursoMonitoreoResumen,
   type MonitoreoInstitucionalData,
   type TokenAccesoDocente,
-  type TokenAccesoDocenteRecord,
   type ProgresoConstructorCurso,
-  tokenAccesoDocenteAdapter,
   esMateriaConducta,
 } from '../models/boletin.model';
 import type { AlumnoRecord } from '../../alumnos/models/alumno.model';
 import { extractGradeNumber, compareGrados } from '../../alumnos/utils/gradeColors';
+import { accesoDocenteService } from './accesoDocente.service';
 
 const COLLECTION_CURSOS = 'cursos';
 const COLLECTION_MATERIAS = 'materias';
@@ -61,7 +61,10 @@ const COLLECTION_EVALUACIONES_MATERIA = 'evaluaciones_materia';
 const COLLECTION_EVALUACIONES_CRITERIOS = 'evaluaciones_criterios';
 const COLLECTION_CIERRES_PERIODO = 'cierres_periodo_alumno';
 const COLLECTION_INSCRIPCIONES = 'inscripciones';
-const COLLECTION_TOKENS = 'tokens_acceso_docente';
+
+const isNotFoundResponse = (error: unknown) => (
+  error instanceof ClientResponseError && error.status === 404
+);
 
 export const boletinService = {
 
@@ -227,6 +230,11 @@ export const boletinService = {
     return records.map(periodoAdapter);
   },
 
+  getPeriodoById: async (periodoId: string): Promise<Periodo> => {
+    const record = await pb.collection(COLLECTION_PERIODOS).getOne<PeriodoRecord>(periodoId);
+    return periodoAdapter(record);
+  },
+
   createPeriodo: async (
     cicloId: string,
     nombre: string,
@@ -287,8 +295,9 @@ export const boletinService = {
           }
         );
       return evaluacionMateriaAdapter(record);
-    } catch {
-      return null;
+    } catch (error) {
+      if (isNotFoundResponse(error)) return null;
+      throw error;
     }
   },
 
@@ -351,6 +360,13 @@ export const boletinService = {
         filter: `evaluacion_materia_id = "${evalMateriaRecord.id}"`,
       });
     const critMap = new Map(existentesCriterios.map((c) => [c.criterio_id, c]));
+    const criterioIdsActuales = new Set(data.criterios.map((criterio) => criterio.criterioId));
+
+    for (const criterioExistente of existentesCriterios) {
+      if (!criterioIdsActuales.has(criterioExistente.criterio_id)) {
+        await pb.collection(COLLECTION_EVALUACIONES_CRITERIOS).delete(criterioExistente.id);
+      }
+    }
 
     for (const c of data.criterios) {
       if (!c.valorEscalaId) continue;
@@ -388,8 +404,9 @@ export const boletinService = {
           }
         );
       return cierrePeriodoAlumnoAdapter(record);
-    } catch {
-      return null;
+    } catch (error) {
+      if (isNotFoundResponse(error)) return null;
+      throw error;
     }
   },
 
@@ -871,18 +888,15 @@ export const boletinService = {
       }
 
 
-      const tokenRecords = await pb.collection(COLLECTION_TOKENS).getFullList<TokenAccesoDocenteRecord>({
-        filter: `periodo_id = "${periodoId}" && activo = true`,
-        expand: 'curso_id,periodo_id,materia_id',
-      });
-      const tokens = tokenRecords.map(tokenAccesoDocenteAdapter);
+      const tokens = (await accesoDocenteService.list(undefined, periodoId))
+        .filter(accesoDocenteService.isUsable);
 
       const tokensCursoMap: Record<string, TokenAccesoDocente> = {};
       const tokensMateriaMap: Record<string, TokenAccesoDocente> = {};
       for (const t of tokens) {
-        if (t.cursoId && !t.materiaId) {
+        if (t.cursoId && !t.materiaId && !tokensCursoMap[t.cursoId]) {
           tokensCursoMap[t.cursoId] = t;
-        } else if (t.cursoId && t.materiaId) {
+        } else if (t.cursoId && t.materiaId && !tokensMateriaMap[`${t.cursoId}_${t.materiaId}`]) {
           tokensMateriaMap[`${t.cursoId}_${t.materiaId}`] = t;
         }
       }
@@ -1080,108 +1094,6 @@ export const boletinService = {
       };
     }
   },
-
-
-
-
-  getTokensAccesoDocente: async (
-    cursoId?: string,
-    periodoId?: string
-  ): Promise<TokenAccesoDocente[]> => {
-    const conditions: string[] = [];
-    if (cursoId) conditions.push(`curso_id = "${cursoId}"`);
-    if (periodoId) conditions.push(`periodo_id = "${periodoId}"`);
-    const filter = conditions.length > 0 ? conditions.join(' && ') : undefined;
-
-    const records = await pb
-      .collection(COLLECTION_TOKENS)
-      .getFullList<TokenAccesoDocenteRecord>({
-        filter,
-        expand: 'curso_id,periodo_id,materia_id',
-        sort: '-created',
-      });
-
-    return records.map(tokenAccesoDocenteAdapter);
-  },
-
-  createTokenAccesoDocente: async (data: {
-    cursoId: string;
-    periodoId: string;
-    materiaId?: string;
-    docenteNombre: string;
-    fechaExpiracion?: string;
-  }): Promise<TokenAccesoDocente> => {
-    const token = `cys_${crypto.randomUUID().replace(/-/g, '')}`;
-
-    const record = await pb
-      .collection(COLLECTION_TOKENS)
-      .create<TokenAccesoDocenteRecord>(
-        {
-          token,
-          curso_id: data.cursoId,
-          periodo_id: data.periodoId,
-          materia_id: data.materiaId || null,
-          docente_nombre: data.docenteNombre,
-          activo: true,
-          fecha_expiracion: data.fechaExpiracion || null,
-        },
-        {
-          expand: 'curso_id,periodo_id,materia_id',
-        }
-      );
-
-    return tokenAccesoDocenteAdapter(record);
-  },
-
-  toggleTokenAccesoDocente: async (
-    tokenId: string,
-    activo: boolean
-  ): Promise<TokenAccesoDocente> => {
-    const record = await pb
-      .collection(COLLECTION_TOKENS)
-      .update<TokenAccesoDocenteRecord>(
-        tokenId,
-        { activo },
-        {
-          expand: 'curso_id,periodo_id,materia_id',
-        }
-      );
-    return tokenAccesoDocenteAdapter(record);
-  },
-
-  deleteTokenAccesoDocente: async (tokenId: string): Promise<boolean> => {
-    await pb.collection(COLLECTION_TOKENS).delete(tokenId);
-    return true;
-  },
-
-  validarTokenAccesoDocente: async (tokenStr: string): Promise<TokenAccesoDocente | null> => {
-    try {
-      const record = await pb
-        .collection(COLLECTION_TOKENS)
-        .getFirstListItem<TokenAccesoDocenteRecord>(
-          `token = "${tokenStr}" && activo = true`,
-          {
-            expand: 'curso_id,periodo_id,materia_id',
-          }
-        );
-
-      if (record.fecha_expiracion) {
-        const expDate = new Date(record.fecha_expiracion);
-        const now = new Date();
-        if (now > expDate) {
-          return null;
-        }
-      }
-
-      return tokenAccesoDocenteAdapter(record);
-    } catch {
-      return null;
-    }
-  },
-
-
-
-
   getProgresoConstructorCursos: async (): Promise<Record<string, ProgresoConstructorCurso>> => {
     try {
       const [cursoMaterias, criterios] = await Promise.all([
@@ -1255,8 +1167,3 @@ export const boletinService = {
     }
   },
 };
-
-
-
-
-

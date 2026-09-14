@@ -41,7 +41,8 @@ import {
   DownOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
-import { boletinService } from '../services/boletin.service';
+import { staffGradebookDataSource } from '../services/gradebookDataSource.service';
+import { TeacherAccessDeniedError } from '../services/accesoDocente.service';
 import {
   esMateriaConducta,
   type CursoMateria,
@@ -53,14 +54,15 @@ import {
   type ProgresoCursoResumen,
   type EstadoProgresoAlumno,
 } from '../models/boletin.model';
+import type { GradebookAccessPolicy } from '../models/gradebookAccess.model';
 
 interface VistaPorAlumnoProps {
-  cursoId: string;
   periodoId: string;
   alumnos: AlumnoInscriptoRow[];
   cursoMaterias: CursoMateria[];
   valoresEscala: ValorEscala[];
   periodo: Periodo | undefined;
+  access: GradebookAccessPolicy;
 }
 
 interface MateriaAlumnoState {
@@ -93,8 +95,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   cursoMaterias,
   valoresEscala,
   periodo,
+  access,
 }) => {
   const { message, modal } = App.useApp();
+  const dataSource = access.dataSource || staffGradebookDataSource;
 
 
   const getEtiquetaColor = useCallback((etiqueta: string) => {
@@ -203,7 +207,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       try {
         setLoadingCriterios(true);
         const cmIds = cursoMaterias.map((cm) => cm.id);
-        const map = await boletinService.getCriteriosByCursoMateriasBatch(cmIds);
+        const map = await dataSource.getCriterios(cmIds);
         setCriteriosMap(map);
       } catch (err) {
         console.error(err);
@@ -213,7 +217,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       }
     };
     void loadCriterios();
-  }, [cursoMaterias, message]);
+  }, [cursoMaterias, dataSource, message]);
 
 
   useEffect(() => {
@@ -221,7 +225,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     const loadProgreso = async () => {
       if (alumnos.length === 0 || cursoMaterias.length === 0 || !periodoId) return;
       try {
-        const { alumnosProgreso, resumen } = await boletinService.getProgresoCursoPeriodo(
+        const { alumnosProgreso, resumen } = await dataSource.getProgreso(
           alumnos,
           cursoMaterias,
           criteriosMap,
@@ -240,7 +244,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return () => {
       active = false;
     };
-  }, [alumnos, cursoMaterias, criteriosMap, periodoId, checkPillsScroll]);
+  }, [alumnos, cursoMaterias, criteriosMap, periodoId, checkPillsScroll, dataSource]);
 
 
   useEffect(() => {
@@ -267,10 +271,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         setLoadingEvaluaciones(true);
 
 
-        const evalMap = await boletinService.getEvaluacionesByInscripcionAndPeriodo(
-          selectedInscripcionId,
-          periodoId
-        );
+        const currentAlumno = alumnos.find((alumno) => alumno.inscripcionId === selectedInscripcionId);
+        if (!currentAlumno) return;
+        const snapshot = await dataSource.getAlumno(currentAlumno, periodoId);
+        const evalMap = snapshot.materias;
 
         const newMateriasState: Record<string, MateriaAlumnoState> = {};
         for (const cm of cursoMaterias) {
@@ -285,7 +289,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         }
 
 
-        const cierre = await boletinService.getCierrePeriodoAlumno(selectedInscripcionId, periodoId);
+        const cierre = snapshot.cierre;
         if (!active) return;
         setMateriasState(newMateriasState);
         setAsistenciaState({
@@ -299,16 +303,18 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
 
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
+        const apoyos = snapshot.apoyos;
         setApoyoState({
-          promocionoConAcompanamiento: curAlu?.promocionoConAcompanamiento || '-',
-          poseeApoyos: curAlu?.poseeApoyos || '-',
-          cualesApoyos: curAlu?.cualesApoyos || '',
+          promocionoConAcompanamiento: apoyos?.promocionoConAcompanamiento || curAlu?.promocionoConAcompanamiento || '-',
+          poseeApoyos: apoyos?.poseeApoyos || curAlu?.poseeApoyos || '-',
+          cualesApoyos: apoyos?.cualesApoyos || curAlu?.cualesApoyos || '',
           isModified: false,
         });
         setAlumnoResult({ key: alumnoRequestKey, failed: false });
       } catch (err) {
         if (!active) return;
         console.error(err);
+        if (err instanceof TeacherAccessDeniedError) access.onAccessDenied?.();
         setAlumnoResult({ key: alumnoRequestKey, failed: true });
         message.error('Error al cargar la libreta del alumno');
       } finally {
@@ -317,7 +323,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     };
     void fetchAlumnoData();
     return () => { active = false; };
-  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey]);
+  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey, dataSource, access]);
 
 
   const handleCriterioChange = (
@@ -421,8 +427,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
   const hasChanges = useMemo(() => {
     const matsModified = Object.values(materiasState).some((m) => m.isModified);
-    return matsModified || asistenciaState.isModified || Boolean(apoyoState.isModified);
-  }, [materiasState, asistenciaState, apoyoState]);
+    const closureModified = access.canEditPeriodClosure && asistenciaState.isModified;
+    const supportModified = access.canEditStudentSupport && Boolean(apoyoState.isModified);
+    return matsModified || closureModified || supportModified;
+  }, [access.canEditPeriodClosure, access.canEditStudentSupport, materiasState, asistenciaState, apoyoState]);
 
 
   const handleSave = async () => {
@@ -430,46 +438,43 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
     try {
       setSaving(true);
-
-
-      for (const cm of cursoMaterias) {
+      const materias = cursoMaterias.flatMap((cm) => {
         const mat = materiasState[cm.id];
-        if (!mat) continue;
-
-        const criteriosPayload = Object.entries(mat.criteriosValores).map(([critId, valId]) => ({
-          criterioId: critId,
-          valorEscalaId: valId,
-        }));
-
-        await boletinService.saveEvaluacionMateriaCompleta({
-          inscripcionId: selectedInscripcionId,
+        if (!mat?.isModified) return [];
+        return [{
           cursoMateriaId: cm.id,
-          periodoId,
           ppi: mat.ppi,
           calificacionGeneralId: mat.calificacionGeneralId || '',
-          criterios: criteriosPayload,
-        });
-      }
-
-
-      await boletinService.saveCierrePeriodoAlumno({
-        inscripcionId: selectedInscripcionId,
-        periodoId,
-        asistencias: asistenciaState.asistencias,
-        inasistencias: asistenciaState.inasistencias,
-        llegadasTarde: asistenciaState.llegadasTarde,
-        observaciones: asistenciaState.observaciones,
+          criterios: Object.entries(mat.criteriosValores).map(([criterioId, valorEscalaId]) => ({
+            criterioId,
+            valorEscalaId,
+          })),
+        }];
       });
-
-
-      if (apoyoState.isModified) {
-        await boletinService.updateInscripcionApoyos(selectedInscripcionId, {
+      const cierre = access.canEditPeriodClosure && asistenciaState.isModified
+        ? {
+          asistencias: asistenciaState.asistencias,
+          inasistencias: asistenciaState.inasistencias,
+          llegadasTarde: asistenciaState.llegadasTarde,
+          observaciones: asistenciaState.observaciones,
+        }
+        : undefined;
+      const apoyos = access.canEditStudentSupport && apoyoState.isModified
+        ? {
           promocionoConAcompanamiento: apoyoState.promocionoConAcompanamiento,
           poseeApoyos: apoyoState.poseeApoyos,
           cualesApoyos: apoyoState.cualesApoyos,
-        });
+        }
+        : undefined;
+      await dataSource.saveAlumno({
+        inscripcionId: selectedInscripcionId,
+        periodoId,
+        materias,
+        cierre,
+        apoyos,
+      });
 
-
+      if (apoyos) {
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
         if (curAlu) {
           curAlu.promocionoConAcompanamiento = apoyoState.promocionoConAcompanamiento;
@@ -565,7 +570,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         return nextMap;
       });
 
-      message.success('Calificaciones, asistencia y datos de apoyo del estudiante guardados con éxito');
+      message.success('Los cambios del estudiante se guardaron correctamente');
 
 
       setMateriasState((prev) => {
@@ -578,7 +583,12 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       setAsistenciaState((prev) => ({ ...prev, isModified: false }));
     } catch (err) {
       console.error(err);
-      message.error('Error al guardar datos del estudiante');
+      if (err instanceof TeacherAccessDeniedError) {
+        message.error('El acceso ya no está vigente. No se guardaron cambios.');
+        access.onAccessDenied?.();
+      } else {
+        message.error('Error al guardar datos del estudiante');
+      }
     } finally {
       setSaving(false);
     }
@@ -1078,7 +1088,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         </div>
       )}
       { }
-      <Card
+      {access.canEditStudentSupport && <Card
         style={{
           borderRadius: 12,
           border: apoyoState.isModified ? '1px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
@@ -1254,12 +1264,12 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </div>
           </Col>
         </Row>
-      </Card>
+      </Card>}
 
       { }
       {loadingEvaluaciones || loadingCriterios ? (
         <Card className={ui.loadingPanel}>
-          <Spin tip="Cargando materias del estudiante..." />
+          <Spin description="Cargando materias del estudiante..." />
         </Card>
       ) : cursoMaterias.length === 0 ? (
         <Card className={ui.emptyPanel}>
@@ -1484,7 +1494,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           })}
 
           { }
-          <Card
+          {access.canEditPeriodClosure && <Card
             style={{
               borderRadius: 14,
               border: asistenciaState.isModified ? '1.5px solid #7c3aed' : "1px solid var(--cys-color-border-secondary)",
@@ -1567,7 +1577,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 </Space>
               </Col>
             </Row>
-          </Card>
+          </Card>}
         </div>
       )}
 
@@ -1644,7 +1654,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           </div>
         }
         placement="right"
-        width={560}
+        size={560}
         onClose={() => setDrawerResumenOpen(false)}
         open={drawerResumenOpen}
       >

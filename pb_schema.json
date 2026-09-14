@@ -424,10 +424,10 @@
       }
     ],
     "indexes": [],
-    "listRule": "",
-    "viewRule": "",
-    "createRule": "",
-    "updateRule": "",
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": "@request.auth.id != \"\"",
+    "updateRule": "@request.auth.id != \"\"",
     "deleteRule": "@request.auth.id != \"\"",
     "options": {}
   },
@@ -716,7 +716,7 @@
     "indexes": [],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
-    "createRule": "",
+    "createRule": "@request.auth.id != \"\"",
     "updateRule": "@request.auth.id != \"\"",
     "deleteRule": "@request.auth.id != \"\"",
     "options": {}
@@ -805,7 +805,7 @@
     "indexes": [],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
-    "createRule": "",
+    "createRule": "@request.auth.id != \"\"",
     "updateRule": "@request.auth.id != \"\"",
     "deleteRule": "@request.auth.id != \"\"",
     "options": {}
@@ -1000,7 +1000,7 @@
     "indexes": [],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
-    "createRule": "",
+    "createRule": "@request.auth.id != \"\"",
     "updateRule": "@request.auth.id != \"\"",
     "deleteRule": null,
     "options": {}
@@ -1256,6 +1256,34 @@
       },
       {
         "system": false,
+        "id": "tkhash01",
+        "name": "token_hash",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      {
+        "system": false,
+        "id": "tkpref01",
+        "name": "token_prefijo",
+        "type": "text",
+        "required": false,
+        "presentable": true,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 16,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
         "id": "q1vuj2a3",
         "name": "curso_id",
         "type": "relation",
@@ -1340,9 +1368,11 @@
         }
       }
     ],
-    "indexes": [],
-    "listRule": "",
-    "viewRule": "",
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_tokens_acceso_docente_token_hash` ON `tokens_acceso_docente` (`token_hash`) WHERE `token_hash` != ''"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
     "createRule": "@request.auth.id != \"\"",
     "updateRule": "@request.auth.id != \"\"",
     "deleteRule": "@request.auth.id != \"\"",

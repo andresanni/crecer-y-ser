@@ -25,6 +25,7 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
+import { staffGradebookAccess } from '../models/gradebookAccess.model';
 import { GestorEnlacesModal } from './GestorEnlacesModal';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
 import type {
@@ -279,7 +280,7 @@ export const PlanillaCalificacionesPage: React.FC = () => {
         </Card>
       ) : loadingCursoData ? (
         <Card className={ui.loadingPanel}>
-          <Spin tip="Cargando materias y estudiantes del curso..." />
+          <Spin description="Cargando materias y estudiantes del curso..." />
         </Card>
       ) : cursoMaterias.length === 0 ? (
         <Card className={ui.emptyPanel}>
@@ -287,12 +288,12 @@ export const PlanillaCalificacionesPage: React.FC = () => {
         </Card>
       ) : (
         <VistaPorAlumno
-          cursoId={selectedCursoId}
           periodoId={selectedPeriodoId || ''}
           alumnos={alumnos}
           cursoMaterias={cursoMaterias}
           valoresEscala={valoresEscala}
           periodo={selectedPeriodo}
+          access={staffGradebookAccess}
         />
       )}
 

@@ -1,0 +1,18 @@
+[Unit]
+Description=PocketBase - Sistema de Gestion Escolar
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/root/pb
+LimitNOFILE=4096
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+ExecStart=/root/pb/pocketbase serve --http=127.0.0.1:8090 --dir=/root/pb/pb_data --hooksDir=/root/pb/pb_hooks --migrationsDir=/root/pb/pb_migrations --automigrate=true
+
+[Install]
+WantedBy=multi-user.target

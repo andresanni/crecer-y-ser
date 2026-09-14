@@ -25,6 +25,15 @@ La modernización visual fue aprobada y fusionada en `master` el 12 de septiembr
 - El espaciado entre encabezado y zona operativa se define en `SectionLayout`.
 - Los modales extensos limitan su altura al viewport, mantienen acciones accesibles y usan scroll interno solo cuando el contenido no puede entrar físicamente.
 
+## Formularios modales
+
+- `FormModal` es el marco compartido para formularios en modal: encabezado, icono, descripción opcional, área desplazable, footer persistente y comportamiento responsive.
+- `FormModalSteps` centraliza la navegación visual de formularios secuenciales, incluidos los estados pendiente, activo y completado.
+- Cada dominio conserva la composición de sus campos, reglas, columnas y contenido condicional; no se fuerza una grilla única cuando perjudica la tarea.
+- Los campos obligatorios se identifican visualmente y la validación dirige el foco al primer error mediante `focusFirstFormError`.
+- En formularios largos, las acciones deben permanecer visibles mientras solo el cuerpo del formulario se desplaza.
+- Los textos de acción son breves y consistentes: `Cancelar`, `Anterior`, `Continuar` y una acción final específica.
+
 ## Propiedad de estilos
 
 | Necesidad | Fuente canónica |
@@ -35,6 +44,8 @@ La modernización visual fue aprobada y fusionada en `master` el 12 de septiembr
 | Shell privado | `src/shared/components/MainLayout*` |
 | Pantallas operativas | `src/shared/components/SectionLayout*` |
 | Encabezado de sección | `src/shared/components/PageHeader*` |
+| Formularios en modal | `src/shared/components/FormModal*` |
+| Foco de validación | `src/shared/utils/formValidation.ts` |
 | Composición reutilizable menor | `src/shared/styles/ui.module.css` |
 | Estilo propio de una pantalla | CSS Module dentro de su módulo |
 

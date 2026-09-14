@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 12 de septiembre de 2026.
+Actualizado: 14 de septiembre de 2026.
 
 ## Propósito
 
@@ -49,9 +49,14 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 - `src/modules`: dominios funcionales con componentes, modelos y servicios propios.
 - `src/shared`: composiciones, estilos y hooks reutilizables.
 - `src/theme`: paleta, tokens y configuración central de Ant Design.
-- `pb_schema.json`: fuente de verdad del backend y sus relaciones.
+- `pb_migrations`: evolución desplegable del esquema y de las reglas de PocketBase.
+- `pb_hooks`: gateway HTTP, autorización y transacciones del acceso docente.
+- `pb_schema.json`: snapshot legible del backend y sus relaciones.
+- `deploy`: unidad systemd, Caddyfile e instrucciones operativas del VPS.
 
-Los servicios transforman registros `snake_case` de PocketBase en modelos de dominio `camelCase`. No existe un backend Node intermedio.
+Los servicios transforman registros `snake_case` de PocketBase en modelos de dominio `camelCase`. No existe un backend Node intermedio; las operaciones públicas privilegiadas se implementan como hooks de PocketBase versionados con el proyecto.
+
+La carga institucional y la carga por enlace comparten el editor de boletín y se diferencian mediante `GradebookAccessPolicy` y `GradebookDataSource`. PocketBase dispone desde el 14 de septiembre de 2026 de un gateway docente que valida alcance y vigencia del enlace del lado servidor. `/carga` usa exclusivamente ese gateway y las colecciones académicas exigen sesión institucional. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
 
 ## Arquitectura UX/UI
 

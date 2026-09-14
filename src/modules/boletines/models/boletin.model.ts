@@ -460,6 +460,8 @@ export interface TokenAccesoDocenteRecord {
   created: string;
   updated: string;
   token: string;
+  token_hash?: string;
+  token_prefijo?: string;
   curso_id: string;
   periodo_id: string;
   materia_id?: string;
@@ -475,7 +477,8 @@ export interface TokenAccesoDocenteRecord {
 
 export interface TokenAccesoDocente {
   id: string;
-  token: string;
+  tokenPrefijo: string;
+  secreto?: string;
   cursoId: string;
   periodoId: string;
   materiaId?: string;
@@ -492,7 +495,7 @@ export interface TokenAccesoDocente {
 
 export const tokenAccesoDocenteAdapter = (record: TokenAccesoDocenteRecord): TokenAccesoDocente => ({
   id: record.id,
-  token: record.token || '',
+  tokenPrefijo: record.token_prefijo || record.token.slice(0, 12),
   cursoId: record.curso_id || '',
   periodoId: record.periodo_id || '',
   materiaId: record.materia_id || undefined,
@@ -538,7 +541,6 @@ export interface ProgresoConstructorCurso {
   porcentaje: number;
   estado: 'COMPLETO' | 'EN_PROGRESO' | 'SIN_CRITERIOS' | 'VACIO';
 }
-
 
 
 

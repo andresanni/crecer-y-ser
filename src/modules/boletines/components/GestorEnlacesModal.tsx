@@ -1,8 +1,10 @@
 import { useModalSessionKey } from '../../../shared/hooks/useModalSessionKey';
+import { FormModal } from '../../../shared/components/FormModal';
+import { focusFirstFormError } from '../../../shared/utils/formValidation';
 import ui from '../../../shared/styles/ui.module.css';
-import React, { useState, useEffect, useCallback } from 'react';
+import styles from './GestorEnlacesModal.module.css';
+import React, { useState, useEffect } from 'react';
 import {
-  Modal,
   Form,
   Input,
   Select,
@@ -35,6 +37,7 @@ import {
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { boletinService } from '../services/boletin.service';
+import { accesoDocenteService } from '../services/accesoDocente.service';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
 import type { Periodo, CursoMateria, TokenAccesoDocente } from '../models/boletin.model';
 
@@ -45,6 +48,14 @@ interface GestorEnlacesModalProps {
   periodos: Periodo[];
   activeCursoId: string | null;
   activePeriodoId: string | null;
+}
+
+interface EnlaceDocenteFormValues {
+  cursoId: string;
+  periodoId: string;
+  materiaId?: string;
+  docenteNombre: string;
+  fechaExpiracion?: dayjs.Dayjs | null;
 }
 
 export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = (props) => {
@@ -63,60 +74,48 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
   activePeriodoId,
 }) => {
   const { message } = App.useApp();
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<EnlaceDocenteFormValues>();
 
   const [tokens, setTokens] = useState<TokenAccesoDocente[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [creating, setCreating] = useState<boolean>(false);
   const [materiasDisponibles, setMateriasDisponibles] = useState<CursoMateria[]>([]);
+  const [selectedCursoId, setSelectedCursoId] = useState<string | undefined>(
+    activeCursoId || cursos[0]?.id,
+  );
 
-
-  const loadTokens = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await boletinService.getTokensAccesoDocente();
-      setTokens(data);
-    } catch (err) {
-      console.error(err);
-      message.error('Error al cargar enlaces docentes');
-    } finally {
-      setLoading(false);
-    }
-  }, [message]);
 
   useEffect(() => {
     let active = true;
     if (open) {
-      boletinService.getTokensAccesoDocente()
-        .then((data) => { if (active) setTokens(data); })
+      accesoDocenteService.list()
+        .then((data) => {
+          if (active) setTokens(data);
+        })
         .catch((err) => {
           if (!active) return;
           console.error(err);
           message.error('Error al cargar enlaces docentes');
         })
-        .finally(() => { if (active) setLoading(false); });
-      form.setFieldsValue({
-        cursoId: activeCursoId || (cursos.length > 0 ? cursos[0].id : undefined),
-        periodoId: activePeriodoId || (periodos.length > 0 ? periodos[0].id : undefined),
-        materiaId: undefined,
-        docenteNombre: '',
-        fechaExpiracion: null,
-      });
+        .finally(() => {
+          if (active) setLoading(false);
+        });
     }
-    return () => { active = false; };
-  }, [open, activeCursoId, activePeriodoId, cursos, periodos, message, form]);
+    return () => {
+      active = false;
+    };
+  }, [message, open]);
 
 
-  const watchedCursoId = Form.useWatch('cursoId', form);
   useEffect(() => {
     let active = true;
     const loadMateriasCurso = async () => {
-      if (!watchedCursoId) {
+      if (!selectedCursoId) {
         setMateriasDisponibles([]);
         return;
       }
       try {
-        const mats = await boletinService.getMateriasByCurso(watchedCursoId);
+        const mats = await boletinService.getMateriasByCurso(selectedCursoId);
         if (active) setMateriasDisponibles(mats);
       } catch (err) {
         console.error(err);
@@ -124,19 +123,25 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     };
     void loadMateriasCurso();
     return () => { active = false; };
-  }, [watchedCursoId]);
+  }, [selectedCursoId]);
+
+  const handleFormValuesChange = (changedValues: Partial<EnlaceDocenteFormValues>) => {
+    if ('cursoId' in changedValues) {
+      setSelectedCursoId(changedValues.cursoId);
+      form.setFieldValue('materiaId', undefined);
+    }
+  };
 
 
-  const handleCreateToken = async () => {
+  const handleCreateToken = async (values: EnlaceDocenteFormValues) => {
     try {
-      const values = await form.validateFields();
       setCreating(true);
 
       const fechaExp = values.fechaExpiracion
         ? dayjs(values.fechaExpiracion).format('YYYY-MM-DD 23:59:59')
         : undefined;
 
-      await boletinService.createTokenAccesoDocente({
+      const created = await accesoDocenteService.create({
         cursoId: values.cursoId,
         periodoId: values.periodoId,
         materiaId: values.materiaId || undefined,
@@ -144,9 +149,20 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
         fechaExpiracion: fechaExp,
       });
 
-      message.success('Enlace de acceso docente generado exitosamente');
+      const curso = cursos.find((item) => item.id === values.cursoId);
+      const periodo = periodos.find((item) => item.id === values.periodoId);
+      const materia = materiasDisponibles.find((item) => item.materiaId === values.materiaId);
+      const issued = {
+        ...created,
+        cursoNombre: curso?.nombre,
+        periodoNombre: periodo?.nombre,
+        numeroPeriodo: periodo?.numeroPeriodo,
+        materiaNombre: materia?.materiaNombre,
+      };
+      setTokens((current) => [issued, ...current]);
+      if (issued.secreto) handleCopyLink(issued.secreto);
+      message.success('Enlace generado y copiado. El secreto no podrá consultarse nuevamente.');
       form.resetFields(['docenteNombre', 'materiaId', 'fechaExpiracion']);
-      loadTokens();
     } catch (err) {
       console.error(err);
       message.error('Error al generar enlace docente');
@@ -158,7 +174,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
 
   const handleToggleActivo = async (tokenItem: TokenAccesoDocente, activo: boolean) => {
     try {
-      await boletinService.toggleTokenAccesoDocente(tokenItem.id, activo);
+      await accesoDocenteService.setActive(tokenItem.id, activo);
       message.success(`Enlace ${activo ? 'activado' : 'desactivado'} correctamente`);
       setTokens((prev) =>
         prev.map((t) => (t.id === tokenItem.id ? { ...t, activo } : t))
@@ -172,7 +188,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
 
   const handleDeleteToken = async (tokenId: string) => {
     try {
-      await boletinService.deleteTokenAccesoDocente(tokenId);
+      await accesoDocenteService.delete(tokenId);
       message.success('Enlace eliminado');
       setTokens((prev) => prev.filter((t) => t.id !== tokenId));
     } catch (err) {
@@ -184,7 +200,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
 
   const getMagicLinkUrl = (tokenStr: string) => {
     const origin = window.location.origin;
-    return `${origin}/carga?token=${tokenStr}`;
+    return `${origin}/carga#token=${encodeURIComponent(tokenStr)}`;
   };
 
   const handleCopyLink = (tokenStr: string) => {
@@ -192,13 +208,17 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     navigator.clipboard.writeText(url);
     message.success({
       content: '¡Enlace copiado al portapapeles!',
-      icon: <CheckCircleOutlined style={{ color: '#10b981' }} />,
+      icon: <CheckCircleOutlined className={styles.successIcon} />,
     });
   };
 
 
   const handleShareWhatsApp = (tokenItem: TokenAccesoDocente) => {
-    const url = getMagicLinkUrl(tokenItem.token);
+    if (!tokenItem.secreto) {
+      message.warning('Regenerá el enlace antes de compartirlo. El secreto original no se almacena.');
+      return;
+    }
+    const url = getMagicLinkUrl(tokenItem.secreto);
     const materiaText = tokenItem.materiaNombre
       ? `la materia "${tokenItem.materiaNombre}"`
       : 'todas las materias';
@@ -209,18 +229,31 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     window.open(whatsappUrl, '_blank');
   };
 
+  const handleRotateToken = async (tokenItem: TokenAccesoDocente) => {
+    try {
+      const rotated = await accesoDocenteService.rotate(tokenItem.id);
+      const updated = { ...tokenItem, ...rotated };
+      setTokens((current) => current.map((item) => item.id === tokenItem.id ? updated : item));
+      if (updated.secreto) handleCopyLink(updated.secreto);
+      message.success('Enlace regenerado y copiado. El anterior dejó de funcionar.');
+    } catch (err) {
+      console.error(err);
+      message.error('No se pudo regenerar el enlace');
+    }
+  };
+
   const columns: ColumnsType<TokenAccesoDocente> = [
     {
       title: 'Docente / Referencia',
       key: 'docente',
       render: (_, record) => (
         <div>
-          <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)', display: 'block' }}>
-            <UserOutlined style={{ marginRight: 6, color: 'var(--cys-color-primary-text)' }} />
+          <Typography.Text strong className={styles.teacherName}>
+            <UserOutlined className={styles.teacherIcon} />
             {record.docenteNombre || 'Docente sin especificar'}
           </Typography.Text>
           <Typography.Text type="secondary" className={ui.smallText}>
-            Token: <span style={{ fontFamily: 'monospace' }}>{record.token.slice(0, 10)}...</span>
+            Referencia: <span className={styles.token}>{record.tokenPrefijo}</span>
           </Typography.Text>
         </div>
       ),
@@ -230,11 +263,11 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       key: 'curso_periodo',
       render: (_, record) => (
         <div>
-          <Tag color="blue" style={{ borderRadius: 4, fontWeight: 600, fontSize: 11, margin: '0 4px 2px 0' }}>
+          <Tag color="blue" className={styles.tag}>
             {record.cursoNombre || 'Curso'}
           </Tag>
-          <Tag color="green" style={{ borderRadius: 4, fontSize: 11 }}>
-            <CalendarOutlined style={{ marginRight: 3 }} />
+          <Tag color="green" className={styles.tag}>
+            <CalendarOutlined className={styles.tagIcon} />
             {record.periodoNombre || 'Período'}
           </Tag>
         </div>
@@ -245,12 +278,12 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       key: 'materia',
       render: (_, record) =>
         record.materiaNombre ? (
-          <Tag color="purple" style={{ borderRadius: 4, fontWeight: 600 }}>
-            <BookOutlined style={{ marginRight: 4 }} />
+          <Tag color="purple" className={styles.tag}>
+            <BookOutlined className={styles.tagIcon} />
             {record.materiaNombre}
           </Tag>
         ) : (
-          <Tag color="cyan" style={{ borderRadius: 4, fontWeight: 600 }}>
+          <Tag color="cyan" className={styles.tag}>
             Todas las materias
           </Tag>
         ),
@@ -260,7 +293,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       key: 'expiracion',
       render: (_, record) => {
         if (!record.fechaExpiracion) {
-          return <Typography.Text type="secondary" style={{ fontSize: 11.5 }}>Sin límite</Typography.Text>;
+          return <Typography.Text type="secondary" className={styles.expiration}>Sin límite</Typography.Text>;
         }
         const exp = dayjs(record.fechaExpiracion);
         const isExpired = dayjs().isAfter(exp);
@@ -281,6 +314,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
           size="small"
           checked={record.activo}
           onChange={(checked) => handleToggleActivo(record, checked)}
+          aria-label={`${record.activo ? 'Desactivar' : 'Activar'} enlace de ${record.docenteNombre || 'docente'}`}
         />
       ),
     },
@@ -290,20 +324,42 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       align: 'center',
       render: (_, record) => (
         <Space size={6}>
-          <Tooltip title="Copiar enlace directo">
-            <Button
-              size="small"
-              icon={<CopyOutlined />}
-              onClick={() => handleCopyLink(record.token)}
-            />
-          </Tooltip>
-          <Tooltip title="Compartir por WhatsApp">
-            <Button
-              size="small"
-              icon={<WhatsAppOutlined style={{ color: "var(--cys-color-success-text)" }} />}
-              onClick={() => handleShareWhatsApp(record)}
-            />
-          </Tooltip>
+          {record.secreto ? (
+            <>
+              <Tooltip title="Copiar enlace directo">
+                <Button
+                  size="small"
+                  icon={<CopyOutlined />}
+                  onClick={() => handleCopyLink(record.secreto!)}
+                  aria-label={`Copiar enlace de ${record.docenteNombre || 'docente'}`}
+                />
+              </Tooltip>
+              <Tooltip title="Compartir por WhatsApp">
+                <Button
+                  size="small"
+                  icon={<WhatsAppOutlined className={styles.successIcon} />}
+                  onClick={() => handleShareWhatsApp(record)}
+                  aria-label={`Compartir enlace de ${record.docenteNombre || 'docente'} por WhatsApp`}
+                />
+              </Tooltip>
+            </>
+          ) : (
+            <Popconfirm
+              title="¿Regenerar este enlace?"
+              description="El enlace anterior dejará de funcionar y se copiará uno nuevo."
+              onConfirm={() => handleRotateToken(record)}
+              okText="Regenerar"
+              cancelText="Cancelar"
+            >
+              <Tooltip title="Regenerar para compartir">
+                <Button
+                  size="small"
+                  icon={<LinkOutlined />}
+                  aria-label={`Regenerar enlace de ${record.docenteNombre || 'docente'}`}
+                />
+              </Tooltip>
+            </Popconfirm>
+          )}
           <Popconfirm
             title="¿Eliminar este enlace?"
             description="El docente ya no podrá ingresar con este link."
@@ -312,7 +368,12 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
             cancelText="Cancelar"
             okButtonProps={{ danger: true }}
           >
-            <Button size="small" danger icon={<DeleteOutlined />} />
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              aria-label={`Eliminar enlace de ${record.docenteNombre || 'docente'}`}
+            />
           </Popconfirm>
         </Space>
       ),
@@ -320,66 +381,49 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
   ];
 
   return (
-    <Modal
+    <FormModal
       open={open}
       onCancel={onClose}
-      footer={null}
-      width={860}
-      style={{ top: 24 }}
-      title={
-        <Space size={8} align="center">
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              fontSize: 16,
-            }}
-          >
-            <KeyOutlined />
-          </div>
-          <div>
-            <Typography.Text strong style={{ fontSize: 16, display: 'block' }}>
-              Gestor de Enlaces Mágicos para Docentes
-            </Typography.Text>
-            <Typography.Text type="secondary" className={ui.caption}>
-              Permite a los maestros cargar calificaciones sin usuario ni contraseña de forma aislada y segura.
-            </Typography.Text>
-          </div>
-        </Space>
-      }
+      width={1040}
+      title="Enlaces de carga docente"
+      description="Generá y administrá accesos directos para la carga de calificaciones."
+      icon={<KeyOutlined />}
+      footer={<Button onClick={onClose}>Cerrar</Button>}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12 }}>
-        { }
+      <div className={styles.content}>
         <Card
           size="small"
-          style={{
-            borderRadius: 12,
-            background: "var(--cys-color-fill-quaternary)",
-            border: "1px solid var(--cys-color-border-secondary)",
-          }}
+          className={styles.createCard}
           title={
-            <Space size={6}>
+            <span className={styles.cardTitle}>
               <PlusCircleOutlined className={ui.primary} />
-              <span style={{ fontSize: 13.5, fontWeight: 600 }}>Emitir Nuevo Enlace de Carga</span>
-            </Space>
+              Nuevo enlace
+            </span>
           }
         >
-          <Form form={form} layout="vertical" onFinish={handleCreateToken}>
-            <Row gutter={[12, 0]}>
-              <Col xs={24} sm={12} md={6}>
+          <Form<EnlaceDocenteFormValues>
+            form={form}
+            layout="vertical"
+            requiredMark
+            initialValues={{
+              cursoId: activeCursoId || cursos[0]?.id,
+              periodoId: activePeriodoId || periodos[0]?.id,
+              docenteNombre: '',
+              fechaExpiracion: null,
+            }}
+            onValuesChange={handleFormValuesChange}
+            onFinish={handleCreateToken}
+            onFinishFailed={(error) => focusFirstFormError(form, error)}
+          >
+            <Row gutter={[14, 0]}>
+              <Col xs={24} sm={12} md={8}>
                 <Form.Item
-                  label="Curso / División"
+                  label="Curso y división"
                   name="cursoId"
                   rules={[{ required: true, message: 'Seleccione un curso' }]}
                 >
                   <Select
-                    placeholder="Curso..."
+                    placeholder="Seleccionar curso"
                     options={cursos.map((c) => ({
                       value: c.id,
                       label: `${c.nombre} (${c.turno})`,
@@ -388,24 +432,21 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={12} md={8}>
                 <Form.Item
-                  label="Período Escolar"
+                  label="Período escolar"
                   name="periodoId"
                   rules={[{ required: true, message: 'Seleccione un período' }]}
                 >
                   <Select
-                    placeholder="Bimestre..."
-                    options={periodos.map((p) => ({
-                      value: p.id,
-                      label: p.nombre,
-                    }))}
+                    placeholder="Seleccionar período"
+                    options={periodos.map((p) => ({ value: p.id, label: p.nombre }))}
                   />
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6}>
-                <Form.Item label="Materia Específica (Opcional)" name="materiaId">
+              <Col xs={24} sm={12} md={8}>
+                <Form.Item label="Materia (opcional)" name="materiaId">
                   <Select
                     placeholder="Todas las materias"
                     allowClear
@@ -417,51 +458,51 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={12} md={12}>
                 <Form.Item
-                  label="Nombre del Docente"
+                  label="Nombre del docente"
                   name="docenteNombre"
-                  rules={[{ required: true, message: 'Indique el nombre' }]}
+                  rules={[{ required: true, whitespace: true, message: 'Indique el nombre del docente' }]}
                 >
-                  <Input placeholder="Ej: Prof. Andrea Gómez" />
+                  <Input prefix={<UserOutlined />} placeholder="Ej. Prof. Andrea Gómez" />
                 </Form.Item>
               </Col>
 
               <Col xs={24} sm={12} md={6}>
-                <Form.Item label="Fecha de Expiración" name="fechaExpiracion">
+                <Form.Item label="Vencimiento (opcional)" name="fechaExpiracion">
                   <DatePicker
                     placeholder="Sin límite"
                     className={ui.fullWidth}
                     format="DD/MM/YYYY"
-                    disabledDate={(d) => d && d.isBefore(dayjs().startOf('day'))}
+                    disabledDate={(date) => Boolean(date && date.isBefore(dayjs().startOf('day')))}
                   />
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6} style={{ display: 'flex', alignItems: 'flex-end', marginBottom: 24 }}>
-                <Button
-                  type="primary"
-                  icon={<LinkOutlined />}
-                  onClick={handleCreateToken}
-                  loading={creating}
-                  className="btn-primary-gradient"
-                  style={{ width: '100%', borderRadius: 8, fontWeight: 600 }}
-                >
-                  Generar Enlace
-                </Button>
+              <Col xs={24} sm={12} md={6} className={styles.submitColumn}>
+                <Form.Item className={ui.fullWidth}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    icon={<LinkOutlined />}
+                    loading={creating}
+                    className={`btn-primary-gradient ${styles.submitButton}`}
+                  >
+                    Generar enlace
+                  </Button>
+                </Form.Item>
               </Col>
             </Row>
           </Form>
         </Card>
 
-        { }
-        <div>
-          <div className={ui.sectionHeading}>
-            <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
-              Enlaces Emitidos ({tokens.length})
+        <section className={styles.listSection} aria-labelledby="enlaces-emitidos-title">
+          <div className={styles.listHeader}>
+            <Typography.Text id="enlaces-emitidos-title" strong className={styles.listTitle}>
+              Enlaces emitidos ({tokens.length})
             </Typography.Text>
-            <Typography.Text type="secondary" style={{ fontSize: 11.5 }}>
-              Los enlaces desactivados bloquean el ingreso docente de forma inmediata.
+            <Typography.Text type="secondary" className={styles.listHint}>
+              Desactivar un enlace bloquea el acceso docente inmediatamente.
             </Typography.Text>
           </div>
 
@@ -471,11 +512,12 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
             loading={loading}
             dataSource={tokens}
             columns={columns}
-            pagination={{ pageSize: 5, showSizeChanger: false }}
-            locale={{ emptyText: 'No hay enlaces docentes emitidos todavía.' }}
+            scroll={{ x: 820 }}
+            pagination={{ pageSize: 5, showSizeChanger: false, hideOnSinglePage: true }}
+            locale={{ emptyText: 'Todavía no hay enlaces de carga emitidos.' }}
           />
-        </div>
+        </section>
       </div>
-    </Modal>
+    </FormModal>
   );
 };

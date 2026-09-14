@@ -10,6 +10,9 @@ node_modules
 dist
 dist-ssr
 *.local
+pb_data/
+pb_public/
+backups/
 
 .vscode/*
 !.vscode/extensions.json

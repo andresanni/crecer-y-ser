@@ -1,8 +1,9 @@
 import { useModalSessionKey } from '../../../shared/hooks/useModalSessionKey';
+import { FormModal, FormModalSteps } from '../../../shared/components/FormModal';
+import { focusFirstFormError } from '../../../shared/utils/formValidation';
 import ui from '../../../shared/styles/ui.module.css';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  Modal,
   Form,
   Input,
   DatePicker,
@@ -16,7 +17,6 @@ import {
   Space,
   Tag,
   Tabs,
-  Steps,
   InputNumber,
   Spin,
 } from 'antd';
@@ -134,10 +134,12 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [activeEditTab, setActiveEditTab] = useState<string>(initialTab || 'alumno');
-
-
-  const fechaNacimientoValue = Form.useWatch('fechaNacimiento', form);
-  const estadoInscripcionValue = Form.useWatch('estadoInscripcion', form);
+  const [fechaNacimientoValue, setFechaNacimientoValue] = useState<dayjs.Dayjs | null>(() =>
+    initialValues?.fechaNacimiento ? dayjs(initialValues.fechaNacimiento) : null,
+  );
+  const [estadoInscripcionValue, setEstadoInscripcionValue] = useState<EstadoInscripcion | undefined>(
+    (initialValues?.estadoInscripcion as EstadoInscripcion | undefined) ?? 'Regular',
+  );
 
 
   const [cursos, setCursos] = useState<Curso[]>([]);
@@ -230,8 +232,6 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         fechaEgreso: initialValues.fechaEgreso ? dayjs(initialValues.fechaEgreso) : null,
         estadoInscripcion: (initialValues.estadoInscripcion as EstadoInscripcion) || 'Regular',
       });
-
-
       responsableService
         .getByAlumnoId(initialValues.id)
         .then((responsables) => {
@@ -332,7 +332,11 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
   );
 
   const handleValuesChange = (changedValues: Partial<AlumnoFormValues>) => {
+    if ('fechaNacimiento' in changedValues) {
+      setFechaNacimientoValue(changedValues.fechaNacimiento ?? null);
+    }
     if ('estadoInscripcion' in changedValues) {
+      setEstadoInscripcionValue(changedValues.estadoInscripcion);
       if (changedValues.estadoInscripcion !== 'Baja') {
         form.setFieldValue('fechaEgreso', null);
       } else if (!form.getFieldValue('fechaEgreso')) {
@@ -373,6 +377,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         setCurrentStep(2);
       }
     } catch (info) {
+      focusFirstFormError(form, info);
       console.log('Validación de etapa fallida:', info);
     }
   };
@@ -398,6 +403,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         await form.validateFields(fieldsToValidate);
         setCurrentStep(2);
       } catch (info) {
+        focusFirstFormError(form, info);
         console.log('Validación previa fallida:', info);
       }
     }
@@ -416,6 +422,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         }
       })
       .catch((info) => {
+        focusFirstFormError(form, info);
         console.log('Validación fallida:', info);
         const errorFields = info.errorFields || [];
         const alumnoFieldNames = ['dni', 'apellidos', 'nombres', 'fechaNacimiento'];
@@ -445,7 +452,6 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
 
   const renderTabAlumno = () => (
     <div style={{ paddingTop: 4 }}>
-      { }
       {isEditing && (
         <div
           style={{
@@ -616,7 +622,6 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
 
   const renderTabInscripcion = () => (
     <div style={{ paddingTop: 4 }}>
-      { }
       {isEditing && (
         <div
           style={{
@@ -675,7 +680,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
 
       {loadingMetadata ? (
         <div style={{ textAlign: 'center', padding: '30px 0' }}>
-          <Spin tip="Cargando cursos y ciclos lectivos disponibles..." />
+          <Spin description="Cargando cursos y ciclos lectivos disponibles..." />
         </div>
       ) : (
         <>
@@ -723,7 +728,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
 
             <Col xs={24} sm={12} md={7}>
               <Form.Item name="estadoInscripcion" label="Estado de Cursada">
-                <Select options={ESTADO_INSCRIPCION_OPTIONS} defaultValue="Regular" />
+                <Select options={ESTADO_INSCRIPCION_OPTIONS} />
               </Form.Item>
             </Col>
           </Row>
@@ -783,14 +788,12 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
 
   const renderTabResponsable = () => (
     <div style={{ paddingTop: 4 }}>
-      { }
       {isEditing && loadingResponsable && (
         <div style={{ textAlign: 'center', padding: '14px 0' }}>
-          <Spin tip="Cargando datos del responsable vinculado..." />
+          <Spin description="Cargando datos del responsable vinculado..." />
         </div>
       )}
 
-      { }
       {isEditing && !loadingResponsable && (
         <div
           style={{
@@ -846,7 +849,6 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         </div>
       )}
 
-      { }
       {!isEditing && existingResponsable && (
         <Alert
           type="success"
@@ -1063,65 +1065,23 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
   ];
 
   return (
-    <Modal
+    <FormModal
       open={visible}
-      style={{ top: 12 }}
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 4 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 10,
-                background: isEditing
-                  ? 'linear-gradient(135deg, #0284c7, #0ea5e9)'
-                  : 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                fontSize: 18,
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.22)',
-                flexShrink: 0,
-              }}
-            >
-              {isEditing ? <SolutionOutlined /> : <UserAddOutlined />}
-            </div>
-            <div>
-              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18, fontWeight: 700, color: 'var(--cys-color-text)' }}>
-                {isEditing ? 'Editar Ficha del Alumno' : 'Alta Integral de Alumno'}
-              </span>
-              <Text type="secondary" style={{ display: 'block', fontSize: 12.5, fontWeight: 400, marginTop: 1 }}>
-                {isEditing
-                  ? 'Actualice los datos personales y de cursada del estudiante.'
-                  : 'Formulario secuencial en 3 etapas: Alumno, Curso y Responsable Legal.'}
-              </Text>
-            </div>
-          </div>
-
-          {!isEditing && (
-            <Tag color="blue" style={{ borderRadius: 6, fontWeight: 700, fontSize: 12, padding: '3px 10px' }}>
-              Paso {currentStep + 1} de 3
-            </Tag>
-          )}
-        </div>
-      }
-      className="form-modal"
+      title={isEditing ? 'Editar ficha del alumno' : 'Nuevo alumno'}
+      description={isEditing
+        ? 'Actualizá los datos personales, la cursada o el responsable vinculado.'
+        : 'Completá los datos esenciales en tres pasos breves.'}
+      icon={isEditing ? <SolutionOutlined /> : <UserAddOutlined />}
+      tone={isEditing ? 'info' : 'primary'}
+      extra={!isEditing ? <Tag color="blue" className={ui.strongTag}>Paso {currentStep + 1} de 3</Tag> : undefined}
       width={940}
-      destroyOnClose
       onCancel={handleModalClose}
       footer={[
         <Button key="back" onClick={handleModalClose} disabled={submitting}>
           Cancelar
         </Button>,
         !isEditing && currentStep > 0 ? (
-          <Button
-            key="prev"
-            icon={<LeftOutlined />}
-            onClick={handlePrevStep}
-            disabled={submitting}
-          >
+          <Button key="prev" icon={<LeftOutlined />} onClick={handlePrevStep} disabled={submitting}>
             Anterior
           </Button>
         ) : null,
@@ -1133,7 +1093,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             disabled={submitting}
             className="btn-primary-gradient"
           >
-            {currentStep === 0 ? 'Continuar a Curso' : 'Continuar a Responsable'} <RightOutlined />
+            Continuar <RightOutlined />
           </Button>
         ) : (
           <Button
@@ -1144,7 +1104,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             icon={<CheckOutlined />}
             className="btn-primary-gradient"
           >
-            {isEditing ? 'Guardar Cambios' : 'Registrar e Inscribir Alumno'}
+            {isEditing ? 'Guardar cambios' : 'Registrar alumno'}
           </Button>
         ),
       ]}
@@ -1153,10 +1113,10 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         form={form}
         layout="vertical"
         name="alumnoForm"
-        preserve={true}
-        requiredMark={false}
+        preserve
+        requiredMark
+        scrollToFirstError={{ focus: true }}
         onValuesChange={handleValuesChange}
-        style={{ paddingTop: 4 }}
       >
         <Form.Item name="responsableId" hidden>
           <Input />
@@ -1172,199 +1132,40 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
           />
         ) : (
           <>
-            <Steps
+            <FormModalSteps
               current={currentStep}
               onChange={handleStepChange}
-              size="small"
-              className="cys-form-steps"
-              style={{
-                marginBottom: 16,
-                padding: '10px 14px',
-                background: "var(--cys-color-fill-quaternary)",
-                borderRadius: 12,
-                border: "1px solid var(--cys-color-border-secondary)",
-              }}
               items={[
                 {
-                  title: '1. Datos del Alumno',
-                  description: 'Ficha personal',
-                  icon:
-                    currentStep > 0 ? (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: '#10b981',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ffffff',
-                          fontSize: 13,
-                        }}
-                      >
-                        <CheckOutlined />
-                      </div>
-                    ) : currentStep === 0 ? (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: '#2563eb',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ffffff',
-                          fontSize: 13,
-                        }}
-                      >
-                        <UserOutlined />
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: "var(--cys-color-fill-tertiary)",
-                          border: "1px solid var(--cys-color-border)",
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--cys-color-text-description)',
-                          fontSize: 13,
-                        }}
-                      >
-                        <UserOutlined />
-                      </div>
-                    ),
+                  title: 'Datos del alumno',
+                  content: 'Ficha personal',
+                  icon: <UserOutlined />,
                 },
                 {
-                  title: '2. Inscripción y Curso',
-                  description: 'Matrícula y grado',
-                  icon:
-                    currentStep > 1 ? (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: '#10b981',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ffffff',
-                          fontSize: 13,
-                        }}
-                      >
-                        <CheckOutlined />
-                      </div>
-                    ) : currentStep === 1 ? (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: '#2563eb',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ffffff',
-                          fontSize: 13,
-                        }}
-                      >
-                        <BookOutlined />
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: "var(--cys-color-fill-tertiary)",
-                          border: "1px solid var(--cys-color-border)",
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--cys-color-text-description)',
-                          fontSize: 13,
-                        }}
-                      >
-                        <BookOutlined />
-                      </div>
-                    ),
+                  title: 'Inscripción y curso',
+                  content: 'Matrícula y grado',
+                  icon: <BookOutlined />,
                 },
                 {
-                  title: '3. Responsable y Vínculo',
-                  description: 'Tutor legal',
-                  icon:
-                    currentStep > 2 ? (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: '#10b981',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ffffff',
-                          fontSize: 13,
-                        }}
-                      >
-                        <CheckOutlined />
-                      </div>
-                    ) : currentStep === 2 ? (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: '#2563eb',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ffffff',
-                          fontSize: 13,
-                        }}
-                      >
-                        <TeamOutlined />
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: '50%',
-                          background: "var(--cys-color-fill-tertiary)",
-                          border: "1px solid var(--cys-color-border)",
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: 'var(--cys-color-text-description)',
-                          fontSize: 13,
-                        }}
-                      >
-                        <TeamOutlined />
-                      </div>
-                    ),
+                  title: 'Responsable y vínculo',
+                  content: 'Tutor legal',
+                  icon: <TeamOutlined />,
                 },
               ]}
             />
 
-            <div style={{ display: currentStep === 0 ? 'block' : 'none' }}>
+            <div hidden={currentStep !== 0}>
               {renderTabAlumno()}
             </div>
-            <div style={{ display: currentStep === 1 ? 'block' : 'none' }}>
+            <div hidden={currentStep !== 1}>
               {renderTabInscripcion()}
             </div>
-            <div style={{ display: currentStep === 2 ? 'block' : 'none' }}>
+            <div hidden={currentStep !== 2}>
               {renderTabResponsable()}
             </div>
           </>
         )}
       </Form>
-    </Modal>
+    </FormModal>
   );
 };
