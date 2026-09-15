@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  App,
   Button,
   Card,
   Col,
@@ -8,14 +7,11 @@ import {
   Row,
   Space,
   Spin,
-  Tag,
-  Tooltip,
   Typography,
 } from 'antd';
 import {
   CalendarOutlined,
   CheckCircleFilled,
-  ReloadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import ui from '../../../shared/styles/ui.module.css';
@@ -31,7 +27,6 @@ import { VistaPorAlumno } from './VistaPorAlumno';
 const { Title, Text } = Typography;
 
 export const CargaDocentePublicaPage: React.FC = () => {
-  const { message } = App.useApp();
   const [token] = useState(() => accesoDocenteService.readTokenFromLocation());
   const [context, setContext] = useState<TeacherGradebookContext | null>(null);
   const [loading, setLoading] = useState(Boolean(token));
@@ -135,6 +130,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
   return (
     <div className={ui.publicPage}>
       <Card
+        className={ui.operationalContent}
         style={{
           borderRadius: 16,
           background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
@@ -180,19 +176,51 @@ export const CargaDocentePublicaPage: React.FC = () => {
             </Space>
           </Col>
           <Col xs={24} lg={11}>
-            <Space wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Tag icon={<UserOutlined />} color="blue">{curso.nombre} ({curso.turno})</Tag>
-              <Tag icon={<CalendarOutlined />} color="geekblue">{periodo.nombre}</Tag>
-              <Tooltip title="Actualizar datos">
-                <Button
-                  icon={<ReloadOutlined />}
-                  onClick={() => {
-                    message.info('Actualizando planilla...');
-                    reloadContext();
-                  }}
-                  aria-label="Actualizar datos de la planilla"
-                />
-              </Tooltip>
+            <Space wrap size={10} style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 9,
+                  minWidth: 176,
+                  padding: '10px 14px',
+                  border: '1px solid rgba(255, 255, 255, 0.32)',
+                  borderRadius: 10,
+                  background: 'rgba(15, 23, 42, 0.18)',
+                }}
+              >
+                <UserOutlined style={{ fontSize: 18, color: '#bfdbfe' }} />
+                <div>
+                  <Text style={{ display: 'block', color: '#bfdbfe', fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
+                    GRADO Y TURNO
+                  </Text>
+                  <Text style={{ display: 'block', color: '#ffffff', fontSize: 16, fontWeight: 800, lineHeight: 1.3 }}>
+                    {curso.nombre} · {curso.turno}
+                  </Text>
+                </div>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 9,
+                  minWidth: 152,
+                  padding: '10px 14px',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  borderRadius: 10,
+                  background: 'rgba(255, 255, 255, 0.16)',
+                }}
+              >
+                <CalendarOutlined style={{ fontSize: 18, color: '#dbeafe' }} />
+                <div>
+                  <Text style={{ display: 'block', color: '#dbeafe', fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
+                    PERÍODO
+                  </Text>
+                  <Text style={{ display: 'block', color: '#ffffff', fontSize: 16, fontWeight: 800, lineHeight: 1.3 }}>
+                    {periodo.nombre}
+                  </Text>
+                </div>
+              </div>
             </Space>
           </Col>
         </Row>

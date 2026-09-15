@@ -1,5 +1,5 @@
 import ui from '../../../shared/styles/ui.module.css';
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Alert,
   Card,
@@ -43,6 +43,7 @@ import {
   SendOutlined,
   EditOutlined,
   CloseOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import { staffGradebookDataSource } from '../services/gradebookDataSource.service';
 import {
@@ -112,25 +113,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const [editingMateriaId, setEditingMateriaId] = useState<string | null>(null);
 
 
-  const getEtiquetaColor = useCallback((etiqueta: string) => {
-    const label = etiqueta.toLowerCase();
-    if (label.includes('destacado')) return { color: '#047857' };
-    if (label.includes('avanzado')) return { color: '#1d4ed8' };
-    if (label.includes('alcanzado') || label.includes('logrado')) return { color: '#0369a1' };
-    if (label.includes('proceso')) return { color: '#b45309' };
-    return { color: '#b91c1c' };
-  }, []);
+  const gradeColor = '#0369a1';
+  const valoresEscalaDesc = useMemo(
+    () => [...valoresEscala].sort((a, b) => b.pesoNumerico - a.pesoNumerico || b.ordenVisual - a.ordenVisual),
+    [valoresEscala],
+  );
 
   const getClassNameForValor = useCallback((valorId?: string | null) => {
     if (!valorId) return 'cys-grade-select';
     const val = valoresEscala.find((v) => v.id === valorId);
     if (!val) return 'cys-grade-select';
-    const label = val.etiqueta.toLowerCase();
-    if (label.includes('destacado')) return 'cys-grade-select cys-grade-destacado';
-    if (label.includes('avanzado')) return 'cys-grade-select cys-grade-avanzado';
-    if (label.includes('alcanzado') || label.includes('logrado')) return 'cys-grade-select cys-grade-alcanzado';
-    if (label.includes('proceso')) return 'cys-grade-select cys-grade-proceso';
-    return 'cys-grade-select cys-grade-no-alcanzado';
+    return 'cys-grade-select cys-grade-alcanzado';
   }, [valoresEscala]);
 
 
@@ -188,26 +181,6 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   }, [alumnos, studentSearchQuery]);
 
 
-  const pillsContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollPillsLeft, setCanScrollPillsLeft] = useState(false);
-  const [canScrollPillsRight, setCanScrollPillsRight] = useState(false);
-
-  const checkPillsScroll = useCallback(() => {
-    const el = pillsContainerRef.current;
-    if (!el) return;
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    setCanScrollPillsLeft(scrollLeft > 6);
-    setCanScrollPillsRight(scrollLeft < scrollWidth - clientWidth - 6);
-  }, []);
-
-  const scrollPills = (direction: 'left' | 'right') => {
-    const el = pillsContainerRef.current;
-    if (!el) return;
-    const scrollAmount = 260;
-    el.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-    setTimeout(checkPillsScroll, 300);
-  };
-
   const [loadingEvaluaciones, setLoadingEvaluaciones] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [submittingPeriod, setSubmittingPeriod] = useState<boolean>(false);
@@ -246,7 +219,6 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         if (active) {
           setProgresoMap(alumnosProgreso);
           setProgresoResumen(resumen);
-          setTimeout(checkPillsScroll, 100);
         }
       } catch (err) {
         console.error('Error al calcular progreso del curso:', err);
@@ -256,17 +228,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return () => {
       active = false;
     };
-  }, [alumnos, cursoMaterias, criteriosMap, periodoId, checkPillsScroll, dataSource]);
-
-
-  useEffect(() => {
-    if (selectedInscripcionId) {
-      const pillEl = document.getElementById(`pill-student-${selectedInscripcionId}`);
-      if (pillEl) {
-        pillEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-    }
-  }, [selectedInscripcionId]);
+  }, [alumnos, cursoMaterias, criteriosMap, periodoId, dataSource]);
 
 
   const [alumnoRevision, setAlumnoRevision] = useState(0);
@@ -769,226 +731,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   return (
     <div className={ui.page}>
       { }
-      <Card
-        style={{
-          borderRadius: 14,
-          background: 'var(--cys-color-bg-container, #ffffff)',
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-        }}
-        styles={{ body: { padding: '10px 14px' } }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            flexWrap: 'nowrap',
-          }}
-        >
-          { }
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              flex: 1,
-              minWidth: 0,
-            }}
-          >
-            { }
-            <Tooltip title="Alumno anterior">
-              <Button
-                icon={<LeftOutlined />}
-                onClick={handlePrevStudent}
-                disabled={isFirst}
-                style={{ borderRadius: 8, fontWeight: 600, flexShrink: 0 }}
-                size="middle"
-              >
-                Anterior
-              </Button>
-            </Tooltip>
-
-            { }
-            <Tooltip title="Desplazar lista a la izquierda">
-              <Button
-                shape="circle"
-                size="small"
-                icon={<LeftOutlined style={{ fontSize: 10 }} />}
-                onClick={() => scrollPills('left')}
-                disabled={!canScrollPillsLeft}
-                style={{
-                  flexShrink: 0,
-                  opacity: canScrollPillsLeft ? 1 : 0.35,
-                  border: "1px solid var(--cys-color-border)",
-                }}
-              />
-            </Tooltip>
-
-            { }
-            <div
-              ref={pillsContainerRef}
-              onScroll={checkPillsScroll}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                overflowX: 'auto',
-                scrollBehavior: 'smooth',
-                padding: '3px 2px',
-                flex: 1,
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-              }}
-            >
-              {alumnos.map((alu, idx) => {
-                const isSelected = alu.inscripcionId === selectedInscripcionId;
-                const prog = progresoMap[alu.inscripcionId];
-                const estado = prog?.estado || 'SIN_INICIAR';
-                const porcentaje = prog?.porcentaje ?? 0;
-
-                const isCompleto = estado === 'COMPLETO';
-                const isProgreso = estado === 'EN_PROGRESO';
-
-                return (
-                  <button
-                    key={alu.inscripcionId}
-                    id={`pill-student-${alu.inscripcionId}`}
-                    type="button"
-                    onClick={() => navigateToStudent(idx)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '5px 11px',
-                      borderRadius: 20,
-                      border: isSelected ? '2px solid #2563eb' : "1px solid var(--cys-color-border-secondary)",
-                      background: isSelected ? "var(--cys-color-primary-bg)" : "var(--cys-color-fill-quaternary)",
-                      boxShadow: isSelected ? '0 2px 8px rgba(37, 99, 235, 0.18)' : 'none',
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.15s ease',
-                      flexShrink: 0,
-                      transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                    }}
-                  >
-                    <span style={{ fontWeight: 700, fontSize: 11.5, color: isSelected ? "var(--cys-color-primary-text)" : "var(--cys-color-text-description)" }}>
-                      {alu.numeroOrden ? `${alu.numeroOrden}.` : `${idx + 1}.`}
-                    </span>
-                    <span style={{ fontSize: 12, fontWeight: isSelected ? 700 : 500, color: isSelected ? "var(--cys-color-primary-text)" : "var(--cys-color-text)" }}>
-                      {alu.apellidos} {alu.nombres ? alu.nombres.charAt(0) + '.' : ''}
-                    </span>
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: '1px 6px',
-                        borderRadius: 10,
-                        background: isCompleto
-                          ? "var(--cys-color-success-bg)"
-                          : isProgreso
-                          ? "var(--cys-color-warning-bg)"
-                          : "var(--cys-color-fill-tertiary)",
-                        color: isCompleto
-                          ? "var(--cys-color-success-text)"
-                          : isProgreso
-                          ? "var(--cys-color-warning-text)"
-                          : "var(--cys-color-text-secondary)",
-                      }}
-                    >
-                      {isCompleto ? '✓ 100%' : `${porcentaje}%`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            { }
-            <Tooltip title="Desplazar lista a la derecha">
-              <Button
-                shape="circle"
-                size="small"
-                icon={<RightOutlined style={{ fontSize: 10 }} />}
-                onClick={() => scrollPills('right')}
-                disabled={!canScrollPillsRight}
-                style={{
-                  flexShrink: 0,
-                  opacity: canScrollPillsRight ? 1 : 0.35,
-                  border: "1px solid var(--cys-color-border)",
-                }}
-              />
-            </Tooltip>
-
-            { }
-            <Tooltip title="Alumno siguiente">
-              <Button
-                icon={<RightOutlined />}
-                onClick={handleNextStudent}
-                disabled={isLast}
-                style={{ borderRadius: 8, fontWeight: 600, flexShrink: 0 }}
-                size="middle"
-              >
-                Siguiente
-              </Button>
-            </Tooltip>
-          </div>
-
-          { }
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-            <Button
-              icon={<DashboardOutlined className={ui.primary} />}
-              onClick={() => setDrawerResumenOpen(true)}
-              style={{ borderRadius: 8, fontWeight: 600 }}
-            >
-              Guía del Curso
-            </Button>
-
-            {!readOnly && (
-              <Button
-                type="primary"
-                icon={<SaveOutlined />}
-                onClick={handleSave}
-                loading={saving}
-                disabled={!hasChanges}
-                className={hasChanges ? 'btn-primary-gradient' : undefined}
-                style={{ borderRadius: 8, fontWeight: 600, minWidth: 145 }}
-              >
-                Guardar Cambios
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
-
-      {access.canSubmitPeriod && (
-        <Alert
-          type={periodIsComplete ? 'success' : 'info'}
-          showIcon
-          title={periodIsComplete ? 'El bimestre está listo para enviar' : 'Entrega completa del bimestre'}
-          description={periodIsComplete
-            ? 'Revisá que no queden cambios sin guardar y enviá la carga completa al equipo directivo.'
-            : `${progresoResumen.completadosCount} de ${progresoResumen.totalAlumnos} estudiantes están completos. Podés continuar guardando el avance.`}
-          action={(
-            <Button
-              type="primary"
-              icon={<SendOutlined />}
-              onClick={handleSubmitPeriod}
-              loading={submittingPeriod}
-              disabled={!periodIsComplete || hasChanges}
-            >
-              Enviar bimestre completo
-            </Button>
-          )}
-        />
-      )}
-
-      { }
       {currentAlumno && (
         <div
-          className="cys-sticky-student-banner"
+          className={`${ui.operationalContent} cys-sticky-student-banner`}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -1006,13 +751,25 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           }}
         >
           { }
-          <Popover
-            open={stickySelectorOpen}
-            onOpenChange={setStickySelectorOpen}
-            trigger="click"
-            placement="bottomLeft"
-            overlayStyle={{ width: 340 }}
-            content={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+            <Tooltip title="Alumno anterior">
+              <Button
+                type="text"
+                icon={<LeftOutlined style={{ fontSize: 11 }} />}
+                onClick={handlePrevStudent}
+                disabled={isFirst}
+                style={{ borderRadius: 8, fontSize: 11.5, fontWeight: 600, color: 'var(--cys-color-text-description)' }}
+              >
+                Anterior
+              </Button>
+            </Tooltip>
+            <Popover
+              open={stickySelectorOpen}
+              onOpenChange={setStickySelectorOpen}
+              trigger="click"
+              placement="bottomLeft"
+              overlayStyle={{ width: 340 }}
+              content={
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, borderBottom: "1px solid var(--cys-color-border-secondary)" }}>
                   <Typography.Text strong style={{ fontSize: 13, color: 'var(--cys-color-text)' }}>
@@ -1128,80 +885,110 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 </div>
               </div>
             }
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                cursor: 'pointer',
-                padding: '4px 8px',
-                borderRadius: 8,
-                transition: 'all 0.15s ease',
-              }}
             >
               <div
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: '#2563eb',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: 14,
-                  flexShrink: 0,
-                  boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                  gap: 10,
+                  cursor: 'pointer',
+                  padding: '4px 10px',
+                  borderRadius: 8,
+                  transition: 'all 0.15s ease',
+                  minWidth: 0,
                 }}
               >
-                {currentAlumno.numeroOrden || <UserOutlined />}
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    flexShrink: 0,
+                    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                  }}
+                >
+                  {currentAlumno.numeroOrden || <UserOutlined />}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                  <div className={ui.tightRow}>
+                    <Typography.Text strong ellipsis style={{ fontSize: 15, color: 'var(--cys-color-text)' }}>
+                      {currentAlumno.nombreCompleto}
+                    </Typography.Text>
+                    <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', flexShrink: 0 }} />
+                  </div>
+                  <div className={ui.inlineControls}>
+                    <Tag
+                      color={stats.percent === 100 ? 'green' : 'blue'}
+                      style={{ fontWeight: 700, margin: 0, fontSize: 10.5, padding: '1px 6px' }}
+                    >
+                      {stats.completedCount}/{stats.total} materias ({stats.percent}%)
+                    </Tag>
+                    <Progress
+                      percent={stats.percent}
+                      showInfo={false}
+                      strokeColor={stats.percent === 100 ? '#10b981' : '#2563eb'}
+                      size="small"
+                      style={{ width: 110, margin: 0 }}
+                    />
+                  </div>
+                </div>
               </div>
-              <div className={ui.tightRow}>
-                <Typography.Text strong style={{ fontSize: 15, color: 'var(--cys-color-text)' }}>
-                  {currentAlumno.nombreCompleto}
-                </Typography.Text>
-                <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', marginTop: 1 }} />
-              </div>
-            </div>
-          </Popover>
-
-          { }
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <div className={ui.inlineControls}>
-              <Tag
-                color={stats.percent === 100 ? 'green' : 'blue'}
-                style={{ fontWeight: 700, margin: 0, fontSize: 11.5, padding: '2px 8px' }}
+            </Popover>
+            <Tooltip title="Alumno siguiente">
+              <Button
+                type="text"
+                onClick={handleNextStudent}
+                disabled={isLast}
+                style={{ borderRadius: 8, fontSize: 11.5, fontWeight: 600, color: 'var(--cys-color-text-description)' }}
               >
-                {stats.completedCount}/{stats.total} Materias Evaluadas ({stats.percent}%)
-              </Tag>
-              <Progress
-                percent={stats.percent}
-                showInfo={false}
-                strokeColor={stats.percent === 100 ? '#10b981' : '#2563eb'}
-                size="small"
-                style={{ width: 100, margin: 0 }}
-              />
-            </div>
+                Siguiente <RightOutlined style={{ fontSize: 11 }} />
+              </Button>
+            </Tooltip>
+          </div>
 
-            <Tag color="purple" className={ui.strongTag}>
-              {periodo?.nombre || 'Período Activo'}
-            </Tag>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <Button
+              icon={<DashboardOutlined className={ui.primary} />}
+              onClick={() => setDrawerResumenOpen(true)}
+              style={{ borderRadius: 8, fontWeight: 600 }}
+            >
+              Guía del Curso
+            </Button>
+            {access.canSubmitPeriod && (
+              <Button
+                type="primary"
+                icon={<SendOutlined />}
+                onClick={handleSubmitPeriod}
+                loading={submittingPeriod}
+                disabled={!periodIsComplete || hasChanges}
+                style={{ borderRadius: 8, fontWeight: 600 }}
+              >
+                Enviar bimestre
+              </Button>
+            )}
           </div>
         </div>
       )}
       { }
-      {access.canEditStudentSupport && <Card
-        style={{
-          borderRadius: 12,
-          border: apoyoState.isModified ? '1px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
-          background: 'var(--cys-color-bg-container, #ffffff)',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)',
-          transition: 'all 0.2s ease',
-        }}
-        styles={{ body: { padding: '12px 16px' } }}
-      >
+      {access.canEditStudentSupport && (
+        <div className={ui.operationalContent}>
+          <Card
+            style={{
+              borderRadius: 12,
+              border: apoyoState.isModified ? '1px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
+              background: 'var(--cys-color-bg-container, #ffffff)',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)',
+              transition: 'all 0.2s ease',
+            }}
+            styles={{ body: { padding: '12px 16px' } }}
+          >
         <div style={{ marginBottom: 12 }}>
           <Space size={6} align="center">
             <SafetyCertificateOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 15 }} />
@@ -1386,7 +1173,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </div>
           </Col>
         </Row>
-      </Card>}
+          </Card>
+        </div>
+      )}
 
       { }
       {loadingEvaluaciones || loadingCriterios ? (
@@ -1398,7 +1187,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Empty description="No hay materias asignadas a este curso." />
         </Card>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className={ui.operationalContent} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {cursoMaterias.map((cm, matIdx) => {
             const mat = materiasState[cm.id] || {
               ppi: false,
@@ -1432,11 +1221,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 12,
-                    marginBottom: 10,
-                  }}
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, #1e40af, #2563eb)',
+                  border: '1px solid #1d4ed8',
+                }}
                 >
                   <Space size={8} align="center" style={{ flexShrink: 0 }}>
                     <div
@@ -1444,11 +1236,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                         width: 26,
                         height: 26,
                         borderRadius: 6,
-                        background: 'rgba(37, 99, 235, 0.1)',
+                        background: 'rgba(255, 255, 255, 0.16)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'var(--cys-color-primary-text)',
+                        color: '#ffffff',
                         fontWeight: 700,
                         fontSize: 12,
                       }}
@@ -1456,17 +1248,41 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       {matIdx + 1}
                     </div>
                     <div>
-                      <Typography.Text strong style={{ fontSize: 14.5, color: 'var(--cys-color-text)' }}>
-                        <BookOutlined style={{ marginRight: 6, color: 'var(--cys-color-primary-text)' }} />
+                      <Typography.Text strong style={{ fontSize: 14.5, color: '#ffffff' }}>
+                        <BookOutlined style={{ marginRight: 6, color: '#ffffff' }} />
                         {cm.materiaNombre}
                       </Typography.Text>
                     </div>
                     {isMateriaComplete ? (
-                      <Tag color="success" icon={<CheckCircleOutlined />} className={ui.compactTag}>
+                      <Tag
+                        icon={<CheckCircleOutlined />}
+                        style={{
+                          margin: 0,
+                          padding: '1px 7px',
+                          borderRadius: 6,
+                          border: '1px solid rgba(255, 255, 255, 0.34)',
+                          background: 'rgba(255, 255, 255, 0.18)',
+                          color: '#ffffff',
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                        }}
+                      >
                         Completa
                       </Tag>
                     ) : (
-                      <Tag color="warning" icon={<ExclamationCircleOutlined />} className={ui.compactTag}>
+                      <Tag
+                        icon={<ExclamationCircleOutlined />}
+                        style={{
+                          margin: 0,
+                          padding: '1px 7px',
+                          borderRadius: 6,
+                          border: '1px solid rgba(255, 255, 255, 0.25)',
+                          background: 'rgba(15, 23, 42, 0.16)',
+                          color: '#ffffff',
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                        }}
+                      >
                         Incompleta
                       </Tag>
                     )}
@@ -1474,11 +1290,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
                   { }
                   <Space size={8} align="center" wrap style={{ flexShrink: 0 }}>
-                    {esConducta ? (
-                      <Tag color="cyan" style={{ margin: 0, fontWeight: 700, borderRadius: 4, fontSize: 11 }}>
-                        Conducta / Formativa
-                      </Tag>
-                    ) : (
+                    {!esConducta && (
                       <Space size={6} align="center" style={{ flexShrink: 0 }}>
                         <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
                           <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
@@ -1561,7 +1373,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               flexWrap: 'wrap',
                             }}
                           >
-                            <div style={{ flex: 1, minWidth: 200 }}>
+                            <div style={{ flex: 1, minWidth: 240 }}>
                               <Typography.Text style={{ fontSize: 14, color: 'var(--cys-color-text)', fontWeight: 500, lineHeight: 1.4 }}>
                                 <span style={{ fontWeight: 700, color: 'var(--cys-color-primary-text)', marginRight: 8, fontSize: 14.5 }}>
                                   {num}.
@@ -1575,7 +1387,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                                 strong
                                 style={{
                                   color: valActual
-                                    ? getEtiquetaColor(valoresEscala.find((v) => v.id === valActual)?.etiqueta || '').color
+                                    ? gradeColor
                                     : 'var(--cys-color-text-description)',
                                 }}
                               >
@@ -1588,12 +1400,12 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                                 allowClear
                                 value={valActual}
                                 onChange={(val) => handleCriterioChange(cm.id, crit.id, val || null)}
-                                style={{ width: 140 }}
+                                style={{ width: 280, maxWidth: '100%' }}
                                 className={getClassNameForValor(valActual)}
-                                options={valoresEscala.map((v) => ({
+                                options={valoresEscalaDesc.map((v) => ({
                                   value: v.id,
                                   label: (
-                                    <span style={{ color: getEtiquetaColor(v.etiqueta).color, fontWeight: 700, fontSize: 13 }}>
+                                    <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
                                       {v.etiqueta}
                                     </span>
                                   ),
@@ -1622,7 +1434,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             marginTop: 4,
                           }}
                         >
-                          <div style={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ flex: 1, minWidth: 240, display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div
                               style={{
                                 width: 24,
@@ -1649,7 +1461,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               strong
                               style={{
                                 color: mat.calificacionGeneralId
-                                  ? getEtiquetaColor(valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || '').color
+                                  ? gradeColor
                                   : 'var(--cys-color-text-description)',
                               }}
                             >
@@ -1662,12 +1474,12 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               allowClear
                               value={mat.calificacionGeneralId || undefined}
                               onChange={(val) => handleCalificacionGeneralChange(cm.id, val || null)}
-                              style={{ width: 140 }}
+                              style={{ width: 280, maxWidth: '100%' }}
                               className={getClassNameForValor(mat.calificacionGeneralId)}
-                              options={valoresEscala.map((v) => ({
+                              options={valoresEscalaDesc.map((v) => ({
                                 value: v.id,
                                 label: (
-                                  <span style={{ color: getEtiquetaColor(v.etiqueta).color, fontWeight: 700, fontSize: 13 }}>
+                                  <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
                                     {v.etiqueta}
                                   </span>
                                 ),
@@ -1684,28 +1496,21 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           })}
 
           { }
-          {access.canEditPeriodClosure && <Card
-            style={{
-              borderRadius: 14,
-              border: asistenciaState.isModified ? '1.5px solid #7c3aed' : "1px solid var(--cys-color-border-secondary)",
-              background: 'var(--cys-color-bg-container)',
-              boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
-            }}
-            styles={{ body: { padding: '18px 20px' } }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-              <ClockCircleOutlined style={{ color: '#7c3aed', fontSize: 18 }} />
-              <div>
-                <Typography.Title level={5} style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#7c3aed' }}>
-                  Cierre Bimestral & Asistencia del Estudiante
+          {access.canEditPeriodClosure && (
+            <>
+              <Card
+                style={{
+                  borderRadius: 14,
+                  border: asistenciaState.isModified ? '1.5px solid #7c3aed' : "1px solid var(--cys-color-border-secondary)",
+                  background: 'var(--cys-color-bg-container)',
+                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+                }}
+                styles={{ body: { padding: '16px 20px' } }}
+              >
+                <Typography.Title level={5} style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: '#7c3aed' }}>
+                  Asistencias
                 </Typography.Title>
-                <Typography.Text type="secondary" className={ui.caption}>
-                  Registro de asistencia y concepto pedagógico general del período.
-                </Typography.Text>
-              </div>
-            </div>
-
-            <Row gutter={[16, 16]}>
+                <Row gutter={[16, 16]}>
               <Col xs={24} sm={8}>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
                   <Typography.Text strong className={ui.secondaryCaption}>
@@ -1757,10 +1562,23 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 </Space>
               </Col>
 
-              <Col xs={24}>
+                </Row>
+              </Card>
+              <Card
+                style={{
+                  borderRadius: 14,
+                  border: asistenciaState.isModified ? '1.5px solid #7c3aed' : "1px solid var(--cys-color-border-secondary)",
+                  background: 'var(--cys-color-bg-container)',
+                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+                }}
+                styles={{ body: { padding: '16px 20px' } }}
+              >
+                <Typography.Title level={5} style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: '#7c3aed' }}>
+                  Observaciones
+                </Typography.Title>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
                   <Typography.Text strong className={ui.secondaryCaption}>
-                    OBSERVACIONES GENERALES DEL PERÍODO
+                    OBSERVACIONES
                   </Typography.Text>
                   {readOnly ? (
                     <Typography.Paragraph style={{ margin: 0 }}>
@@ -1769,7 +1587,6 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   ) : (
                     <Input.TextArea
                       rows={2}
-                      placeholder="Concepto pedagógico institucional u observaciones sobre el desempeño y convivencia del estudiante en este bimestre..."
                       value={asistenciaState.observaciones}
                       onChange={(e) => handleAsistenciaChange('observaciones', e.target.value)}
                       maxLength={300}
@@ -1777,16 +1594,16 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     />
                   )}
                 </Space>
-              </Col>
-            </Row>
-          </Card>}
+              </Card>
+            </>
+          )}
         </div>
       )}
 
       { }
       {hasChanges && !readOnly && (
         <div
-          className="cys-floating-action-bar"
+          className={`${ui.operationalContent} cys-floating-action-bar`}
           style={{
             position: 'sticky',
             bottom: 16,
@@ -1796,7 +1613,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             background: 'var(--cys-color-bg-container, #ffffff)',
             border: '1.5px solid #3b82f6',
             borderRadius: 14,
-            padding: '12px 20px',
+            padding: '10px 16px',
             boxShadow: '0 10px 30px -10px rgba(37, 99, 235, 0.25)',
             display: 'flex',
             alignItems: 'center',
@@ -1808,14 +1625,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         >
           <Space size={8}>
             <ExclamationCircleOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 18 }} />
-            <div>
-              <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)', display: 'block', lineHeight: 1.25 }}>
-                Cambios pendientes sin guardar
-              </Typography.Text>
-              <Typography.Text type="secondary" style={{ fontSize: 11.5 }}>
-                Tiene modificaciones sin guardar en la libreta de {currentAlumno?.nombreCompleto || 'este alumno'}.
-              </Typography.Text>
-            </div>
+            <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
+              Cambios sin guardar
+            </Typography.Text>
           </Space>
 
           <Space size={10}>
@@ -1868,15 +1680,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 style={{
                   background: "var(--cys-color-fill-quaternary)",
                   border: "1px solid var(--cys-color-border)",
-                  borderRadius: 12,
-                  padding: '14px 16px',
-                  textAlign: 'center',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                 }}
               >
-                <Typography.Text type="secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: 'var(--cys-color-text-description)' }}>
+                <Typography.Text type="secondary" style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--cys-color-text-description)' }}>
                   Pendientes
                 </Typography.Text>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--cys-color-text)', marginTop: 2 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--cys-color-text)' }}>
                   {progresoResumen.totalAlumnos - progresoResumen.completadosCount}
                 </div>
               </div>
@@ -1886,15 +1700,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 style={{
                   background: "var(--cys-color-success-bg)",
                   border: '1px solid #86efac',
-                  borderRadius: 12,
-                  padding: '14px 16px',
-                  textAlign: 'center',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                 }}
               >
-                <Typography.Text style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', color: "var(--cys-color-success-text)" }}>
+                <Typography.Text style={{ fontSize: 11.5, fontWeight: 600, color: "var(--cys-color-success-text)" }}>
                   Completos
                 </Typography.Text>
-                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--cys-color-success-text)', marginTop: 2 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--cys-color-success-text)' }}>
                   {progresoResumen.completadosCount}
                 </div>
               </div>
@@ -1907,9 +1723,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             value={filtroDrawer}
             onChange={(val) => setFiltroDrawer(val as 'TODOS' | 'PENDIENTES' | 'COMPLETOS')}
             options={[
-              { value: 'TODOS', label: `Todos (${alumnos.length})` },
-              { value: 'PENDIENTES', label: `⏳ Pendientes (${progresoResumen.totalAlumnos - progresoResumen.completadosCount})` },
-              { value: 'COMPLETOS', label: `🟢 Completos (${progresoResumen.completadosCount})` },
+              { value: 'TODOS', label: <Space size={5}><UnorderedListOutlined />Todos ({alumnos.length})</Space> },
+              { value: 'PENDIENTES', label: <Space size={5}><ClockCircleOutlined />Pendientes ({progresoResumen.totalAlumnos - progresoResumen.completadosCount})</Space> },
+              { value: 'COMPLETOS', label: <Space size={5}><CheckCircleOutlined />Completos ({progresoResumen.completadosCount})</Space> },
             ]}
           />
 

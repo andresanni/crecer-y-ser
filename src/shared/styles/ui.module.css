@@ -17,6 +17,7 @@
 .page { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .pageSpacious { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .publicPage { display: flex; flex-direction: column; gap: 16px; width: 100%; padding: 24px 28px; }
+.operationalContent { width: 100%; max-width: 1080px; margin: 0 auto; }
 .emptyPanel { text-align: center; padding: 40px; border-radius: var(--cys-border-radius-lg); }
 .loadingPanel { text-align: center; padding: 60px; border-radius: var(--cys-border-radius-lg); }
 .fieldLabel { color: var(--cys-color-text-description); font-size: 12px; }
