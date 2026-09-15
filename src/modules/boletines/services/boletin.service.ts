@@ -723,7 +723,7 @@ export const boletinService = {
           fields: 'id,curso_id,estado',
         }),
       ]);
-      const tokens = tokenRecords.filter(accesoDocenteService.isUsable);
+      const tokens = tokenRecords;
       const deliveredCourseIds = new Set(
         workflowRecords
           .filter((workflow) => workflow.estado === 'CONTROL_DIRECTIVO')

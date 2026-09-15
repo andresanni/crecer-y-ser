@@ -4,7 +4,7 @@
 
 Las pantallas institucionales autenticadas leen las colecciones estándar mediante el SDK de PocketBase. Las escrituras de la planilla pasan por el gateway para aplicar el workflow y una transacción única. La ruta pública `/carga` no consume colecciones: usa exclusivamente el gateway definido en `pb_hooks`.
 
-La credencial docente viaja en `X-CYS-Teacher-Token`. Las respuestas del gateway llevan `Cache-Control: no-store`. El secreto se entrega una sola vez al emitir o regenerar un enlace; PocketBase conserva SHA-256 y un prefijo administrativo.
+La credencial docente viaja en `X-CYS-Teacher-Token`. Las respuestas del gateway llevan `Cache-Control: no-store`. PocketBase conserva SHA-256 para validación, un prefijo administrativo y una copia cifrada que sólo puede recuperar una sesión institucional.
 
 ## Rutas docentes
 
@@ -57,7 +57,7 @@ Los enlaces legados que tengan `materia_id` informado no pueden usar el gateway.
 
 Valida dentro de una transacción que el curso tenga alumnos y materias, que cada alumno activo del ciclo posea todas las materias completas y que tenga cierre del período. Las materias formativas identificadas como conducta no exigen calificación general, pero sí todos sus criterios configurados.
 
-Si la carga está incompleta responde `422` con totales y alumnos pendientes. Si está completa cambia la instancia a `CONTROL_DIRECTIVO`, registra fecha y docente, incrementa la revisión y desactiva todas las credenciales del curso y período en la misma transacción.
+Si la carga está incompleta responde `422` con totales y alumnos pendientes. Si está completa cambia la instancia a `CONTROL_DIRECTIVO`, registra fecha y docente, incrementa la revisión y elimina la llave del curso y período en la misma transacción.
 
 ## Rutas institucionales para enlaces
 
@@ -65,17 +65,17 @@ Estas rutas exigen una sesión de la colección `users`.
 
 ### `POST /api/cys/enlaces-docentes`
 
-Emite un enlace sin vencimiento calendario y devuelve el secreto sólo en esta respuesta. El acceso termina por desactivación, eliminación o entrega del bimestre.
+Emite un enlace sin vencimiento calendario, reemplaza cualquier llave previa del mismo curso y período y devuelve el secreto. El acceso termina por reemplazo, eliminación o entrega del bimestre.
 
 ### `POST /api/cys/enlaces-docentes/:tokenId/rotar`
 
-Reemplaza el secreto, reactiva el acceso y devuelve el nuevo secreto sólo en esta respuesta. El enlace anterior queda invalidado inmediatamente.
+Reemplaza el secreto de la llave vigente y devuelve el nuevo secreto. El enlace anterior queda invalidado inmediatamente.
 
-### `PATCH /api/cys/enlaces-docentes/:tokenId/estado`
+### `POST /api/cys/enlaces-docentes/:tokenId/recuperar`
 
-Activa o desactiva una credencial. La activación sólo es válida mientras la instancia esté en `BORRADOR_DOCENTE` y desactiva cualquier otra credencial vigente del mismo curso y período.
+Devuelve el secreto vigente sin rotarlo únicamente cuando el registro existe y la instancia continúa en `BORRADOR_DOCENTE`. Los enlaces creados antes de incorporar el cifrado requieren una única regeneración.
 
-La lista y eliminación usan la colección estándar `tokens_acceso_docente` con sesión institucional. La activación y desactivación pasan por el gateway para respetar el workflow. Las respuestas posteriores sólo contienen el hash y el prefijo, nunca un enlace reutilizable.
+La lista y eliminación usan la colección estándar `tokens_acceso_docente` con sesión institucional. No existe un endpoint de activación ni un campo `activo`: la vigencia se representa mediante la existencia de una única llave por curso y período. El antiguo `PATCH /api/cys/enlaces-docentes/:tokenId/estado` fue retirado y debe responder `404`. Las respuestas posteriores sólo contienen el hash, el prefijo y la disponibilidad de recuperación, nunca el secreto en texto plano.
 
 ## Rutas institucionales para la planilla
 
@@ -93,7 +93,7 @@ No existen rutas institucionales para devolver una entrega, cerrar la instancia 
 
 ## Respuestas de autorización
 
-- `401`: enlace ausente, inválido, vencido o revocado.
+- `401`: enlace ausente, inválido, reemplazado o eliminado.
 - `403`: el registro o la operación está fuera del alcance concedido.
 - `400`: referencias o valores inválidos.
 - `422`: el bimestre todavía tiene alumnos, materias o cierres pendientes.

@@ -12,6 +12,7 @@ Restart=always
 RestartSec=5s
 StandardOutput=journal
 StandardError=journal
+EnvironmentFile=/root/pb/teacher-link.env
 ExecStart=/root/pb/pocketbase serve --http=127.0.0.1:8090 --dir=/root/pb/pb_data --hooksDir=/root/pb/pb_hooks --migrationsDir=/root/pb/pb_migrations --automigrate=true
 
 [Install]

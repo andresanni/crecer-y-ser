@@ -7,14 +7,14 @@ Validar la persistencia progresiva docente, la transferencia unidireccional y ex
 ## Preparación
 
 - Desplegar juntas las migraciones y `pb_hooks` versionados.
-- Confirmar PocketBase activo, HTTPS correcto y un backup reciente.
+- Confirmar PocketBase operativo, HTTPS correcto y un backup reciente.
 - Usar un curso de prueba del ciclo vigente con materias, criterios, escala y al menos dos alumnos activos.
 - Mantener una sesión institucional abierta y usar una ventana privada para la docente.
 - Registrar curso, período, instancia, revisión y prefijo de cada credencial. No registrar secretos completos.
 
 ## Última verificación técnica
 
-El 15 de septiembre de 2026 la migración unidireccional se aplicó sobre una copia aislada que incluía una instancia histórica `CERRADO`. Luego se desplegó en el VPS con backup previo. Se verificaron el health check, los hashes de hooks y migración, el selector limitado a `BORRADOR_DOCENTE` y `CONTROL_DIRECTIVO`, la ausencia de `cerrado_at` y `cerrado_por` y respuestas `404` en las dos rutas retiradas. El recorrido funcional de interfaz y la matriz de concurrencia permanecen como siguiente prueba de regresión.
+El 15 de septiembre de 2026 se desplegaron en el VPS las migraciones unidireccionales, de recuperación cifrada y de eliminación del estado propio del enlace, siempre con backup previo. Se verificaron el health check, el selector limitado a `BORRADOR_DOCENTE` y `CONTROL_DIRECTIVO`, la ausencia de `cerrado_at`, `cerrado_por` y `activo`, el índice único de llave por curso y período, cero alcances duplicados y respuestas `404` en las rutas retiradas. El recorrido funcional de interfaz y la matriz de concurrencia permanecen como siguiente prueba de regresión.
 
 ## Matriz funcional
 
@@ -23,7 +23,7 @@ El 15 de septiembre de 2026 la migración unidireccional se aplicó sobre una co
 1. Seleccionar un curso y bimestre sin instancia.
 2. Confirmar que el editor institucional no se renderiza.
 3. Emitir un enlace de curso completo.
-4. Confirmar `BORRADOR_DOCENTE`, revisión inicial y una sola credencial activa.
+4. Confirmar `BORRADOR_DOCENTE`, revisión inicial y una sola llave para el alcance.
 5. Confirmar que no existe selector de materia.
 
 ### 2. Guardado progresivo
@@ -35,6 +35,9 @@ El 15 de septiembre de 2026 la migración unidireccional se aplicó sobre una co
 5. Confirmar que cada guardado incrementa la revisión sin exigir completar el curso.
 6. Eliminar la credencial y confirmar que el curso aparece `Pausado`, conserva las respuestas y ofrece `Reanudar`.
 7. Emitir un enlace nuevo y confirmar que reaparece `En progreso` con el avance anterior.
+8. Copiar nuevamente el mismo enlace desde el gestor y confirmar que el secreto no cambia y que ambos accesos apuntan al mismo borrador.
+9. Regenerar la llave, comprobar que el enlace anterior recibe `401` y que el nuevo conserva el mismo avance.
+10. Confirmar que el gestor no muestra un interruptor activo/inactivo.
 
 ### 3. Exclusión del equipo directivo
 
@@ -54,7 +57,7 @@ El 15 de septiembre de 2026 la migración unidireccional se aplicó sobre una co
 1. Completar todas las materias, criterios y cierres de los alumnos activos.
 2. Guardar cualquier cambio pendiente y enviar el bimestre.
 3. Confirmar `CONTROL_DIRECTIVO`, fecha, docente y revisión incrementada.
-4. Confirmar que el enlace queda revocado y que las solicitudes posteriores reciben `401` o `403`.
+4. Confirmar que la llave queda eliminada y que las solicitudes posteriores reciben `401` o `403`.
 5. Actualizar la pantalla institucional y comprobar que aparece la revisión.
 
 ### 6. Corrección institucional
@@ -69,8 +72,9 @@ El 15 de septiembre de 2026 la migración unidireccional se aplicó sobre una co
 
 1. Confirmar que no aparecen acciones para solicitar correcciones, cerrar o reabrir el bimestre.
 2. Comprobar que las antiguas rutas institucionales de transición y devolución responden `404`.
-3. Intentar reactivar una credencial del alcance entregado y comprobar que el gateway la rechaza.
-4. Confirmar que el único estado posterior al envío es `CONTROL_DIRECTIVO`.
+3. Intentar emitir una llave para el alcance entregado y comprobar que el gateway la rechaza.
+4. Consultar el antiguo endpoint `PATCH /api/cys/enlaces-docentes/:tokenId/estado` y comprobar `404`.
+5. Confirmar que el único estado posterior al envío es `CONTROL_DIRECTIVO`.
 
 ### 8. Compatibilidad de migración
 
@@ -78,6 +82,7 @@ El 15 de septiembre de 2026 la migración unidireccional se aplicó sobre una co
 2. Confirmar que queda en `CONTROL_DIRECTIVO` con revisión incrementada.
 3. Confirmar que el selector de estado sólo admite `BORRADOR_DOCENTE` y `CONTROL_DIRECTIVO`.
 4. Confirmar que `cerrado_at` y `cerrado_por` ya no existen.
+5. Confirmar que `tokens_acceso_docente` no contiene `activo` y sí el índice único `idx_tokens_acceso_docente_scope`.
 
 ## Matriz de concurrencia
 

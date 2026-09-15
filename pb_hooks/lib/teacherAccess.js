@@ -23,8 +23,16 @@ function noStore(c) {
   c.response().header().set("Pragma", "no-cache")
 }
 
+function teacherLinkKey() {
+  var key = $os.getenv("CYS_TEACHER_LINK_KEY")
+  if (!key || key.length !== 32) {
+    throw new InternalServerError("La clave de enlaces docentes no está configurada.")
+  }
+  return key
+}
+
 function validateAccessRecord(record) {
-  if (!record || !record.getBool("activo")) {
+  if (!record) {
     throw new UnauthorizedError("El enlace no es válido o ya no está disponible.")
   }
 
@@ -119,18 +127,17 @@ function ensureDraftWorkflow(dao, courseId, periodId) {
   return workflow
 }
 
-function deactivateOtherTokens(dao, courseId, periodId, exceptId) {
+function deleteOtherTokens(dao, courseId, periodId, exceptId) {
   var tokens = findByFilter(
     dao,
     "tokens_acceso_docente",
-    "curso_id = {:courseId} && periodo_id = {:periodId} && activo = true",
+    "curso_id = {:courseId} && periodo_id = {:periodId}",
     "",
     { courseId: courseId, periodId: periodId }
   )
   tokens.forEach((token) => {
     if (token.getId() === exceptId) return
-    token.set("activo", false)
-    dao.saveRecord(token)
+    dao.deleteRecord(token)
   })
 }
 
@@ -203,7 +210,7 @@ function tokenDto(record) {
     cursoId: record.getString("curso_id"),
     periodoId: record.getString("periodo_id"),
     docenteNombre: record.getString("docente_nombre"),
-    activo: record.getBool("activo")
+    recuperable: Boolean(record.getString("token_cifrado"))
   }
 }
 
@@ -668,7 +675,7 @@ function submitPeriod(c) {
     workflow.set("enviado_at", new Date().toISOString())
     workflow.set("enviado_por", transactionalAccess.getString("docente_nombre"))
     txDao.saveRecord(workflow)
-    deactivateOtherTokens(
+    deleteOtherTokens(
       txDao,
       transactionalAccess.getString("curso_id"),
       transactionalAccess.getString("periodo_id"),
@@ -708,13 +715,12 @@ function issue(c) {
   var response
   $app.dao().runInTransaction((txDao) => {
     ensureDraftWorkflow(txDao, course.getId(), period.getId())
-    deactivateOtherTokens(txDao, course.getId(), period.getId(), "")
+    deleteOtherTokens(txDao, course.getId(), period.getId(), "")
     var record = new Record(txDao.findCollectionByNameOrId("tokens_acceso_docente"))
     var secret = assignSecret(record)
     record.set("curso_id", course.getId())
     record.set("periodo_id", period.getId())
     record.set("docente_nombre", teacherName)
-    record.set("activo", true)
     txDao.saveRecord(record)
     response = {
       enlace: tokenDto(record),
@@ -733,7 +739,27 @@ function assignSecret(record) {
   record.set("token", hash)
   record.set("token_hash", hash)
   record.set("token_prefijo", secret.slice(0, 12))
+  record.set("token_cifrado", $security.encrypt(secret, teacherLinkKey()))
   return secret
+}
+
+function recover(c) {
+  noStore(c)
+  var record = requireRecord($app.dao(), "tokens_acceso_docente", c.pathParam("tokenId"))
+  validateAccessRecord(record)
+  requireDraftWorkflow($app.dao(), record)
+  var cipherText = record.getString("token_cifrado")
+  if (!cipherText) {
+    throw new BadRequestError("Este enlace legado debe regenerarse una vez antes de poder copiarlo.")
+  }
+  var secret = $security.decrypt(cipherText, teacherLinkKey())
+  if (typeof secret !== "string" || $security.sha256(secret) !== record.getString("token_hash")) {
+    throw new InternalServerError("No se pudo recuperar el enlace docente.")
+  }
+  return c.json(200, {
+    secreto: secret,
+    tokenPrefijo: record.getString("token_prefijo")
+  })
 }
 
 function rotate(c) {
@@ -745,48 +771,19 @@ function rotate(c) {
       throw new BadRequestError("El enlace por materia debe reemplazarse por uno de curso completo.")
     }
     requireDraftWorkflow(txDao, record)
-    deactivateOtherTokens(
+    deleteOtherTokens(
       txDao,
       record.getString("curso_id"),
       record.getString("periodo_id"),
       record.getId()
     )
     var secret = assignSecret(record)
-    record.set("activo", true)
     txDao.saveRecord(record)
     response = {
       enlace: tokenDto(record),
       tokenPrefijo: record.getString("token_prefijo"),
       secreto: secret
     }
-  })
-  return c.json(200, response)
-}
-
-function setTokenState(c) {
-  noStore(c)
-  var body = new DynamicModel({ activo: false })
-  c.bind(body)
-  var data = JSON.parse(JSON.stringify(body))
-  var response
-  $app.dao().runInTransaction((txDao) => {
-    var record = requireRecord(txDao, "tokens_acceso_docente", c.pathParam("tokenId"))
-    var active = data.activo === true
-    if (active) {
-      if (record.getString("materia_id")) {
-        throw new BadRequestError("El enlace por materia debe reemplazarse por uno de curso completo.")
-      }
-      requireDraftWorkflow(txDao, record)
-      deactivateOtherTokens(
-        txDao,
-        record.getString("curso_id"),
-        record.getString("periodo_id"),
-        record.getId()
-      )
-    }
-    record.set("activo", active)
-    txDao.saveRecord(record)
-    response = tokenDto(record)
   })
   return c.json(200, response)
 }
@@ -800,5 +797,5 @@ module.exports = {
   submitPeriod: submitPeriod,
   issue: issue,
   rotate: rotate,
-  setTokenState: setTokenState
+  recover: recover
 }

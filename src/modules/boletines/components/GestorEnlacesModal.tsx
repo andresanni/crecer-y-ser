@@ -12,7 +12,6 @@ import {
   Table,
   Space,
   Tag,
-  Switch,
   Typography,
   App,
   Tooltip,
@@ -115,7 +114,12 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
         periodoNombre: periodo?.nombre,
         numeroPeriodo: periodo?.numeroPeriodo,
       };
-      setTokens((current) => [issued, ...current]);
+      setTokens((current) => [
+        issued,
+        ...current.filter((item) => (
+          item.cursoId !== issued.cursoId || item.periodoId !== issued.periodoId
+        )),
+      ]);
       if (issued.secreto) {
         await showIssuedLink(issued.secreto, 'Enlace docente generado');
       }
@@ -125,20 +129,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       message.error('Error al generar enlace docente');
     } finally {
       setCreating(false);
-    }
-  };
-
-
-  const handleToggleActivo = async (tokenItem: TokenAccesoDocente, activo: boolean) => {
-    try {
-      await accesoDocenteService.setActive(tokenItem.id, activo);
-      message.success(`Enlace ${activo ? 'activado' : 'desactivado'} correctamente`);
-      setTokens((prev) =>
-        prev.map((t) => (t.id === tokenItem.id ? { ...t, activo } : t))
-      );
-    } catch (err) {
-      console.error(err);
-      message.error('Error al actualizar estado del enlace');
     }
   };
 
@@ -170,16 +160,31 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     }
   };
 
-  const handleCopyLink = async (tokenStr: string) => {
-    const copied = await copyLink(tokenStr);
-    if (copied) {
+  const recoverSecret = async (tokenItem: TokenAccesoDocente) => {
+    if (tokenItem.secreto) return tokenItem.secreto;
+    const secret = await accesoDocenteService.recover(tokenItem.id);
+    setTokens((current) => current.map((item) => (
+      item.id === tokenItem.id ? { ...item, secreto: secret, recuperable: true } : item
+    )));
+    return secret;
+  };
+
+  const handleCopyLink = async (tokenItem: TokenAccesoDocente) => {
+    try {
+      const tokenStr = await recoverSecret(tokenItem);
+      const copied = await copyLink(tokenStr);
+      if (!copied) {
+        message.error('No se pudo copiar el enlace al portapapeles.');
+        return;
+      }
       message.success({
         content: '¡Enlace copiado al portapapeles!',
         icon: <CheckCircleOutlined className={styles.successIcon} />,
       });
-      return;
+    } catch (err) {
+      console.error(err);
+      message.error('No se pudo recuperar el enlace');
     }
-    message.error('No se pudo copiar el enlace. Regeneralo para volver a mostrarlo.');
   };
 
   const showIssuedLink = async (tokenStr: string, title: string) => {
@@ -195,7 +200,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
               : 'Copiá el enlace desde esta ventana antes de cerrarla.'}
           </Typography.Text>
           <Typography.Text type="secondary">
-            El secreto no podrá consultarse nuevamente.
+            Podrás volver a copiar este enlace desde el gestor mientras sea la llave vigente.
           </Typography.Text>
           <Typography.Text copyable={{ text: url }}>{url}</Typography.Text>
         </Space>
@@ -205,16 +210,17 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
   };
 
 
-  const handleShareWhatsApp = (tokenItem: TokenAccesoDocente) => {
-    if (!tokenItem.secreto) {
-      message.warning('Regenerá el enlace antes de compartirlo. El secreto original no se almacena.');
-      return;
+  const handleShareWhatsApp = async (tokenItem: TokenAccesoDocente) => {
+    try {
+      const secret = await recoverSecret(tokenItem);
+      const url = getMagicLinkUrl(secret);
+      const text = `Hola ${tokenItem.docenteNombre || 'Docente'}, te compartimos el enlace para la carga completa de calificaciones de ${tokenItem.cursoNombre || 'tu curso'} (${tokenItem.periodoNombre || 'período activo'}) en el Colegio Crecer y Ser:\n\n🔗 ${url}\n\nEste enlace es personal y de acceso directo sin contraseñas.`;
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(whatsappUrl, '_blank');
+    } catch (err) {
+      console.error(err);
+      message.error('No se pudo recuperar el enlace');
     }
-    const url = getMagicLinkUrl(tokenItem.secreto);
-    const text = `Hola ${tokenItem.docenteNombre || 'Docente'}, te compartimos el enlace para la carga completa de calificaciones de ${tokenItem.cursoNombre || 'tu curso'} (${tokenItem.periodoNombre || 'período activo'}) en el Colegio Crecer y Ser:\n\n🔗 ${url}\n\nEste enlace es personal y de acceso directo sin contraseñas.`;
-
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-    window.open(whatsappUrl, '_blank');
   };
 
   const handleRotateToken = async (tokenItem: TokenAccesoDocente) => {
@@ -263,31 +269,18 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       ),
     },
     {
-      title: 'Activo',
-      key: 'activo',
-      align: 'center',
-      render: (_, record) => (
-        <Switch
-          size="small"
-          checked={record.activo}
-          onChange={(checked) => handleToggleActivo(record, checked)}
-          aria-label={`${record.activo ? 'Desactivar' : 'Activar'} enlace de ${record.docenteNombre || 'docente'}`}
-        />
-      ),
-    },
-    {
       title: 'Acciones',
       key: 'acciones',
       align: 'center',
       render: (_, record) => (
         <Space size={6}>
-          {record.secreto ? (
+          {record.secreto || record.recuperable ? (
             <>
               <Tooltip title="Copiar enlace directo">
                 <Button
                   size="small"
                   icon={<CopyOutlined />}
-                  onClick={() => handleCopyLink(record.secreto!)}
+                  onClick={() => void handleCopyLink(record)}
                   aria-label={`Copiar enlace de ${record.docenteNombre || 'docente'}`}
                 />
               </Tooltip>
@@ -295,7 +288,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
                 <Button
                   size="small"
                   icon={<WhatsAppOutlined className={styles.successIcon} />}
-                  onClick={() => handleShareWhatsApp(record)}
+                  onClick={() => void handleShareWhatsApp(record)}
                   aria-label={`Compartir enlace de ${record.docenteNombre || 'docente'} por WhatsApp`}
                 />
               </Tooltip>
@@ -427,13 +420,13 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
           </Form>
         </Card>
 
-        <section className={styles.listSection} aria-labelledby="enlaces-emitidos-title">
+        <section className={styles.listSection} aria-labelledby="enlaces-disponibles-title">
           <div className={styles.listHeader}>
-            <Typography.Text id="enlaces-emitidos-title" strong className={styles.listTitle}>
-              Enlaces emitidos ({tokens.length})
+            <Typography.Text id="enlaces-disponibles-title" strong className={styles.listTitle}>
+              Enlaces disponibles ({tokens.length})
             </Typography.Text>
             <Typography.Text type="secondary" className={styles.listHint}>
-              Desactivar un enlace bloquea el acceso docente inmediatamente.
+              Regenerar reemplaza la llave anterior sin perder el avance de la carga.
             </Typography.Text>
           </div>
 
@@ -445,7 +438,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
             columns={columns}
             scroll={{ x: 720 }}
             pagination={{ pageSize: 5, showSizeChanger: false, hideOnSinglePage: true }}
-            locale={{ emptyText: 'Todavía no hay enlaces de carga emitidos.' }}
+            locale={{ emptyText: 'Todavía no hay enlaces de carga disponibles.' }}
           />
         </section>
       </div>

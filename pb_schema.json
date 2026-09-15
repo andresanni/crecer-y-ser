@@ -1284,6 +1284,20 @@
       },
       {
         "system": false,
+        "id": "tkcipher01",
+        "name": "token_cifrado",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1024,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
         "id": "q1vuj2a3",
         "name": "curso_id",
         "type": "relation",
@@ -1343,20 +1357,11 @@
           "max": null,
           "pattern": ""
         }
-      },
-      {
-        "system": false,
-        "id": "wqajzq8l",
-        "name": "activo",
-        "type": "bool",
-        "required": false,
-        "presentable": false,
-        "unique": false,
-        "options": {}
       }
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX `idx_tokens_acceso_docente_token_hash` ON `tokens_acceso_docente` (`token_hash`) WHERE `token_hash` != ''"
+      "CREATE UNIQUE INDEX `idx_tokens_acceso_docente_token_hash` ON `tokens_acceso_docente` (`token_hash`) WHERE `token_hash` != ''",
+      "CREATE UNIQUE INDEX `idx_tokens_acceso_docente_scope` ON `tokens_acceso_docente` (`curso_id`, `periodo_id`) WHERE `curso_id` != '' AND `periodo_id` != ''"
     ],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",

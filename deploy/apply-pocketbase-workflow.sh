@@ -13,6 +13,12 @@ test -f "$stage_dir/teacher_access.pb.js"
 test -f "$stage_dir/1789342800_created_gradebook_workflows.js"
 test -f "$stage_dir/1789346400_simplified_unidirectional_gradebook_workflow.js"
 test -f "$stage_dir/1789471993_removed_teacher_access_expiration.js"
+test -f "$stage_dir/1789474000_added_recoverable_teacher_links.js"
+test -f "$stage_dir/1789477600_removed_teacher_link_state.js"
+test -f "$stage_dir/pocketbase.service"
+test -s /root/pb/teacher-link.env
+test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
+grep -q '^CYS_TEACHER_LINK_KEY=................................$' /root/pb/teacher-link.env
 
 backup_dir="/root/pb/deploy_backups/$release_id"
 install -d -m 0700 "$backup_dir"
@@ -36,6 +42,13 @@ fi
 if test -f /root/pb/pb_migrations/1789471993_removed_teacher_access_expiration.js; then
   cp -a /root/pb/pb_migrations/1789471993_removed_teacher_access_expiration.js "$backup_dir/"
 fi
+if test -f /root/pb/pb_migrations/1789474000_added_recoverable_teacher_links.js; then
+  cp -a /root/pb/pb_migrations/1789474000_added_recoverable_teacher_links.js "$backup_dir/"
+fi
+if test -f /root/pb/pb_migrations/1789477600_removed_teacher_link_state.js; then
+  cp -a /root/pb/pb_migrations/1789477600_removed_teacher_link_state.js "$backup_dir/"
+fi
+cp -a /etc/systemd/system/pocketbase.service "$backup_dir/pocketbase.service"
 
 install -d -m 0755 /root/pb/pb_hooks/lib /root/pb/pb_migrations
 install -m 0644 "$stage_dir/teacherAccess.js" /root/pb/pb_hooks/lib/teacherAccess.js
@@ -43,6 +56,10 @@ install -m 0644 "$stage_dir/teacher_access.pb.js" /root/pb/pb_hooks/teacher_acce
 install -m 0644 "$stage_dir/1789342800_created_gradebook_workflows.js" /root/pb/pb_migrations/1789342800_created_gradebook_workflows.js
 install -m 0644 "$stage_dir/1789346400_simplified_unidirectional_gradebook_workflow.js" /root/pb/pb_migrations/1789346400_simplified_unidirectional_gradebook_workflow.js
 install -m 0644 "$stage_dir/1789471993_removed_teacher_access_expiration.js" /root/pb/pb_migrations/1789471993_removed_teacher_access_expiration.js
+install -m 0644 "$stage_dir/1789474000_added_recoverable_teacher_links.js" /root/pb/pb_migrations/1789474000_added_recoverable_teacher_links.js
+install -m 0644 "$stage_dir/1789477600_removed_teacher_link_state.js" /root/pb/pb_migrations/1789477600_removed_teacher_link_state.js
+install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
+systemctl daemon-reload
 
 systemctl start pocketbase
 trap - EXIT

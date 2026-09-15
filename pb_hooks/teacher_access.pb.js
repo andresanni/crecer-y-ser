@@ -38,7 +38,7 @@ routerAdd("POST", "/api/cys/enlaces-docentes/:tokenId/rotar", (c) => {
   return access.rotate(c)
 }, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
 
-routerAdd("PATCH", "/api/cys/enlaces-docentes/:tokenId/estado", (c) => {
+routerAdd("POST", "/api/cys/enlaces-docentes/:tokenId/recuperar", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
-  return access.setTokenState(c)
+  return access.recover(c)
 }, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))

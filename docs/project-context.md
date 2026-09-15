@@ -15,7 +15,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 - Portal de boletines con constructor curricular, materias, criterios y períodos.
 - Carga de calificaciones, asistencias, observaciones y apoyos por alumno.
 - Tablero unificado de carga, avance y revisión por curso.
-- Workflow de boletines con enlaces docentes revocables, guardado progresivo, envío completo y control institucional exclusivo.
+- Workflow de boletines con enlaces docentes descartables, guardado progresivo, envío completo y control institucional exclusivo.
 - Landing institucional y temas claro/oscuro.
 
 ## Stack vigente
@@ -64,11 +64,13 @@ La carga institucional y la carga por enlace comparten el editor de boletín y s
 | `BORRADOR_DOCENTE` | Docente mediante enlace vigente | Envío completo a dirección |
 | `CONTROL_DIRECTIVO` | Usuario institucional autenticado | Estado terminal con revisión y corrección |
 
-El guardado docente es progresivo, pero el envío es atómico y sólo ocurre cuando el servidor verifica la completitud de todo el curso. El traspaso revoca inmediatamente las credenciales docentes y no puede revertirse. Dirección recibe una revisión de solo lectura y corrige de forma atómica por materia: sólo una puede editarse por vez y sus acciones de guardado o descarte permanecen en la tarjeta correspondiente. La interfaz nunca monta dos formularios editables a la vez y las colecciones de notas, criterios y cierres no admiten escrituras directas desde clientes.
+El guardado docente es progresivo, pero el envío es atómico y sólo ocurre cuando el servidor verifica la completitud de todo el curso. El traspaso elimina inmediatamente la llave docente y no puede revertirse. Dirección recibe una revisión de solo lectura y corrige de forma atómica por materia: sólo una puede editarse por vez y sus acciones de guardado o descarte permanecen en la tarjeta correspondiente. La interfaz nunca monta dos formularios editables a la vez y las colecciones de notas, criterios y cierres no admiten escrituras directas desde clientes.
 
-Las migraciones de workflow, los hooks y las reglas están versionados con el proyecto y desplegados en el VPS. `1789346400_simplified_unidirectional_gradebook_workflow.js` reduce la máquina a sus dos estados vigentes, migra cualquier registro histórico cerrado a control directivo y elimina los campos de cierre obsoletos. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
+Las migraciones de workflow, los hooks y las reglas están versionados con el proyecto y desplegados en el VPS. `1789346400_simplified_unidirectional_gradebook_workflow.js` reduce la máquina a sus dos estados vigentes, `1789474000_added_recoverable_teacher_links.js` incorpora la recuperación cifrada y `1789477600_removed_teacher_link_state.js` elimina `activo` y garantiza una llave única por alcance. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
 
-Los enlaces no tienen vencimiento calendario. Permanecen activos durante el borrador hasta que dirección los desactiva o elimina, o hasta que la entrega atómica revoca todo acceso docente del curso y período.
+Los enlaces no tienen vencimiento ni estado activo/inactivo. Existe como máximo una llave por curso y período: eliminarla corta el acceso y regenerarla reemplaza inmediatamente el secreto anterior sin afectar el borrador. La entrega atómica elimina la llave vigente.
+
+Los secretos nuevos conservan SHA-256 para autenticación y una copia AES-256-GCM para recuperación institucional. El gestor puede copiar o compartir nuevamente la llave vigente sin rotarla; la clave de cifrado vive exclusivamente en el VPS. Los enlaces anteriores a esta arquitectura requieren una única regeneración.
 
 ## Arquitectura UX/UI
 
@@ -80,7 +82,7 @@ El producto es desktop first para equipos escolares, con validación prioritaria
 
 La sección institucional `Carga de notas` concentra el seguimiento y la operación por curso. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
 
-El tablero distingue el avance académico del control operativo. `Completado` exige una entrega en `CONTROL_DIRECTIVO`; `En progreso` indica un borrador con credencial activa y `Pausado` identifica respuestas parciales sin acceso docente vigente. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
+El tablero distingue el avance académico del control operativo. `Completado` exige una entrega en `CONTROL_DIRECTIVO`; `En progreso` indica un borrador con una llave emitida y `Pausado` identifica respuestas parciales sin llave docente. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
 
 ## Estado de calidad
 
@@ -89,5 +91,6 @@ El tablero distingue el avance académico del control operativo. `Completado` ex
 - Advertencia conocida: el bundle principal supera 500 kB minificado; requiere una estrategia posterior de partición de código.
 - La modernización UX/UI fue aprobada y fusionada en `master`.
 - El workflow unidireccional fue validado sobre una copia aislada y desplegado; el servicio, el esquema de dos estados y la ausencia de rutas de retorno fueron verificados en el VPS.
+- La recuperación cifrada y el modelo de llave única sin `activo` están desplegados; el índice de alcance y la retirada del endpoint de estado fueron verificados en el VPS.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.

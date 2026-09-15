@@ -36,7 +36,7 @@ interface TeacherAccessDto {
   cursoId: string;
   periodoId: string;
   docenteNombre: string;
-  activo: boolean;
+  recuperable: boolean;
 }
 
 interface TeacherContextDto {
@@ -104,6 +104,11 @@ interface IssuedTeacherAccessDto {
   enlace: TeacherAccessDto;
   tokenPrefijo: string;
   secreto: string;
+}
+
+interface RecoveredTeacherAccessDto {
+  secreto: string;
+  tokenPrefijo: string;
 }
 
 interface TeacherSubmissionDto {
@@ -281,14 +286,12 @@ const mapIssuedAccess = (response: IssuedTeacherAccessDto): TokenAccesoDocente =
   cursoId: response.enlace.cursoId,
   periodoId: response.enlace.periodoId,
   docenteNombre: response.enlace.docenteNombre,
-  activo: response.enlace.activo,
+  recuperable: response.enlace.recuperable,
   createdAt: '',
   updatedAt: '',
 });
 
 export const accesoDocenteService = {
-  isUsable: (token: TokenAccesoDocente): boolean => token.activo,
-
   list: async (cursoId?: string, periodoId?: string): Promise<TokenAccesoDocente[]> => {
     const conditions: string[] = [];
     if (cursoId) conditions.push(pb.filter('curso_id = {:cursoId}', { cursoId }));
@@ -318,15 +321,12 @@ export const accesoDocenteService = {
     return mapIssuedAccess(response);
   },
 
-  setActive: async (tokenId: string, active: boolean): Promise<void> => {
-    await pb.send<TeacherAccessDto>(
-      `/api/cys/enlaces-docentes/${tokenId}/estado`,
-      {
-        method: 'PATCH',
-        body: { activo: active },
-        requestKey: null,
-      },
+  recover: async (tokenId: string): Promise<string> => {
+    const response = await pb.send<RecoveredTeacherAccessDto>(
+      `/api/cys/enlaces-docentes/${tokenId}/recuperar`,
+      { method: 'POST', requestKey: null },
     );
+    return response.secreto;
   },
 
   delete: async (tokenId: string): Promise<void> => {
@@ -341,7 +341,7 @@ export const accesoDocenteService = {
       cursoId: dto.acceso.cursoId,
       periodoId: dto.acceso.periodoId,
       docenteNombre: dto.acceso.docenteNombre,
-      activo: dto.acceso.activo,
+      recuperable: dto.acceso.recuperable,
       cursoNombre: dto.curso.nombre,
       periodoNombre: dto.periodo.nombre,
       numeroPeriodo: dto.periodo.numeroPeriodo,

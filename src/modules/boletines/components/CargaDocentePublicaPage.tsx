@@ -43,7 +43,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
 
   const handleAccessDenied = useCallback(() => {
     setContext(null);
-    setError('El enlace fue desactivado o ya no está disponible.');
+    setError('El enlace ya no está disponible.');
   }, []);
 
   const handlePeriodSubmitted = useCallback((result: GradebookSubmissionResult) => {
@@ -64,7 +64,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
         console.error(requestError);
         setContext(null);
         setError(requestError instanceof TeacherAccessDeniedError
-          ? 'El enlace es inválido, fue desactivado o ya no está disponible.'
+          ? 'El enlace es inválido o ya no está disponible.'
           : 'No pudimos conectar con la planilla. Intentá nuevamente.');
       })
       .finally(() => {

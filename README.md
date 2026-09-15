@@ -17,7 +17,7 @@ Aplicación web de gestión escolar para alumnos, responsables, inscripciones, e
 - Inscripciones, responsables y datos de cursada.
 - Constructor de materias, criterios y períodos.
 - Carga y monitoreo de boletines con un editor compartido.
-- Enlaces revocables de curso completo, guardado docente progresivo y envío atómico a control directivo.
+- Una llave docente descartable por curso y período, guardado progresivo y envío atómico a control directivo.
 - Revisión y corrección institucional exclusiva después de la entrega docente.
 - Autenticación, actualización en tiempo real y temas claro/oscuro.
 

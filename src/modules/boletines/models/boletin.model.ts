@@ -452,11 +452,11 @@ export interface TokenAccesoDocenteRecord {
   token: string;
   token_hash?: string;
   token_prefijo?: string;
+  token_cifrado?: string;
   curso_id: string;
   periodo_id: string;
   materia_id?: string;
   docente_nombre: string;
-  activo: boolean;
   expand?: {
     curso_id?: CursoRecord;
     periodo_id?: PeriodoRecord;
@@ -512,7 +512,7 @@ export interface TokenAccesoDocente {
   cursoId: string;
   periodoId: string;
   docenteNombre: string;
-  activo: boolean;
+  recuperable: boolean;
   cursoNombre?: string;
   periodoNombre?: string;
   numeroPeriodo?: number;
@@ -526,7 +526,7 @@ export const tokenAccesoDocenteAdapter = (record: TokenAccesoDocenteRecord): Tok
   cursoId: record.curso_id || '',
   periodoId: record.periodo_id || '',
   docenteNombre: record.docente_nombre || '',
-  activo: Boolean(record.activo),
+  recuperable: Boolean(record.token_cifrado),
   cursoNombre: record.expand?.curso_id?.nombre,
   periodoNombre: record.expand?.periodo_id?.nombre,
   numeroPeriodo:

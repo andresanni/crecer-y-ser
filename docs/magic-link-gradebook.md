@@ -9,7 +9,7 @@ La bifurcación se resuelve en los bordes:
 - La ruta institucional aporta un tablero unificado por curso y período, navegación privada y una política de acceso completa.
 - La ruta pública valida el enlace, construye el contexto permitido y aporta una política de acceso docente.
 - `GradebookAccessPolicy` declara capacidades; el editor no infiere permisos a partir de la URL ni de la presencia de una sesión.
-- `accesoDocenteService` es el único responsable frontend de crear, listar, activar, revocar, eliminar y validar enlaces.
+- `accesoDocenteService` es el único responsable frontend de crear, listar, regenerar, recuperar, eliminar y validar enlaces.
 
 ## Alcance único
 
@@ -19,15 +19,29 @@ Cada enlace docente representa la carga completa de un curso y un período escol
 
 El guardado persiste únicamente los bloques modificados. Durante la etapa de borrador seguirá permitiendo que la docente avance en sesiones breves sin enviar el curso completo.
 
-La emisión y la rotación muestran el enlace en una ventana de resultado además de intentar copiarlo, evitando perder el secreto por una falsa confirmación del portapapeles.
+La emisión y la rotación muestran el enlace en una ventana de resultado. Mientras sea la llave vigente, dirección también puede recuperar el mismo secreto para copiarlo o compartirlo sin rotación.
 
-Antes de guardar desde una sesión docente se vuelve a validar el enlace. Si fue desactivado, eliminado o perdió el control por la entrega, el frontend descarta la operación y muestra que el acceso ya no está disponible. Los enlaces no tienen vencimiento calendario.
+Antes de guardar desde una sesión docente se vuelve a validar el enlace. Si fue reemplazado, eliminado o perdió el control por la entrega, el frontend descarta la operación y muestra que el acceso ya no está disponible. Los enlaces no tienen vencimiento calendario ni estado activo/inactivo.
+
+### Ciclo de vida de la llave
+
+| Operación | Efecto sobre la llave | Efecto sobre el borrador |
+| --- | --- | --- |
+| Copiar o compartir | Recupera el mismo secreto vigente; no crea ni rota registros | Ninguno |
+| Regenerar | Sustituye el secreto del registro e invalida inmediatamente el enlace anterior | Conserva todo el avance |
+| Emitir para un alcance que ya tiene llave | Elimina la llave anterior y crea una nueva dentro de la misma transacción | Conserva todo el avance |
+| Eliminar | Elimina el registro y corta el acceso docente | Conserva el avance y el tablero deriva `Pausado` si existen respuestas |
+| Entregar | Elimina la llave al transferir atómicamente a `CONTROL_DIRECTIVO` | Conserva las respuestas bajo control institucional |
+
+`tokens_acceso_docente` no contiene `activo`, fecha de vencimiento ni una máquina de estados propia. Un índice único sobre `curso_id + periodo_id` refuerza en la base que sólo haya una llave. La existencia del registro, la coincidencia del hash y `BORRADOR_DOCENTE` son las tres condiciones de acceso.
 
 ## Frontera de seguridad
 
-El gateway docente valida vigencia, revocación y alcance en cada lectura y escritura. La ruta `/carga` está implementada para consumir únicamente ese gateway mediante `GradebookDataSource`; nunca consulta colecciones académicas directamente. La migración final cierra las reglas anónimas generales y convierte los secretos legados a hash.
+El gateway docente valida existencia, secreto, workflow y alcance en cada lectura y escritura. La ruta `/carga` está implementada para consumir únicamente ese gateway mediante `GradebookDataSource`; nunca consulta colecciones académicas directamente. La migración final cierra las reglas anónimas generales y convierte los secretos legados a hash.
 
-El código completo fue validado contra PocketBase 0.22.17 en una copia aislada. Las migraciones de endurecimiento y workflow están aplicadas en el VPS; la simplificación unidireccional se desplegó el 15 de septiembre de 2026. Las verificaciones remotas confirmaron el esquema de dos estados, la ausencia de campos de cierre y la eliminación de las rutas institucionales de retorno.
+El hash continúa siendo la fuente de validación pública. Una copia AES-256-GCM permite la recuperación operativa exclusivamente mediante sesión institucional y una clave de 32 caracteres almacenada fuera del repositorio en el VPS. Una filtración aislada de la base no revela los enlaces reutilizables.
+
+El código completo fue validado contra PocketBase 0.22.17 en una copia aislada. Las migraciones de endurecimiento y workflow están aplicadas en el VPS; la simplificación unidireccional y la eliminación del estado propio del enlace se desplegaron el 15 de septiembre de 2026. Las verificaciones remotas confirmaron el esquema de dos estados del workflow, la ausencia de `activo`, la unicidad de la llave por alcance y la eliminación de las rutas obsoletas.
 
 La estrategia de migración y las operaciones manuales del VPS se detallan en `docs/pocketbase-magic-link-hardening.md`.
 
@@ -37,7 +51,7 @@ La estrategia de migración y las operaciones manuales del VPS se detallan en `d
 - Mantener shells separados para el equipo directivo y las docentes.
 - No incorporar condiciones visuales dispersas del tipo `esPublico`; toda diferencia funcional debe provenir de la política de acceso.
 - No confiar en filtros de interfaz para autorizar escrituras.
-- La revocación debe impedir el siguiente guardado aun cuando la página ya estuviera abierta.
+- El reemplazo o eliminación de la llave debe impedir el siguiente guardado aun cuando la página ya estuviera abierta.
 - Un enlace siempre debe cubrir exactamente un curso y un período escolar completos.
 - No convertir un enlace legado por materia en acceso de curso: debe permanecer rechazado hasta ser reemplazado.
 - Mantener seguimiento, gestión de enlaces y revisión dentro de `Carga de notas`; no reintroducir una sección institucional de monitoreo separada.
@@ -47,7 +61,7 @@ La estrategia de migración y las operaciones manuales del VPS se detallan en `d
 La carga usa una instancia única por curso y período con transferencia explícita de control:
 
 1. `BORRADOR_DOCENTE`: permite guardados parciales mediante el enlace y mantiene oculto el editor institucional para evitar concurrencia.
-2. `CONTROL_DIRECTIVO`: se alcanza mediante un envío completo y atómico, revoca el acceso docente y habilita de forma terminal la revisión y edición institucional.
+2. `CONTROL_DIRECTIVO`: se alcanza mediante un envío completo y atómico, elimina el acceso docente y habilita de forma terminal la revisión y edición institucional.
 
 Las calificaciones continúan en las colecciones académicas vigentes. El envío final valida integridad y cambia el estado de la instancia en una transacción; no duplica ni vuelve a copiar todas las respuestas.
 
@@ -55,7 +69,7 @@ Las calificaciones continúan en las colecciones académicas vigentes. El envío
 
 `instancias_carga_boletin` contiene una fila única por `curso_id + periodo_id`, protegida para lectura institucional y sin escritura directa desde el cliente. Al emitir el primer enlace se crea en `BORRADOR_DOCENTE`; los enlaces existentes reciben su instancia durante la migración.
 
-Cada guardado docente comprueba el estado dentro de la misma transacción e incrementa `revision`. Emitir, rotar o reactivar una credencial desactiva las demás credenciales del mismo curso y período.
+Cada guardado docente comprueba el estado dentro de la misma transacción e incrementa `revision`. Sólo puede existir una llave por curso y período; emitir una nueva elimina la anterior y rotar reemplaza el secreto del mismo registro.
 
 Eliminar la última credencial no elimina respuestas ni la instancia. Si el borrador contiene datos, el tablero lo clasifica como `Pausado` y ofrece `Reanudar`; un enlace nuevo recupera el mismo avance. `Completado` se reserva para instancias entregadas en `CONTROL_DIRECTIVO`, aunque un borrador haya alcanzado localmente el 100 %.
 
@@ -65,7 +79,7 @@ Esta base está desplegada y validada contra PocketBase 0.22.17. La comprobació
 
 La docente ve una única acción `Enviar bimestre completo`, habilitada cuando el progreso local informa que todos los alumnos están completos y no existen cambios sin guardar. Una confirmación explica que la acción transfiere el control y cierra el acceso.
 
-El servidor vuelve a calcular la completitud usando alumnos activos del ciclo lectivo del período, todas las materias y criterios configurados y el cierre de cada alumno. Si encuentra diferencias responde con los pendientes y mantiene `BORRADOR_DOCENTE`. Si la validación es correcta, el cambio a `CONTROL_DIRECTIVO`, la auditoría mínima y la revocación de credenciales ocurren atómicamente.
+El servidor vuelve a calcular la completitud usando alumnos activos del ciclo lectivo del período, todas las materias y criterios configurados y el cierre de cada alumno. Si encuentra diferencias responde con los pendientes y mantiene `BORRADOR_DOCENTE`. Si la validación es correcta, el cambio a `CONTROL_DIRECTIVO`, la auditoría mínima y la eliminación de la llave ocurren atómicamente.
 
 Después del envío la sesión actual muestra un comprobante y cualquier lectura o escritura posterior con el enlace queda rechazada.
 
@@ -79,10 +93,10 @@ Los apoyos anuales continúan físicamente en `inscripciones`, pero toda modific
 
 ## Transferencia unidireccional
 
-`CONTROL_DIRECTIVO` no tiene transición de salida. Una vez aceptado el envío, el servidor invalida las credenciales del alcance y ninguna operación institucional puede devolver la instancia a `BORRADOR_DOCENTE`, crear un acceso correctivo ni cerrar o reabrir el bimestre. Toda modificación posterior pertenece exclusivamente al equipo directivo.
+`CONTROL_DIRECTIVO` no tiene transición de salida. Una vez aceptado el envío, el servidor elimina la llave del alcance y ninguna operación institucional puede devolver la instancia a `BORRADOR_DOCENTE`, crear un acceso correctivo ni cerrar o reabrir el bimestre. Toda modificación posterior pertenece exclusivamente al equipo directivo.
 
 ## Aceptación
 
-La migración se validó sobre una copia aislada con una instancia histórica `CERRADO` y después se desplegó con backup. El recorrido funcional debe seguir validando que un envío incompleto devuelve `422` sin perder el borrador, que el guardado progresivo persiste, que el curso completo pasa a `CONTROL_DIRECTIVO`, que el enlace queda revocado y que dirección puede revisar y corregir sin que exista una ruta de regreso al acceso docente.
+La migración se validó sobre una copia aislada con una instancia histórica `CERRADO` y después se desplegó con backup. El recorrido funcional debe seguir validando que un envío incompleto devuelve `422` sin perder el borrador, que el guardado progresivo persiste, que el curso completo pasa a `CONTROL_DIRECTIVO`, que la llave queda eliminada y que dirección puede revisar y corregir sin que exista una ruta de regreso al acceso docente.
 
 La matriz reproducible y las pruebas de concurrencia pendientes de automatización están en `docs/gradebook-workflow-test-plan.md`.

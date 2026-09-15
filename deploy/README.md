@@ -13,6 +13,7 @@ Esta carpeta conserva la configuración reproducible del proceso y del proxy. Lo
 | Datos persistentes | `/root/pb/pb_data` |
 | Hooks | `/root/pb/pb_hooks` |
 | Migraciones | `/root/pb/pb_migrations` |
+| Secreto de cifrado | `/root/pb/teacher-link.env` |
 | Escucha interna | `127.0.0.1:8090` |
 
 La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. PocketBase no escucha en una interfaz pública; Caddy termina HTTPS y reenvía al loopback.
@@ -29,6 +30,8 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `docs/gradebook-workflow-test-plan.md`: matriz funcional, de seguridad y concurrencia posterior al despliegue.
 
 `pb_data`, los backups, los certificados y cualquier `.env` son estado operativo o secretos y no deben incorporarse al repositorio.
+
+`/root/pb/teacher-link.env` debe pertenecer a `root:root`, tener permisos `0600` y definir `CYS_TEACHER_LINK_KEY` con exactamente 32 caracteres. La unidad systemd lo carga mediante `EnvironmentFile`; perder esa clave impide recuperar enlaces existentes, aunque sus hashes continúan siendo válidos para autenticación.
 
 ## Despliegue
 
@@ -67,7 +70,7 @@ journalctl -u pocketbase -n 100 --no-pager
 systemctl show pocketbase -p ActiveState -p SubState -p ExecMainStatus -p ExecStart -p WorkingDirectory
 ```
 
-Además deben probarse un enlace activo, uno revocado, uno entregado y el rechazo de acceso anónimo a las colecciones protegidas. Nunca pegar secretos reales en logs, documentación o tickets.
+Además deben probarse la llave vigente, una llave reemplazada, una eliminada, una entrega completada y el rechazo de acceso anónimo a las colecciones protegidas. Nunca pegar secretos reales en logs, documentación o tickets.
 
 ## Recuperación
 
