@@ -26,12 +26,23 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `deploy/Caddyfile`: proxy vigente.
 - `docs/pocketbase-api.md`: contrato HTTP propio.
 - `docs/pocketbase-magic-link-hardening.md`: seguridad, pruebas y secuencia de migración.
+- `docs/gradebook-workflow-test-plan.md`: matriz funcional, de seguridad y concurrencia posterior al despliegue.
 
 `pb_data`, los backups, los certificados y cualquier `.env` son estado operativo o secretos y no deben incorporarse al repositorio.
 
 ## Despliegue
 
 Crear un backup consistente antes de cada despliegue. Luego copiar los artefactos a un directorio temporal del VPS, comparar hashes y ejecutar como `root`:
+
+Desde Windows, el flujo reproducible preferido es:
+
+```powershell
+.\deploy\publish-pocketbase.ps1
+```
+
+El publicador usa SSH en el puerto `22022`, crea un staging único, detiene PocketBase, respalda la base y los hooks vigentes en `/root/pb/deploy_backups/<fecha>`, instala exactamente las migraciones y los hooks del repositorio, reinicia el servicio y reintenta durante una ventana acotada hasta que el health check y la protección autenticada de las rutas nuevas respondan correctamente. Si el proceso se interrumpe mientras PocketBase está detenido, el script remoto intenta iniciarlo mediante su `trap` de salida.
+
+El procedimiento manual equivalente es:
 
 ```bash
 install -d -m 0755 /root/pb/pb_hooks/lib /root/pb/pb_migrations
@@ -60,4 +71,4 @@ Además deben probarse un enlace vigente, uno revocado, uno expirado y el rechaz
 
 ## Recuperación
 
-Si falla el arranque, revisar primero el journal y conservar intacto el backup previo. La migración de cierre puede revertirse con `pocketbase migrate down 1` mientras el servicio está detenido, pero el rollback no recupera secretos en texto plano: los enlaces continúan autenticándose contra su hash. Restaurar un backup completo sólo cuando la reversión de migración no sea suficiente.
+Si falla el arranque, revisar primero el journal y conservar intacto el backup previo. `pocketbase migrate down 1` sólo debe usarse mientras el servicio está detenido y después de confirmar que la migración que se desea revertir es efectivamente la última aplicada. El rollback no recupera secretos en texto plano: los enlaces continúan autenticándose contra su hash. Restaurar un backup completo sólo cuando la reversión de migración no sea suficiente.

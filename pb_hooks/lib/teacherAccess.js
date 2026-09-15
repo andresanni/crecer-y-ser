@@ -30,15 +30,7 @@ function parseExpiration(value) {
   return isNaN(timestamp) ? null : timestamp
 }
 
-function requireAccess(c) {
-  noStore(c)
-  var secret = c.request().header.get("X-CYS-Teacher-Token")
-  if (!secret || secret.length < 20 || secret.length > 160) {
-    throw new UnauthorizedError("El enlace no es válido o ya no está disponible.")
-  }
-
-  var dao = $app.dao()
-  var record = findFirst(dao, "tokens_acceso_docente", "token_hash", $security.sha256(secret))
+function validateAccessRecord(record) {
   if (!record || !record.getBool("activo")) {
     throw new UnauthorizedError("El enlace no es válido o ya no está disponible.")
   }
@@ -50,11 +42,23 @@ function requireAccess(c) {
 
   var courseId = record.getString("curso_id")
   var periodId = record.getString("periodo_id")
-  if (!courseId || !periodId) {
+  if (!courseId || !periodId || record.getString("materia_id")) {
     throw new UnauthorizedError("El enlace no es válido o ya no está disponible.")
   }
 
   return record
+}
+
+function requireAccess(c) {
+  noStore(c)
+  var secret = c.request().header.get("X-CYS-Teacher-Token")
+  if (!secret || secret.length < 20 || secret.length > 160) {
+    throw new UnauthorizedError("El enlace no es válido o ya no está disponible.")
+  }
+
+  var dao = $app.dao()
+  var record = findFirst(dao, "tokens_acceso_docente", "token_hash", $security.sha256(secret))
+  return validateAccessRecord(record)
 }
 
 function requireRecord(dao, collection, id) {
@@ -68,18 +72,97 @@ function requireRecord(dao, collection, id) {
   }
 }
 
+function findWorkflow(dao, courseId, periodId) {
+  return findFirstByFilter(
+    dao,
+    "instancias_carga_boletin",
+    "curso_id = {:courseId} && periodo_id = {:periodId}",
+    { courseId: courseId, periodId: periodId }
+  )
+}
+
+function workflowDto(record) {
+  return {
+    id: record.getId(),
+    estado: record.getString("estado"),
+    revision: record.getInt("revision"),
+    enviadoAt: record.getString("enviado_at") || null,
+    enviadoPor: record.getString("enviado_por") || null,
+    cerradoAt: record.getString("cerrado_at") || null,
+    cerradoPor: record.getString("cerrado_por") || null
+  }
+}
+
+function authenticatedActor(c) {
+  var requestInfo = $apis.requestInfo(c)
+  if (!requestInfo.authRecord) return "Usuario institucional"
+  return requestInfo.authRecord.getString("name") || requestInfo.authRecord.getString("email") || requestInfo.authRecord.getId()
+}
+
+function requireDraftWorkflow(dao, access) {
+  var workflow = findWorkflow(
+    dao,
+    access.getString("curso_id"),
+    access.getString("periodo_id")
+  )
+  if (!workflow || workflow.getString("estado") !== "BORRADOR_DOCENTE") {
+    throw new ForbiddenError("La carga docente ya no admite modificaciones.")
+  }
+  return workflow
+}
+
+function requireStaffWorkflow(dao, courseId, periodId) {
+  var workflow = findWorkflow(dao, courseId, periodId)
+  if (!workflow) {
+    throw new BadRequestError("No existe una instancia de carga para el curso y período seleccionados.")
+  }
+  if (workflow.getString("estado") !== "CONTROL_DIRECTIVO") {
+    throw new ForbiddenError("La planilla todavía no se encuentra bajo control directivo.")
+  }
+  return workflow
+}
+
+function ensureDraftWorkflow(dao, courseId, periodId) {
+  var workflow = findWorkflow(dao, courseId, periodId)
+  if (workflow) {
+    if (workflow.getString("estado") !== "BORRADOR_DOCENTE") {
+      throw new BadRequestError("El período ya se encuentra bajo control directivo.")
+    }
+    return workflow
+  }
+  workflow = new Record(dao.findCollectionByNameOrId("instancias_carga_boletin"))
+  workflow.set("curso_id", courseId)
+  workflow.set("periodo_id", periodId)
+  workflow.set("estado", "BORRADOR_DOCENTE")
+  workflow.set("revision", 0)
+  dao.saveRecord(workflow)
+  return workflow
+}
+
+function deactivateOtherTokens(dao, courseId, periodId, exceptId) {
+  var tokens = findByFilter(
+    dao,
+    "tokens_acceso_docente",
+    "curso_id = {:courseId} && periodo_id = {:periodId} && activo = true",
+    "",
+    { courseId: courseId, periodId: periodId }
+  )
+  tokens.forEach((token) => {
+    if (token.getId() === exceptId) return
+    token.set("activo", false)
+    dao.saveRecord(token)
+  })
+}
+
 function courseMaterials(dao, access) {
   var courseId = access.getString("curso_id")
-  var subjectId = access.getString("materia_id")
-  var records = findByFilter(
+  return findByFilter(
     dao,
     "curso_materias",
     "curso_id = {:courseId}",
     "orden_visual",
     { courseId: courseId }
   )
-  if (!subjectId) return records
-  return records.filter((record) => record.getString("materia_id") === subjectId)
 }
 
 function allowedMaterialMap(dao, access) {
@@ -92,8 +175,10 @@ function allowedMaterialMap(dao, access) {
 
 function requireEnrollment(dao, access, enrollmentId) {
   var enrollment = requireRecord(dao, "inscripciones", enrollmentId)
+  var period = requireRecord(dao, "periodos", access.getString("periodo_id"))
   if (
     enrollment.getString("curso_id") !== access.getString("curso_id") ||
+    enrollment.getString("ciclo_id") !== period.getString("ciclo_id") ||
     enrollment.getString("estado") === "Baja"
   ) {
     throw new ForbiddenError("El alumno no pertenece al alcance de este enlace.")
@@ -137,7 +222,6 @@ function tokenDto(record) {
     id: record.getId(),
     cursoId: record.getString("curso_id"),
     periodoId: record.getString("periodo_id"),
-    materiaId: record.getString("materia_id") || null,
     docenteNombre: record.getString("docente_nombre"),
     fechaExpiracion: record.getString("fecha_expiracion") || null,
     activo: record.getBool("activo")
@@ -155,9 +239,103 @@ function materialDto(dao, record) {
   }
 }
 
+function isConductSubject(dao, courseMaterial) {
+  var subject = requireRecord(dao, "materias", courseMaterial.getString("materia_id"))
+  var name = subject.getString("nombre").trim().toUpperCase()
+  return (
+    name.indexOf("TRABAJO EN EL AULA") !== -1 ||
+    name.indexOf("TRABAJO PERSONAL") !== -1 ||
+    name.indexOf("CONVIVENCIA") !== -1 ||
+    name.indexOf("CONDUCTA") !== -1
+  )
+}
+
+function gradebookCompleteness(dao, access) {
+  var courseId = access.getString("curso_id")
+  var periodId = access.getString("periodo_id")
+  var materials = courseMaterials(dao, access)
+  var enrollments = findByFilter(
+    dao,
+    "inscripciones",
+    "curso_id = {:courseId} && ciclo_id = {:cycleId} && estado != 'Baja'",
+    "numero_orden",
+    {
+      courseId: courseId,
+      cycleId: requireRecord(dao, "periodos", periodId).getString("ciclo_id")
+    }
+  )
+  var pending = []
+
+  enrollments.forEach((enrollment) => {
+    var missingMaterials = []
+    materials.forEach((material) => {
+      var evaluation = findFirstByFilter(
+        dao,
+        "evaluaciones_materia",
+        "inscripcion_id = {:enrollmentId} && curso_materia_id = {:courseMaterialId} && periodo_id = {:periodId}",
+        {
+          enrollmentId: enrollment.getId(),
+          courseMaterialId: material.getId(),
+          periodId: periodId
+        }
+      )
+      var complete = Boolean(evaluation)
+      if (complete && !isConductSubject(dao, material)) {
+        complete = Boolean(evaluation.getString("calificacion_general_id"))
+      }
+      if (complete) {
+        var criteria = criteriaMap(dao, material.getId())
+        var submitted = findByFilter(
+          dao,
+          "evaluaciones_criterios",
+          "evaluacion_materia_id = {:evaluationId}",
+          "",
+          { evaluationId: evaluation.getId() }
+        )
+        var submittedMap = {}
+        submitted.forEach((item) => {
+          if (item.getString("valor_escala_id")) {
+            submittedMap[item.getString("criterio_id")] = true
+          }
+        })
+        complete = Object.keys(criteria).every((criterionId) => Boolean(submittedMap[criterionId]))
+      }
+      if (!complete) {
+        var subject = requireRecord(dao, "materias", material.getString("materia_id"))
+        missingMaterials.push(subject.getString("nombre"))
+      }
+    })
+
+    var closure = findFirstByFilter(
+      dao,
+      "cierres_periodo_alumno",
+      "inscripcion_id = {:enrollmentId} && periodo_id = {:periodId}",
+      { enrollmentId: enrollment.getId(), periodId: periodId }
+    )
+    if (missingMaterials.length > 0 || !closure) {
+      var student = requireRecord(dao, "alumnos", enrollment.getString("alumno_id"))
+      pending.push({
+        inscripcionId: enrollment.getId(),
+        nombreCompleto: (student.getString("apellidos") + ", " + student.getString("nombres")).trim(),
+        materiasPendientes: missingMaterials,
+        cierrePendiente: !closure
+      })
+    }
+  })
+
+  return {
+    completa: enrollments.length > 0 && materials.length > 0 && pending.length === 0,
+    totalAlumnos: enrollments.length,
+    totalMaterias: materials.length,
+    alumnosCompletos: enrollments.length - pending.length,
+    pendientes: pending
+  }
+}
+
 function context(c) {
   var access = requireAccess(c)
   var dao = $app.dao()
+  var workflow = requireDraftWorkflow(dao, access)
   var course = requireRecord(dao, "cursos", access.getString("curso_id"))
   var period = requireRecord(dao, "periodos", access.getString("periodo_id"))
   var materials = courseMaterials(dao, access)
@@ -166,9 +344,9 @@ function context(c) {
   var enrollments = findByFilter(
     dao,
     "inscripciones",
-    "curso_id = {:courseId} && estado != 'Baja'",
+    "curso_id = {:courseId} && ciclo_id = {:cycleId} && estado != 'Baja'",
     "numero_orden",
-    { courseId: course.getId() }
+    { courseId: course.getId(), cycleId: period.getString("ciclo_id") }
   )
 
   var students = enrollments.map((enrollment) => {
@@ -198,6 +376,7 @@ function context(c) {
 
   return c.json(200, {
     acceso: tokenDto(access),
+    instancia: workflowDto(workflow),
     curso: {
       id: course.getId(),
       nombre: course.getString("nombre"),
@@ -225,6 +404,7 @@ function context(c) {
 function student(c) {
   var access = requireAccess(c)
   var dao = $app.dao()
+  requireDraftWorkflow(dao, access)
   var enrollment = requireEnrollment(dao, access, c.pathParam("inscripcionId"))
   var periodId = access.getString("periodo_id")
   var materials = allowedMaterialMap(dao, access)
@@ -256,34 +436,31 @@ function student(c) {
     }
   })
 
-  var fullScope = !access.getString("materia_id")
   var closure = null
-  if (fullScope) {
-    var closureRecord = findFirstByFilter(
-      dao,
-      "cierres_periodo_alumno",
-      "inscripcion_id = {:enrollmentId} && periodo_id = {:periodId}",
-      { enrollmentId: enrollment.getId(), periodId: periodId }
-    )
-    if (closureRecord) {
-      closure = {
-        id: closureRecord.getId(),
-        asistencias: closureRecord.getInt("asistencias"),
-        inasistencias: closureRecord.getInt("inasistencias"),
-        llegadasTarde: closureRecord.getInt("llegadas_tarde"),
-        observaciones: closureRecord.getString("observaciones")
-      }
+  var closureRecord = findFirstByFilter(
+    dao,
+    "cierres_periodo_alumno",
+    "inscripcion_id = {:enrollmentId} && periodo_id = {:periodId}",
+    { enrollmentId: enrollment.getId(), periodId: periodId }
+  )
+  if (closureRecord) {
+    closure = {
+      id: closureRecord.getId(),
+      asistencias: closureRecord.getInt("asistencias"),
+      inasistencias: closureRecord.getInt("inasistencias"),
+      llegadasTarde: closureRecord.getInt("llegadas_tarde"),
+      observaciones: closureRecord.getString("observaciones")
     }
   }
 
   return c.json(200, {
     evaluaciones: evaluationDtos,
     cierre: closure,
-    apoyos: fullScope ? {
+    apoyos: {
       promocionoConAcompanamiento: enrollment.getString("promociono_con_acompanamiento") || "-",
       poseeApoyos: enrollment.getString("posee_apoyos") || "-",
       cualesApoyos: enrollment.getString("cuales_apoyos")
-    } : null
+    }
   })
 }
 
@@ -376,9 +553,6 @@ function saveEvaluation(txDao, access, enrollment, input, materials, values) {
 }
 
 function saveClosure(txDao, access, enrollment, input) {
-  if (access.getString("materia_id")) {
-    throw new ForbiddenError("Este enlace no permite modificar el cierre del período.")
-  }
   var periodId = access.getString("periodo_id")
   var record = findFirstByFilter(
     txDao,
@@ -399,9 +573,6 @@ function saveClosure(txDao, access, enrollment, input) {
 }
 
 function saveSupport(txDao, access, enrollment, input) {
-  if (access.getString("materia_id")) {
-    throw new ForbiddenError("Este enlace no permite modificar apoyos del alumno.")
-  }
   var promotion = stringValue(input.promocionoConAcompanamiento, 2) || "-"
   var support = stringValue(input.poseeApoyos, 2) || "-"
   if (["SI", "NO", "-"].indexOf(promotion) === -1 || ["SI", "NO", "-"].indexOf(support) === -1) {
@@ -428,19 +599,183 @@ function saveStudent(c) {
   }
 
   $app.dao().runInTransaction((txDao) => {
-    var transactionalEnrollment = requireEnrollment(txDao, access, enrollmentId)
-    var materials = allowedMaterialMap(txDao, access)
-    var values = scaleValueMap(txDao, access)
-    evaluations.forEach((input) => saveEvaluation(txDao, access, transactionalEnrollment, input, materials, values))
+    var transactionalAccess = validateAccessRecord(
+      requireRecord(txDao, "tokens_acceso_docente", access.getId())
+    )
+    var transactionalEnrollment = requireEnrollment(txDao, transactionalAccess, enrollmentId)
+    var workflow = requireDraftWorkflow(txDao, transactionalAccess)
+    var materials = allowedMaterialMap(txDao, transactionalAccess)
+    var values = scaleValueMap(txDao, transactionalAccess)
+    evaluations.forEach((input) => saveEvaluation(txDao, transactionalAccess, transactionalEnrollment, input, materials, values))
     if (data.cierre && Object.keys(data.cierre).length > 0) {
-      saveClosure(txDao, access, transactionalEnrollment, data.cierre)
+      saveClosure(txDao, transactionalAccess, transactionalEnrollment, data.cierre)
     }
     if (data.apoyos && Object.keys(data.apoyos).length > 0) {
-      saveSupport(txDao, access, transactionalEnrollment, data.apoyos)
+      saveSupport(txDao, transactionalAccess, transactionalEnrollment, data.apoyos)
     }
+    workflow.set("revision", workflow.getInt("revision") + 1)
+    txDao.saveRecord(workflow)
   })
 
   return student(c)
+}
+
+function staffWorkflow(c) {
+  noStore(c)
+  var dao = $app.dao()
+  var course = requireRecord(dao, "cursos", c.pathParam("cursoId"))
+  var period = requireRecord(dao, "periodos", c.pathParam("periodoId"))
+  var workflow = findWorkflow(dao, course.getId(), period.getId())
+  return c.json(200, { instancia: workflow ? workflowDto(workflow) : null })
+}
+
+function saveStaffStudent(c) {
+  noStore(c)
+  var enrollmentId = c.pathParam("inscripcionId")
+  var body = new DynamicModel({ periodoId: "", materias: [], cierre: {}, apoyos: {} })
+  c.bind(body)
+  var data = JSON.parse(JSON.stringify(body))
+  var periodId = stringValue(data.periodoId, 15)
+  var evaluations = Array.isArray(data.materias) ? data.materias : []
+  if (evaluations.length > 20) {
+    throw new BadRequestError("Se recibieron demasiadas materias.")
+  }
+
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    var enrollment = requireRecord(txDao, "inscripciones", enrollmentId)
+    var courseId = enrollment.getString("curso_id")
+    var period = requireRecord(txDao, "periodos", periodId)
+    if (enrollment.getString("ciclo_id") !== period.getString("ciclo_id") || enrollment.getString("estado") === "Baja") {
+      throw new ForbiddenError("El alumno no pertenece al curso y ciclo seleccionados.")
+    }
+    var workflow = requireStaffWorkflow(txDao, courseId, period.getId())
+    var materials = allowedMaterialMap(txDao, workflow)
+    var values = scaleValueMap(txDao, workflow)
+    evaluations.forEach((input) => saveEvaluation(txDao, workflow, enrollment, input, materials, values))
+    if (data.cierre && Object.keys(data.cierre).length > 0) {
+      saveClosure(txDao, workflow, enrollment, data.cierre)
+    }
+    if (data.apoyos && Object.keys(data.apoyos).length > 0) {
+      saveSupport(txDao, workflow, enrollment, data.apoyos)
+    }
+    workflow.set("revision", workflow.getInt("revision") + 1)
+    txDao.saveRecord(workflow)
+    response = { instancia: workflowDto(workflow) }
+  })
+
+  return c.json(200, response)
+}
+
+function transitionStaffWorkflow(c) {
+  noStore(c)
+  var body = new DynamicModel({ estado: "" })
+  c.bind(body)
+  var targetState = stringValue(JSON.parse(JSON.stringify(body)).estado, 30)
+  var actor = authenticatedActor(c)
+  var response
+
+  $app.dao().runInTransaction((txDao) => {
+    var workflow = requireRecord(txDao, "instancias_carga_boletin", c.pathParam("instanciaId"))
+    var currentState = workflow.getString("estado")
+    if (currentState === "CONTROL_DIRECTIVO" && targetState === "CERRADO") {
+      workflow.set("estado", "CERRADO")
+      workflow.set("cerrado_at", new Date().toISOString())
+      workflow.set("cerrado_por", actor)
+      deactivateOtherTokens(
+        txDao,
+        workflow.getString("curso_id"),
+        workflow.getString("periodo_id"),
+        ""
+      )
+    } else if (currentState === "CERRADO" && targetState === "CONTROL_DIRECTIVO") {
+      workflow.set("estado", "CONTROL_DIRECTIVO")
+      workflow.set("cerrado_at", "")
+      workflow.set("cerrado_por", "")
+    } else {
+      throw new BadRequestError("La transición solicitada no es válida para el estado actual.")
+    }
+    workflow.set("revision", workflow.getInt("revision") + 1)
+    txDao.saveRecord(workflow)
+    response = { instancia: workflowDto(workflow) }
+  })
+
+  return c.json(200, response)
+}
+
+function returnToTeacher(c) {
+  noStore(c)
+  var response
+
+  $app.dao().runInTransaction((txDao) => {
+    var workflow = requireRecord(txDao, "instancias_carga_boletin", c.pathParam("instanciaId"))
+    if (workflow.getString("estado") !== "CONTROL_DIRECTIVO") {
+      throw new BadRequestError("Sólo una carga bajo control directivo puede devolverse a la docente.")
+    }
+    var courseId = workflow.getString("curso_id")
+    var periodId = workflow.getString("periodo_id")
+    var teacherName = workflow.getString("enviado_por") || "Docente"
+    deactivateOtherTokens(txDao, courseId, periodId, "")
+    var token = new Record(txDao.findCollectionByNameOrId("tokens_acceso_docente"))
+    var secret = assignSecret(token)
+    token.set("curso_id", courseId)
+    token.set("periodo_id", periodId)
+    token.set("docente_nombre", teacherName)
+    token.set("activo", true)
+    token.set("fecha_expiracion", "")
+    txDao.saveRecord(token)
+    workflow.set("estado", "BORRADOR_DOCENTE")
+    workflow.set("revision", workflow.getInt("revision") + 1)
+    workflow.set("cerrado_at", "")
+    workflow.set("cerrado_por", "")
+    txDao.saveRecord(workflow)
+    response = {
+      instancia: workflowDto(workflow),
+      enlace: tokenDto(token),
+      tokenPrefijo: token.getString("token_prefijo"),
+      secreto: secret
+    }
+  })
+
+  return c.json(200, response)
+}
+
+function submitPeriod(c) {
+  var access = requireAccess(c)
+  var status = 200
+  var response
+
+  $app.dao().runInTransaction((txDao) => {
+    var transactionalAccess = validateAccessRecord(
+      requireRecord(txDao, "tokens_acceso_docente", access.getId())
+    )
+    var workflow = requireDraftWorkflow(txDao, transactionalAccess)
+    var completeness = gradebookCompleteness(txDao, transactionalAccess)
+    if (!completeness.completa) {
+      status = 422
+      response = completeness
+      return
+    }
+
+    workflow.set("estado", "CONTROL_DIRECTIVO")
+    workflow.set("revision", workflow.getInt("revision") + 1)
+    workflow.set("enviado_at", new Date().toISOString())
+    workflow.set("enviado_por", transactionalAccess.getString("docente_nombre"))
+    txDao.saveRecord(workflow)
+    deactivateOtherTokens(
+      txDao,
+      transactionalAccess.getString("curso_id"),
+      transactionalAccess.getString("periodo_id"),
+      ""
+    )
+    response = {
+      instancia: workflowDto(workflow),
+      totalAlumnos: completeness.totalAlumnos,
+      totalMaterias: completeness.totalMaterias
+    }
+  })
+
+  return c.json(status, response)
 }
 
 function issue(c) {
@@ -457,24 +792,14 @@ function issue(c) {
   var dao = $app.dao()
   var course = requireRecord(dao, "cursos", stringValue(data.cursoId, 15))
   var period = requireRecord(dao, "periodos", stringValue(data.periodoId, 15))
-  var subjectId = stringValue(data.materiaId, 15)
   var teacherName = stringValue(data.docenteNombre, 120)
   var expiration = stringValue(data.fechaExpiracion, 40)
 
   if (!teacherName) {
     throw new BadRequestError("El nombre del docente es obligatorio.")
   }
-  if (subjectId) {
-    requireRecord(dao, "materias", subjectId)
-    var relation = findFirstByFilter(
-      dao,
-      "curso_materias",
-      "curso_id = {:courseId} && materia_id = {:subjectId}",
-      { courseId: course.getId(), subjectId: subjectId }
-    )
-    if (!relation) {
-      throw new BadRequestError("La materia no pertenece al curso seleccionado.")
-    }
+  if (stringValue(data.materiaId, 15)) {
+    throw new BadRequestError("Los enlaces docentes deben abarcar el curso completo.")
   }
   if (expiration) {
     var expirationTime = parseExpiration(expiration)
@@ -483,21 +808,26 @@ function issue(c) {
     }
   }
 
-  var record = new Record(dao.findCollectionByNameOrId("tokens_acceso_docente"))
-  var secret = assignSecret(record)
-  record.set("curso_id", course.getId())
-  record.set("periodo_id", period.getId())
-  record.set("materia_id", subjectId)
-  record.set("docente_nombre", teacherName)
-  record.set("activo", true)
-  record.set("fecha_expiracion", expiration)
-  dao.saveRecord(record)
-
-  return c.json(201, {
-    enlace: tokenDto(record),
-    tokenPrefijo: record.getString("token_prefijo"),
-    secreto: secret
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    ensureDraftWorkflow(txDao, course.getId(), period.getId())
+    deactivateOtherTokens(txDao, course.getId(), period.getId(), "")
+    var record = new Record(txDao.findCollectionByNameOrId("tokens_acceso_docente"))
+    var secret = assignSecret(record)
+    record.set("curso_id", course.getId())
+    record.set("periodo_id", period.getId())
+    record.set("docente_nombre", teacherName)
+    record.set("activo", true)
+    record.set("fecha_expiracion", expiration)
+    txDao.saveRecord(record)
+    response = {
+      enlace: tokenDto(record),
+      tokenPrefijo: record.getString("token_prefijo"),
+      secreto: secret
+    }
   })
+
+  return c.json(201, response)
 }
 
 function assignSecret(record) {
@@ -512,22 +842,69 @@ function assignSecret(record) {
 
 function rotate(c) {
   noStore(c)
-  var dao = $app.dao()
-  var record = requireRecord(dao, "tokens_acceso_docente", c.pathParam("tokenId"))
-  var secret = assignSecret(record)
-  record.set("activo", true)
-  dao.saveRecord(record)
-  return c.json(200, {
-    enlace: tokenDto(record),
-    tokenPrefijo: record.getString("token_prefijo"),
-    secreto: secret
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    var record = requireRecord(txDao, "tokens_acceso_docente", c.pathParam("tokenId"))
+    if (record.getString("materia_id")) {
+      throw new BadRequestError("El enlace por materia debe reemplazarse por uno de curso completo.")
+    }
+    requireDraftWorkflow(txDao, record)
+    deactivateOtherTokens(
+      txDao,
+      record.getString("curso_id"),
+      record.getString("periodo_id"),
+      record.getId()
+    )
+    var secret = assignSecret(record)
+    record.set("activo", true)
+    txDao.saveRecord(record)
+    response = {
+      enlace: tokenDto(record),
+      tokenPrefijo: record.getString("token_prefijo"),
+      secreto: secret
+    }
   })
+  return c.json(200, response)
+}
+
+function setTokenState(c) {
+  noStore(c)
+  var body = new DynamicModel({ activo: false })
+  c.bind(body)
+  var data = JSON.parse(JSON.stringify(body))
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    var record = requireRecord(txDao, "tokens_acceso_docente", c.pathParam("tokenId"))
+    var active = data.activo === true
+    if (active) {
+      if (record.getString("materia_id")) {
+        throw new BadRequestError("El enlace por materia debe reemplazarse por uno de curso completo.")
+      }
+      requireDraftWorkflow(txDao, record)
+      deactivateOtherTokens(
+        txDao,
+        record.getString("curso_id"),
+        record.getString("periodo_id"),
+        record.getId()
+      )
+    }
+    record.set("activo", active)
+    txDao.saveRecord(record)
+    response = tokenDto(record)
+  })
+  return c.json(200, response)
 }
 
 module.exports = {
   context: context,
   student: student,
   saveStudent: saveStudent,
+  staffWorkflow: staffWorkflow,
+  saveStaffStudent: saveStaffStudent,
+  transitionStaffWorkflow: transitionStaffWorkflow,
+  returnToTeacher: returnToTeacher,
+  submitPeriod: submitPeriod,
   issue: issue,
-  rotate: rotate
+  rotate: rotate,
+  setTokenState: setTokenState
 }

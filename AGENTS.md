@@ -10,6 +10,8 @@ Antes de modificar código, consultar:
 2. `frontend_guidelines.md` para convenciones de frontend y modelo de datos.
 3. `pb_schema.json` antes de cambiar consultas, relaciones o escrituras de PocketBase.
 4. `docs/ux-modernization.md` cuando el trabajo afecte layout, estilos, temas o componentes compartidos.
+5. `docs/magic-link-gradebook.md` y `docs/pocketbase-api.md` cuando el trabajo afecte boletines, enlaces docentes o sus transiciones de estado.
+6. `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md` antes de cambiar hooks, migraciones, reglas o despliegue de PocketBase.
 
 ## Reglas de trabajo
 
@@ -22,6 +24,8 @@ Antes de modificar código, consultar:
 - Priorizar componentes y propiedades nativas de Ant Design antes de crear abstracciones o selectores globales.
 - No agregar dependencias de producción sin una necesidad concreta y validada.
 - No incorporar secretos ni archivos `.env` al control de versiones.
+- Mantener un único editor de boletines compartido y resolver las diferencias entre docentes y dirección mediante políticas de acceso y orígenes de datos.
+- No escribir evaluaciones, criterios ni cierres directamente desde el cliente; toda escritura de planilla debe atravesar el gateway correspondiente al rol y respetar el estado del workflow.
 - Ejecutar `npm run lint` y `npm run build` después de cambios de código.
 - Tratar el warning actual de tamaño del bundle como deuda conocida; no ocultarlo cambiando el límite sin optimizar la carga.
 

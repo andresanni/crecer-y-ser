@@ -6,6 +6,8 @@ import {
   type AlumnoInscriptoRow,
   type CriterioEvaluacion,
   type CursoMateria,
+  type EstadoInstanciaCargaBoletin,
+  type InstanciaCargaBoletin,
   type Periodo,
   type ProgresoAlumnoDetalle,
   type TokenAccesoDocente,
@@ -14,6 +16,8 @@ import {
 } from '../models/boletin.model';
 import type {
   GradebookDataSource,
+  GradebookSubmissionIncomplete,
+  GradebookSubmissionResult,
   GradebookStudentSnapshot,
   GradebookStudentWrite,
 } from '../models/gradebookDataSource.model';
@@ -24,7 +28,6 @@ const TEACHER_TOKEN_HEADER = 'X-CYS-Teacher-Token';
 export interface CreateAccesoDocenteInput {
   cursoId: string;
   periodoId: string;
-  materiaId?: string;
   docenteNombre: string;
   fechaExpiracion?: string;
 }
@@ -33,7 +36,6 @@ interface TeacherAccessDto {
   id: string;
   cursoId: string;
   periodoId: string;
-  materiaId: string | null;
   docenteNombre: string;
   fechaExpiracion: string | null;
   activo: boolean;
@@ -41,6 +43,12 @@ interface TeacherAccessDto {
 
 interface TeacherContextDto {
   acceso: TeacherAccessDto;
+  instancia: {
+    id: string;
+    estado: EstadoInstanciaCargaBoletin;
+    revision: number;
+    enviadoAt: string | null;
+  };
   curso: { id: string; nombre: string; turno: string; escalaId: string };
   periodo: { id: string; nombre: string; numeroPeriodo: number };
   materias: Array<{
@@ -100,8 +108,19 @@ interface IssuedTeacherAccessDto {
   secreto: string;
 }
 
+interface TeacherSubmissionDto {
+  instancia: {
+    estado: 'CONTROL_DIRECTIVO';
+    revision: number;
+    enviadoAt: string;
+  };
+  totalAlumnos: number;
+  totalMaterias: number;
+}
+
 export interface TeacherGradebookContext {
   acceso: TokenAccesoDocente;
+  instancia: InstanciaCargaBoletin;
   curso: Curso;
   periodo: Periodo;
   materias: CursoMateria[];
@@ -112,6 +131,15 @@ export interface TeacherGradebookContext {
 
 export class TeacherAccessDeniedError extends Error {}
 
+export class TeacherSubmissionIncompleteError extends Error {
+  readonly detail: GradebookSubmissionIncomplete;
+
+  constructor(detail: GradebookSubmissionIncomplete) {
+    super('La carga del bimestre todavía está incompleta.');
+    this.detail = detail;
+  }
+}
+
 const isExpired = (fechaExpiracion?: string) => (
   Boolean(fechaExpiracion && new Date(fechaExpiracion).getTime() < Date.now())
 );
@@ -120,6 +148,17 @@ const isAccessDeniedResponse = (error: unknown) => {
   if (!error || typeof error !== 'object' || !('status' in error)) return false;
   const status = Number((error as { status?: unknown }).status);
   return status === 401 || status === 403;
+};
+
+const getErrorStatus = (error: unknown) => {
+  if (!error || typeof error !== 'object' || !('status' in error)) return 0;
+  return Number((error as { status?: unknown }).status);
+};
+
+const getErrorResponse = (error: unknown) => {
+  if (!error || typeof error !== 'object' || !('response' in error)) return null;
+  const response = (error as { response?: unknown }).response;
+  return response && typeof response === 'object' ? response : null;
 };
 
 const teacherRequest = async <T>(
@@ -247,7 +286,6 @@ const mapIssuedAccess = (response: IssuedTeacherAccessDto): TokenAccesoDocente =
   secreto: response.secreto,
   cursoId: response.enlace.cursoId,
   periodoId: response.enlace.periodoId,
-  materiaId: response.enlace.materiaId || undefined,
   docenteNombre: response.enlace.docenteNombre,
   activo: response.enlace.activo,
   fechaExpiracion: response.enlace.fechaExpiracion || undefined,
@@ -264,7 +302,7 @@ export const accesoDocenteService = {
     if (periodoId) conditions.push(pb.filter('periodo_id = {:periodoId}', { periodoId }));
     const records = await pb.collection(COLLECTION_TOKENS).getFullList<TokenAccesoDocenteRecord>({
       filter: conditions.length > 0 ? conditions.join(' && ') : undefined,
-      expand: 'curso_id,periodo_id,materia_id',
+      expand: 'curso_id,periodo_id',
       sort: '-created',
     });
     return records.map(tokenAccesoDocenteAdapter);
@@ -287,13 +325,15 @@ export const accesoDocenteService = {
     return mapIssuedAccess(response);
   },
 
-  setActive: async (tokenId: string, active: boolean): Promise<TokenAccesoDocente> => {
-    const record = await pb.collection(COLLECTION_TOKENS).update<TokenAccesoDocenteRecord>(
-      tokenId,
-      { activo: active },
-      { expand: 'curso_id,periodo_id,materia_id' },
+  setActive: async (tokenId: string, active: boolean): Promise<void> => {
+    await pb.send<TeacherAccessDto>(
+      `/api/cys/enlaces-docentes/${tokenId}/estado`,
+      {
+        method: 'PATCH',
+        body: { activo: active },
+        requestKey: null,
+      },
     );
-    return tokenAccesoDocenteAdapter(record);
   },
 
   delete: async (tokenId: string): Promise<void> => {
@@ -307,21 +347,27 @@ export const accesoDocenteService = {
       tokenPrefijo: token.slice(0, 12),
       cursoId: dto.acceso.cursoId,
       periodoId: dto.acceso.periodoId,
-      materiaId: dto.acceso.materiaId || undefined,
       docenteNombre: dto.acceso.docenteNombre,
       activo: dto.acceso.activo,
       fechaExpiracion: dto.acceso.fechaExpiracion || undefined,
       cursoNombre: dto.curso.nombre,
       periodoNombre: dto.periodo.nombre,
       numeroPeriodo: dto.periodo.numeroPeriodo,
-      materiaNombre: dto.materias.length === 1 && dto.acceso.materiaId
-        ? dto.materias[0].materiaNombre
-        : undefined,
       createdAt: '',
       updatedAt: '',
     };
     return {
       acceso,
+      instancia: {
+        id: dto.instancia.id,
+        cursoId: dto.acceso.cursoId,
+        periodoId: dto.acceso.periodoId,
+        estado: dto.instancia.estado,
+        revision: dto.instancia.revision,
+        enviadoAt: dto.instancia.enviadoAt || undefined,
+        createdAt: '',
+        updatedAt: '',
+      },
       curso: {
         id: dto.curso.id,
         nombre: dto.curso.nombre,
@@ -390,6 +436,30 @@ export const accesoDocenteService = {
         const snapshot = mapStudentDto(dto, data.inscripcionId, data.periodoId);
         snapshots.set(data.inscripcionId, snapshot);
         return snapshot;
+      },
+      submitPeriod: async (): Promise<GradebookSubmissionResult> => {
+        try {
+          const dto = await teacherRequest<TeacherSubmissionDto>(
+            token,
+            '/api/cys/docente/enviar',
+            { method: 'POST' },
+          );
+          return {
+            estado: dto.instancia.estado,
+            revision: dto.instancia.revision,
+            enviadoAt: dto.instancia.enviadoAt,
+            totalAlumnos: dto.totalAlumnos,
+            totalMaterias: dto.totalMaterias,
+          };
+        } catch (error) {
+          if (getErrorStatus(error) === 422) {
+            const detail = getErrorResponse(error) as GradebookSubmissionIncomplete | null;
+            if (detail && Array.isArray(detail.pendientes)) {
+              throw new TeacherSubmissionIncompleteError(detail);
+            }
+          }
+          throw error;
+        }
       },
     };
   },

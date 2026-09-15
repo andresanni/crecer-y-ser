@@ -46,6 +46,28 @@ export interface GradebookStudentWrite {
   apoyos?: GradebookSupportState;
 }
 
+export interface GradebookSubmissionResult {
+  estado: 'CONTROL_DIRECTIVO';
+  revision: number;
+  enviadoAt: string;
+  totalAlumnos: number;
+  totalMaterias: number;
+}
+
+export interface GradebookSubmissionPendingStudent {
+  inscripcionId: string;
+  nombreCompleto: string;
+  materiasPendientes: string[];
+  cierrePendiente: boolean;
+}
+
+export interface GradebookSubmissionIncomplete {
+  totalAlumnos: number;
+  totalMaterias: number;
+  alumnosCompletos: number;
+  pendientes: GradebookSubmissionPendingStudent[];
+}
+
 export interface GradebookDataSource {
   getCriterios(
     cursoMateriaIds: string[],
@@ -64,4 +86,5 @@ export interface GradebookDataSource {
     periodoId: string,
   ): Promise<GradebookStudentSnapshot>;
   saveAlumno(data: GradebookStudentWrite): Promise<GradebookStudentSnapshot>;
+  submitPeriod?(): Promise<GradebookSubmissionResult>;
 }

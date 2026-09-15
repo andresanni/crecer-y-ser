@@ -13,7 +13,6 @@ import {
   Typography,
 } from 'antd';
 import {
-  BookOutlined,
   CalendarOutlined,
   CheckCircleFilled,
   ReloadOutlined,
@@ -21,6 +20,7 @@ import {
 } from '@ant-design/icons';
 import ui from '../../../shared/styles/ui.module.css';
 import { createMagicLinkGradebookAccess } from '../models/gradebookAccess.model';
+import type { GradebookSubmissionResult } from '../models/gradebookDataSource.model';
 import {
   accesoDocenteService,
   TeacherAccessDeniedError,
@@ -39,10 +39,15 @@ export const CargaDocentePublicaPage: React.FC = () => {
     token ? null : 'No se proporcionó ningún enlace de acceso.',
   );
   const [revision, setRevision] = useState(0);
+  const [submission, setSubmission] = useState<GradebookSubmissionResult | null>(null);
 
   const handleAccessDenied = useCallback(() => {
     setContext(null);
     setError('El enlace expiró o fue desactivado por el equipo directivo.');
+  }, []);
+
+  const handlePeriodSubmitted = useCallback((result: GradebookSubmissionResult) => {
+    setSubmission(result);
   }, []);
 
   useEffect(() => {
@@ -82,15 +87,29 @@ export const CargaDocentePublicaPage: React.FC = () => {
 
   const access = useMemo(() => (
     context && dataSource
-      ? createMagicLinkGradebookAccess(Boolean(context.acceso.materiaId), dataSource, handleAccessDenied)
+      ? createMagicLinkGradebookAccess(dataSource, handleAccessDenied, handlePeriodSubmitted)
       : null
-  ), [context, dataSource, handleAccessDenied]);
+  ), [context, dataSource, handleAccessDenied, handlePeriodSubmitted]);
 
   if (loading) {
     return (
       <div className={ui.publicPage}>
         <Card className={ui.loadingPanel}>
           <Spin size="large" description="Validando el acceso y preparando la planilla..." />
+        </Card>
+      </div>
+    );
+  }
+
+  if (submission) {
+    return (
+      <div className={ui.publicPage}>
+        <Card className={ui.emptyPanel}>
+          <Result
+            status="success"
+            title="Bimestre enviado correctamente"
+            subTitle={`La entrega de ${submission.totalAlumnos} estudiantes quedó bajo control del equipo directivo. Ya no necesitás realizar más cambios.`}
+          />
         </Card>
       </div>
     );
@@ -164,9 +183,6 @@ export const CargaDocentePublicaPage: React.FC = () => {
             <Space wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
               <Tag icon={<UserOutlined />} color="blue">{curso.nombre} ({curso.turno})</Tag>
               <Tag icon={<CalendarOutlined />} color="geekblue">{periodo.nombre}</Tag>
-              {acceso.materiaNombre && (
-                <Tag icon={<BookOutlined />} color="green">{acceso.materiaNombre}</Tag>
-              )}
               <Tooltip title="Actualizar datos">
                 <Button
                   icon={<ReloadOutlined />}

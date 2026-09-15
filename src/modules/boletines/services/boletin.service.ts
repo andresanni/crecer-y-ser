@@ -12,8 +12,6 @@ import {
   criterioEvaluacionAdapter,
   escalaCalificacionAdapter,
   valorEscalaAdapter,
-  evaluacionMateriaAdapter,
-  evaluacionCriterioAdapter,
   cierrePeriodoAlumnoAdapter,
   type Materia,
   type MateriaRecord,
@@ -28,9 +26,7 @@ import {
   type EscalaCalificacionRecord,
   type ValorEscala,
   type ValorEscalaRecord,
-  type EvaluacionMateria,
   type EvaluacionMateriaRecord,
-  type EvaluacionCriterio,
   type EvaluacionCriterioRecord,
   type CierrePeriodoAlumno,
   type CierrePeriodoAlumnoRecord,
@@ -280,116 +276,6 @@ export const boletinService = {
 
 
 
-  getEvaluacionMateria: async (
-    inscripcionId: string,
-    cursoMateriaId: string,
-    periodoId: string
-  ): Promise<EvaluacionMateria | null> => {
-    try {
-      const record = await pb
-        .collection(COLLECTION_EVALUACIONES_MATERIA)
-        .getFirstListItem<EvaluacionMateriaRecord>(
-          `inscripcion_id = "${inscripcionId}" && curso_materia_id = "${cursoMateriaId}" && periodo_id = "${periodoId}"`,
-          {
-            expand: 'curso_materia_id.materia_id,periodo_id,calificacion_general_id',
-          }
-        );
-      return evaluacionMateriaAdapter(record);
-    } catch (error) {
-      if (isNotFoundResponse(error)) return null;
-      throw error;
-    }
-  },
-
-  getEvaluacionesCriteriosByEvaluacionMateria: async (
-    evaluacionMateriaId: string
-  ): Promise<EvaluacionCriterio[]> => {
-    const records = await pb
-      .collection(COLLECTION_EVALUACIONES_CRITERIOS)
-      .getFullList<EvaluacionCriterioRecord>({
-        filter: `evaluacion_materia_id = "${evaluacionMateriaId}"`,
-        expand: 'criterio_id,valor_escala_id',
-      });
-    const mapped = records.map(evaluacionCriterioAdapter);
-    return mapped.sort((a, b) => (a.criterioOrden ?? 0) - (b.criterioOrden ?? 0));
-  },
-
-  saveEvaluacionMateriaCompleta: async (data: {
-    inscripcionId: string;
-    cursoMateriaId: string;
-    periodoId: string;
-    ppi: boolean;
-    calificacionGeneralId: string;
-    criterios: { criterioId: string; valorEscalaId: string }[];
-  }): Promise<EvaluacionMateria> => {
-    let evalMateriaRecord: EvaluacionMateriaRecord;
-
-    const existing = await boletinService.getEvaluacionMateria(
-      data.inscripcionId,
-      data.cursoMateriaId,
-      data.periodoId
-    );
-
-    if (existing) {
-      evalMateriaRecord = await pb
-        .collection(COLLECTION_EVALUACIONES_MATERIA)
-        .update<EvaluacionMateriaRecord>(existing.id, {
-          ppi: data.ppi,
-          calificacion_general_id: data.calificacionGeneralId || null,
-        }, {
-          expand: 'curso_materia_id.materia_id,periodo_id,calificacion_general_id',
-        });
-    } else {
-      evalMateriaRecord = await pb
-        .collection(COLLECTION_EVALUACIONES_MATERIA)
-        .create<EvaluacionMateriaRecord>({
-          inscripcion_id: data.inscripcionId,
-          curso_materia_id: data.cursoMateriaId,
-          periodo_id: data.periodoId,
-          ppi: data.ppi,
-          calificacion_general_id: data.calificacionGeneralId || null,
-        }, {
-          expand: 'curso_materia_id.materia_id,periodo_id,calificacion_general_id',
-        });
-    }
-
-
-    const existentesCriterios = await pb
-      .collection(COLLECTION_EVALUACIONES_CRITERIOS)
-      .getFullList<EvaluacionCriterioRecord>({
-        filter: `evaluacion_materia_id = "${evalMateriaRecord.id}"`,
-      });
-    const critMap = new Map(existentesCriterios.map((c) => [c.criterio_id, c]));
-    const criterioIdsActuales = new Set(data.criterios.map((criterio) => criterio.criterioId));
-
-    for (const criterioExistente of existentesCriterios) {
-      if (!criterioIdsActuales.has(criterioExistente.criterio_id)) {
-        await pb.collection(COLLECTION_EVALUACIONES_CRITERIOS).delete(criterioExistente.id);
-      }
-    }
-
-    for (const c of data.criterios) {
-      if (!c.valorEscalaId) continue;
-      if (critMap.has(c.criterioId)) {
-        const item = critMap.get(c.criterioId)!;
-        await pb.collection(COLLECTION_EVALUACIONES_CRITERIOS).update(item.id, {
-          valor_escala_id: c.valorEscalaId,
-        });
-      } else {
-        await pb.collection(COLLECTION_EVALUACIONES_CRITERIOS).create({
-          evaluacion_materia_id: evalMateriaRecord.id,
-          criterio_id: c.criterioId,
-          valor_escala_id: c.valorEscalaId,
-        });
-      }
-    }
-
-    return evaluacionMateriaAdapter(evalMateriaRecord);
-  },
-
-
-
-
   getCierrePeriodoAlumno: async (
     inscripcionId: string,
     periodoId: string
@@ -410,53 +296,10 @@ export const boletinService = {
     }
   },
 
-  saveCierrePeriodoAlumno: async (data: {
-    inscripcionId: string;
-    periodoId: string;
-    asistencias: number;
-    inasistencias: number;
-    llegadasTarde: number;
-    observaciones: string;
-  }): Promise<CierrePeriodoAlumno> => {
-    const existing = await boletinService.getCierrePeriodoAlumno(
-      data.inscripcionId,
-      data.periodoId
-    );
-
-    let record: CierrePeriodoAlumnoRecord;
-    if (existing) {
-      record = await pb
-        .collection(COLLECTION_CIERRES_PERIODO)
-        .update<CierrePeriodoAlumnoRecord>(existing.id, {
-          asistencias: data.asistencias,
-          inasistencias: data.inasistencias,
-          llegadas_tarde: data.llegadasTarde,
-          observaciones: data.observaciones,
-        }, {
-          expand: 'periodo_id',
-        });
-    } else {
-      record = await pb
-        .collection(COLLECTION_CIERRES_PERIODO)
-        .create<CierrePeriodoAlumnoRecord>({
-          inscripcion_id: data.inscripcionId,
-          periodo_id: data.periodoId,
-          asistencias: data.asistencias,
-          inasistencias: data.inasistencias,
-          llegadas_tarde: data.llegadasTarde,
-          observaciones: data.observaciones,
-        }, {
-          expand: 'periodo_id',
-        });
-    }
-
-    return cierrePeriodoAlumnoAdapter(record);
-  },
-
-
-
-
-  getAlumnosRegularesByCurso: async (cursoId: string): Promise<AlumnoInscriptoRow[]> => {
+  getAlumnosRegularesByCurso: async (
+    cursoId: string,
+    cicloId?: string,
+  ): Promise<AlumnoInscriptoRow[]> => {
     interface InscripcionRaw {
       id: string;
       alumno_id: string;
@@ -470,8 +313,9 @@ export const boletinService = {
       };
     }
 
+    const cycleFilter = cicloId ? ` && ciclo_id = "${cicloId}"` : '';
     const records = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<InscripcionRaw>({
-      filter: `curso_id = "${cursoId}" && estado != "Baja"`,
+      filter: `curso_id = "${cursoId}"${cycleFilter} && estado != "Baja"`,
       expand: 'alumno_id',
     });
 
@@ -611,21 +455,6 @@ export const boletinService = {
     return map;
   },
 
-  updateInscripcionApoyos: async (
-    inscripcionId: string,
-    data: {
-      promocionoConAcompanamiento?: string;
-      poseeApoyos?: string;
-      cualesApoyos?: string;
-    }
-  ): Promise<void> => {
-    await pb.collection(COLLECTION_INSCRIPCIONES).update(inscripcionId, {
-      promociono_con_acompanamiento: data.promocionoConAcompanamiento || '-',
-      posee_apoyos: data.poseeApoyos || '-',
-      cuales_apoyos: data.cualesApoyos || '',
-    });
-  },
-
   getProgresoCursoPeriodo: async (
     alumnos: AlumnoInscriptoRow[],
     cursoMaterias: CursoMateria[],
@@ -733,7 +562,9 @@ export const boletinService = {
           const criteriosEvaluados = mat?.criteriosCargados || 0;
           const hasCalGral = Boolean(mat?.calificacionGeneralId);
           const hasAllCrits = critsTotal === 0 || criteriosEvaluados >= critsTotal;
-          const completada = hasCalGral && hasAllCrits;
+          const completada = esMateriaConducta(cm.materiaNombre)
+            ? hasAllCrits
+            : hasCalGral && hasAllCrits;
 
           if (completada) {
             materiasCompletadas++;
@@ -892,12 +723,9 @@ export const boletinService = {
         .filter(accesoDocenteService.isUsable);
 
       const tokensCursoMap: Record<string, TokenAccesoDocente> = {};
-      const tokensMateriaMap: Record<string, TokenAccesoDocente> = {};
       for (const t of tokens) {
-        if (t.cursoId && !t.materiaId && !tokensCursoMap[t.cursoId]) {
+        if (t.cursoId && !tokensCursoMap[t.cursoId]) {
           tokensCursoMap[t.cursoId] = t;
-        } else if (t.cursoId && t.materiaId && !tokensMateriaMap[`${t.cursoId}_${t.materiaId}`]) {
-          tokensMateriaMap[`${t.cursoId}_${t.materiaId}`] = t;
         }
       }
 
@@ -1008,8 +836,6 @@ export const boletinService = {
             ? Math.round((alumnosEvaluados / totalAlumnosCurso) * 100)
             : 0;
 
-          const tokMat = tokensMateriaMap[`${cur.id}_${cm.materiaId}`] || tokenGeneral;
-
           return {
             cursoMateriaId: cm.id,
             materiaId: cm.materiaId,
@@ -1017,8 +843,8 @@ export const boletinService = {
             totalAlumnos: totalAlumnosCurso,
             alumnosEvaluados,
             porcentaje: porcentajeMateria,
-            docenteNombre: tokMat?.docenteNombre,
-            tieneToken: Boolean(tokMat),
+            docenteNombre: tokenGeneral?.docenteNombre,
+            tieneToken: Boolean(tokenGeneral),
           };
         });
 

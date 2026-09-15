@@ -29,17 +29,15 @@ import {
   PlusCircleOutlined,
   WhatsAppOutlined,
   UserOutlined,
-  BookOutlined,
   CalendarOutlined,
   KeyOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { boletinService } from '../services/boletin.service';
 import { accesoDocenteService } from '../services/accesoDocente.service';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
-import type { Periodo, CursoMateria, TokenAccesoDocente } from '../models/boletin.model';
+import type { Periodo, TokenAccesoDocente } from '../models/boletin.model';
 
 interface GestorEnlacesModalProps {
   open: boolean;
@@ -53,7 +51,6 @@ interface GestorEnlacesModalProps {
 interface EnlaceDocenteFormValues {
   cursoId: string;
   periodoId: string;
-  materiaId?: string;
   docenteNombre: string;
   fechaExpiracion?: dayjs.Dayjs | null;
 }
@@ -73,16 +70,12 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
   activeCursoId,
   activePeriodoId,
 }) => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [form] = Form.useForm<EnlaceDocenteFormValues>();
 
   const [tokens, setTokens] = useState<TokenAccesoDocente[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [creating, setCreating] = useState<boolean>(false);
-  const [materiasDisponibles, setMateriasDisponibles] = useState<CursoMateria[]>([]);
-  const [selectedCursoId, setSelectedCursoId] = useState<string | undefined>(
-    activeCursoId || cursos[0]?.id,
-  );
 
 
   useEffect(() => {
@@ -107,32 +100,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
   }, [message, open]);
 
 
-  useEffect(() => {
-    let active = true;
-    const loadMateriasCurso = async () => {
-      if (!selectedCursoId) {
-        setMateriasDisponibles([]);
-        return;
-      }
-      try {
-        const mats = await boletinService.getMateriasByCurso(selectedCursoId);
-        if (active) setMateriasDisponibles(mats);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    void loadMateriasCurso();
-    return () => { active = false; };
-  }, [selectedCursoId]);
-
-  const handleFormValuesChange = (changedValues: Partial<EnlaceDocenteFormValues>) => {
-    if ('cursoId' in changedValues) {
-      setSelectedCursoId(changedValues.cursoId);
-      form.setFieldValue('materiaId', undefined);
-    }
-  };
-
-
   const handleCreateToken = async (values: EnlaceDocenteFormValues) => {
     try {
       setCreating(true);
@@ -144,25 +111,23 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       const created = await accesoDocenteService.create({
         cursoId: values.cursoId,
         periodoId: values.periodoId,
-        materiaId: values.materiaId || undefined,
         docenteNombre: values.docenteNombre.trim(),
         fechaExpiracion: fechaExp,
       });
 
       const curso = cursos.find((item) => item.id === values.cursoId);
       const periodo = periodos.find((item) => item.id === values.periodoId);
-      const materia = materiasDisponibles.find((item) => item.materiaId === values.materiaId);
       const issued = {
         ...created,
         cursoNombre: curso?.nombre,
         periodoNombre: periodo?.nombre,
         numeroPeriodo: periodo?.numeroPeriodo,
-        materiaNombre: materia?.materiaNombre,
       };
       setTokens((current) => [issued, ...current]);
-      if (issued.secreto) handleCopyLink(issued.secreto);
-      message.success('Enlace generado y copiado. El secreto no podrá consultarse nuevamente.');
-      form.resetFields(['docenteNombre', 'materiaId', 'fechaExpiracion']);
+      if (issued.secreto) {
+        await showIssuedLink(issued.secreto, 'Enlace docente generado');
+      }
+      form.resetFields(['docenteNombre', 'fechaExpiracion']);
     } catch (err) {
       console.error(err);
       message.error('Error al generar enlace docente');
@@ -203,12 +168,47 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     return `${origin}/carga#token=${encodeURIComponent(tokenStr)}`;
   };
 
-  const handleCopyLink = (tokenStr: string) => {
+  const copyLink = async (tokenStr: string) => {
     const url = getMagicLinkUrl(tokenStr);
-    navigator.clipboard.writeText(url);
-    message.success({
-      content: '¡Enlace copiado al portapapeles!',
-      icon: <CheckCircleOutlined className={styles.successIcon} />,
+    try {
+      await navigator.clipboard.writeText(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleCopyLink = async (tokenStr: string) => {
+    const copied = await copyLink(tokenStr);
+    if (copied) {
+      message.success({
+        content: '¡Enlace copiado al portapapeles!',
+        icon: <CheckCircleOutlined className={styles.successIcon} />,
+      });
+      return;
+    }
+    message.error('No se pudo copiar el enlace. Regeneralo para volver a mostrarlo.');
+  };
+
+  const showIssuedLink = async (tokenStr: string, title: string) => {
+    const url = getMagicLinkUrl(tokenStr);
+    const copied = await copyLink(tokenStr);
+    modal.success({
+      title,
+      content: (
+        <Space orientation="vertical">
+          <Typography.Text>
+            {copied
+              ? 'El enlace fue copiado. También podés copiarlo desde esta ventana antes de cerrarla.'
+              : 'Copiá el enlace desde esta ventana antes de cerrarla.'}
+          </Typography.Text>
+          <Typography.Text type="secondary">
+            El secreto no podrá consultarse nuevamente.
+          </Typography.Text>
+          <Typography.Text copyable={{ text: url }}>{url}</Typography.Text>
+        </Space>
+      ),
+      okText: 'Listo',
     });
   };
 
@@ -219,11 +219,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       return;
     }
     const url = getMagicLinkUrl(tokenItem.secreto);
-    const materiaText = tokenItem.materiaNombre
-      ? `la materia "${tokenItem.materiaNombre}"`
-      : 'todas las materias';
-
-    const text = `Hola ${tokenItem.docenteNombre || 'Docente'}, te compartimos el enlace para la carga de calificaciones de ${tokenItem.cursoNombre || 'tu curso'} (${tokenItem.periodoNombre || 'período activo'}) para ${materiaText} en el Colegio Crecer y Ser:\n\n🔗 ${url}\n\nEste enlace es personal y de acceso directo sin contraseñas.`;
+    const text = `Hola ${tokenItem.docenteNombre || 'Docente'}, te compartimos el enlace para la carga completa de calificaciones de ${tokenItem.cursoNombre || 'tu curso'} (${tokenItem.periodoNombre || 'período activo'}) en el Colegio Crecer y Ser:\n\n🔗 ${url}\n\nEste enlace es personal y de acceso directo sin contraseñas.`;
 
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
@@ -234,8 +230,9 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       const rotated = await accesoDocenteService.rotate(tokenItem.id);
       const updated = { ...tokenItem, ...rotated };
       setTokens((current) => current.map((item) => item.id === tokenItem.id ? updated : item));
-      if (updated.secreto) handleCopyLink(updated.secreto);
-      message.success('Enlace regenerado y copiado. El anterior dejó de funcionar.');
+      if (updated.secreto) {
+        await showIssuedLink(updated.secreto, 'Enlace docente regenerado');
+      }
     } catch (err) {
       console.error(err);
       message.error('No se pudo regenerar el enlace');
@@ -272,21 +269,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
           </Tag>
         </div>
       ),
-    },
-    {
-      title: 'Alcance Materia',
-      key: 'materia',
-      render: (_, record) =>
-        record.materiaNombre ? (
-          <Tag color="purple" className={styles.tag}>
-            <BookOutlined className={styles.tagIcon} />
-            {record.materiaNombre}
-          </Tag>
-        ) : (
-          <Tag color="cyan" className={styles.tag}>
-            Todas las materias
-          </Tag>
-        ),
     },
     {
       title: 'Vencimiento',
@@ -411,7 +393,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
               docenteNombre: '',
               fechaExpiracion: null,
             }}
-            onValuesChange={handleFormValuesChange}
             onFinish={handleCreateToken}
             onFinishFailed={(error) => focusFirstFormError(form, error)}
           >
@@ -446,19 +427,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
               </Col>
 
               <Col xs={24} sm={12} md={8}>
-                <Form.Item label="Materia (opcional)" name="materiaId">
-                  <Select
-                    placeholder="Todas las materias"
-                    allowClear
-                    options={materiasDisponibles.map((m) => ({
-                      value: m.materiaId,
-                      label: m.materiaNombre,
-                    }))}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={12}>
                 <Form.Item
                   label="Nombre del docente"
                   name="docenteNombre"
@@ -468,7 +436,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6}>
+              <Col xs={24} sm={12} md={8}>
                 <Form.Item label="Vencimiento (opcional)" name="fechaExpiracion">
                   <DatePicker
                     placeholder="Sin límite"
@@ -479,7 +447,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={6} className={styles.submitColumn}>
+              <Col xs={24} sm={12} md={8} className={styles.submitColumn}>
                 <Form.Item className={ui.fullWidth}>
                   <Button
                     type="primary"
@@ -512,7 +480,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
             loading={loading}
             dataSource={tokens}
             columns={columns}
-            scroll={{ x: 820 }}
+            scroll={{ x: 720 }}
             pagination={{ pageSize: 5, showSizeChanger: false, hideOnSinglePage: true }}
             locale={{ emptyText: 'Todavía no hay enlaces de carga emitidos.' }}
           />

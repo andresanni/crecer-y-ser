@@ -15,7 +15,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 - Portal de boletines con constructor curricular, materias, criterios y períodos.
 - Carga de calificaciones, asistencias, observaciones y apoyos por alumno.
 - Monitoreo de avance por curso y materia.
-- Enlaces temporales para carga docente pública.
+- Workflow de boletines con enlaces docentes temporales, guardado progresivo, envío completo y control institucional exclusivo.
 - Landing institucional y temas claro/oscuro.
 
 ## Stack vigente
@@ -56,7 +56,19 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 
 Los servicios transforman registros `snake_case` de PocketBase en modelos de dominio `camelCase`. No existe un backend Node intermedio; las operaciones públicas privilegiadas se implementan como hooks de PocketBase versionados con el proyecto.
 
-La carga institucional y la carga por enlace comparten el editor de boletín y se diferencian mediante `GradebookAccessPolicy` y `GradebookDataSource`. PocketBase dispone desde el 14 de septiembre de 2026 de un gateway docente que valida alcance y vigencia del enlace del lado servidor. `/carga` usa exclusivamente ese gateway y las colecciones académicas exigen sesión institucional. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
+La carga institucional y la carga por enlace comparten el editor de boletín y se diferencian mediante `GradebookAccessPolicy` y `GradebookDataSource`. PocketBase dispone desde el 14 de septiembre de 2026 de gateways separados que vuelven a validar autorización, alcance y estado dentro de cada transacción. `/carga` usa exclusivamente las rutas docentes y cada enlace abarca un curso y período completos; no se admiten accesos por materia.
+
+`instancias_carga_boletin` representa una única máquina de estados por curso y período:
+
+| Estado | Control de escritura | Salida válida |
+| --- | --- | --- |
+| `BORRADOR_DOCENTE` | Docente mediante enlace vigente | Envío completo a dirección |
+| `CONTROL_DIRECTIVO` | Usuario institucional autenticado | Devolución, cierre o edición |
+| `CERRADO` | Sin edición | Reapertura a control directivo |
+
+El guardado docente es progresivo, pero el envío es atómico y sólo ocurre cuando el servidor verifica la completitud de todo el curso. El traspaso revoca inmediatamente las credenciales docentes. Dirección puede corregir transaccionalmente, devolver la carga mediante un secreto nuevo, cerrarla con auditoría o reabrirla sólo para revisión institucional. La interfaz nunca monta dos formularios editables a la vez y las colecciones de notas, criterios y cierres no admiten escrituras directas desde clientes.
+
+La migración `1789342800_created_gradebook_workflows.js`, los hooks y las reglas están aplicados en el VPS. El recorrido completo fue validado con datos descartables: rechazo del envío incompleto, persistencia progresiva, envío, revocación, edición institucional, cierre, reapertura, devolución con rotación y segundo envío. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
 
 ## Arquitectura UX/UI
 
@@ -72,5 +84,6 @@ El producto es desktop first para equipos escolares, con validación prioritaria
 - `npm run build`: correcto.
 - Advertencia conocida: el bundle principal supera 500 kB minificado; requiere una estrategia posterior de partición de código.
 - La modernización UX/UI fue aprobada y fusionada en `master`.
+- El workflow docente–directivo fue desplegado y superó su recorrido funcional extremo a extremo con datos de prueba.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.

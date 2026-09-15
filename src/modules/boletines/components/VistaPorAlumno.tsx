@@ -40,9 +40,13 @@ import {
   ArrowRightOutlined,
   DownOutlined,
   SearchOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { staffGradebookDataSource } from '../services/gradebookDataSource.service';
-import { TeacherAccessDeniedError } from '../services/accesoDocente.service';
+import {
+  TeacherAccessDeniedError,
+  TeacherSubmissionIncompleteError,
+} from '../services/accesoDocente.service';
 import {
   esMateriaConducta,
   type CursoMateria,
@@ -63,6 +67,7 @@ interface VistaPorAlumnoProps {
   valoresEscala: ValorEscala[];
   periodo: Periodo | undefined;
   access: GradebookAccessPolicy;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 interface MateriaAlumnoState {
@@ -96,6 +101,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   valoresEscala,
   periodo,
   access,
+  onDirtyChange,
 }) => {
   const { message, modal } = App.useApp();
   const dataSource = access.dataSource || staffGradebookDataSource;
@@ -199,6 +205,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
   const [loadingEvaluaciones, setLoadingEvaluaciones] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
+  const [submittingPeriod, setSubmittingPeriod] = useState<boolean>(false);
 
 
   useEffect(() => {
@@ -432,6 +439,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return matsModified || closureModified || supportModified;
   }, [access.canEditPeriodClosure, access.canEditStudentSupport, materiasState, asistenciaState, apoyoState]);
 
+  useEffect(() => {
+    onDirtyChange?.(hasChanges);
+  }, [hasChanges, onDirtyChange]);
+
+  useEffect(() => () => {
+    onDirtyChange?.(false);
+  }, [onDirtyChange]);
+
 
   const handleSave = async () => {
     if (!selectedInscripcionId || !periodoId || !alumnoDataReady) return;
@@ -515,12 +530,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       });
 
       const totalMats = cursoMaterias.length;
-      const tieneAsist = Boolean(
-        asistenciaState.asistencias > 0 ||
-        asistenciaState.inasistencias > 0 ||
-        asistenciaState.llegadasTarde > 0 ||
-        asistenciaState.observaciones
-      );
+      const tieneAsist = Boolean(asistenciaState.cierreId || cierre);
       const porc = totalMats > 0 ? Math.round((matCompletadas / totalMats) * 100) : 0;
       const nuevoEstado: EstadoProgresoAlumno =
         matCompletadas === totalMats && tieneAsist
@@ -592,6 +602,55 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const periodIsComplete = progresoResumen.totalAlumnos > 0
+    && progresoResumen.completadosCount === progresoResumen.totalAlumnos;
+
+  const handleSubmitPeriod = () => {
+    if (!dataSource.submitPeriod || !access.canSubmitPeriod) return;
+    if (hasChanges) {
+      message.warning('Guardá los cambios pendientes de este alumno antes de enviar el bimestre.');
+      return;
+    }
+    if (!periodIsComplete) {
+      setDrawerResumenOpen(true);
+      message.warning('Completá todos los alumnos antes de enviar el bimestre.');
+      return;
+    }
+
+    modal.confirm({
+      title: '¿Enviar el bimestre completo?',
+      icon: <SendOutlined />,
+      content: 'Se cerrará el acceso docente y el equipo directivo tomará el control de la revisión y las correcciones.',
+      okText: 'Enviar bimestre',
+      cancelText: 'Seguir revisando',
+      onOk: async () => {
+        try {
+          setSubmittingPeriod(true);
+          const result = await dataSource.submitPeriod!();
+          message.success('El bimestre fue enviado al equipo directivo.');
+          access.onPeriodSubmitted?.(result);
+        } catch (error) {
+          if (error instanceof TeacherSubmissionIncompleteError) {
+            const count = error.detail.pendientes.length;
+            message.warning(`La revisión del servidor encontró ${count} ${count === 1 ? 'alumno pendiente' : 'alumnos pendientes'}.`);
+            setDrawerResumenOpen(true);
+            return;
+          }
+          if (error instanceof TeacherAccessDeniedError) {
+            message.error('El acceso ya no está vigente.');
+            access.onAccessDenied?.();
+            return;
+          }
+          console.error(error);
+          message.error('No se pudo enviar el bimestre. Intentá nuevamente.');
+          throw error;
+        } finally {
+          setSubmittingPeriod(false);
+        }
+      },
+    });
   };
 
 
@@ -880,6 +939,28 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           </div>
         </div>
       </Card>
+
+      {access.canSubmitPeriod && (
+        <Alert
+          type={periodIsComplete ? 'success' : 'info'}
+          showIcon
+          title={periodIsComplete ? 'El bimestre está listo para enviar' : 'Entrega completa del bimestre'}
+          description={periodIsComplete
+            ? 'Revisá que no queden cambios sin guardar y enviá la carga completa al equipo directivo.'
+            : `${progresoResumen.completadosCount} de ${progresoResumen.totalAlumnos} estudiantes están completos. Podés continuar guardando el avance.`}
+          action={(
+            <Button
+              type="primary"
+              icon={<SendOutlined />}
+              onClick={handleSubmitPeriod}
+              loading={submittingPeriod}
+              disabled={!periodIsComplete || hasChanges}
+            >
+              Enviar bimestre completo
+            </Button>
+          )}
+        />
+      )}
 
       { }
       {currentAlumno && (

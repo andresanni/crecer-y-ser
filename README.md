@@ -16,8 +16,9 @@ Aplicación web de gestión escolar para alumnos, responsables, inscripciones, e
 - Directorio, alta, edición, ficha, baja y eliminación de alumnos.
 - Inscripciones, responsables y datos de cursada.
 - Constructor de materias, criterios y períodos.
-- Carga y monitoreo de boletines.
-- Acceso temporal para carga docente.
+- Carga y monitoreo de boletines con un editor compartido.
+- Enlaces temporales de curso completo, guardado docente progresivo y envío atómico a control directivo.
+- Corrección institucional, devolución a docente, cierre y reapertura auditados.
 - Autenticación, actualización en tiempo real y temas claro/oscuro.
 
 ## Desarrollo
@@ -42,4 +43,10 @@ La conexión se configura mediante `VITE_POCKETBASE_URL`. Copiar `.env.example` 
 - `docs/project-context.md`: estado funcional y arquitectura vigente.
 - `frontend_guidelines.md`: convenciones de frontend y mapa del modelo de datos.
 - `docs/ux-modernization.md`: sistema UX/UI aprobado.
-- `pb_schema.json`: esquema de PocketBase y fuente de verdad del backend.
+- `docs/magic-link-gradebook.md`: arquitectura del workflow docente–directivo.
+- `docs/pocketbase-api.md`: contrato de las rutas propias de PocketBase.
+- `docs/pocketbase-magic-link-hardening.md`: modelo de seguridad y estado del despliegue.
+- `docs/gradebook-workflow-test-plan.md`: matriz y registro de aceptación del workflow.
+- `deploy/README.md`: topología y operación reproducible del VPS.
+- `pb_migrations/`: evolución ejecutable del esquema y las reglas.
+- `pb_schema.json`: snapshot legible derivado del backend vigente.

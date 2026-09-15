@@ -471,9 +471,57 @@ export interface TokenAccesoDocenteRecord {
   expand?: {
     curso_id?: CursoRecord;
     periodo_id?: PeriodoRecord;
-    materia_id?: MateriaRecord;
   };
 }
+
+export type EstadoInstanciaCargaBoletin =
+  | 'BORRADOR_DOCENTE'
+  | 'CONTROL_DIRECTIVO'
+  | 'CERRADO';
+
+export interface InstanciaCargaBoletinRecord {
+  id: string;
+  created: string;
+  updated: string;
+  curso_id: string;
+  periodo_id: string;
+  estado: EstadoInstanciaCargaBoletin;
+  revision: number;
+  enviado_at?: string;
+  enviado_por?: string;
+  cerrado_at?: string;
+  cerrado_por?: string;
+}
+
+export interface InstanciaCargaBoletin {
+  id: string;
+  cursoId: string;
+  periodoId: string;
+  estado: EstadoInstanciaCargaBoletin;
+  revision: number;
+  enviadoAt?: string;
+  enviadoPor?: string;
+  cerradoAt?: string;
+  cerradoPor?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const instanciaCargaBoletinAdapter = (
+  record: InstanciaCargaBoletinRecord,
+): InstanciaCargaBoletin => ({
+  id: record.id,
+  cursoId: record.curso_id,
+  periodoId: record.periodo_id,
+  estado: record.estado,
+  revision: Number(record.revision) || 0,
+  enviadoAt: record.enviado_at || undefined,
+  enviadoPor: record.enviado_por || undefined,
+  cerradoAt: record.cerrado_at || undefined,
+  cerradoPor: record.cerrado_por || undefined,
+  createdAt: record.created,
+  updatedAt: record.updated,
+});
 
 export interface TokenAccesoDocente {
   id: string;
@@ -481,14 +529,12 @@ export interface TokenAccesoDocente {
   secreto?: string;
   cursoId: string;
   periodoId: string;
-  materiaId?: string;
   docenteNombre: string;
   activo: boolean;
   fechaExpiracion?: string;
   cursoNombre?: string;
   periodoNombre?: string;
   numeroPeriodo?: number;
-  materiaNombre?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -498,7 +544,6 @@ export const tokenAccesoDocenteAdapter = (record: TokenAccesoDocenteRecord): Tok
   tokenPrefijo: record.token_prefijo || record.token.slice(0, 12),
   cursoId: record.curso_id || '',
   periodoId: record.periodo_id || '',
-  materiaId: record.materia_id || undefined,
   docenteNombre: record.docente_nombre || '',
   activo: Boolean(record.activo),
   fechaExpiracion: record.fecha_expiracion || undefined,
@@ -508,7 +553,6 @@ export const tokenAccesoDocenteAdapter = (record: TokenAccesoDocenteRecord): Tok
     record.expand?.periodo_id?.numero_periodo !== undefined
       ? Number(record.expand.periodo_id.numero_periodo)
       : undefined,
-  materiaNombre: record.expand?.materia_id?.nombre,
   createdAt: record.created,
   updatedAt: record.updated,
 });
@@ -541,6 +585,3 @@ export interface ProgresoConstructorCurso {
   porcentaje: number;
   estado: 'COMPLETO' | 'EN_PROGRESO' | 'SIN_CRITERIOS' | 'VACIO';
 }
-
-
-
