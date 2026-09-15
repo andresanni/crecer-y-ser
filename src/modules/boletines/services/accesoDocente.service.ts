@@ -29,7 +29,6 @@ export interface CreateAccesoDocenteInput {
   cursoId: string;
   periodoId: string;
   docenteNombre: string;
-  fechaExpiracion?: string;
 }
 
 interface TeacherAccessDto {
@@ -37,7 +36,6 @@ interface TeacherAccessDto {
   cursoId: string;
   periodoId: string;
   docenteNombre: string;
-  fechaExpiracion: string | null;
   activo: boolean;
 }
 
@@ -139,10 +137,6 @@ export class TeacherSubmissionIncompleteError extends Error {
     this.detail = detail;
   }
 }
-
-const isExpired = (fechaExpiracion?: string) => (
-  Boolean(fechaExpiracion && new Date(fechaExpiracion).getTime() < Date.now())
-);
 
 const isAccessDeniedResponse = (error: unknown) => {
   if (!error || typeof error !== 'object' || !('status' in error)) return false;
@@ -288,13 +282,12 @@ const mapIssuedAccess = (response: IssuedTeacherAccessDto): TokenAccesoDocente =
   periodoId: response.enlace.periodoId,
   docenteNombre: response.enlace.docenteNombre,
   activo: response.enlace.activo,
-  fechaExpiracion: response.enlace.fechaExpiracion || undefined,
   createdAt: '',
   updatedAt: '',
 });
 
 export const accesoDocenteService = {
-  isUsable: (token: TokenAccesoDocente): boolean => token.activo && !isExpired(token.fechaExpiracion),
+  isUsable: (token: TokenAccesoDocente): boolean => token.activo,
 
   list: async (cursoId?: string, periodoId?: string): Promise<TokenAccesoDocente[]> => {
     const conditions: string[] = [];
@@ -349,7 +342,6 @@ export const accesoDocenteService = {
       periodoId: dto.acceso.periodoId,
       docenteNombre: dto.acceso.docenteNombre,
       activo: dto.acceso.activo,
-      fechaExpiracion: dto.acceso.fechaExpiracion || undefined,
       cursoNombre: dto.curso.nombre,
       periodoNombre: dto.periodo.nombre,
       numeroPeriodo: dto.periodo.numeroPeriodo,

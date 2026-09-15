@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 14 de septiembre de 2026.
+Actualizado: 15 de septiembre de 2026.
 
 ## Propósito
 
@@ -14,8 +14,8 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 - Gestión de inscripción, cursada, responsables vinculados y credenciales Acadeu.
 - Portal de boletines con constructor curricular, materias, criterios y períodos.
 - Carga de calificaciones, asistencias, observaciones y apoyos por alumno.
-- Monitoreo de avance por curso y materia.
-- Workflow de boletines con enlaces docentes temporales, guardado progresivo, envío completo y control institucional exclusivo.
+- Tablero unificado de carga, avance y revisión por curso.
+- Workflow de boletines con enlaces docentes revocables, guardado progresivo, envío completo y control institucional exclusivo.
 - Landing institucional y temas claro/oscuro.
 
 ## Stack vigente
@@ -38,8 +38,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 | `/carga` | Carga pública mediante token docente |
 | `/app/alumnos` | Directorio y gestión de alumnos |
 | `/app/boletines` | Portal de boletines |
-| `/app/boletines/calificaciones` | Carga de notas |
-| `/app/boletines/monitoreo` | Monitoreo de avance |
+| `/app/boletines/calificaciones` | Tablero unificado de carga y revisión de notas |
 | `/app/boletines/constructor` | Constructor curricular |
 
 ## Arquitectura
@@ -63,12 +62,13 @@ La carga institucional y la carga por enlace comparten el editor de boletín y s
 | Estado | Control de escritura | Salida válida |
 | --- | --- | --- |
 | `BORRADOR_DOCENTE` | Docente mediante enlace vigente | Envío completo a dirección |
-| `CONTROL_DIRECTIVO` | Usuario institucional autenticado | Devolución, cierre o edición |
-| `CERRADO` | Sin edición | Reapertura a control directivo |
+| `CONTROL_DIRECTIVO` | Usuario institucional autenticado | Estado terminal con revisión y corrección |
 
-El guardado docente es progresivo, pero el envío es atómico y sólo ocurre cuando el servidor verifica la completitud de todo el curso. El traspaso revoca inmediatamente las credenciales docentes. Dirección puede corregir transaccionalmente, devolver la carga mediante un secreto nuevo, cerrarla con auditoría o reabrirla sólo para revisión institucional. La interfaz nunca monta dos formularios editables a la vez y las colecciones de notas, criterios y cierres no admiten escrituras directas desde clientes.
+El guardado docente es progresivo, pero el envío es atómico y sólo ocurre cuando el servidor verifica la completitud de todo el curso. El traspaso revoca inmediatamente las credenciales docentes y no puede revertirse. Dirección recibe una revisión de solo lectura y corrige de forma atómica por materia: sólo una puede editarse por vez y sus acciones de guardado o descarte permanecen en la tarjeta correspondiente. La interfaz nunca monta dos formularios editables a la vez y las colecciones de notas, criterios y cierres no admiten escrituras directas desde clientes.
 
-La migración `1789342800_created_gradebook_workflows.js`, los hooks y las reglas están aplicados en el VPS. El recorrido completo fue validado con datos descartables: rechazo del envío incompleto, persistencia progresiva, envío, revocación, edición institucional, cierre, reapertura, devolución con rotación y segundo envío. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
+Las migraciones de workflow, los hooks y las reglas están versionados con el proyecto y desplegados en el VPS. `1789346400_simplified_unidirectional_gradebook_workflow.js` reduce la máquina a sus dos estados vigentes, migra cualquier registro histórico cerrado a control directivo y elimina los campos de cierre obsoletos. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
+
+Los enlaces no tienen vencimiento calendario. Permanecen activos durante el borrador hasta que dirección los desactiva o elimina, o hasta que la entrega atómica revoca todo acceso docente del curso y período.
 
 ## Arquitectura UX/UI
 
@@ -78,12 +78,16 @@ La tipografía de títulos y navegación es Manrope; Inter se reserva para lectu
 
 El producto es desktop first para equipos escolares, con validación prioritaria en 1366, 1440 y 1920 px. El soporte móvil sigue siendo obligatorio para navegación, modales y tareas compatibles.
 
+La sección institucional `Carga de notas` concentra el seguimiento y la operación por curso. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
+
+El tablero distingue el avance académico del control operativo. `Completado` exige una entrega en `CONTROL_DIRECTIVO`; `En progreso` indica un borrador con credencial activa y `Pausado` identifica respuestas parciales sin acceso docente vigente. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
+
 ## Estado de calidad
 
 - `npm run lint`: sin errores ni advertencias al finalizar la modernización.
 - `npm run build`: correcto.
 - Advertencia conocida: el bundle principal supera 500 kB minificado; requiere una estrategia posterior de partición de código.
 - La modernización UX/UI fue aprobada y fusionada en `master`.
-- El workflow docente–directivo fue desplegado y superó su recorrido funcional extremo a extremo con datos de prueba.
+- El workflow unidireccional fue validado sobre una copia aislada y desplegado; el servicio, el esquema de dos estados y la ausencia de rutas de retorno fueron verificados en el VPS.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.

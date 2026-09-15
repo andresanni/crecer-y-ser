@@ -411,18 +411,12 @@ export interface ProgresoCursoResumen {
 
 
 
-export type EstadoMonitoreoCurso = 'COMPLETO' | 'EN_PROGRESO' | 'SIN_INICIAR' | 'SIN_ENLACE';
-
-export interface MateriaMonitoreoResumen {
-  cursoMateriaId: string;
-  materiaId: string;
-  materiaNombre: string;
-  totalAlumnos: number;
-  alumnosEvaluados: number;
-  porcentaje: number;
-  docenteNombre?: string;
-  tieneToken: boolean;
-}
+export type EstadoMonitoreoCurso =
+  | 'COMPLETO'
+  | 'EN_PROGRESO'
+  | 'PAUSADO'
+  | 'SIN_INICIAR'
+  | 'SIN_ENLACE';
 
 export interface CursoMonitoreoResumen {
   cursoId: string;
@@ -434,18 +428,14 @@ export interface CursoMonitoreoResumen {
   alumnosSinIniciar: number;
   porcentaje: number;
   estado: EstadoMonitoreoCurso;
+  entregado: boolean;
   tokenDocente?: TokenAccesoDocente;
-  materias: MateriaMonitoreoResumen[];
 }
 
 export interface MonitoreoInstitucionalData {
-  totalAlumnosColegio: number;
-  completadosColegio: number;
-  enProgresoColegio: number;
-  sinIniciarColegio: number;
-  porcentajeGlobalColegio: number;
   cursosCompletosCount: number;
   cursosEnProgresoCount: number;
+  cursosPausadosCount: number;
   cursosSinIniciarCount: number;
   cursosSinTokenCount: number;
   cursos: CursoMonitoreoResumen[];
@@ -467,7 +457,6 @@ export interface TokenAccesoDocenteRecord {
   materia_id?: string;
   docente_nombre: string;
   activo: boolean;
-  fecha_expiracion?: string;
   expand?: {
     curso_id?: CursoRecord;
     periodo_id?: PeriodoRecord;
@@ -476,8 +465,7 @@ export interface TokenAccesoDocenteRecord {
 
 export type EstadoInstanciaCargaBoletin =
   | 'BORRADOR_DOCENTE'
-  | 'CONTROL_DIRECTIVO'
-  | 'CERRADO';
+  | 'CONTROL_DIRECTIVO';
 
 export interface InstanciaCargaBoletinRecord {
   id: string;
@@ -489,8 +477,6 @@ export interface InstanciaCargaBoletinRecord {
   revision: number;
   enviado_at?: string;
   enviado_por?: string;
-  cerrado_at?: string;
-  cerrado_por?: string;
 }
 
 export interface InstanciaCargaBoletin {
@@ -501,8 +487,6 @@ export interface InstanciaCargaBoletin {
   revision: number;
   enviadoAt?: string;
   enviadoPor?: string;
-  cerradoAt?: string;
-  cerradoPor?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -517,8 +501,6 @@ export const instanciaCargaBoletinAdapter = (
   revision: Number(record.revision) || 0,
   enviadoAt: record.enviado_at || undefined,
   enviadoPor: record.enviado_por || undefined,
-  cerradoAt: record.cerrado_at || undefined,
-  cerradoPor: record.cerrado_por || undefined,
   createdAt: record.created,
   updatedAt: record.updated,
 });
@@ -531,7 +513,6 @@ export interface TokenAccesoDocente {
   periodoId: string;
   docenteNombre: string;
   activo: boolean;
-  fechaExpiracion?: string;
   cursoNombre?: string;
   periodoNombre?: string;
   numeroPeriodo?: number;
@@ -546,7 +527,6 @@ export const tokenAccesoDocenteAdapter = (record: TokenAccesoDocenteRecord): Tok
   periodoId: record.periodo_id || '',
   docenteNombre: record.docente_nombre || '',
   activo: Boolean(record.activo),
-  fechaExpiracion: record.fecha_expiracion || undefined,
   cursoNombre: record.expand?.curso_id?.nombre,
   periodoNombre: record.expand?.periodo_id?.nombre,
   numeroPeriodo:

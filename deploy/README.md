@@ -67,7 +67,7 @@ journalctl -u pocketbase -n 100 --no-pager
 systemctl show pocketbase -p ActiveState -p SubState -p ExecMainStatus -p ExecStart -p WorkingDirectory
 ```
 
-Además deben probarse un enlace vigente, uno revocado, uno expirado y el rechazo de acceso anónimo a las colecciones cerradas. Nunca pegar secretos reales en logs, documentación o tickets.
+Además deben probarse un enlace activo, uno revocado, uno entregado y el rechazo de acceso anónimo a las colecciones protegidas. Nunca pegar secretos reales en logs, documentación o tickets.
 
 ## Recuperación
 

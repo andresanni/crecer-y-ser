@@ -10,7 +10,7 @@ La credencial docente viaja en `X-CYS-Teacher-Token`. Las respuestas del gateway
 
 ### `GET /api/cys/docente/contexto`
 
-Devuelve el alcance autorizado: referencia del acceso, instancia de carga, curso, período, materias, criterios, valores de escala y alumnos regulares. La instancia informa su identidad, estado, revisión y datos mínimos de envío o cierre. No devuelve DNI, legajo, credenciales escolares ni el secreto.
+Devuelve el alcance autorizado: referencia del acceso, instancia de carga, curso, período, materias, criterios, valores de escala y alumnos regulares. La instancia informa su identidad, estado, revisión y datos mínimos de envío. No devuelve DNI, legajo, credenciales escolares ni el secreto.
 
 ### `GET /api/cys/docente/alumnos/:inscripcionId`
 
@@ -65,7 +65,7 @@ Estas rutas exigen una sesión de la colección `users`.
 
 ### `POST /api/cys/enlaces-docentes`
 
-Emite un enlace y devuelve el secreto sólo en esta respuesta.
+Emite un enlace sin vencimiento calendario y devuelve el secreto sólo en esta respuesta. El acceso termina por desactivación, eliminación o entrega del bimestre.
 
 ### `POST /api/cys/enlaces-docentes/:tokenId/rotar`
 
@@ -89,13 +89,7 @@ Devuelve la instancia del curso y período, o `null` si la carga todavía no fue
 
 Recibe `periodoId` junto con los mismos bloques `materias`, `cierre` y `apoyos` del guardado docente. Dentro de una única transacción valida que la instancia continúe en `CONTROL_DIRECTIVO`, comprueba curso y ciclo y persiste todos los bloques modificados. Una respuesta `403` obliga a retirar el editor y volver a consultar la instancia.
 
-### `PATCH /api/cys/directivo/instancias/:instanciaId/estado`
-
-Admite únicamente `CONTROL_DIRECTIVO → CERRADO` y `CERRADO → CONTROL_DIRECTIVO`. El cierre registra `cerradoAt` y `cerradoPor` y desactiva credenciales remanentes. La reapertura habilita sólo la edición institucional.
-
-### `POST /api/cys/directivo/instancias/:instanciaId/devolver-docente`
-
-Admite únicamente una instancia en `CONTROL_DIRECTIVO`. En la misma transacción la devuelve a `BORRADOR_DOCENTE`, invalida credenciales anteriores y emite una nueva usando como referencia la docente del último envío. El secreto completo se entrega únicamente en esta respuesta.
+No existen rutas institucionales para devolver una entrega, cerrar la instancia o reabrirla. `CONTROL_DIRECTIVO` es terminal y sólo admite las correcciones realizadas mediante el endpoint de alumno.
 
 ## Respuestas de autorización
 

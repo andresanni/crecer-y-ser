@@ -31,6 +31,8 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\teacherAccess.js"; Target = "teacherAccess.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\teacher_access.pb.js"; Target = "teacher_access.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789342800_created_gradebook_workflows.js"; Target = "1789342800_created_gradebook_workflows.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1789346400_simplified_unidirectional_gradebook_workflow.js"; Target = "1789346400_simplified_unidirectional_gradebook_workflow.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1789471993_removed_teacher_access_expiration.js"; Target = "1789471993_removed_teacher_access_expiration.js" },
   @{ Source = Join-Path $PSScriptRoot "apply-pocketbase-workflow.sh"; Target = "apply-pocketbase-workflow.sh" }
 )
 

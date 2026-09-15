@@ -22,19 +22,13 @@ import {
   CalendarOutlined,
   IdcardOutlined,
   TableOutlined,
-  LockOutlined,
-  RollbackOutlined,
-  UnlockOutlined,
+  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
 import { staffGradebookAccess } from '../models/gradebookAccess.model';
-import {
-  getStaffGradebookWorkflow,
-  returnStaffGradebookToTeacher,
-  setStaffGradebookWorkflowState,
-} from '../services/gradebookDataSource.service';
+import { getStaffGradebookWorkflow } from '../services/gradebookDataSource.service';
 import { GestorEnlacesModal } from './GestorEnlacesModal';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
 import type {
@@ -48,8 +42,14 @@ import { useAppStore } from '../../../store/appStore';
 
 const { Text } = Typography;
 
-export const PlanillaCalificacionesPage: React.FC = () => {
-  const { message, modal } = App.useApp();
+interface PlanillaCalificacionesPageProps {
+  onBackToDashboard?: () => void;
+}
+
+export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProps> = ({
+  onBackToDashboard,
+}) => {
+  const { message } = App.useApp();
   const { cicloActual } = useAppStore();
   const [searchParams] = useSearchParams();
   const urlCursoId = searchParams.get('curso');
@@ -72,8 +72,6 @@ export const PlanillaCalificacionesPage: React.FC = () => {
   const [loadingCursoData, setLoadingCursoData] = useState(false);
   const [loadingWorkflow, setLoadingWorkflow] = useState(false);
   const [workflow, setWorkflow] = useState<InstanciaCargaBoletin | null>(null);
-  const [transitioningWorkflow, setTransitioningWorkflow] = useState(false);
-  const [staffHasUnsavedChanges, setStaffHasUnsavedChanges] = useState(false);
   const [reloadCounter, setReloadCounter] = useState(0);
 
 
@@ -204,112 +202,14 @@ export const PlanillaCalificacionesPage: React.FC = () => {
     [periodos, selectedPeriodoId]
   );
 
-  const handleReturnToTeacher = () => {
-    if (!workflow || workflow.estado !== 'CONTROL_DIRECTIVO') return;
-    if (staffHasUnsavedChanges) {
-      message.warning('Guardá o descartá los cambios actuales antes de devolver la carga.');
-      return;
-    }
-    modal.confirm({
-      title: '¿Devolver la carga a la docente?',
-      content: 'Se bloqueará inmediatamente la edición directiva y se generará un enlace nuevo para que la docente realice las correcciones.',
-      okText: 'Devolver y generar enlace',
-      cancelText: 'Cancelar',
-      onOk: async () => {
-        try {
-          setTransitioningWorkflow(true);
-          const result = await returnStaffGradebookToTeacher(workflow);
-          setWorkflow(result.workflow);
-          const url = `${window.location.origin}/carga#token=${encodeURIComponent(result.secret)}`;
-          let copied = false;
-          try {
-            await navigator.clipboard.writeText(url);
-            copied = true;
-          } catch {
-            copied = false;
-          }
-          modal.success({
-            title: 'Carga devuelta a la docente',
-            content: (
-              <Space orientation="vertical">
-                <Text>
-                  {copied
-                    ? 'El enlace nuevo fue copiado. También podés copiarlo desde esta ventana antes de cerrarla.'
-                    : 'Copiá ahora el enlace nuevo antes de cerrar esta ventana.'}
-                </Text>
-                <Text type="secondary">El secreto no podrá recuperarse después.</Text>
-                <Text copyable={{ text: url }}>{url}</Text>
-              </Space>
-            ),
-            okText: 'Listo',
-          });
-        } catch (err) {
-          console.error(err);
-          message.error('No se pudo devolver la carga a la docente');
-          throw err;
-        } finally {
-          setTransitioningWorkflow(false);
-        }
-      },
-    });
-  };
-
-  const handleCloseWorkflow = () => {
-    if (!workflow || workflow.estado !== 'CONTROL_DIRECTIVO') return;
-    if (staffHasUnsavedChanges) {
-      message.warning('Guardá o descartá los cambios actuales antes de cerrar el bimestre.');
-      return;
-    }
-    modal.confirm({
-      title: '¿Cerrar definitivamente este bimestre?',
-      content: 'La planilla quedará en modo cerrado y no admitirá cambios hasta que un directivo vuelva a abrirla.',
-      okText: 'Cerrar bimestre',
-      cancelText: 'Cancelar',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        try {
-          setTransitioningWorkflow(true);
-          setWorkflow(await setStaffGradebookWorkflowState(workflow, 'CERRADO'));
-          message.success('Bimestre cerrado correctamente');
-        } catch (err) {
-          console.error(err);
-          message.error('No se pudo cerrar el bimestre');
-          throw err;
-        } finally {
-          setTransitioningWorkflow(false);
-        }
-      },
-    });
-  };
-
-  const handleReopenWorkflow = () => {
-    if (!workflow || workflow.estado !== 'CERRADO') return;
-    modal.confirm({
-      title: '¿Reabrir la revisión directiva?',
-      content: 'La planilla volverá a admitir modificaciones institucionales. No se habilitará ningún enlace docente.',
-      okText: 'Reabrir revisión',
-      cancelText: 'Cancelar',
-      onOk: async () => {
-        try {
-          setTransitioningWorkflow(true);
-          setWorkflow(await setStaffGradebookWorkflowState(workflow, 'CONTROL_DIRECTIVO'));
-          message.success('Revisión directiva habilitada');
-        } catch (err) {
-          console.error(err);
-          message.error('No se pudo reabrir la revisión');
-          throw err;
-        } finally {
-          setTransitioningWorkflow(false);
-        }
-      },
-    });
-  };
-
-
-
   return (
     <SectionLayout title="Carga de notas de boletines" icon={<TableOutlined />} actions={
         <Space size="middle" wrap>
+          {onBackToDashboard && (
+            <Button icon={<ArrowLeftOutlined />} onClick={onBackToDashboard}>
+              Volver a cursos
+            </Button>
+          )}
           <Button
             icon={<LinkOutlined className={ui.primary} />}
             onClick={() => setGestorEnlacesOpen(true)}
@@ -455,68 +355,19 @@ export const PlanillaCalificacionesPage: React.FC = () => {
             )}
           />
         </Card>
-      ) : workflow.estado === 'CERRADO' ? (
-        <Card>
-          <Alert
-            type="success"
-            showIcon
-            title="Bimestre cerrado"
-            description={workflow.cerradoPor
-              ? `La instancia fue cerrada por ${workflow.cerradoPor} y ya no admite modificaciones.`
-              : 'La instancia está cerrada y ya no admite modificaciones.'}
-            action={(
-              <Button
-                icon={<UnlockOutlined />}
-                loading={transitioningWorkflow}
-                onClick={handleReopenWorkflow}
-              >
-                Reabrir revisión
-              </Button>
-            )}
-          />
-        </Card>
       ) : (
-        <Space orientation="vertical" size="middle" className={ui.fullWidth}>
-          <Alert
-            type="success"
-            showIcon
-            title="Carga recibida · Control directivo"
-            description={workflow.enviadoPor
-              ? `${workflow.enviadoPor} envió el bimestre completo. La edición institucional está habilitada.`
-              : 'La docente envió el bimestre completo. La edición institucional está habilitada.'}
-            action={(
-              <Space wrap>
-                <Button
-                  icon={<RollbackOutlined />}
-                  loading={transitioningWorkflow}
-                  onClick={handleReturnToTeacher}
-                >
-                  Solicitar correcciones
-                </Button>
-                <Button
-                  danger
-                  icon={<LockOutlined />}
-                  loading={transitioningWorkflow}
-                  onClick={handleCloseWorkflow}
-                >
-                  Cerrar bimestre
-                </Button>
-              </Space>
-            )}
-          />
-          <VistaPorAlumno
-            periodoId={selectedPeriodoId || ''}
-            alumnos={alumnos}
-            cursoMaterias={cursoMaterias}
-            valoresEscala={valoresEscala}
-            periodo={selectedPeriodo}
-            access={staffGradebookAccess}
-            onDirtyChange={setStaffHasUnsavedChanges}
-          />
-        </Space>
+        <VistaPorAlumno
+          key={`${selectedCursoId}:${selectedPeriodoId}:${reloadCounter}`}
+          periodoId={selectedPeriodoId || ''}
+          alumnos={alumnos}
+          cursoMaterias={cursoMaterias}
+          valoresEscala={valoresEscala}
+          periodo={selectedPeriodo}
+          access={staffGradebookAccess}
+          readOnly
+        />
       )}
 
-      { }
       <GestorEnlacesModal
         open={gestorEnlacesOpen}
         onClose={() => {

@@ -4,7 +4,6 @@ import { Alert, Card, Row, Col, Typography, Tag, Button, Space, Spin, Tooltip, S
 import {
   ScheduleOutlined,
   TableOutlined,
-  DashboardOutlined,
   SettingOutlined,
   ArrowRightOutlined,
   CheckCircleOutlined,
@@ -52,37 +51,19 @@ export const BoletinesHubPage: React.FC = () => {
     {
       key: 'calificaciones',
       title: 'Carga de Calificaciones',
-      badge: 'OPERATORIA DOCENTE',
+      badge: 'CARGA Y CONTROL',
       badgeColor: 'blue',
       icon: <TableOutlined />,
       description:
-        'Planilla de calificaciones individualizada por alumno, evaluación de los 5 criterios pedagógicos oficiales, registro de inasistencias y cierres de bimestre.',
+        'Tablero unificado para iniciar la carga docente, seguir el avance de cada curso y revisar los bimestres enviados.',
       features: [
-        'Evaluación integral por alumno',
-        '5 Criterios pedagógicos oficiales',
-        'Asistencias y observaciones',
-        'Soporte PPI / Apoyos pedagógicos',
+        'Estado de todos los cursos',
+        'Gestión de enlaces docentes',
+        'Revisión por alumno',
+        'Revisión y corrección directiva',
       ],
       route: '/app/boletines/calificaciones',
-      buttonText: 'Cargar calificaciones',
-      buttonType: 'primary' as const,
-    },
-    {
-      key: 'monitoreo',
-      title: 'Monitoreo y Seguimiento',
-      badge: 'GESTIÓN DIRECTIVA',
-      badgeColor: 'success',
-      icon: <DashboardOutlined />,
-      description:
-        'Tablero de control institucional en tiempo real. Supervisión del avance de carga de notas por curso, materias pendientes y gestión de Enlaces Mágicos.',
-      features: [
-        'Sondeo de avance en tiempo real',
-        'Detección de materias incompletas',
-        'Gestor de Enlaces Mágicos a docentes',
-        'Exportación de planillas y reportes',
-      ],
-      route: '/app/boletines/monitoreo',
-      buttonText: 'Ver monitoreo',
+      buttonText: 'Abrir carga de notas',
       buttonType: 'primary' as const,
     },
     {
@@ -135,7 +116,7 @@ export const BoletinesHubPage: React.FC = () => {
       {!isCicloLoading && !cicloActual && <Alert type="info" showIcon title="No hay un ciclo lectivo activo" description="Las tareas de evaluación requieren un ciclo configurado." />}
       <Row gutter={[20, 20]}>
         {hubSections.map((section) => (
-          <Col xs={24} md={12} xl={8} key={section.key}>
+          <Col xs={24} md={12} key={section.key}>
             <Card className={styles.actionCard} classNames={{ body: styles.cardBody }}>
               <div className={styles.cardTop}>
                 <span className={`${styles.icon} ${styles[section.key]}`} aria-hidden="true">{section.icon}</span>

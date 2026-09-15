@@ -35,10 +35,10 @@ import {
   type ProgresoCursoResumen,
   type EstadoProgresoAlumno,
   type EstadoMonitoreoCurso,
-  type MateriaMonitoreoResumen,
   type CursoMonitoreoResumen,
   type MonitoreoInstitucionalData,
   type TokenAccesoDocente,
+  type InstanciaCargaBoletinRecord,
   type ProgresoConstructorCurso,
   esMateriaConducta,
 } from '../models/boletin.model';
@@ -57,6 +57,7 @@ const COLLECTION_EVALUACIONES_MATERIA = 'evaluaciones_materia';
 const COLLECTION_EVALUACIONES_CRITERIOS = 'evaluaciones_criterios';
 const COLLECTION_CIERRES_PERIODO = 'cierres_periodo_alumno';
 const COLLECTION_INSCRIPCIONES = 'inscripciones';
+const COLLECTION_INSTANCIAS_CARGA = 'instancias_carga_boletin';
 
 const isNotFoundResponse = (error: unknown) => (
   error instanceof ClientResponseError && error.status === 404
@@ -651,13 +652,9 @@ export const boletinService = {
   ): Promise<MonitoreoInstitucionalData> => {
     if (!periodoId) {
       return {
-        totalAlumnosColegio: 0,
-        completadosColegio: 0,
-        enProgresoColegio: 0,
-        sinIniciarColegio: 0,
-        porcentajeGlobalColegio: 0,
         cursosCompletosCount: 0,
         cursosEnProgresoCount: 0,
+        cursosPausadosCount: 0,
         cursosSinIniciarCount: 0,
         cursosSinTokenCount: 0,
         cursos: [],
@@ -719,8 +716,19 @@ export const boletinService = {
       }
 
 
-      const tokens = (await accesoDocenteService.list(undefined, periodoId))
-        .filter(accesoDocenteService.isUsable);
+      const [tokenRecords, workflowRecords] = await Promise.all([
+        accesoDocenteService.list(undefined, periodoId),
+        pb.collection(COLLECTION_INSTANCIAS_CARGA).getFullList<InstanciaCargaBoletinRecord>({
+          filter: `periodo_id = "${periodoId}"`,
+          fields: 'id,curso_id,estado',
+        }),
+      ]);
+      const tokens = tokenRecords.filter(accesoDocenteService.isUsable);
+      const deliveredCourseIds = new Set(
+        workflowRecords
+          .filter((workflow) => workflow.estado === 'CONTROL_DIRECTIVO')
+          .map((workflow) => workflow.curso_id),
+      );
 
       const tokensCursoMap: Record<string, TokenAccesoDocente> = {};
       for (const t of tokens) {
@@ -777,14 +785,9 @@ export const boletinService = {
       }
 
 
-      let totalAlumnosColegio = 0;
-      let completadosColegio = 0;
-      let enProgresoColegio = 0;
-      let sinIniciarColegio = 0;
-      let sumaPorcentajesCursos = 0;
-
       let cursosCompletosCount = 0;
       let cursosEnProgresoCount = 0;
+      let cursosPausadosCount = 0;
       let cursosSinIniciarCount = 0;
       let cursosSinTokenCount = 0;
 
@@ -796,6 +799,7 @@ export const boletinService = {
         const materiasCurso = cursoMateriasMap[cur.id] || [];
         const totalMateriasCurso = materiasCurso.length;
         const tokenGeneral = tokensCursoMap[cur.id];
+        const entregado = deliveredCourseIds.has(cur.id);
 
         let alumnosCompletosCurso = 0;
         let alumnosEnProgresoCurso = 0;
@@ -825,37 +829,18 @@ export const boletinService = {
           ? Math.round((alumnosCompletosCurso / totalAlumnosCurso) * 100)
           : 0;
 
-        const materiasResumen: MateriaMonitoreoResumen[] = materiasCurso.map((cm) => {
-          let alumnosEvaluados = 0;
-          for (const inscId of inscIds) {
-            if (evalAlumnoMateriaMap[inscId]?.[cm.id]) {
-              alumnosEvaluados++;
-            }
-          }
-          const porcentajeMateria = totalAlumnosCurso > 0
-            ? Math.round((alumnosEvaluados / totalAlumnosCurso) * 100)
-            : 0;
-
-          return {
-            cursoMateriaId: cm.id,
-            materiaId: cm.materiaId,
-            materiaNombre: cm.materiaNombre,
-            totalAlumnos: totalAlumnosCurso,
-            alumnosEvaluados,
-            porcentaje: porcentajeMateria,
-            docenteNombre: tokenGeneral?.docenteNombre,
-            tieneToken: Boolean(tokenGeneral),
-          };
-        });
-
         let estado: EstadoMonitoreoCurso = 'SIN_INICIAR';
-        if (totalAlumnosCurso > 0 && alumnosCompletosCurso === totalAlumnosCurso) {
+        const tieneCarga = alumnosCompletosCurso > 0 || alumnosEnProgresoCurso > 0;
+        if (entregado) {
           estado = 'COMPLETO';
           cursosCompletosCount++;
-        } else if (alumnosCompletosCurso > 0 || alumnosEnProgresoCurso > 0) {
+        } else if (tieneCarga && !tokenGeneral) {
+          estado = 'PAUSADO';
+          cursosPausadosCount++;
+        } else if (tieneCarga) {
           estado = 'EN_PROGRESO';
           cursosEnProgresoCount++;
-        } else if (!tokenGeneral && materiasResumen.every((m) => !m.tieneToken)) {
+        } else if (!tokenGeneral) {
           estado = 'SIN_ENLACE';
           cursosSinTokenCount++;
           cursosSinIniciarCount++;
@@ -863,12 +848,6 @@ export const boletinService = {
           estado = 'SIN_INICIAR';
           cursosSinIniciarCount++;
         }
-
-        totalAlumnosColegio += totalAlumnosCurso;
-        completadosColegio += alumnosCompletosCurso;
-        enProgresoColegio += alumnosEnProgresoCurso;
-        sinIniciarColegio += alumnosSinIniciarCurso;
-        sumaPorcentajesCursos += porcentajeCurso;
 
         cursosResumen.push({
           cursoId: cur.id,
@@ -880,26 +859,15 @@ export const boletinService = {
           alumnosSinIniciar: alumnosSinIniciarCurso,
           porcentaje: porcentajeCurso,
           estado,
+          entregado,
           tokenDocente: tokenGeneral,
-          materias: materiasResumen,
         });
       }
 
-      const totalCursos = cursos.length;
-      const porcentajeGlobalColegio = totalAlumnosColegio > 0
-        ? Math.round((completadosColegio / totalAlumnosColegio) * 100)
-        : totalCursos > 0
-        ? Math.round(sumaPorcentajesCursos / totalCursos)
-        : 0;
-
       return {
-        totalAlumnosColegio,
-        completadosColegio,
-        enProgresoColegio,
-        sinIniciarColegio,
-        porcentajeGlobalColegio,
         cursosCompletosCount,
         cursosEnProgresoCount,
+        cursosPausadosCount,
         cursosSinIniciarCount,
         cursosSinTokenCount,
         cursos: cursosResumen,
@@ -907,13 +875,9 @@ export const boletinService = {
     } catch (err) {
       console.error('[boletinService.getMonitoreoInstitucional] Error:', err);
       return {
-        totalAlumnosColegio: 0,
-        completadosColegio: 0,
-        enProgresoColegio: 0,
-        sinIniciarColegio: 0,
-        porcentajeGlobalColegio: 0,
         cursosCompletosCount: 0,
         cursosEnProgresoCount: 0,
+        cursosPausadosCount: 0,
         cursosSinIniciarCount: 0,
         cursosSinTokenCount: 0,
         cursos: [],

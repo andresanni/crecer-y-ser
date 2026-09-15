@@ -2,21 +2,19 @@
 
 ## Objetivo
 
-Validar en conjunto la persistencia progresiva docente, la transferencia exclusiva de control, la corrección institucional, la devolución a docente y el cierre del bimestre sin exponer las colecciones académicas a escrituras directas.
+Validar la persistencia progresiva docente, la transferencia unidireccional y exclusiva de control y la corrección institucional sin exponer las colecciones académicas a escrituras directas.
 
 ## Preparación
 
-- Desplegar juntos `pb_migrations/1789342800_created_gradebook_workflows.js` y `pb_hooks`.
+- Desplegar juntas las migraciones y `pb_hooks` versionados.
 - Confirmar PocketBase activo, HTTPS correcto y un backup reciente.
 - Usar un curso de prueba del ciclo vigente con materias, criterios, escala y al menos dos alumnos activos.
 - Mantener una sesión institucional abierta y usar una ventana privada para la docente.
-- Registrar el curso, período, instancia, revisión y prefijo de cada credencial utilizada. No registrar secretos completos.
+- Registrar curso, período, instancia, revisión y prefijo de cada credencial. No registrar secretos completos.
 
-## Última ejecución
+## Última verificación técnica
 
-El 14 de septiembre de 2026 se ejecutó el recorrido funcional completo contra el VPS con datos descartables. Quedaron verificados el rechazo `422` con cinco alumnos pendientes, el guardado progresivo, la completitud de cinco alumnos y diez materias, la transferencia a `CONTROL_DIRECTIVO`, la revocación del enlace, la edición institucional, el cierre y la reapertura, la devolución con rotación, el reingreso docente y el segundo envío. La ejecución terminó en `CONTROL_DIRECTIVO`, revisión 11, sin credenciales activas para el alcance probado, y la interfaz informó 100 % de avance para los cinco alumnos.
-
-La matriz de concurrencia debe repetirse como prueba de regresión y automatizarse. El recorrido manual confirma las revalidaciones posteriores a cada transición, pero no sustituye todavía pruebas de carrera simultánea ni inyección de fallos transaccionales.
+El 15 de septiembre de 2026 la migración unidireccional se aplicó sobre una copia aislada que incluía una instancia histórica `CERRADO`. Luego se desplegó en el VPS con backup previo. Se verificaron el health check, los hashes de hooks y migración, el selector limitado a `BORRADOR_DOCENTE` y `CONTROL_DIRECTIVO`, la ausencia de `cerrado_at` y `cerrado_por` y respuestas `404` en las dos rutas retiradas. El recorrido funcional de interfaz y la matriz de concurrencia permanecen como siguiente prueba de regresión.
 
 ## Matriz funcional
 
@@ -35,18 +33,20 @@ La matriz de concurrencia debe repetirse como prueba de regresión y automatizar
 3. Recargar y comprobar que el avance persiste.
 4. Completar otro bloque en una sesión posterior.
 5. Confirmar que cada guardado incrementa la revisión sin exigir completar el curso.
+6. Eliminar la credencial y confirmar que el curso aparece `Pausado`, conserva las respuestas y ofrece `Reanudar`.
+7. Emitir un enlace nuevo y confirmar que reaparece `En progreso` con el avance anterior.
 
 ### 3. Exclusión del equipo directivo
 
 1. Consultar el mismo curso y bimestre desde la aplicación.
 2. Confirmar que se informa `Carga docente en curso` y no aparece el editor.
 3. Intentar el endpoint de guardado institucional durante el borrador y comprobar `403`.
-4. Intentar crear, actualizar y eliminar directamente evaluaciones y cierres con una sesión autenticada y comprobar el rechazo de las reglas.
+4. Intentar escribir directamente evaluaciones y cierres con una sesión autenticada y comprobar el rechazo de las reglas.
 
 ### 4. Envío incompleto
 
 1. Intentar enviar el bimestre con datos pendientes.
-2. Confirmar `422`, detalle de alumnos o materias pendientes y permanencia en `BORRADOR_DOCENTE`.
+2. Confirmar `422`, detalle de pendientes y permanencia en `BORRADOR_DOCENTE`.
 3. Confirmar que el enlace continúa vigente después del rechazo.
 
 ### 5. Transferencia a dirección
@@ -54,39 +54,38 @@ La matriz de concurrencia debe repetirse como prueba de regresión y automatizar
 1. Completar todas las materias, criterios y cierres de los alumnos activos.
 2. Guardar cualquier cambio pendiente y enviar el bimestre.
 3. Confirmar `CONTROL_DIRECTIVO`, fecha, docente y revisión incrementada.
-4. Confirmar que el enlace queda revocado y las solicitudes posteriores reciben `401` o `403`.
-5. Actualizar la pantalla institucional y comprobar que el editor se habilita con los datos enviados.
+4. Confirmar que el enlace queda revocado y que las solicitudes posteriores reciben `401` o `403`.
+5. Actualizar la pantalla institucional y comprobar que aparece la revisión.
 
 ### 6. Corrección institucional
 
-1. Modificar una calificación y un cierre desde la aplicación.
-2. Guardar y recargar la ficha.
-3. Confirmar persistencia conjunta e incremento de revisión.
-4. Forzar un dato inválido en una solicitud controlada y comprobar que la transacción no deja bloques parciales.
+1. Confirmar que las respuestas se presentan como texto y no como controles editables.
+2. Habilitar una materia, modificar una calificación y guardar dentro de su tarjeta.
+3. Confirmar que no puede editarse una segunda materia al mismo tiempo.
+4. Recargar y confirmar persistencia e incremento de revisión.
+5. Forzar un dato inválido y comprobar que la transacción no deja bloques parciales.
 
-### 7. Devolución a docente
+### 7. Irreversibilidad
 
-1. Elegir `Solicitar correcciones` sin cambios locales pendientes.
-2. Confirmar `BORRADOR_DOCENTE`, bloqueo inmediato del editor y entrega única de un enlace nuevo visible en una ventana aunque la copia automática al portapapeles falle.
-3. Comprobar que todas las credenciales anteriores fallan.
-4. Abrir el enlace nuevo, confirmar que conserva la carga previa, corregir y volver a enviar.
-5. Confirmar el segundo traspaso a `CONTROL_DIRECTIVO`.
+1. Confirmar que no aparecen acciones para solicitar correcciones, cerrar o reabrir el bimestre.
+2. Comprobar que las antiguas rutas institucionales de transición y devolución responden `404`.
+3. Intentar reactivar una credencial del alcance entregado y comprobar que el gateway la rechaza.
+4. Confirmar que el único estado posterior al envío es `CONTROL_DIRECTIVO`.
 
-### 8. Cierre y reapertura
+### 8. Compatibilidad de migración
 
-1. Cerrar el bimestre desde control directivo.
-2. Confirmar `CERRADO`, auditoría de fecha y usuario y ausencia del editor.
-3. Intentar guardados docentes e institucionales y comprobar su rechazo.
-4. Reabrir la revisión.
-5. Confirmar `CONTROL_DIRECTIVO`, editor institucional habilitado y ninguna credencial docente activa.
+1. Aplicar la migración sobre una copia que contenga una instancia histórica `CERRADO`.
+2. Confirmar que queda en `CONTROL_DIRECTIVO` con revisión incrementada.
+3. Confirmar que el selector de estado sólo admite `BORRADOR_DOCENTE` y `CONTROL_DIRECTIVO`.
+4. Confirmar que `cerrado_at` y `cerrado_por` ya no existen.
 
 ## Matriz de concurrencia
 
-- Ejecutar un guardado docente al mismo tiempo que el envío. La serialización debe dejar el guardado incluido antes de transferir o rechazarlo después de la transferencia, nunca aceptarlo en `CONTROL_DIRECTIVO`.
-- Intentar un guardado institucional mientras la instancia está en borrador y confirmar que el servidor lo rechaza aunque la interfaz estuviera desactualizada.
-- Mantener dos pestañas docentes abiertas, revocar o devolver el control desde otra sesión y comprobar que el siguiente guardado revalida la credencial.
-- Mantener el editor institucional abierto, cerrar la instancia desde otra sesión y comprobar que el siguiente guardado es rechazado por estado.
+- Ejecutar un guardado docente al mismo tiempo que el envío. La serialización debe incluirlo antes de transferir o rechazarlo después, nunca aceptarlo en `CONTROL_DIRECTIVO`.
+- Intentar un guardado institucional mientras la instancia está en borrador y confirmar el rechazo aunque la interfaz estuviera desactualizada.
+- Mantener dos pestañas docentes abiertas, completar el envío desde una y comprobar que la siguiente lectura o escritura de la otra revalida la credencial.
+- Mantener dos sesiones institucionales editando materias diferentes y comprobar que un conflicto no deja una escritura parcial.
 
 ## Criterio de aprobación
 
-El workflow se considera aprobado cuando todas las transiciones válidas conservan datos y auditoría, todas las transiciones inválidas son rechazadas, nunca existen dos roles con escritura simultánea y ningún fallo transaccional deja información parcial.
+El workflow queda aprobado cuando el envío conserva todos los datos, invalida definitivamente el acceso docente, nunca existen dos roles con escritura simultánea, las rutas obsoletas no están disponibles y ningún fallo transaccional deja información parcial.

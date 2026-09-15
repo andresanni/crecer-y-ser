@@ -85,10 +85,6 @@
   margin-inline-end: 3px;
 }
 
-.expiration {
-  font-size: 11.5px;
-}
-
 .successIcon {
   color: var(--cys-color-success-text);
 }

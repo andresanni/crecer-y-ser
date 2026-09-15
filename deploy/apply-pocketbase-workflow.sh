@@ -11,6 +11,8 @@ esac
 test -f "$stage_dir/teacherAccess.js"
 test -f "$stage_dir/teacher_access.pb.js"
 test -f "$stage_dir/1789342800_created_gradebook_workflows.js"
+test -f "$stage_dir/1789346400_simplified_unidirectional_gradebook_workflow.js"
+test -f "$stage_dir/1789471993_removed_teacher_access_expiration.js"
 
 backup_dir="/root/pb/deploy_backups/$release_id"
 install -d -m 0700 "$backup_dir"
@@ -28,11 +30,19 @@ fi
 if test -f /root/pb/pb_migrations/1789342800_created_gradebook_workflows.js; then
   cp -a /root/pb/pb_migrations/1789342800_created_gradebook_workflows.js "$backup_dir/"
 fi
+if test -f /root/pb/pb_migrations/1789346400_simplified_unidirectional_gradebook_workflow.js; then
+  cp -a /root/pb/pb_migrations/1789346400_simplified_unidirectional_gradebook_workflow.js "$backup_dir/"
+fi
+if test -f /root/pb/pb_migrations/1789471993_removed_teacher_access_expiration.js; then
+  cp -a /root/pb/pb_migrations/1789471993_removed_teacher_access_expiration.js "$backup_dir/"
+fi
 
 install -d -m 0755 /root/pb/pb_hooks/lib /root/pb/pb_migrations
 install -m 0644 "$stage_dir/teacherAccess.js" /root/pb/pb_hooks/lib/teacherAccess.js
 install -m 0644 "$stage_dir/teacher_access.pb.js" /root/pb/pb_hooks/teacher_access.pb.js
 install -m 0644 "$stage_dir/1789342800_created_gradebook_workflows.js" /root/pb/pb_migrations/1789342800_created_gradebook_workflows.js
+install -m 0644 "$stage_dir/1789346400_simplified_unidirectional_gradebook_workflow.js" /root/pb/pb_migrations/1789346400_simplified_unidirectional_gradebook_workflow.js
+install -m 0644 "$stage_dir/1789471993_removed_teacher_access_expiration.js" /root/pb/pb_migrations/1789471993_removed_teacher_access_expiration.js
 
 systemctl start pocketbase
 trap - EXIT

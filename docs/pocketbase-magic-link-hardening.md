@@ -2,7 +2,7 @@
 
 ## Estado confirmado
 
-El 14 de septiembre de 2026 se desplegaron en PocketBase 0.22.17 las migraciones `1789334557_hardened_teacher_access_tokens.js`, `1789338120_close_public_gradebook_rules.js` y `1789342800_created_gradebook_workflows.js`, los hooks de acceso docente e institucional y la unidad systemd con rutas explícitas para datos, hooks y migraciones. `pb_schema.json` refleja las colecciones migradas y las reglas resultantes.
+Las migraciones de endurecimiento y workflow, los hooks de acceso docente e institucional y la unidad systemd con rutas explícitas para datos, hooks y migraciones están desplegados en PocketBase 0.22.17. La simplificación unidireccional se aplicó el 15 de septiembre de 2026 y `pb_schema.json` refleja las colecciones y reglas resultantes.
 
 Las rutas seguras disponibles son:
 
@@ -15,12 +15,10 @@ Las rutas seguras disponibles son:
 - `PATCH /api/cys/enlaces-docentes/:tokenId/estado`, restringida a usuarios institucionales autenticados
 - `GET /api/cys/directivo/instancias/:cursoId/:periodoId`, restringida a usuarios institucionales autenticados
 - `PUT /api/cys/directivo/alumnos/:inscripcionId`, restringida a usuarios institucionales autenticados
-- `PATCH /api/cys/directivo/instancias/:instanciaId/estado`, restringida a usuarios institucionales autenticados
-- `POST /api/cys/directivo/instancias/:instanciaId/devolver-docente`, restringida a usuarios institucionales autenticados
 
 Las rutas docentes reciben la credencial en `X-CYS-Teacher-Token`, revalidan su vigencia, alcance y estado en cada solicitud y responden con `Cache-Control: no-store`. Los enlaces nuevos guardan SHA-256 tanto en `token` como en `token_hash` y sólo muestran `token_prefijo` como referencia administrativa. Los enlaces legados de curso completo conservan validez por comparación de hash; los accesos legados limitados a una materia son rechazados por el gateway.
 
-La verificación posterior al despliegue confirmó el servicio activo, el health check público, cero resultados anónimos en las colecciones cerradas y rechazo de credenciales inválidas o rutas institucionales sin sesión. El recorrido remoto cubrió además guardado progresivo, rechazo `422` del envío incompleto, transferencia atómica, revocación, edición institucional, cierre, reapertura, devolución con rotación y segundo envío.
+La verificación posterior al despliegue confirmó el servicio activo, el health check público, cero resultados anónimos en las colecciones protegidas y rechazo de credenciales inválidas o rutas institucionales sin sesión.
 
 ### Estado de seguridad
 
@@ -30,11 +28,13 @@ Las colecciones académicas y `tokens_acceso_docente` exigen sesión institucion
 
 La migración `1789342800_created_gradebook_workflows.js` incorporó `instancias_carga_boletin`, cerró la creación y actualización directa de `tokens_acceso_docente` y agregó `PATCH /api/cys/enlaces-docentes/:tokenId/estado`. Los guardados docentes verifican `BORRADOR_DOCENTE` dentro de su transacción y sólo puede quedar una credencial activa por curso y período. `POST /api/cys/docente/enviar` valida el curso completo, transfiere el control y revoca todas sus credenciales atómicamente.
 
-La fase institucional agregó la consulta de estado y un guardado transaccional restringido a `CONTROL_DIRECTIVO`. La misma migración cerró creación, actualización y eliminación directa de evaluaciones, criterios evaluados y cierres. La interfaz no monta el editor institucional mientras la docente conserva el control.
+La fase institucional agregó la consulta de estado y un guardado transaccional restringido a `CONTROL_DIRECTIVO`. La misma migración bloqueó creación, actualización y eliminación directa de evaluaciones, criterios evaluados y cierres. La interfaz no monta el editor institucional mientras la docente conserva el control.
 
-El ciclo se completa con transiciones institucionales validadas: devolución atómica a `BORRADOR_DOCENTE` con una credencial nueva, cierre auditado hacia `CERRADO` y reapertura exclusivamente hacia `CONTROL_DIRECTIVO`. No existe una transición genérica que pueda saltar estados o reactivar secretos anteriores.
+La migración `1789346400_simplified_unidirectional_gradebook_workflow.js` convierte cualquier instancia histórica `CERRADO` en `CONTROL_DIRECTIVO`, elimina ese estado y sus campos de auditoría y deja `CONTROL_DIRECTIVO` como estado terminal. Se validó primero sobre una copia con un registro cerrado y luego se desplegó con el respaldo `/root/pb/deploy_backups/20260915-081914`. Los hooks ya no exponen rutas de devolución, cierre o reapertura, por lo que un envío docente nunca puede recuperar acceso docente.
 
-Esta evolución fue validada con PocketBase 0.22.17 sobre una base temporal, incluida la migración de registros existentes, el cierre de reglas y el rollback, y luego desplegada como una unidad en el VPS. El conjunto versionado completa la exclusión mutua entre roles y debe mantenerse sincronizado: migración, hooks y frontend compatibles.
+La migración `1789471993_removed_teacher_access_expiration.js` retira `fecha_expiracion`. La duración del acceso depende exclusivamente de `activo` y del estado `BORRADOR_DOCENTE`; desactivar, eliminar o entregar reemplaza el vencimiento por fecha. Fue validada sobre una copia y desplegada el 15 de septiembre de 2026 con el respaldo `/root/pb/deploy_backups/20260915-083545`.
+
+El conjunto versionado completa la exclusión mutua entre roles y debe mantenerse sincronizado: migraciones, hooks y frontend compatibles.
 
 ## Arquitectura vigente
 
@@ -46,7 +46,7 @@ El navegador docente no debe consumir directamente las colecciones académicas. 
 - Listar únicamente los alumnos y datos necesarios para esa planilla.
 - Leer la libreta de un alumno dentro del alcance autorizado.
 - Guardar las calificaciones del curso, apoyos y cierre permitidos.
-- Revalidar actividad, vencimiento y alcance en cada solicitud.
+- Revalidar actividad, estado del workflow y alcance en cada solicitud.
 
 El hook consulta y persiste internamente mediante PocketBase, por lo que las reglas públicas de las colecciones pueden volver a cerrarse. Los guardados relacionados deben ejecutarse en una transacción.
 
@@ -75,7 +75,7 @@ No se cambian reglas en esta etapa.
 
 ### Etapa 1: rutas seguras paralelas — completada el 14 de septiembre de 2026
 
-Los hooks compatibles con PocketBase 0.22.17 conviven temporalmente con las APIs públicas actuales. Se probaron validación, enlace legado y con hash, vencimiento, revocación, escritura parcial y transacción. Los accesos por materia fueron retirados posteriormente del contrato y los enlaces legados de ese tipo son rechazados.
+Los hooks compatibles con PocketBase 0.22.17 conviven temporalmente con las APIs públicas actuales. Se probaron validación, enlace legado y con hash, revocación, escritura parcial y transacción. Los accesos por materia fueron retirados posteriormente del contrato y los enlaces legados de ese tipo son rechazados.
 
 Despliegue realizado en el VPS:
 

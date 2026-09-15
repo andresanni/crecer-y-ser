@@ -9,17 +9,10 @@ interface StaffWorkflowStateDto {
   revision: number;
   enviadoAt: string | null;
   enviadoPor: string | null;
-  cerradoAt: string | null;
-  cerradoPor: string | null;
 }
 
 interface StaffWorkflowDto {
   instancia: StaffWorkflowStateDto | null;
-}
-
-interface ReturnedTeacherAccessDto {
-  instancia: StaffWorkflowStateDto;
-  secreto: string;
 }
 
 const loadStaffStudent = async (
@@ -83,39 +76,9 @@ const mapStaffWorkflow = (
     revision: workflow.revision,
     enviadoAt: workflow.enviadoAt || undefined,
     enviadoPor: workflow.enviadoPor || undefined,
-    cerradoAt: workflow.cerradoAt || undefined,
-    cerradoPor: workflow.cerradoPor || undefined,
     createdAt: '',
     updatedAt: '',
   });
-
-export const setStaffGradebookWorkflowState = async (
-  workflow: InstanciaCargaBoletin,
-  estado: 'CONTROL_DIRECTIVO' | 'CERRADO',
-): Promise<InstanciaCargaBoletin> => {
-  const response = await pb.send<{ instancia: StaffWorkflowStateDto }>(
-    `/api/cys/directivo/instancias/${workflow.id}/estado`,
-    {
-      method: 'PATCH',
-      body: { estado },
-      requestKey: null,
-    },
-  );
-  return mapStaffWorkflow(response.instancia, workflow.cursoId, workflow.periodoId);
-};
-
-export const returnStaffGradebookToTeacher = async (
-  workflow: InstanciaCargaBoletin,
-): Promise<{ workflow: InstanciaCargaBoletin; secret: string }> => {
-  const response = await pb.send<ReturnedTeacherAccessDto>(
-    `/api/cys/directivo/instancias/${workflow.id}/devolver-docente`,
-    { method: 'POST', requestKey: null },
-  );
-  return {
-    workflow: mapStaffWorkflow(response.instancia, workflow.cursoId, workflow.periodoId),
-    secret: response.secreto,
-  };
-};
 
 export const staffGradebookDataSource: GradebookDataSource = {
   getCriterios: (cursoMateriaIds) => (

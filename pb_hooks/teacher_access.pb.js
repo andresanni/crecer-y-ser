@@ -28,16 +28,6 @@ routerAdd("PUT", "/api/cys/directivo/alumnos/:inscripcionId", (c) => {
   return access.saveStaffStudent(c)
 }, $apis.requireRecordAuth("users"), $apis.bodyLimit(1048576))
 
-routerAdd("PATCH", "/api/cys/directivo/instancias/:instanciaId/estado", (c) => {
-  const access = require(`${__hooks}/lib/teacherAccess.js`)
-  return access.transitionStaffWorkflow(c)
-}, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
-
-routerAdd("POST", "/api/cys/directivo/instancias/:instanciaId/devolver-docente", (c) => {
-  const access = require(`${__hooks}/lib/teacherAccess.js`)
-  return access.returnToTeacher(c)
-}, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
-
 routerAdd("POST", "/api/cys/enlaces-docentes", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.issue(c)

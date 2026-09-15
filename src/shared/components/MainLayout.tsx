@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Layout, Menu, Tag, Spin, Space, Dropdown, Avatar, Breadcrumb, Button, Tooltip, Drawer, Grid } from 'antd';
-import { TeamOutlined, LogoutOutlined, CalendarOutlined, SunOutlined, MoonOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, TableOutlined, SettingOutlined, DashboardOutlined } from '@ant-design/icons';
+import { TeamOutlined, LogoutOutlined, CalendarOutlined, SunOutlined, MoonOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, TableOutlined, SettingOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import { useTheme } from '../../core/themeContext';
@@ -11,7 +11,6 @@ const sections = [
   { key: '/app/alumnos', label: 'Alumnos', icon: <TeamOutlined /> },
   { key: '/app/boletines', label: 'Boletines', icon: <ScheduleOutlined /> },
   { key: '/app/boletines/calificaciones', label: 'Carga de notas', icon: <TableOutlined /> },
-  { key: '/app/boletines/monitoreo', label: 'Monitoreo', icon: <DashboardOutlined /> },
   { key: '/app/boletines/constructor', label: 'Constructor curricular', icon: <SettingOutlined /> },
 ];
 

@@ -8,6 +8,8 @@
 *   **Formularios modales:** Usar `FormModal` como marco visual y `FormModalSteps` cuando el flujo sea secuencial. Cada módulo conserva sus campos y grillas adaptativas, pero no redefine header, altura, scroll, footer ni estados visuales de las etapas.
 *   **State Management:** Zustand para estado global.
 *   **Carga de boletines:** La vista institucional y la ruta por enlace mágico comparten `VistaPorAlumno`. Las diferencias de alcance se expresan mediante `GradebookAccessPolicy` y `GradebookDataSource`; no duplicar el editor ni dispersar verificaciones de ruta o sesión dentro de sus controles. El origen institucional lee colecciones autenticadas y escribe únicamente mediante `/api/cys/directivo/*`; el origen docente usa únicamente `/api/cys/docente/*`. El editor institucional sólo se monta en `CONTROL_DIRECTIVO`.
+*   **Entrada institucional de boletines:** `Carga de notas` es el único tablero de seguimiento y operación por curso. No recrear una sección separada de monitoreo; cada curso debe conducir al tratamiento que corresponda según su instancia.
+*   **Revisión directiva:** En `CONTROL_DIRECTIVO`, las respuestas se presentan como texto informativo por defecto. Cada materia habilita sus propios controles mediante `Editar` y conserva `Guardar` y `Descartar` dentro de la misma tarjeta. Sólo una materia puede editarse por vez y no se puede cambiar de alumno dejando modificaciones pendientes.
 *   **Routing:** React Router v7.
 *   **Backend / BaaS:** PocketBase SDK (`pocketbase` npm package).
     *   URL del servidor: `https://alumnos-api.duckdns.org`
@@ -20,17 +22,18 @@
     *   El modelo de dominio frontend (`camelCase`) se usa en componentes y estado de UI.
     *   Cada módulo debe implementar su adaptador (ej: `alumnoAdapter`) para transformar registros `*Record` a entidades de dominio.
 *   **Conexión PocketBase:** No existe un servidor Node.js intermedio. Las pantallas institucionales consumen colecciones autenticadas mediante `src/core/pocketbase.ts`. La carga docente consume sólo el gateway versionado en `pb_hooks`; su contrato está en `docs/pocketbase-api.md`.
-*   **Workflow de boletines:** Existe una sola instancia por curso y período. `BORRADOR_DOCENTE` habilita únicamente al enlace; `CONTROL_DIRECTIVO` habilita únicamente a la sesión institucional; `CERRADO` inmoviliza la carga. No montar el editor fuera del estado autorizado ni reintentar automáticamente una escritura rechazada con `401` o `403`.
+*   **Workflow de boletines:** Existe una sola instancia por curso y período. `BORRADOR_DOCENTE` habilita únicamente al enlace y `CONTROL_DIRECTIVO` es el estado terminal que habilita únicamente a la sesión institucional. El traspaso es unidireccional: nunca devolver una entrega a la docente ni reactivar una credencial después del envío. No montar el editor fuera del estado autorizado ni reintentar automáticamente una escritura rechazada con `401` o `403`.
+*   **Estado del tablero:** `COMPLETO` representa una entrega efectiva en `CONTROL_DIRECTIVO`, no sólo un porcentaje calculado. Un borrador con respuestas y sin credencial activa se presenta como `PAUSADO`; emitir un enlace nuevo lo reanuda sin descartar el trabajo previo.
 *   **Completitud:** Una materia académica requiere calificación general y todos sus criterios. Una materia formativa identificada como conducta requiere todos sus criterios, pero no calificación general. El servidor es la autoridad final para aceptar el envío completo.
-*   **Enlaces docentes:** Siempre abarcan el curso y período completos. Emisión, rotación y devolución deben mostrar el enlace una sola vez aunque falle el portapapeles; no registrar ni persistir el secreto completo en el frontend.
+*   **Enlaces docentes:** Siempre abarcan el curso y período completos. Emisión y rotación deben mostrar el enlace una sola vez aunque falle el portapapeles; no registrar ni persistir el secreto completo en el frontend.
 *   **Documentación del código:** No agregar comentarios en TypeScript, TSX, JavaScript, CSS, HTML o configuración. Usar nombres expresivos y registrar decisiones arquitectónicas duraderas en `docs/`.
 
 ## 3. Mapa de Colecciones (PocketBase) - Fuente de Verdad: `pb_schema.json`
 
 ### 👤 Usuarios y Autenticación
 *   **`users`**: Autenticación del sistema escolar.
-*   **`tokens_acceso_docente`**: Credenciales temporales para docentes sin cuenta (`token`, `token_hash`, `token_prefijo`, `curso_id`, `periodo_id`, `docente_nombre`, `activo`, `fecha_expiracion`). Cada enlace abarca un curso y período completos. `materia_id` permanece físicamente durante una transición de esquema, pero no forma parte del contrato y cualquier registro legado que lo informe es rechazado. Los enlaces nuevos conservan sólo el hash del secreto; `token` permanece durante la transición por compatibilidad de esquema y contiene también el hash en los registros nuevos.
-*   **`instancias_carga_boletin`**: Workflow único por curso y período (`curso_id`, `periodo_id`, `estado`, `revision`, `enviado_at`, `enviado_por`, `cerrado_at`, `cerrado_por`). Sus estados son `BORRADOR_DOCENTE`, `CONTROL_DIRECTIVO` y `CERRADO`; el cliente sólo puede leerlo y las transiciones se ejecutan en el gateway.
+*   **`tokens_acceso_docente`**: Credenciales revocables para docentes sin cuenta (`token`, `token_hash`, `token_prefijo`, `curso_id`, `periodo_id`, `docente_nombre`, `activo`). Cada enlace abarca un curso y período completos y permanece utilizable hasta su desactivación, eliminación o entrega. `materia_id` permanece físicamente durante una transición de esquema, pero no forma parte del contrato y cualquier registro legado que lo informe es rechazado. Los enlaces nuevos conservan sólo el hash del secreto; `token` permanece durante la transición por compatibilidad de esquema y contiene también el hash en los registros nuevos.
+*   **`instancias_carga_boletin`**: Workflow único por curso y período (`curso_id`, `periodo_id`, `estado`, `revision`, `enviado_at`, `enviado_por`). Sus estados son `BORRADOR_DOCENTE` y `CONTROL_DIRECTIVO`; el cliente sólo puede leerlo y el envío se ejecuta en el gateway.
 
 ### 🏛️ Estructura Institucional y Académica
 *   **`ciclos_lectivos`**: Años lectivos (`ano`, `actual`).

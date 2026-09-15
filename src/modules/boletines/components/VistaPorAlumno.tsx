@@ -41,6 +41,8 @@ import {
   DownOutlined,
   SearchOutlined,
   SendOutlined,
+  EditOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { staffGradebookDataSource } from '../services/gradebookDataSource.service';
 import {
@@ -67,7 +69,8 @@ interface VistaPorAlumnoProps {
   valoresEscala: ValorEscala[];
   periodo: Periodo | undefined;
   access: GradebookAccessPolicy;
-  onDirtyChange?: (dirty: boolean) => void;
+  readOnly?: boolean;
+  onSaveSuccess?: () => void;
 }
 
 interface MateriaAlumnoState {
@@ -101,10 +104,12 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   valoresEscala,
   periodo,
   access,
-  onDirtyChange,
+  readOnly = false,
+  onSaveSuccess,
 }) => {
   const { message, modal } = App.useApp();
   const dataSource = access.dataSource || staffGradebookDataSource;
+  const [editingMateriaId, setEditingMateriaId] = useState<string | null>(null);
 
 
   const getEtiquetaColor = useCallback((etiqueta: string) => {
@@ -439,17 +444,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return matsModified || closureModified || supportModified;
   }, [access.canEditPeriodClosure, access.canEditStudentSupport, materiasState, asistenciaState, apoyoState]);
 
-  useEffect(() => {
-    onDirtyChange?.(hasChanges);
-  }, [hasChanges, onDirtyChange]);
-
-  useEffect(() => () => {
-    onDirtyChange?.(false);
-  }, [onDirtyChange]);
-
-
   const handleSave = async () => {
-    if (!selectedInscripcionId || !periodoId || !alumnoDataReady) return;
+    if ((readOnly && !editingMateriaId) || !selectedInscripcionId || !periodoId || !alumnoDataReady) return;
 
     try {
       setSaving(true);
@@ -591,6 +587,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         return next;
       });
       setAsistenciaState((prev) => ({ ...prev, isModified: false }));
+      if (readOnly) setEditingMateriaId(null);
+      onSaveSuccess?.();
     } catch (err) {
       console.error(err);
       if (err instanceof TeacherAccessDeniedError) {
@@ -671,12 +669,35 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         okType: 'danger',
         cancelText: 'Permanecer aquí',
         onOk: () => {
+          setEditingMateriaId(null);
           setSelectedInscripcionId(targetStudent.inscripcionId);
         },
       });
     } else {
+      setEditingMateriaId(null);
       setSelectedInscripcionId(targetStudent.inscripcionId);
     }
+  };
+
+  const handleDiscardMateria = (isModified: boolean) => {
+    const discard = () => {
+      setEditingMateriaId(null);
+      if (isModified) loadAlumnoData();
+    };
+
+    if (!isModified) {
+      discard();
+      return;
+    }
+
+    modal.confirm({
+      title: '¿Descartar los cambios de esta materia?',
+      content: 'La materia volverá a mostrar las calificaciones guardadas.',
+      okText: 'Descartar cambios',
+      cancelText: 'Continuar editando',
+      okButtonProps: { danger: true },
+      onOk: discard,
+    });
   };
 
   const handlePrevStudent = () => navigateToStudent(currentIndex - 1);
@@ -925,17 +946,19 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               Guía del Curso
             </Button>
 
-            <Button
-              type="primary"
-              icon={<SaveOutlined />}
-              onClick={handleSave}
-              loading={saving}
-              disabled={!hasChanges}
-              className={hasChanges ? 'btn-primary-gradient' : undefined}
-              style={{ borderRadius: 8, fontWeight: 600, minWidth: 145 }}
-            >
-              Guardar Cambios
-            </Button>
+            {!readOnly && (
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                onClick={handleSave}
+                loading={saving}
+                disabled={!hasChanges}
+                className={hasChanges ? 'btn-primary-gradient' : undefined}
+                style={{ borderRadius: 8, fontWeight: 600, minWidth: 145 }}
+              >
+                Guardar Cambios
+              </Button>
+            )}
           </div>
         </div>
       </Card>
@@ -1232,18 +1255,24 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     </Typography.Text>
                     <Tooltip title={!isPrimerBimestre ? 'Los dispositivos de apoyo se establecen al inicio del ciclo lectivo en el 1° Bimestre.' : undefined}>
                       <div>
-                        <Select
-                          value={apoyoState.poseeApoyos}
-                          onChange={(val) => handleApoyoChange('poseeApoyos', val)}
-                          size="middle"
-                          disabled={!isPrimerBimestre}
-                          className={ui.fullWidth}
-                          options={[
-                            { value: 'SI', label: 'Sí' },
-                            { value: 'NO', label: 'No' },
-                            { value: '-', label: 'Sin especificar (—)' },
-                          ]}
-                        />
+                        {readOnly ? (
+                          <Typography.Text strong>
+                            {apoyoState.poseeApoyos === 'SI' ? 'Sí' : apoyoState.poseeApoyos === 'NO' ? 'No' : 'Sin especificar'}
+                          </Typography.Text>
+                        ) : (
+                          <Select
+                            value={apoyoState.poseeApoyos}
+                            onChange={(val) => handleApoyoChange('poseeApoyos', val)}
+                            size="middle"
+                            disabled={!isPrimerBimestre}
+                            className={ui.fullWidth}
+                            options={[
+                              { value: 'SI', label: 'Sí' },
+                              { value: 'NO', label: 'No' },
+                              { value: '-', label: 'Sin especificar (—)' },
+                            ]}
+                          />
+                        )}
                       </div>
                     </Tooltip>
                   </div>
@@ -1260,20 +1289,26 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     >
                       ¿Cuáles? {isPrimerBimestre && apoyoState.poseeApoyos === 'SI' && <span style={{ color: '#ef4444' }}>*</span>}
                     </Typography.Text>
-                    <Input
-                      size="middle"
-                      placeholder={
-                        !isPrimerBimestre
-                          ? apoyoState.cualesApoyos || (apoyoState.poseeApoyos === 'NO' ? 'Sin apoyos' : 'Sin especificar')
-                          : apoyoState.poseeApoyos === 'SI'
-                          ? 'Detallar apoyos (ej: DIL, MAI, etc.)...'
-                          : 'Sin apoyos'
-                      }
-                      disabled={!isPrimerBimestre || apoyoState.poseeApoyos !== 'SI'}
-                      value={apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos : ''}
-                      onChange={(e) => handleApoyoChange('cualesApoyos', e.target.value)}
-                      maxLength={150}
-                    />
+                    {readOnly ? (
+                      <Typography.Text strong>
+                        {apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos || 'Sin detalle' : 'No corresponde'}
+                      </Typography.Text>
+                    ) : (
+                      <Input
+                        size="middle"
+                        placeholder={
+                          !isPrimerBimestre
+                            ? apoyoState.cualesApoyos || (apoyoState.poseeApoyos === 'NO' ? 'Sin apoyos' : 'Sin especificar')
+                            : apoyoState.poseeApoyos === 'SI'
+                            ? 'Detallar apoyos (ej: DIL, MAI, etc.)...'
+                            : 'Sin apoyos'
+                        }
+                        disabled={!isPrimerBimestre || apoyoState.poseeApoyos !== 'SI'}
+                        value={apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos : ''}
+                        onChange={(e) => handleApoyoChange('cualesApoyos', e.target.value)}
+                        maxLength={150}
+                      />
+                    )}
                   </div>
                 </Col>
               </Row>
@@ -1327,18 +1362,24 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   }
                 >
                   <div>
-                    <Select
-                      value={apoyoState.promocionoConAcompanamiento}
-                      onChange={(val) => handleApoyoChange('promocionoConAcompanamiento', val)}
-                      size="middle"
-                      disabled={!isCuartoBimestre}
-                      className={ui.fullWidth}
-                      options={[
-                        { value: 'SI', label: 'Sí' },
-                        { value: 'NO', label: 'No' },
-                        { value: '-', label: 'Sin especificar (—)' },
-                      ]}
-                    />
+                    {readOnly ? (
+                      <Typography.Text strong>
+                        {apoyoState.promocionoConAcompanamiento === 'SI' ? 'Sí' : apoyoState.promocionoConAcompanamiento === 'NO' ? 'No' : 'Sin especificar'}
+                      </Typography.Text>
+                    ) : (
+                      <Select
+                        value={apoyoState.promocionoConAcompanamiento}
+                        onChange={(val) => handleApoyoChange('promocionoConAcompanamiento', val)}
+                        size="middle"
+                        disabled={!isCuartoBimestre}
+                        className={ui.fullWidth}
+                        options={[
+                          { value: 'SI', label: 'Sí' },
+                          { value: 'NO', label: 'No' },
+                          { value: '-', label: 'Sin especificar (—)' },
+                        ]}
+                      />
+                    )}
                   </div>
                 </Tooltip>
               </div>
@@ -1366,6 +1407,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             };
             const crits = criteriosMap[cm.id] || [];
             const esConducta = esMateriaConducta(cm.materiaNombre);
+            const isEditingMateria = editingMateriaId === cm.id;
+            const isMateriaReadOnly = readOnly && !isEditingMateria;
+            const anotherMateriaIsEditing = Boolean(editingMateriaId && !isEditingMateria);
 
             const isMateriaComplete =
               crits.length > 0 &&
@@ -1389,7 +1433,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    flexWrap: 'nowrap',
+                    flexWrap: 'wrap',
                     gap: 12,
                     marginBottom: 10,
                   }}
@@ -1429,27 +1473,66 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   </Space>
 
                   { }
-                  {esConducta ? (
-                    <Tag color="cyan" style={{ margin: 0, fontWeight: 700, borderRadius: 4, fontSize: 11 }}>
-                      Conducta / Formativa
-                    </Tag>
-                  ) : (
-                    <Space size={6} align="center" style={{ flexShrink: 0 }}>
-                      <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
-                        <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
-                          PPI
-                        </Tag>
+                  <Space size={8} align="center" wrap style={{ flexShrink: 0 }}>
+                    {esConducta ? (
+                      <Tag color="cyan" style={{ margin: 0, fontWeight: 700, borderRadius: 4, fontSize: 11 }}>
+                        Conducta / Formativa
+                      </Tag>
+                    ) : (
+                      <Space size={6} align="center" style={{ flexShrink: 0 }}>
+                        <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
+                          <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
+                            PPI
+                          </Tag>
+                        </Tooltip>
+                        {isMateriaReadOnly ? (
+                          <Typography.Text strong>{mat.ppi ? 'Sí' : 'No'}</Typography.Text>
+                        ) : (
+                          <Switch
+                            size="small"
+                            checked={mat.ppi}
+                            onChange={(checked) => handlePpiChange(cm.id, checked)}
+                            checkedChildren="SÍ"
+                            unCheckedChildren="NO"
+                            style={{ background: mat.ppi ? '#7c3aed' : undefined }}
+                          />
+                        )}
+                      </Space>
+                    )}
+                    {readOnly && (isEditingMateria ? (
+                      <Space size={6}>
+                        <Button
+                          size="small"
+                          icon={<CloseOutlined />}
+                          disabled={saving}
+                          onClick={() => handleDiscardMateria(Boolean(mat.isModified))}
+                        >
+                          Descartar
+                        </Button>
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<SaveOutlined />}
+                          loading={saving}
+                          disabled={!mat.isModified}
+                          onClick={() => void handleSave()}
+                        >
+                          Guardar
+                        </Button>
+                      </Space>
+                    ) : (
+                      <Tooltip title={anotherMateriaIsEditing ? 'Guardá o descartá la materia que estás editando.' : 'Editar únicamente esta materia'}>
+                        <Button
+                          size="small"
+                          icon={<EditOutlined />}
+                          disabled={anotherMateriaIsEditing}
+                          onClick={() => setEditingMateriaId(cm.id)}
+                        >
+                          Editar
+                        </Button>
                       </Tooltip>
-                      <Switch
-                        size="small"
-                        checked={mat.ppi}
-                        onChange={(checked) => handlePpiChange(cm.id, checked)}
-                        checkedChildren="SÍ"
-                        unCheckedChildren="NO"
-                        style={{ background: mat.ppi ? '#7c3aed' : undefined }}
-                      />
-                    </Space>
-                  )}
+                    ))}
+                  </Space>
                 </div>
 
                 <Divider style={{ margin: '8px 0 10px' }} />
@@ -1487,23 +1570,36 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               </Typography.Text>
                             </div>
 
-                            <Select
-                              size="middle"
-                              placeholder="Calificar..."
-                              allowClear
-                              value={valActual}
-                              onChange={(val) => handleCriterioChange(cm.id, crit.id, val || null)}
-                              style={{ width: 140 }}
-                              className={getClassNameForValor(valActual)}
-                              options={valoresEscala.map((v) => ({
-                                value: v.id,
-                                label: (
-                                  <span style={{ color: getEtiquetaColor(v.etiqueta).color, fontWeight: 700, fontSize: 13 }}>
-                                    {v.etiqueta}
-                                  </span>
-                                ),
-                              }))}
-                            />
+                            {isMateriaReadOnly ? (
+                              <Typography.Text
+                                strong
+                                style={{
+                                  color: valActual
+                                    ? getEtiquetaColor(valoresEscala.find((v) => v.id === valActual)?.etiqueta || '').color
+                                    : 'var(--cys-color-text-description)',
+                                }}
+                              >
+                                {valoresEscala.find((v) => v.id === valActual)?.etiqueta || 'Sin calificar'}
+                              </Typography.Text>
+                            ) : (
+                              <Select
+                                size="middle"
+                                placeholder="Calificar..."
+                                allowClear
+                                value={valActual}
+                                onChange={(val) => handleCriterioChange(cm.id, crit.id, val || null)}
+                                style={{ width: 140 }}
+                                className={getClassNameForValor(valActual)}
+                                options={valoresEscala.map((v) => ({
+                                  value: v.id,
+                                  label: (
+                                    <span style={{ color: getEtiquetaColor(v.etiqueta).color, fontWeight: 700, fontSize: 13 }}>
+                                      {v.etiqueta}
+                                    </span>
+                                  ),
+                                }))}
+                              />
+                            )}
                           </div>
                         </Col>
                       );
@@ -1548,23 +1644,36 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             </Typography.Text>
                           </div>
 
-                          <Select
-                            size="middle"
-                            placeholder="Calificar..."
-                            allowClear
-                            value={mat.calificacionGeneralId || undefined}
-                            onChange={(val) => handleCalificacionGeneralChange(cm.id, val || null)}
-                            style={{ width: 140 }}
-                            className={getClassNameForValor(mat.calificacionGeneralId)}
-                            options={valoresEscala.map((v) => ({
-                              value: v.id,
-                              label: (
-                                <span style={{ color: getEtiquetaColor(v.etiqueta).color, fontWeight: 700, fontSize: 13 }}>
-                                  {v.etiqueta}
-                                </span>
-                              ),
-                            }))}
-                          />
+                          {isMateriaReadOnly ? (
+                            <Typography.Text
+                              strong
+                              style={{
+                                color: mat.calificacionGeneralId
+                                  ? getEtiquetaColor(valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || '').color
+                                  : 'var(--cys-color-text-description)',
+                              }}
+                            >
+                              {valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || 'Sin calificar'}
+                            </Typography.Text>
+                          ) : (
+                            <Select
+                              size="middle"
+                              placeholder="Calificar..."
+                              allowClear
+                              value={mat.calificacionGeneralId || undefined}
+                              onChange={(val) => handleCalificacionGeneralChange(cm.id, val || null)}
+                              style={{ width: 140 }}
+                              className={getClassNameForValor(mat.calificacionGeneralId)}
+                              options={valoresEscala.map((v) => ({
+                                value: v.id,
+                                label: (
+                                  <span style={{ color: getEtiquetaColor(v.etiqueta).color, fontWeight: 700, fontSize: 13 }}>
+                                    {v.etiqueta}
+                                  </span>
+                                ),
+                              }))}
+                            />
+                          )}
                         </div>
                       </Col>
                     )}
@@ -1602,13 +1711,15 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     ASISTENCIAS
                   </Typography.Text>
-                  <InputNumber
-                    min={0}
-                    max={180}
-                    className={ui.fullWidth}
-                    value={asistenciaState.asistencias}
-                    onChange={(val) => handleAsistenciaChange('asistencias', val ?? 0)}
-                  />
+                  {readOnly ? <Typography.Text strong>{asistenciaState.asistencias}</Typography.Text> : (
+                    <InputNumber
+                      min={0}
+                      max={180}
+                      className={ui.fullWidth}
+                      value={asistenciaState.asistencias}
+                      onChange={(val) => handleAsistenciaChange('asistencias', val ?? 0)}
+                    />
+                  )}
                 </Space>
               </Col>
 
@@ -1617,13 +1728,15 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     INASISTENCIAS
                   </Typography.Text>
-                  <InputNumber
-                    min={0}
-                    max={180}
-                    className={ui.fullWidth}
-                    value={asistenciaState.inasistencias}
-                    onChange={(val) => handleAsistenciaChange('inasistencias', val ?? 0)}
-                  />
+                  {readOnly ? <Typography.Text strong>{asistenciaState.inasistencias}</Typography.Text> : (
+                    <InputNumber
+                      min={0}
+                      max={180}
+                      className={ui.fullWidth}
+                      value={asistenciaState.inasistencias}
+                      onChange={(val) => handleAsistenciaChange('inasistencias', val ?? 0)}
+                    />
+                  )}
                 </Space>
               </Col>
 
@@ -1632,13 +1745,15 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     LLEGADAS TARDE
                   </Typography.Text>
-                  <InputNumber
-                    min={0}
-                    max={180}
-                    className={ui.fullWidth}
-                    value={asistenciaState.llegadasTarde}
-                    onChange={(val) => handleAsistenciaChange('llegadasTarde', val ?? 0)}
-                  />
+                  {readOnly ? <Typography.Text strong>{asistenciaState.llegadasTarde}</Typography.Text> : (
+                    <InputNumber
+                      min={0}
+                      max={180}
+                      className={ui.fullWidth}
+                      value={asistenciaState.llegadasTarde}
+                      onChange={(val) => handleAsistenciaChange('llegadasTarde', val ?? 0)}
+                    />
+                  )}
                 </Space>
               </Col>
 
@@ -1647,14 +1762,20 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     OBSERVACIONES GENERALES DEL PERÍODO
                   </Typography.Text>
-                  <Input.TextArea
-                    rows={2}
-                    placeholder="Concepto pedagógico institucional u observaciones sobre el desempeño y convivencia del estudiante en este bimestre..."
-                    value={asistenciaState.observaciones}
-                    onChange={(e) => handleAsistenciaChange('observaciones', e.target.value)}
-                    maxLength={300}
-                    showCount
-                  />
+                  {readOnly ? (
+                    <Typography.Paragraph style={{ margin: 0 }}>
+                      {asistenciaState.observaciones || 'Sin observaciones'}
+                    </Typography.Paragraph>
+                  ) : (
+                    <Input.TextArea
+                      rows={2}
+                      placeholder="Concepto pedagógico institucional u observaciones sobre el desempeño y convivencia del estudiante en este bimestre..."
+                      value={asistenciaState.observaciones}
+                      onChange={(e) => handleAsistenciaChange('observaciones', e.target.value)}
+                      maxLength={300}
+                      showCount
+                    />
+                  )}
                 </Space>
               </Col>
             </Row>
@@ -1663,7 +1784,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       )}
 
       { }
-      {hasChanges && (
+      {hasChanges && !readOnly && (
         <div
           className="cys-floating-action-bar"
           style={{
@@ -1846,7 +1967,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                           icon={<ArrowRightOutlined />}
                           style={{ borderRadius: 6, fontSize: 11 }}
                         >
-                          {isSelected ? 'Editando' : 'Cargar'}
+                          {isSelected ? (readOnly ? 'Revisando' : 'Editando') : (readOnly ? 'Revisar' : 'Cargar')}
                         </Button>
                       </Space>
                     </div>

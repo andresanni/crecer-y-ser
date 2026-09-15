@@ -14,7 +14,6 @@ import {
   Tag,
   Switch,
   Typography,
-  DatePicker,
   App,
   Tooltip,
   Popconfirm,
@@ -34,7 +33,6 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import dayjs from 'dayjs';
 import { accesoDocenteService } from '../services/accesoDocente.service';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
 import type { Periodo, TokenAccesoDocente } from '../models/boletin.model';
@@ -52,7 +50,6 @@ interface EnlaceDocenteFormValues {
   cursoId: string;
   periodoId: string;
   docenteNombre: string;
-  fechaExpiracion?: dayjs.Dayjs | null;
 }
 
 export const GestorEnlacesModal: React.FC<GestorEnlacesModalProps> = (props) => {
@@ -104,15 +101,10 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     try {
       setCreating(true);
 
-      const fechaExp = values.fechaExpiracion
-        ? dayjs(values.fechaExpiracion).format('YYYY-MM-DD 23:59:59')
-        : undefined;
-
       const created = await accesoDocenteService.create({
         cursoId: values.cursoId,
         periodoId: values.periodoId,
         docenteNombre: values.docenteNombre.trim(),
-        fechaExpiracion: fechaExp,
       });
 
       const curso = cursos.find((item) => item.id === values.cursoId);
@@ -127,7 +119,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       if (issued.secreto) {
         await showIssuedLink(issued.secreto, 'Enlace docente generado');
       }
-      form.resetFields(['docenteNombre', 'fechaExpiracion']);
+      form.resetFields(['docenteNombre']);
     } catch (err) {
       console.error(err);
       message.error('Error al generar enlace docente');
@@ -271,23 +263,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       ),
     },
     {
-      title: 'Vencimiento',
-      key: 'expiracion',
-      render: (_, record) => {
-        if (!record.fechaExpiracion) {
-          return <Typography.Text type="secondary" className={styles.expiration}>Sin límite</Typography.Text>;
-        }
-        const exp = dayjs(record.fechaExpiracion);
-        const isExpired = dayjs().isAfter(exp);
-        return (
-          <Tag color={isExpired ? 'error' : 'default'} className={ui.smallText}>
-            {isExpired ? 'Expiró: ' : 'Hasta: '}
-            {exp.format('DD/MM/YYYY')}
-          </Tag>
-        );
-      },
-    },
-    {
       title: 'Activo',
       key: 'activo',
       align: 'center',
@@ -344,7 +319,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
           )}
           <Popconfirm
             title="¿Eliminar este enlace?"
-            description="El docente ya no podrá ingresar con este link."
+            description="El acceso se eliminará, pero la carga parcial quedará pausada y podrá retomarse generando un enlace nuevo."
             onConfirm={() => handleDeleteToken(record.id)}
             okText="Eliminar"
             cancelText="Cancelar"
@@ -391,13 +366,12 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
               cursoId: activeCursoId || cursos[0]?.id,
               periodoId: activePeriodoId || periodos[0]?.id,
               docenteNombre: '',
-              fechaExpiracion: null,
             }}
             onFinish={handleCreateToken}
             onFinishFailed={(error) => focusFirstFormError(form, error)}
           >
             <Row gutter={[14, 0]}>
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <Form.Item
                   label="Curso y división"
                   name="cursoId"
@@ -413,7 +387,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <Form.Item
                   label="Período escolar"
                   name="periodoId"
@@ -426,7 +400,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={8}>
+              <Col xs={24} sm={12} md={6}>
                 <Form.Item
                   label="Nombre del docente"
                   name="docenteNombre"
@@ -436,18 +410,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={8}>
-                <Form.Item label="Vencimiento (opcional)" name="fechaExpiracion">
-                  <DatePicker
-                    placeholder="Sin límite"
-                    className={ui.fullWidth}
-                    format="DD/MM/YYYY"
-                    disabledDate={(date) => Boolean(date && date.isBefore(dayjs().startOf('day')))}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={8} className={styles.submitColumn}>
+              <Col xs={24} sm={12} md={6} className={styles.submitColumn}>
                 <Form.Item className={ui.fullWidth}>
                   <Button
                     type="primary"

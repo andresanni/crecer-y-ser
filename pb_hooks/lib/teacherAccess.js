@@ -23,20 +23,8 @@ function noStore(c) {
   c.response().header().set("Pragma", "no-cache")
 }
 
-function parseExpiration(value) {
-  if (!value) return null
-  var normalized = value.replace(" ", "T")
-  var timestamp = new Date(normalized).getTime()
-  return isNaN(timestamp) ? null : timestamp
-}
-
 function validateAccessRecord(record) {
   if (!record || !record.getBool("activo")) {
-    throw new UnauthorizedError("El enlace no es válido o ya no está disponible.")
-  }
-
-  var expiration = parseExpiration(record.getString("fecha_expiracion"))
-  if (expiration !== null && expiration <= Date.now()) {
     throw new UnauthorizedError("El enlace no es válido o ya no está disponible.")
   }
 
@@ -87,16 +75,8 @@ function workflowDto(record) {
     estado: record.getString("estado"),
     revision: record.getInt("revision"),
     enviadoAt: record.getString("enviado_at") || null,
-    enviadoPor: record.getString("enviado_por") || null,
-    cerradoAt: record.getString("cerrado_at") || null,
-    cerradoPor: record.getString("cerrado_por") || null
+    enviadoPor: record.getString("enviado_por") || null
   }
-}
-
-function authenticatedActor(c) {
-  var requestInfo = $apis.requestInfo(c)
-  if (!requestInfo.authRecord) return "Usuario institucional"
-  return requestInfo.authRecord.getString("name") || requestInfo.authRecord.getString("email") || requestInfo.authRecord.getId()
 }
 
 function requireDraftWorkflow(dao, access) {
@@ -223,7 +203,6 @@ function tokenDto(record) {
     cursoId: record.getString("curso_id"),
     periodoId: record.getString("periodo_id"),
     docenteNombre: record.getString("docente_nombre"),
-    fechaExpiracion: record.getString("fecha_expiracion") || null,
     activo: record.getBool("activo")
   }
 }
@@ -667,79 +646,6 @@ function saveStaffStudent(c) {
   return c.json(200, response)
 }
 
-function transitionStaffWorkflow(c) {
-  noStore(c)
-  var body = new DynamicModel({ estado: "" })
-  c.bind(body)
-  var targetState = stringValue(JSON.parse(JSON.stringify(body)).estado, 30)
-  var actor = authenticatedActor(c)
-  var response
-
-  $app.dao().runInTransaction((txDao) => {
-    var workflow = requireRecord(txDao, "instancias_carga_boletin", c.pathParam("instanciaId"))
-    var currentState = workflow.getString("estado")
-    if (currentState === "CONTROL_DIRECTIVO" && targetState === "CERRADO") {
-      workflow.set("estado", "CERRADO")
-      workflow.set("cerrado_at", new Date().toISOString())
-      workflow.set("cerrado_por", actor)
-      deactivateOtherTokens(
-        txDao,
-        workflow.getString("curso_id"),
-        workflow.getString("periodo_id"),
-        ""
-      )
-    } else if (currentState === "CERRADO" && targetState === "CONTROL_DIRECTIVO") {
-      workflow.set("estado", "CONTROL_DIRECTIVO")
-      workflow.set("cerrado_at", "")
-      workflow.set("cerrado_por", "")
-    } else {
-      throw new BadRequestError("La transición solicitada no es válida para el estado actual.")
-    }
-    workflow.set("revision", workflow.getInt("revision") + 1)
-    txDao.saveRecord(workflow)
-    response = { instancia: workflowDto(workflow) }
-  })
-
-  return c.json(200, response)
-}
-
-function returnToTeacher(c) {
-  noStore(c)
-  var response
-
-  $app.dao().runInTransaction((txDao) => {
-    var workflow = requireRecord(txDao, "instancias_carga_boletin", c.pathParam("instanciaId"))
-    if (workflow.getString("estado") !== "CONTROL_DIRECTIVO") {
-      throw new BadRequestError("Sólo una carga bajo control directivo puede devolverse a la docente.")
-    }
-    var courseId = workflow.getString("curso_id")
-    var periodId = workflow.getString("periodo_id")
-    var teacherName = workflow.getString("enviado_por") || "Docente"
-    deactivateOtherTokens(txDao, courseId, periodId, "")
-    var token = new Record(txDao.findCollectionByNameOrId("tokens_acceso_docente"))
-    var secret = assignSecret(token)
-    token.set("curso_id", courseId)
-    token.set("periodo_id", periodId)
-    token.set("docente_nombre", teacherName)
-    token.set("activo", true)
-    token.set("fecha_expiracion", "")
-    txDao.saveRecord(token)
-    workflow.set("estado", "BORRADOR_DOCENTE")
-    workflow.set("revision", workflow.getInt("revision") + 1)
-    workflow.set("cerrado_at", "")
-    workflow.set("cerrado_por", "")
-    txDao.saveRecord(workflow)
-    response = {
-      instancia: workflowDto(workflow),
-      enlace: tokenDto(token),
-      tokenPrefijo: token.getString("token_prefijo"),
-      secreto: secret
-    }
-  })
-
-  return c.json(200, response)
-}
-
 function submitPeriod(c) {
   var access = requireAccess(c)
   var status = 200
@@ -784,8 +690,7 @@ function issue(c) {
     cursoId: "",
     periodoId: "",
     materiaId: "",
-    docenteNombre: "",
-    fechaExpiracion: ""
+    docenteNombre: ""
   })
   c.bind(body)
   var data = JSON.parse(JSON.stringify(body))
@@ -793,7 +698,6 @@ function issue(c) {
   var course = requireRecord(dao, "cursos", stringValue(data.cursoId, 15))
   var period = requireRecord(dao, "periodos", stringValue(data.periodoId, 15))
   var teacherName = stringValue(data.docenteNombre, 120)
-  var expiration = stringValue(data.fechaExpiracion, 40)
 
   if (!teacherName) {
     throw new BadRequestError("El nombre del docente es obligatorio.")
@@ -801,13 +705,6 @@ function issue(c) {
   if (stringValue(data.materiaId, 15)) {
     throw new BadRequestError("Los enlaces docentes deben abarcar el curso completo.")
   }
-  if (expiration) {
-    var expirationTime = parseExpiration(expiration)
-    if (expirationTime === null || expirationTime <= Date.now()) {
-      throw new BadRequestError("La fecha de expiración debe ser futura.")
-    }
-  }
-
   var response
   $app.dao().runInTransaction((txDao) => {
     ensureDraftWorkflow(txDao, course.getId(), period.getId())
@@ -818,7 +715,6 @@ function issue(c) {
     record.set("periodo_id", period.getId())
     record.set("docente_nombre", teacherName)
     record.set("activo", true)
-    record.set("fecha_expiracion", expiration)
     txDao.saveRecord(record)
     response = {
       enlace: tokenDto(record),
@@ -901,8 +797,6 @@ module.exports = {
   saveStudent: saveStudent,
   staffWorkflow: staffWorkflow,
   saveStaffStudent: saveStaffStudent,
-  transitionStaffWorkflow: transitionStaffWorkflow,
-  returnToTeacher: returnToTeacher,
   submitPeriod: submitPeriod,
   issue: issue,
   rotate: rotate,
