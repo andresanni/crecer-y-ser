@@ -3,8 +3,7 @@ import { SectionLayout } from '../../../shared/components/SectionLayout';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Card,
-  Row,
-  Col,
+  Table,
   Progress,
   Tag,
   Typography,
@@ -26,9 +25,9 @@ import {
   PauseCircleOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
-  TeamOutlined,
   MinusCircleOutlined,
 } from '@ant-design/icons';
+import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
 import { boletinService } from '../services/boletin.service';
 import { useAppStore } from '../../../store/appStore';
@@ -37,13 +36,13 @@ import { GestorEnlacesModal } from './GestorEnlacesModal';
 import type {
   Periodo,
   MonitoreoInstitucionalData,
-  EstadoMonitoreoCurso,
 } from '../models/boletin.model';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
 import { useGradebookRealtime } from '../hooks/useGradebookRealtime';
 import { useGradebookConcurrencyStore } from '../store/gradebookConcurrencyStore';
 
 const { Text } = Typography;
+type CursoMonitoreo = MonitoreoInstitucionalData['cursos'][number];
 
 export const CargaNotasDashboardPage: React.FC = () => {
   const { message } = App.useApp();
@@ -69,7 +68,7 @@ export const CargaNotasDashboardPage: React.FC = () => {
   });
 
   const [loading, setLoading] = useState<boolean>(false);
-  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | EstadoMonitoreoCurso>('TODOS');
+  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'COMPLETO' | 'INCOMPLETO'>('TODOS');
 
 
   const [gestorModalOpen, setGestorModalOpen] = useState<boolean>(false);
@@ -129,8 +128,134 @@ export const CargaNotasDashboardPage: React.FC = () => {
 
   const cursosFiltrados = useMemo(() => {
     if (filtroEstado === 'TODOS') return data.cursos;
-    return data.cursos.filter((c) => c.estado === filtroEstado);
+    if (filtroEstado === 'COMPLETO') return data.cursos.filter((c) => c.estado === 'COMPLETO');
+    return data.cursos.filter((c) => c.estado !== 'COMPLETO');
   }, [data.cursos, filtroEstado]);
+
+  const columns: ColumnsType<CursoMonitoreo> = [
+    {
+      title: 'GRADO',
+      dataIndex: 'cursoNombre',
+      key: 'grado',
+      width: 180,
+      render: (cursoNombre: string) => {
+        const gradeConfig = getGradeColorConfig(cursoNombre);
+        return (
+          <Tag
+            style={{
+              backgroundColor: 'var(--cys-color-primary-bg)',
+              color: 'var(--cys-color-primary-text)',
+              border: '1px solid var(--cys-color-primary-border)',
+              fontWeight: 800,
+              fontSize: 14,
+              padding: '3px 10px',
+              borderRadius: 7,
+              margin: 0,
+            }}
+          >
+            {gradeConfig.label}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: 'AVANCE',
+      key: 'progreso',
+      width: 260,
+      render: (_, cur) => {
+        const isCompleto = cur.estado === 'COMPLETO';
+        const isEnProgreso = cur.estado === 'EN_PROGRESO';
+        const isPausado = cur.estado === 'PAUSADO';
+        return (
+          <div style={{ width: 210 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+              <Text strong style={{ fontSize: 12.5 }}>{cur.alumnosCompletos} de {cur.totalAlumnos} alumnos</Text>
+              <Text strong style={{ fontSize: 12.5, color: isCompleto ? 'var(--cys-color-success-text)' : isEnProgreso || isPausado ? 'var(--cys-color-warning-text)' : 'var(--cys-color-text-description)' }}>
+                {cur.porcentaje}%
+              </Text>
+            </div>
+            <Progress
+              percent={cur.porcentaje}
+              showInfo={false}
+              strokeColor={isCompleto ? '#10b981' : isEnProgreso || isPausado ? '#f59e0b' : '#cbd5e1'}
+              size={[210, 7]}
+            />
+          </div>
+        );
+      },
+    },
+    {
+      title: 'ESTADO',
+      key: 'estado',
+      width: 190,
+      render: (_, cur) => {
+        if (cur.estado === 'COMPLETO') {
+          return <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>Completo</Tag>;
+        }
+        if (cur.estado === 'EN_PROGRESO') {
+          return <Tag color="warning" icon={<ClockCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>{cur.porcentaje === 100 ? 'Lista para entregar' : 'En carga'}</Tag>;
+        }
+        if (cur.estado === 'PAUSADO') {
+          return <Tag color="warning" icon={<PauseCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>Pausada</Tag>;
+        }
+        if (cur.estado === 'SIN_ENLACE') {
+          return <Tag color="error" icon={<ExclamationCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>Sin enlace</Tag>;
+        }
+        return <Tag color="default" icon={<ClockCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>Sin iniciar</Tag>;
+      },
+    },
+    {
+      title: 'DOCENTE',
+      key: 'docente',
+      width: 220,
+      render: (_, cur) => cur.tokenDocente ? (
+        <Space size={6}>
+          <LinkOutlined style={{ color: 'var(--cys-color-primary-text)' }} />
+          <Text strong>{cur.tokenDocente.docenteNombre || 'Docente de grado'}</Text>
+        </Space>
+      ) : <Text type="secondary">—</Text>,
+    },
+    {
+      title: 'ACCIONES',
+      key: 'acciones',
+      width: 250,
+      render: (_, cur) => {
+        const isCompleto = cur.estado === 'COMPLETO';
+        const isPausado = cur.estado === 'PAUSADO';
+        return (
+          <Space size={8} wrap>
+            {!isCompleto && (
+              <Button
+                size="small"
+                type={cur.tokenDocente ? 'default' : 'primary'}
+                icon={<LinkOutlined />}
+                onClick={() => {
+                  setSelectedCursoForModal(cur.cursoId);
+                  setGestorModalOpen(true);
+                }}
+                style={{ borderRadius: 6, fontSize: 11.5, fontWeight: 600, height: 28, padding: '0 10px' }}
+              >
+                {cur.tokenDocente ? 'Gestionar' : isPausado ? 'Reanudar' : 'Generar'}
+              </Button>
+            )}
+            <Button
+              type={cur.entregado ? 'primary' : 'default'}
+              size="small"
+              icon={cur.entregado ? <EyeOutlined /> : <MinusCircleOutlined />}
+              disabled={!cur.entregado}
+              onClick={() => {
+                if (!cur.entregado) return;
+                navigate(`/app/boletines/calificaciones?curso=${cur.cursoId}&periodo=${selectedPeriodoId || ''}`);
+              }}
+              style={{ borderRadius: 6, fontWeight: 600, fontSize: 11.5, height: 28 }}
+            >
+              {cur.entregado ? 'Abrir curso' : 'Sin entrega'}
+            </Button>
+          </Space>
+        );
+      },
+    },
+  ];
 
 
   return (
@@ -177,28 +302,16 @@ export const CargaNotasDashboardPage: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <Segmented
           value={filtroEstado}
-          onChange={(val) => setFiltroEstado(val as 'TODOS' | EstadoMonitoreoCurso)}
+          onChange={(val) => setFiltroEstado(val as 'TODOS' | 'COMPLETO' | 'INCOMPLETO')}
           options={[
-            { value: 'TODOS', label: `Todos los Grados (${data.cursos.length})` },
+            { value: 'TODOS', label: `Todos (${data.cursos.length})` },
             {
               value: 'COMPLETO',
-              label: <span className={ui.tightRow}><CheckCircleOutlined /> Completados ({data.cursosCompletosCount})</span>,
+              label: <span className={ui.tightRow}><CheckCircleOutlined /> Completos ({data.cursosCompletosCount})</span>,
             },
             {
-              value: 'EN_PROGRESO',
-              label: <span className={ui.tightRow}><ClockCircleOutlined /> En progreso ({data.cursosEnProgresoCount})</span>,
-            },
-            {
-              value: 'PAUSADO',
-              label: <span className={ui.tightRow}><PauseCircleOutlined /> Pausados ({data.cursosPausadosCount})</span>,
-            },
-            {
-              value: 'SIN_INICIAR',
-              label: <span className={ui.tightRow}><MinusCircleOutlined /> Sin iniciar ({Math.max(0, data.cursosSinIniciarCount - data.cursosSinTokenCount)})</span>,
-            },
-            {
-              value: 'SIN_ENLACE',
-              label: <span className={ui.tightRow}><ExclamationCircleOutlined /> Sin enlace ({data.cursosSinTokenCount})</span>,
+              value: 'INCOMPLETO',
+              label: <span className={ui.tightRow}><MinusCircleOutlined /> Incompletos ({data.cursos.length - data.cursosCompletosCount})</span>,
             },
           ]}
         />
@@ -218,195 +331,16 @@ export const CargaNotasDashboardPage: React.FC = () => {
           <Empty description="No hay grados en esta categoría de filtro." />
         </Card>
       ) : (
-        <Row gutter={[16, 16]}>
-          {cursosFiltrados.map((cur) => {
-            const gradeConfig = getGradeColorConfig(cur.cursoNombre);
-            const isCompleto = cur.estado === 'COMPLETO';
-            const isEnProgreso = cur.estado === 'EN_PROGRESO';
-            const isPausado = cur.estado === 'PAUSADO';
-            const isSinEnlace = cur.estado === 'SIN_ENLACE';
-            const hasDelivery = cur.entregado;
-
-            return (
-              <Col xs={24} md={12} xl={8} key={cur.cursoId}>
-                <Card
-                  style={{
-                    borderRadius: 14,
-                    borderTop: `4px solid ${gradeConfig.textColor}`,
-                    borderRight: '1px solid var(--cys-color-border-secondary)',
-                    borderBottom: '1px solid var(--cys-color-border-secondary)',
-                    borderLeft: '1px solid var(--cys-color-border-secondary)',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
-                    background: 'var(--cys-color-bg-container, #ffffff)',
-                  }}
-                  styles={{ body: { padding: '16px 18px' } }}
-                >
-                  { }
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: 12,
-                      flexWrap: 'wrap',
-                      gap: 8,
-                    }}
-                  >
-                    <Tag
-                      style={{
-                        backgroundColor: gradeConfig.bgColor,
-                        color: gradeConfig.textColor,
-                        border: `1px solid ${gradeConfig.borderColor}`,
-                        fontWeight: 800,
-                        fontSize: 16,
-                        lineHeight: 1.35,
-                        padding: '4px 12px',
-                        borderRadius: 8,
-                        margin: 0,
-                      }}
-                    >
-                      {gradeConfig.label}
-                    </Tag>
-
-                    { }
-                    {isCompleto ? (
-                      <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontWeight: 700, fontSize: 11, padding: '1px 6px', borderRadius: 6, margin: 0 }}>
-                        100% Completo
-                      </Tag>
-                    ) : isEnProgreso ? (
-                      <Tag color="warning" icon={<ClockCircleOutlined />} style={{ fontWeight: 700, fontSize: 11, padding: '1px 6px', borderRadius: 6, margin: 0 }}>
-                        {cur.porcentaje === 100 ? 'Lista para entregar' : `${cur.porcentaje}% En Carga`}
-                      </Tag>
-                    ) : isPausado ? (
-                      <Tag color="warning" icon={<PauseCircleOutlined />} style={{ fontWeight: 700, fontSize: 11, padding: '1px 6px', borderRadius: 6, margin: 0 }}>
-                        {cur.porcentaje}% Pausada
-                      </Tag>
-                    ) : isSinEnlace ? (
-                      <Tag color="error" icon={<ExclamationCircleOutlined />} style={{ fontWeight: 700, fontSize: 11, padding: '1px 6px', borderRadius: 6, margin: 0 }}>
-                        Sin Enlace
-                      </Tag>
-                    ) : (
-                      <Tag color="default" icon={<ClockCircleOutlined />} style={{ fontWeight: 700, fontSize: 11, padding: '1px 6px', borderRadius: 6, margin: 0 }}>
-                        0% Sin Iniciar
-                      </Tag>
-                    )}
-                  </div>
-
-                  { }
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <Space size={6}>
-                        <TeamOutlined style={{ color: 'var(--cys-color-text-description)' }} />
-                        <Text style={{ fontSize: 12, fontWeight: 600, color: 'var(--cys-color-text)' }}>
-                          {cur.alumnosCompletos} de {cur.totalAlumnos} alumnos listos
-                        </Text>
-                      </Space>
-                      <Text strong style={{ fontSize: 12.5, color: isCompleto ? 'var(--cys-color-success-text)' : isEnProgreso || isPausado ? 'var(--cys-color-warning-text)' : "var(--cys-color-text-description)" }}>
-                        {cur.porcentaje}%
-                      </Text>
-                    </div>
-
-                    <Progress
-                      percent={cur.porcentaje}
-                      showInfo={false}
-                      strokeColor={isCompleto ? '#10b981' : isEnProgreso || isPausado ? '#f59e0b' : '#cbd5e1'}
-                      size={['100%', 7]}
-                    />
-
-                    <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 11, flexWrap: 'wrap' }}>
-                      <span style={{ color: 'var(--cys-color-success-text)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <CheckCircleOutlined /> {cur.alumnosCompletos} Listos
-                      </span>
-                      <span style={{ color: 'var(--cys-color-warning-text)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <ClockCircleOutlined /> {cur.alumnosEnProgreso} En curso
-                      </span>
-                      <span style={{ color: 'var(--cys-color-text-description)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <MinusCircleOutlined /> {cur.alumnosSinIniciar} Pendientes
-                      </span>
-                    </div>
-                  </div>
-
-                  { }
-                  <div
-                    style={{
-                      background: cur.tokenDocente || isCompleto ? 'var(--cys-color-success-bg)' : 'var(--cys-color-warning-bg)',
-                      border: cur.tokenDocente || isCompleto ? '1px solid var(--cys-color-success-border)' : '1px solid var(--cys-color-warning-border)',
-                      borderRadius: 8,
-                      padding: '6px 10px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 12,
-                      flexWrap: 'wrap',
-                      gap: 6,
-                    }}
-                  >
-                    <div className={ui.tightRow}>
-                      {isCompleto
-                        ? <CheckCircleOutlined style={{ color: 'var(--cys-color-success-text)', fontSize: 13 }} />
-                        : isPausado
-                          ? <PauseCircleOutlined style={{ color: 'var(--cys-color-warning-text)', fontSize: 13 }} />
-                          : <LinkOutlined style={{ color: cur.tokenDocente ? 'var(--cys-color-success-text)' : 'var(--cys-color-warning-text)', fontSize: 13 }} />}
-                      <Text strong style={{ fontSize: 11.5, color: cur.tokenDocente || isCompleto ? 'var(--cys-color-success-text)' : 'var(--cys-color-warning-text)' }}>
-                        {isCompleto
-                          ? 'Carga completa'
-                          : cur.tokenDocente
-                          ? `Docente: ${cur.tokenDocente.docenteNombre || 'Docente de Grado'}`
-                          : isPausado
-                          ? 'Carga pausada · sin acceso docente'
-                          : 'Sin enlace mágico generado'}
-                      </Text>
-                    </div>
-
-                    {!isCompleto && (cur.tokenDocente ? (
-                      <Button
-                        size="small"
-                        icon={<LinkOutlined />}
-                        onClick={() => {
-                          setSelectedCursoForModal(cur.cursoId);
-                          setGestorModalOpen(true);
-                        }}
-                        style={{ borderRadius: 6, fontSize: 10.5, fontWeight: 600, height: 24, padding: '0 8px' }}
-                      >
-                        Gestionar
-                      </Button>
-                    ) : (
-                      <Button
-                        size="small"
-                        type="primary"
-                        icon={<LinkOutlined />}
-                        onClick={() => {
-                          setSelectedCursoForModal(cur.cursoId);
-                          setGestorModalOpen(true);
-                        }}
-                        style={{ borderRadius: 6, fontSize: 10.5, fontWeight: 600, height: 24, padding: '0 8px' }}
-                      >
-                        {isPausado ? 'Reanudar' : 'Generar'}
-                      </Button>
-                    ))}
-                  </div>
-
-                  { }
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', paddingTop: 4 }}>
-                    <Button
-                      type={hasDelivery ? 'primary' : 'default'}
-                      size="small"
-                      icon={hasDelivery ? <EyeOutlined /> : <MinusCircleOutlined />}
-                      disabled={!hasDelivery}
-                      onClick={() => {
-                        if (!hasDelivery) return;
-                        navigate(`/app/boletines/calificaciones?curso=${cur.cursoId}&periodo=${selectedPeriodoId || ''}`);
-                      }}
-                      style={{ borderRadius: 6, fontWeight: 600, fontSize: 11.5 }}
-                    >
-                      {hasDelivery ? 'Abrir curso' : 'Sin entrega'}
-                    </Button>
-                  </div>
-                </Card>
-              </Col>
-            );
-          })}
-        </Row>
+        <Card className="students-card">
+          <Table
+            className="students-table"
+            columns={columns}
+            dataSource={cursosFiltrados}
+            rowKey="cursoId"
+            pagination={false}
+            scroll={{ x: 1050 }}
+          />
+        </Card>
       )}
 
       { }
