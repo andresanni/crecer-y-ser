@@ -30,6 +30,8 @@ La migración `1789342800_created_gradebook_workflows.js` incorporó `instancias
 
 La fase institucional agregó la consulta de estado y un guardado transaccional restringido a `CONTROL_DIRECTIVO`. La misma migración bloqueó creación, actualización y eliminación directa de evaluaciones, criterios evaluados y cierres. La interfaz no monta el editor institucional mientras la docente conserva el control.
 
+La concurrencia entre sesiones institucionales se protege mediante `expectedRevision`: el gateway compara la versión dentro de la transacción antes de tocar evaluaciones, criterios, apoyos o cierres. Una versión vencida produce `409` sin escrituras. PocketBase Realtime notifica el cambio de la instancia para invalidar las vistas, pero la comparación transaccional sigue siendo la garantía de integridad. El hook se desplegó el 16 de septiembre de 2026 con el respaldo `/root/pb/deploy_backups/20260916-085138` y la carrera aislada confirmó `200`, `409`, un único incremento y evento Realtime.
+
 La migración `1789346400_simplified_unidirectional_gradebook_workflow.js` convierte cualquier instancia histórica `CERRADO` en `CONTROL_DIRECTIVO`, elimina ese estado y sus campos de auditoría y deja `CONTROL_DIRECTIVO` como estado terminal. Se validó primero sobre una copia con un registro cerrado y luego se desplegó con el respaldo `/root/pb/deploy_backups/20260915-081914`. Los hooks ya no exponen rutas de devolución, cierre o reapertura, por lo que un envío docente nunca puede recuperar acceso docente.
 
 La migración `1789471993_removed_teacher_access_expiration.js` retira `fecha_expiracion`. Fue validada sobre una copia y desplegada el 15 de septiembre de 2026 con el respaldo `/root/pb/deploy_backups/20260915-083545`.

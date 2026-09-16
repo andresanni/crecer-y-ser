@@ -39,6 +39,12 @@ import type {
   InstanciaCargaBoletin,
 } from '../models/boletin.model';
 import { useAppStore } from '../../../store/appStore';
+import { useGradebookRealtime } from '../hooks/useGradebookRealtime';
+import {
+  gradebookScopeKey,
+  useGradebookConcurrencyStore,
+  workflowVersionFromInstance,
+} from '../store/gradebookConcurrencyStore';
 
 const { Text } = Typography;
 
@@ -51,6 +57,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
 }) => {
   const { message } = App.useApp();
   const { cicloActual } = useAppStore();
+  useGradebookRealtime();
   const [searchParams] = useSearchParams();
   const urlCursoId = searchParams.get('curso');
   const urlPeriodoId = searchParams.get('periodo');
@@ -73,6 +80,12 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const [loadingWorkflow, setLoadingWorkflow] = useState(false);
   const [workflow, setWorkflow] = useState<InstanciaCargaBoletin | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
+  const realtimeWorkflow = useGradebookConcurrencyStore((state) => (
+    selectedCursoId && selectedPeriodoId
+      ? state.workflows[gradebookScopeKey(selectedCursoId, selectedPeriodoId)]
+      : undefined
+  ));
+  const receiveWorkflow = useGradebookConcurrencyStore((state) => state.receiveWorkflow);
 
 
   const [gestorEnlacesOpen, setGestorEnlacesOpen] = useState(false);
@@ -180,7 +193,10 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       try {
         setLoadingWorkflow(true);
         const current = await getStaffGradebookWorkflow(selectedCursoId, selectedPeriodoId);
-        if (active) setWorkflow(current);
+        if (active) {
+          setWorkflow(current);
+          if (current) receiveWorkflow(workflowVersionFromInstance(current));
+        }
       } catch (err) {
         console.error(err);
         if (active) {
@@ -195,7 +211,32 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     return () => {
       active = false;
     };
-  }, [message, reloadCounter, selectedCursoId, selectedPeriodoId]);
+  }, [message, receiveWorkflow, reloadCounter, selectedCursoId, selectedPeriodoId]);
+
+  const effectiveWorkflow = useMemo<InstanciaCargaBoletin | null>(() => {
+    if (!realtimeWorkflow) return workflow;
+    return {
+      id: realtimeWorkflow.id,
+      cursoId: realtimeWorkflow.cursoId,
+      periodoId: realtimeWorkflow.periodoId,
+      estado: realtimeWorkflow.estado,
+      revision: realtimeWorkflow.revision,
+      enviadoAt: workflow?.enviadoAt,
+      enviadoPor: workflow?.enviadoPor,
+      createdAt: workflow?.createdAt || '',
+      updatedAt: workflow?.updatedAt || '',
+    };
+  }, [realtimeWorkflow, workflow]);
+
+  const handleSaveSuccess = (revision?: number) => {
+    if (revision === undefined) return;
+    setWorkflow((current) => {
+      if (!current) return current;
+      const next = { ...current, revision };
+      receiveWorkflow(workflowVersionFromInstance(next));
+      return next;
+    });
+  };
 
   const selectedPeriodo = useMemo(
     () => periodos.find((p) => p.id === selectedPeriodoId),
@@ -327,7 +368,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
         <Card className={ui.emptyPanel}>
           <Empty description="Este curso no tiene materias asignadas. Configure la malla curricular en el Constructor de Boletines." />
         </Card>
-      ) : !workflow ? (
+      ) : !effectiveWorkflow ? (
         <Card>
           <Alert
             type="info"
@@ -341,7 +382,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             )}
           />
         </Card>
-      ) : workflow.estado === 'BORRADOR_DOCENTE' ? (
+      ) : effectiveWorkflow.estado === 'BORRADOR_DOCENTE' ? (
         <Card>
           <Alert
             type="warning"
@@ -365,6 +406,8 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
           periodo={selectedPeriodo}
           access={staffGradebookAccess}
           readOnly
+          workflowRevision={effectiveWorkflow.revision}
+          onSaveSuccess={handleSaveSuccess}
         />
       )}
 

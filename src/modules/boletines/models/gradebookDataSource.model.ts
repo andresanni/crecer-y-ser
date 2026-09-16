@@ -36,6 +36,7 @@ export interface GradebookSubjectWrite {
 export interface GradebookStudentWrite {
   inscripcionId: string;
   periodoId: string;
+  expectedRevision?: number;
   materias: GradebookSubjectWrite[];
   cierre?: {
     asistencias: number;
@@ -44,6 +45,10 @@ export interface GradebookStudentWrite {
     observaciones: string;
   };
   apoyos?: GradebookSupportState;
+}
+
+export interface GradebookStudentSaveResult {
+  revision?: number;
 }
 
 export interface GradebookSubmissionResult {
@@ -85,6 +90,6 @@ export interface GradebookDataSource {
     alumno: AlumnoInscriptoRow,
     periodoId: string,
   ): Promise<GradebookStudentSnapshot>;
-  saveAlumno(data: GradebookStudentWrite): Promise<GradebookStudentSnapshot>;
+  saveAlumno(data: GradebookStudentWrite): Promise<GradebookStudentSaveResult>;
   submitPeriod?(): Promise<GradebookSubmissionResult>;
 }

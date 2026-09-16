@@ -618,16 +618,21 @@ function staffWorkflow(c) {
 function saveStaffStudent(c) {
   noStore(c)
   var enrollmentId = c.pathParam("inscripcionId")
-  var body = new DynamicModel({ periodoId: "", materias: [], cierre: {}, apoyos: {} })
+  var body = new DynamicModel({ periodoId: "", expectedRevision: -1, materias: [], cierre: {}, apoyos: {} })
   c.bind(body)
   var data = JSON.parse(JSON.stringify(body))
   var periodId = stringValue(data.periodoId, 15)
+  var expectedRevision = Number(data.expectedRevision)
+  if (!isFinite(expectedRevision) || expectedRevision < 0 || Math.floor(expectedRevision) !== expectedRevision) {
+    throw new BadRequestError("La revisión esperada de la planilla no es válida.")
+  }
   var evaluations = Array.isArray(data.materias) ? data.materias : []
   if (evaluations.length > 20) {
     throw new BadRequestError("Se recibieron demasiadas materias.")
   }
 
   var response
+  var conflictRevision = null
   $app.dao().runInTransaction((txDao) => {
     var enrollment = requireRecord(txDao, "inscripciones", enrollmentId)
     var courseId = enrollment.getString("curso_id")
@@ -636,6 +641,10 @@ function saveStaffStudent(c) {
       throw new ForbiddenError("El alumno no pertenece al curso y ciclo seleccionados.")
     }
     var workflow = requireStaffWorkflow(txDao, courseId, period.getId())
+    if (workflow.getInt("revision") !== expectedRevision) {
+      conflictRevision = workflow.getInt("revision")
+      return
+    }
     var materials = allowedMaterialMap(txDao, workflow)
     var values = scaleValueMap(txDao, workflow)
     evaluations.forEach((input) => saveEvaluation(txDao, workflow, enrollment, input, materials, values))
@@ -650,6 +659,12 @@ function saveStaffStudent(c) {
     response = { instancia: workflowDto(workflow) }
   })
 
+  if (conflictRevision !== null) {
+    return c.json(409, {
+      message: "La planilla fue modificada por otra sesión.",
+      currentRevision: conflictRevision
+    })
+  }
   return c.json(200, response)
 }
 

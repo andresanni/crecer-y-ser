@@ -1,5 +1,5 @@
 import ui from '../../../shared/styles/ui.module.css';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Alert,
   Card,
@@ -45,7 +45,10 @@ import {
   CloseOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
-import { staffGradebookDataSource } from '../services/gradebookDataSource.service';
+import {
+  GradebookRevisionConflictError,
+  staffGradebookDataSource,
+} from '../services/gradebookDataSource.service';
 import {
   TeacherAccessDeniedError,
   TeacherSubmissionIncompleteError,
@@ -71,7 +74,8 @@ interface VistaPorAlumnoProps {
   periodo: Periodo | undefined;
   access: GradebookAccessPolicy;
   readOnly?: boolean;
-  onSaveSuccess?: () => void;
+  workflowRevision?: number;
+  onSaveSuccess?: (revision?: number) => void;
 }
 
 interface MateriaAlumnoState {
@@ -106,11 +110,18 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   periodo,
   access,
   readOnly = false,
+  workflowRevision,
   onSaveSuccess,
 }) => {
   const { message, modal } = App.useApp();
   const dataSource = access.dataSource || staffGradebookDataSource;
   const [editingMateriaId, setEditingMateriaId] = useState<string | null>(null);
+  const [loadedRevision, setLoadedRevision] = useState<number | undefined>(workflowRevision);
+  const [revisionConflict, setRevisionConflict] = useState(false);
+  const workflowRevisionRef = useRef(workflowRevision);
+  useEffect(() => {
+    workflowRevisionRef.current = workflowRevision;
+  }, [workflowRevision]);
 
 
   const gradeColor = '#0369a1';
@@ -228,12 +239,19 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return () => {
       active = false;
     };
-  }, [alumnos, cursoMaterias, criteriosMap, periodoId, dataSource]);
+  }, [alumnos, cursoMaterias, criteriosMap, periodoId, dataSource, workflowRevision]);
 
 
   const [alumnoRevision, setAlumnoRevision] = useState(0);
-  const loadAlumnoData = () => setAlumnoRevision((value) => value + 1);
-  const alumnoRequestKey = [selectedInscripcionId, periodoId, alumnoRevision].join(':');
+  const loadAlumnoData = useCallback(() => setAlumnoRevision((value) => value + 1), []);
+  const hasChanges = useMemo(() => {
+    const matsModified = Object.values(materiasState).some((m) => m.isModified);
+    const closureModified = access.canEditPeriodClosure && asistenciaState.isModified;
+    const supportModified = access.canEditStudentSupport && Boolean(apoyoState.isModified);
+    return matsModified || closureModified || supportModified;
+  }, [access.canEditPeriodClosure, access.canEditStudentSupport, materiasState, asistenciaState, apoyoState]);
+  const refreshRevision = hasChanges || editingMateriaId ? loadedRevision : workflowRevision;
+  const alumnoRequestKey = [selectedInscripcionId, periodoId, alumnoRevision, refreshRevision].join(':');
   const [alumnoResult, setAlumnoResult] = useState({ key: '', failed: false });
   const alumnoDataReady = alumnoResult.key === alumnoRequestKey && !alumnoResult.failed && !loadingEvaluaciones;
   useEffect(() => {
@@ -284,6 +302,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           cualesApoyos: apoyos?.cualesApoyos || curAlu?.cualesApoyos || '',
           isModified: false,
         });
+        setLoadedRevision(workflowRevisionRef.current);
+        setRevisionConflict(false);
         setAlumnoResult({ key: alumnoRequestKey, failed: false });
       } catch (err) {
         if (!active) return;
@@ -399,15 +419,15 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   };
 
 
-  const hasChanges = useMemo(() => {
-    const matsModified = Object.values(materiasState).some((m) => m.isModified);
-    const closureModified = access.canEditPeriodClosure && asistenciaState.isModified;
-    const supportModified = access.canEditStudentSupport && Boolean(apoyoState.isModified);
-    return matsModified || closureModified || supportModified;
-  }, [access.canEditPeriodClosure, access.canEditStudentSupport, materiasState, asistenciaState, apoyoState]);
+  const hasRevisionConflict = revisionConflict || Boolean(
+    workflowRevision !== undefined
+      && loadedRevision !== undefined
+      && workflowRevision !== loadedRevision
+      && (hasChanges || editingMateriaId),
+  );
 
   const handleSave = async () => {
-    if ((readOnly && !editingMateriaId) || !selectedInscripcionId || !periodoId || !alumnoDataReady) return;
+    if (hasRevisionConflict || (readOnly && !editingMateriaId) || !selectedInscripcionId || !periodoId || !alumnoDataReady) return;
 
     try {
       setSaving(true);
@@ -439,13 +459,16 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           cualesApoyos: apoyoState.cualesApoyos,
         }
         : undefined;
-      await dataSource.saveAlumno({
+      const result = await dataSource.saveAlumno({
         inscripcionId: selectedInscripcionId,
         periodoId,
+        expectedRevision: loadedRevision,
         materias,
         cierre,
         apoyos,
       });
+      setLoadedRevision(result.revision ?? workflowRevision);
+      setRevisionConflict(false);
 
       if (apoyos) {
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
@@ -550,12 +573,16 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       });
       setAsistenciaState((prev) => ({ ...prev, isModified: false }));
       if (readOnly) setEditingMateriaId(null);
-      onSaveSuccess?.();
+      onSaveSuccess?.(result.revision);
     } catch (err) {
       console.error(err);
       if (err instanceof TeacherAccessDeniedError) {
         message.error('El acceso ya no está vigente. No se guardaron cambios.');
         access.onAccessDenied?.();
+      } else if (err instanceof GradebookRevisionConflictError) {
+        setRevisionConflict(true);
+        onSaveSuccess?.(err.currentRevision);
+        message.warning('Otra sesión actualizó esta planilla. No se guardó ningún cambio.');
       } else {
         message.error('Error al guardar datos del estudiante');
       }
@@ -730,6 +757,25 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
   return (
     <div className={ui.page}>
+      {hasRevisionConflict && (
+        <Alert
+          type="warning"
+          showIcon
+          title="Esta planilla cambió en otra sesión"
+          description="Tus cambios locales no se sobrescribieron ni se guardaron. Cargá la versión actual antes de continuar."
+          action={(
+            <Button
+              onClick={() => {
+                setEditingMateriaId(null);
+                setRevisionConflict(false);
+                loadAlumnoData();
+              }}
+            >
+              Cargar versión actual
+            </Button>
+          )}
+        />
+      )}
       { }
       {currentAlumno && (
         <div
@@ -1326,7 +1372,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                           size="small"
                           icon={<SaveOutlined />}
                           loading={saving}
-                          disabled={!mat.isModified}
+                          disabled={!mat.isModified || hasRevisionConflict}
                           onClick={() => void handleSave()}
                         >
                           Guardar
@@ -1633,7 +1679,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Space size={10}>
             <Button
               onClick={() => void loadAlumnoData()}
-              disabled={saving}
+              disabled={saving || hasRevisionConflict}
               style={{ borderRadius: 8, fontWeight: 600 }}
             >
               Descartar
@@ -1643,6 +1689,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               icon={<SaveOutlined />}
               onClick={handleSave}
               loading={saving}
+              disabled={hasRevisionConflict}
               className="btn-primary-gradient"
               style={{ borderRadius: 8, fontWeight: 600, paddingInline: 20 }}
             >

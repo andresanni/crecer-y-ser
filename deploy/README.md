@@ -28,6 +28,7 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `docs/pocketbase-api.md`: contrato HTTP propio.
 - `docs/pocketbase-magic-link-hardening.md`: seguridad, pruebas y secuencia de migración.
 - `docs/gradebook-workflow-test-plan.md`: matriz funcional, de seguridad y concurrencia posterior al despliegue.
+- `docs/concurrency-model.md`: protocolo reusable de revisión, transacción, Realtime y estado local.
 
 `pb_data`, los backups, los certificados y cualquier `.env` son estado operativo o secretos y no deben incorporarse al repositorio.
 
@@ -71,6 +72,8 @@ systemctl show pocketbase -p ActiveState -p SubState -p ExecMainStatus -p ExecSt
 ```
 
 Además deben probarse la llave vigente, una llave reemplazada, una eliminada, una entrega completada y el rechazo de acceso anónimo a las colecciones protegidas. Nunca pegar secretos reales en logs, documentación o tickets.
+
+La protección optimista puede verificarse sin escribir en producción ejecutando `deploy/test-pocketbase-concurrency.sh` como `root` en el VPS. El script copia `pb_data` a un directorio temporal validado, levanta una instancia aislada en `127.0.0.1:18091`, construye un fixture directivo en esa copia, suscribe Realtime y envía dos correcciones vacías con la misma revisión. La aprobación exige un resultado `200 409`, un único incremento de revisión y la recepción del evento realtime. La copia y los procesos temporales se eliminan al salir.
 
 ## Recuperación
 

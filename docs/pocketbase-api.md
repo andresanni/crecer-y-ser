@@ -87,7 +87,9 @@ Devuelve la instancia del curso y período, o `null` si la carga todavía no fue
 
 ### `PUT /api/cys/directivo/alumnos/:inscripcionId`
 
-Recibe `periodoId` junto con los mismos bloques `materias`, `cierre` y `apoyos` del guardado docente. Dentro de una única transacción valida que la instancia continúe en `CONTROL_DIRECTIVO`, comprueba curso y ciclo y persiste todos los bloques modificados. Una respuesta `403` obliga a retirar el editor y volver a consultar la instancia.
+Recibe `periodoId`, `expectedRevision` y los mismos bloques `materias`, `cierre` y `apoyos` del guardado docente. Dentro de una única transacción valida que la instancia continúe en `CONTROL_DIRECTIVO`, comprueba curso y ciclo, compara la revisión y persiste todos los bloques modificados. Si la revisión coincide, incrementa `revision` y devuelve la instancia resultante.
+
+Si otra sesión confirmó una operación desde la lectura original, responde `409` con `currentRevision` y no modifica ningún registro. El cliente debe conservar el borrador local, informar el conflicto y exigir una relectura antes de volver a guardar. No se permite el reintento automático.
 
 No existen rutas institucionales para devolver una entrega, cerrar la instancia o reabrirla. `CONTROL_DIRECTIVO` es terminal y sólo admite las correcciones realizadas mediante el endpoint de alumno.
 
@@ -96,6 +98,7 @@ No existen rutas institucionales para devolver una entrega, cerrar la instancia 
 - `401`: enlace ausente, inválido, reemplazado o eliminado.
 - `403`: el registro o la operación está fuera del alcance concedido.
 - `400`: referencias o valores inválidos.
+- `409`: la revisión esperada ya no es vigente; la operación no produjo escrituras.
 - `422`: el bimestre todavía tiene alumnos, materias o cierres pendientes.
 
 Los mensajes públicos son deliberadamente genéricos. El frontend debe retirar la planilla cuando recibe `401` o `403` y no debe reintentar una escritura automáticamente.

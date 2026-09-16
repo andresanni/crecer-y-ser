@@ -14,7 +14,9 @@ Validar la persistencia progresiva docente, la transferencia unidireccional y ex
 
 ## Última verificación técnica
 
-El 15 de septiembre de 2026 se desplegaron en el VPS las migraciones unidireccionales, de recuperación cifrada y de eliminación del estado propio del enlace, siempre con backup previo. Se verificaron el health check, el selector limitado a `BORRADOR_DOCENTE` y `CONTROL_DIRECTIVO`, la ausencia de `cerrado_at`, `cerrado_por` y `activo`, el índice único de llave por curso y período, cero alcances duplicados y respuestas `404` en las rutas retiradas. El recorrido funcional de interfaz y la matriz de concurrencia permanecen como siguiente prueba de regresión.
+El 15 de septiembre de 2026 se desplegaron en el VPS las migraciones unidireccionales, de recuperación cifrada y de eliminación del estado propio del enlace, siempre con backup previo. Se verificaron el health check, el selector limitado a `BORRADOR_DOCENTE` y `CONTROL_DIRECTIVO`, la ausencia de `cerrado_at`, `cerrado_por` y `activo`, el índice único de llave por curso y período, cero alcances duplicados y respuestas `404` en las rutas retiradas.
+
+El 16 de septiembre de 2026 se desplegó el control optimista directivo con el respaldo `/root/pb/deploy_backups/20260916-085138`. `deploy/test-pocketbase-concurrency.sh` se ejecutó sobre una copia temporal de `pb_data`: dos escrituras simultáneas con revisión `4` produjeron `200` y `409`, la revisión avanzó una sola vez a `5` y el evento actualizado llegó por Realtime. No se modificaron datos productivos. Permanece pendiente la regresión visual con dos navegadores después de publicar el frontend compatible.
 
 ## Matriz funcional
 
@@ -89,7 +91,11 @@ El 15 de septiembre de 2026 se desplegaron en el VPS las migraciones unidireccio
 - Ejecutar un guardado docente al mismo tiempo que el envío. La serialización debe incluirlo antes de transferir o rechazarlo después, nunca aceptarlo en `CONTROL_DIRECTIVO`.
 - Intentar un guardado institucional mientras la instancia está en borrador y confirmar el rechazo aunque la interfaz estuviera desactualizada.
 - Mantener dos pestañas docentes abiertas, completar el envío desde una y comprobar que la siguiente lectura o escritura de la otra revalida la credencial.
-- Mantener dos sesiones institucionales editando materias diferentes y comprobar que un conflicto no deja una escritura parcial.
+- Mantener dos sesiones institucionales sobre la misma revisión, guardar desde la primera y comprobar que la segunda recibe el cambio por Realtime.
+- Conservar cambios sin guardar en la segunda sesión, confirmar que el evento remoto no los reemplaza y que el guardado queda bloqueado hasta cargar la versión actual.
+- Interrumpir Realtime en la segunda sesión, guardar primero desde la otra y comprobar que `expectedRevision` provoca `409` sin escrituras parciales ni reintento automático.
+- Mantener dos sesiones institucionales editando materias diferentes y confirmar la política conservadora por curso y período: sólo el primer guardado se confirma; el segundo debe releer antes de aplicar su cambio.
+- Confirmar que el tablero de cursos y el resumen por alumno se recalculan tras cada revisión remota confirmada.
 
 ## Criterio de aprobación
 

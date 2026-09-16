@@ -40,6 +40,8 @@ import type {
   EstadoMonitoreoCurso,
 } from '../models/boletin.model';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
+import { useGradebookRealtime } from '../hooks/useGradebookRealtime';
+import { useGradebookConcurrencyStore } from '../store/gradebookConcurrencyStore';
 
 const { Text } = Typography;
 
@@ -47,11 +49,15 @@ export const CargaNotasDashboardPage: React.FC = () => {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const { cicloActual } = useAppStore();
+  useGradebookRealtime();
 
 
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [selectedPeriodoId, setSelectedPeriodoId] = useState<string | null>(null);
+  const realtimePeriodSequence = useGradebookConcurrencyStore((state) => (
+    selectedPeriodoId ? state.periodSequences[selectedPeriodoId] || 0 : 0
+  ));
 
   const [data, setData] = useState<MonitoreoInstitucionalData>({
     cursosCompletosCount: 0,
@@ -119,7 +125,7 @@ export const CargaNotasDashboardPage: React.FC = () => {
     };
     void fetchMonitoreo();
     return () => { active = false; };
-  }, [selectedPeriodoId, monitoreoRevision, message]);
+  }, [selectedPeriodoId, monitoreoRevision, realtimePeriodSequence, message]);
 
   const cursosFiltrados = useMemo(() => {
     if (filtroEstado === 'TODOS') return data.cursos;

@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 15 de septiembre de 2026.
+Actualizado: 16 de septiembre de 2026.
 
 ## Propósito
 
@@ -66,6 +66,8 @@ La carga institucional y la carga por enlace comparten el editor de boletín y s
 
 El guardado docente es progresivo, pero el envío es atómico y sólo ocurre cuando el servidor verifica la completitud de todo el curso. El traspaso elimina inmediatamente la llave docente y no puede revertirse. Dirección recibe una revisión de solo lectura y corrige de forma atómica por materia: sólo una puede editarse por vez y sus acciones de guardado o descarte permanecen en la tarjeta correspondiente. La interfaz nunca monta dos formularios editables a la vez y las colecciones de notas, criterios y cierres no admiten escrituras directas desde clientes.
 
+Las correcciones directivas usan concurrencia optimista por curso y período. Cada guardado envía la revisión base, PocketBase la compara dentro de la transacción y rechaza con `409` cualquier versión vencida antes de escribir. Los cambios de instancia se distribuyen por Realtime; Zustand conserva las versiones observadas e invalida tablero, resumen y detalle. Un cambio remoto nunca reemplaza un formulario con datos locales pendientes. `docs/concurrency-model.md` define este patrón para las próximas features multiusuario.
+
 Las migraciones de workflow, los hooks y las reglas están versionados con el proyecto y desplegados en el VPS. `1789346400_simplified_unidirectional_gradebook_workflow.js` reduce la máquina a sus dos estados vigentes, `1789474000_added_recoverable_teacher_links.js` incorpora la recuperación cifrada y `1789477600_removed_teacher_link_state.js` elimina `activo` y garantiza una llave única por alcance. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
 
 Los enlaces no tienen vencimiento ni estado activo/inactivo. Existe como máximo una llave por curso y período: eliminarla corta el acceso y regenerarla reemplaza inmediatamente el secreto anterior sin afectar el borrador. La entrega atómica elimina la llave vigente.
@@ -92,5 +94,6 @@ El tablero distingue el avance académico del control operativo. `Completado` ex
 - La modernización UX/UI fue aprobada y fusionada en `master`.
 - El workflow unidireccional fue validado sobre una copia aislada y desplegado; el servicio, el esquema de dos estados y la ausencia de rutas de retorno fueron verificados en el VPS.
 - La recuperación cifrada y el modelo de llave única sin `activo` están desplegados; el índice de alcance y la retirada del endpoint de estado fueron verificados en el VPS.
+- La protección optimista del gateway está desplegada en PocketBase con el respaldo `/root/pb/deploy_backups/20260916-085138`. La carrera aislada sobre una copia de `pb_data` confirmó un único guardado, rechazo `409` de la revisión vencida y recepción del evento Realtime. El frontend compatible está validado localmente y pendiente de publicación por el canal de hosting de la aplicación.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.

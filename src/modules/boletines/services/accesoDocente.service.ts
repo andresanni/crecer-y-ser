@@ -427,7 +427,7 @@ export const accesoDocenteService = {
         );
         const snapshot = mapStudentDto(dto, data.inscripcionId, data.periodoId);
         snapshots.set(data.inscripcionId, snapshot);
-        return snapshot;
+        return {};
       },
       submitPeriod: async (): Promise<GradebookSubmissionResult> => {
         try {

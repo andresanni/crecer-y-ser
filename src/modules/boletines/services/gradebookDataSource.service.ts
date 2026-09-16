@@ -1,6 +1,7 @@
 import type { GradebookDataSource, GradebookStudentWrite } from '../models/gradebookDataSource.model';
 import type { EstadoInstanciaCargaBoletin, InstanciaCargaBoletin } from '../models/boletin.model';
 import pb from '../../../core/pocketbase';
+import { ClientResponseError } from 'pocketbase';
 import { boletinService } from './boletin.service';
 
 interface StaffWorkflowStateDto {
@@ -13,6 +14,20 @@ interface StaffWorkflowStateDto {
 
 interface StaffWorkflowDto {
   instancia: StaffWorkflowStateDto | null;
+}
+
+interface StaffSaveDto {
+  instancia: StaffWorkflowStateDto;
+}
+
+export class GradebookRevisionConflictError extends Error {
+  readonly currentRevision?: number;
+
+  constructor(currentRevision?: number) {
+    super('La planilla cambió desde la última lectura.');
+    this.name = 'GradebookRevisionConflictError';
+    this.currentRevision = currentRevision;
+  }
 }
 
 const loadStaffStudent = async (
@@ -40,16 +55,29 @@ const loadStaffStudent = async (
 };
 
 const saveStaffStudent = async (data: GradebookStudentWrite) => {
-  await pb.send(`/api/cys/directivo/alumnos/${data.inscripcionId}`, {
-    method: 'PUT',
-    body: {
-      periodoId: data.periodoId,
-      materias: data.materias,
-      cierre: data.cierre || {},
-      apoyos: data.apoyos || {},
-    },
-    requestKey: null,
-  });
+  try {
+    return await pb.send<StaffSaveDto>(`/api/cys/directivo/alumnos/${data.inscripcionId}`, {
+      method: 'PUT',
+      body: {
+        periodoId: data.periodoId,
+        expectedRevision: data.expectedRevision,
+        materias: data.materias,
+        cierre: data.cierre || {},
+        apoyos: data.apoyos || {},
+      },
+      requestKey: null,
+    });
+  } catch (error) {
+    if (error instanceof ClientResponseError && error.status === 409) {
+      const currentRevision = Number(
+        error.response?.currentRevision ?? error.response?.data?.currentRevision,
+      );
+      throw new GradebookRevisionConflictError(
+        Number.isFinite(currentRevision) ? currentRevision : undefined,
+      );
+    }
+    throw error;
+  }
 };
 
 export const getStaffGradebookWorkflow = async (
@@ -89,7 +117,9 @@ export const staffGradebookDataSource: GradebookDataSource = {
   ),
   getAlumno: (alumno, periodoId) => loadStaffStudent(alumno.inscripcionId, periodoId, alumno),
   saveAlumno: async (data) => {
-    await saveStaffStudent(data);
-    return loadStaffStudent(data.inscripcionId, data.periodoId, data.apoyos || {});
+    const response = await saveStaffStudent(data);
+    return {
+      revision: response.instancia.revision,
+    };
   },
 };

@@ -100,3 +100,5 @@ Los apoyos anuales continúan físicamente en `inscripciones`, pero toda modific
 La migración se validó sobre una copia aislada con una instancia histórica `CERRADO` y después se desplegó con backup. El recorrido funcional debe seguir validando que un envío incompleto devuelve `422` sin perder el borrador, que el guardado progresivo persiste, que el curso completo pasa a `CONTROL_DIRECTIVO`, que la llave queda eliminada y que dirección puede revisar y corregir sin que exista una ruta de regreso al acceso docente.
 
 La matriz reproducible y las pruebas de concurrencia pendientes de automatización están en `docs/gradebook-workflow-test-plan.md`.
+
+Después de la entrega, las sesiones institucionales comparten el control pero no escriben a ciegas. Cada corrección lleva la revisión leída de la instancia, el gateway la compara dentro de la transacción y rechaza versiones vencidas sin modificar datos. Realtime invalida el tablero, el resumen y el detalle; si existe una edición local, la interfaz la conserva y exige cargar la versión actual. El protocolo general está en `docs/concurrency-model.md`.
