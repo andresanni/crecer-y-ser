@@ -57,16 +57,28 @@ npm run build
 
 La conexión se configura mediante `VITE_POCKETBASE_URL`. Desarrollo debe apuntar a la instancia saneada de loopback; producción usa `https://alumnos-api.duckdns.org`. No versionar archivos `.env`, credenciales, claves, backups ni `pb_data`.
 
+## Producción
+
+El frontend se despliega como SPA de Vite en Vercel y PocketBase permanece en el VPS. En Vercel debe definirse para Production:
+
+```dotenv
+VITE_POCKETBASE_URL=https://alumnos-api.duckdns.org
+```
+
+La configuración versionada valida el entorno de build y resuelve las rutas profundas de React Router. El alta, la política de previews, la verificación y el rollback se detallan en `docs/vercel-deployment.md`.
+
 ## Documentación
 
 - `AGENTS.md`: contrato compartido para herramientas de desarrollo asistido.
 - `docs/project-context.md`: estado funcional y arquitectura vigente.
+- `docs/guia-operativa-pocketbase-dev-produccion.md`: guía personal de migraciones, actualización y recuperación de los dos entornos.
 - `frontend_guidelines.md`: convenciones de frontend y mapa del modelo de datos.
 - `docs/ux-modernization.md`: sistema UX/UI aprobado.
 - `docs/magic-link-gradebook.md`: arquitectura del workflow docente–directivo.
 - `docs/pocketbase-api.md`: contrato de las rutas propias de PocketBase.
 - `docs/pocketbase-magic-link-hardening.md`: modelo de seguridad y estado del despliegue.
 - `docs/pocketbase-environments.md`: separación local/VPS y flujo de migraciones, datos, promoción y rollback.
+- `docs/vercel-deployment.md`: publicación del frontend, variables, previews, verificación y rollback en Vercel.
 - `docs/gradebook-workflow-test-plan.md`: matriz y registro de aceptación del workflow.
 - `deploy/README.md`: topología y operación reproducible del VPS.
 - `deploy/start-pocketbase-dev.ps1`: inicio reproducible del backend local.

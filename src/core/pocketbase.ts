@@ -1,8 +1,28 @@
 import PocketBase from 'pocketbase';
 
-const pocketbaseUrl = import.meta.env.VITE_POCKETBASE_URL || 'https://alumnos-api.duckdns.org';
+const configuredPocketBaseUrl = import.meta.env.VITE_POCKETBASE_URL?.trim();
 
-const pb = new PocketBase(pocketbaseUrl);
+if (!configuredPocketBaseUrl) {
+  throw new Error('Falta configurar VITE_POCKETBASE_URL para este entorno.');
+}
+
+const parsedPocketBaseUrl = new URL(configuredPocketBaseUrl);
+
+if (!['http:', 'https:'].includes(parsedPocketBaseUrl.protocol)) {
+  throw new Error('VITE_POCKETBASE_URL debe usar el protocolo http o https.');
+}
+
+if (
+  parsedPocketBaseUrl.username
+  || parsedPocketBaseUrl.password
+  || parsedPocketBaseUrl.search
+  || parsedPocketBaseUrl.hash
+  || parsedPocketBaseUrl.pathname !== '/'
+) {
+  throw new Error('VITE_POCKETBASE_URL debe contener únicamente el origen de PocketBase.');
+}
+
+const pb = new PocketBase(parsedPocketBaseUrl.origin);
 
 pb.autoCancellation(false);
 

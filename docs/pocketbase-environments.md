@@ -51,7 +51,9 @@ VITE_POCKETBASE_URL=http://127.0.0.1:8090
 
 Los archivos `.env*`, salvo el ejemplo explícitamente permitido, están ignorados por Git. La URL no es secreta, pero el archivo local no se versiona para mantener una separación inequívoca por entorno.
 
-`src/core/pocketbase.ts` conserva por ahora la URL productiva como fallback histórico. Hasta retirar esa compatibilidad después de confirmar la configuración del hosting, `.env.development.local` es obligatorio: iniciar Vite sin ese archivo puede conectar el frontend local al VPS.
+`src/core/pocketbase.ts` no tiene una URL alternativa. Si la variable falta o no contiene un origen HTTP válido, la aplicación se detiene antes de crear el cliente. Por lo tanto, iniciar Vite sin `.env.development.local` nunca conecta accidentalmente el frontend local al VPS.
+
+El frontend productivo se publica en Vercel y recibe `VITE_POCKETBASE_URL=https://alumnos-api.duckdns.org` exclusivamente desde la configuración del entorno Production. La separación completa, la política de previews y el procedimiento de publicación están en `docs/vercel-deployment.md`.
 
 La copia local inicial se creó desde un snapshot consistente del VPS, se anonimizó y se validó el 20 de septiembre de 2026. Se reemplazaron identidades y contactos, se vaciaron textos sensibles y credenciales Acadeu, se eliminaron usuarios, administradores y enlaces docentes de producción, y se crearon cuentas exclusivamente locales. Los logs, backups internos y copias crudas locales fueron eliminados después de la validación.
 

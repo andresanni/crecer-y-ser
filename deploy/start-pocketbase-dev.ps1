@@ -21,7 +21,7 @@ if ($version -notmatch " $([regex]::Escape($manifest.version))$") {
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $dataDirectory "data.db"))) {
-  throw "Falta pb_data\data.db. La cadena actual no admite inicializar una base vacia."
+  throw "Falta pb_data\data.db. Reconstruya el entorno con deploy\setup-pocketbase-dev.ps1."
 }
 
 if (-not (Test-Path -LiteralPath $hooksDirectory)) {
@@ -35,7 +35,9 @@ if (-not (Test-Path -LiteralPath $migrationsDirectory)) {
 if (-not (Test-Path -LiteralPath $secretPath)) {
   $alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
   $bytes = [byte[]]::new(32)
-  [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+  $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  $random.GetBytes($bytes)
+  $random.Dispose()
   $secret = -join ($bytes | ForEach-Object { $alphabet[$_ % $alphabet.Length] })
   [System.IO.File]::WriteAllText($secretPath, $secret, [System.Text.UTF8Encoding]::new($false))
   $acl = [System.Security.AccessControl.FileSecurity]::new()

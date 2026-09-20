@@ -23,7 +23,9 @@ function New-RandomSecret {
 
   $alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%_-"
   $bytes = [byte[]]::new($Length)
-  [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+  $random = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  $random.GetBytes($bytes)
+  $random.Dispose()
   return -join ($bytes | ForEach-Object { $alphabet[$_ % $alphabet.Length] })
 }
 

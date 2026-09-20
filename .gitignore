@@ -9,6 +9,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.vercel
 *.local
 pb_data/
 pb_public/

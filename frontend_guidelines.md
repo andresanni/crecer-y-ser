@@ -13,7 +13,8 @@
 *   **Routing:** React Router v7.
 *   **Backend / BaaS:** PocketBase SDK (`pocketbase` npm package).
     *   Desarrollo: `http://127.0.0.1:8090`, definido mediante `.env.development.local` y nunca versionado.
-    *   Producción: `https://alumnos-api.duckdns.org`, que debe definirse explícitamente en el build productivo.
+    *   Producción: frontend estático en Vercel y PocketBase en `https://alumnos-api.duckdns.org`, definido mediante `VITE_POCKETBASE_URL` sólo para el entorno Production.
+    *   El cliente no tiene fallback de URL. Los Preview Deployments permanecen sin acceso a PocketBase hasta disponer de un backend de staging con datos sintéticos.
     *   **Esquema de Base de Datos:** `pb_migrations/` es la evolución ejecutable y versionada. `pb_schema.json` es el snapshot legible derivado para consultar colecciones, campos, reglas de acceso y relaciones `expand`; no se despliega editándolo manualmente.
 
 ## 2. Arquitectura y Patrones de Diseño
