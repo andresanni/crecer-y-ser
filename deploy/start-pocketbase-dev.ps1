@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+$manifest = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot "pocketbase-version.json") | ConvertFrom-Json
 $executable = Join-Path $PocketBaseRoot "pocketbase.exe"
 $dataDirectory = Join-Path $PocketBaseRoot "pb_data"
 $secretPath = Join-Path $PocketBaseRoot "teacher-link-dev.key"
@@ -15,8 +16,8 @@ if (-not (Test-Path -LiteralPath $executable)) {
 }
 
 $version = & $executable --version
-if ($version -notmatch "0\.22\.17$") {
-  throw "La version local debe ser PocketBase 0.22.17. Version detectada: $version"
+if ($version -notmatch " $([regex]::Escape($manifest.version))$") {
+  throw "La version local debe ser PocketBase $($manifest.version). Version detectada: $version"
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $dataDirectory "data.db"))) {

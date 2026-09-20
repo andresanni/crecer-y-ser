@@ -29,6 +29,12 @@ Iniciar primero PocketBase local:
 .\deploy\start-pocketbase-dev.ps1
 ```
 
+En un equipo nuevo o sin `pb_data`, reconstruir primero el entorno completo:
+
+```powershell
+.\deploy\setup-pocketbase-dev.ps1 -DownloadPocketBase
+```
+
 Crear `.env.development.local`, sin versionarlo:
 
 ```dotenv
@@ -64,5 +70,8 @@ La conexión se configura mediante `VITE_POCKETBASE_URL`. Desarrollo debe apunta
 - `docs/gradebook-workflow-test-plan.md`: matriz y registro de aceptación del workflow.
 - `deploy/README.md`: topología y operación reproducible del VPS.
 - `deploy/start-pocketbase-dev.ps1`: inicio reproducible del backend local.
+- `deploy/setup-pocketbase-dev.ps1`: reconstrucción desde cero con migraciones y seed sintético.
+- `deploy/backup-pocketbase-dev.ps1` y `deploy/restore-pocketbase-dev.ps1`: recuperación cifrada del entorno local.
+- `deploy/verify-pocketbase-dev.ps1`: validación reproducible del backend local.
 - `pb_migrations/`: evolución ejecutable del esquema y las reglas.
 - `pb_schema.json`: snapshot legible derivado del backend vigente.

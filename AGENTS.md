@@ -26,6 +26,7 @@ Antes de modificar código, consultar:
 - No agregar dependencias de producción sin una necesidad concreta y validada.
 - No incorporar secretos ni archivos `.env` al control de versiones.
 - No copiar `pb_data` de desarrollo al VPS. Promover cambios mediante migraciones y hooks versionados; toda copia de producción usada localmente debe sanearse según `docs/pocketbase-environments.md`.
+- Mantener `deploy/pocketbase-dev-seed` exclusivamente para datos sintéticos locales; nunca incluirlo entre los artefactos del VPS ni introducir allí datos derivados de personas reales.
 - Mantener un único editor de boletines compartido y resolver las diferencias entre docentes y dirección mediante políticas de acceso y orígenes de datos.
 - No escribir evaluaciones, criterios ni cierres directamente desde el cliente; toda escritura de planilla debe atravesar el gateway correspondiente al rol y respetar el estado del workflow.
 - Ejecutar `npm run lint` y `npm run build` después de cambios de código.

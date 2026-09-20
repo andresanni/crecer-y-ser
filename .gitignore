@@ -13,6 +13,7 @@ dist-ssr
 pb_data/
 pb_public/
 backups/
+*.cysbackup
 
 .vscode/*
 !.vscode/extensions.json

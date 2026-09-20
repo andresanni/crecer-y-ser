@@ -55,6 +55,31 @@ Los archivos `.env*`, salvo el ejemplo explícitamente permitido, están ignorad
 
 La copia local inicial se creó desde un snapshot consistente del VPS, se anonimizó y se validó el 20 de septiembre de 2026. Se reemplazaron identidades y contactos, se vaciaron textos sensibles y credenciales Acadeu, se eliminaron usuarios, administradores y enlaces docentes de producción, y se crearon cuentas exclusivamente locales. Los logs, backups internos y copias crudas locales fueron eliminados después de la validación.
 
+## Reconstrucción desde cero
+
+Una instalación nueva ya no necesita copiar datos del VPS. El repositorio contiene una baseline condicional, las migraciones incrementales, un seed sintético y el instalador:
+
+```powershell
+.\deploy\setup-pocketbase-dev.ps1 -DownloadPocketBase
+.\deploy\start-pocketbase-dev.ps1
+```
+
+`setup-pocketbase-dev.ps1` realiza estas operaciones:
+
+1. Detecta Windows ARM64 o AMD64.
+2. Descarga PocketBase desde el release oficial cuando se usa `-DownloadPocketBase`.
+3. Verifica el SHA-256 definido en `deploy/pocketbase-version.json` y la versión ejecutable `0.22.17`.
+4. Construye la base en un directorio temporal y no reemplaza un `pb_data` existente.
+5. Aplica `pb_migrations` desde la baseline hasta el esquema vigente.
+6. Genera administrador, usuario institucional y clave docente exclusivamente locales.
+7. Aplica `deploy/pocketbase-dev-seed` con datos completamente sintéticos.
+8. Protege credenciales y clave mediante ACL del usuario actual.
+9. Crea `.env.development.local` cuando no existe.
+
+El seed contiene seis alumnos y seis responsables ficticios, dos cursos, dos períodos, cinco materias, escalas y criterios suficientes para probar los flujos principales. No crea enlaces docentes ni registros académicos reales.
+
+La baseline `1789330000_created_initial_collections.js` representa el esquema inmediatamente anterior a la primera migración incremental. En una base vacía importa las colecciones iniciales y permite aplicar toda la historia posterior. En una base existente detecta `alumnos`, no modifica el esquema ni los datos y sólo queda registrada como aplicada. El 20 de septiembre de 2026 se validaron ambos recorridos: reconstrucción vacía y aplicación no destructiva sobre la copia local existente.
+
 ## Secretos y datos excluidos
 
 Nunca se incorporan al repositorio:
@@ -68,6 +93,30 @@ Nunca se incorporan al repositorio:
 
 La clave docente local es distinta de la clave del VPS. La clave de producción no se copia al equipo de desarrollo. Por ello, los registros de `tokens_acceso_docente` siempre se eliminan al preparar una copia local y se generan enlaces nuevos para las pruebas.
 
+## Backup cifrado del entorno local
+
+El entorno puede reconstruirse desde Git, pero también existe un backup de contingencia para conservar trabajo de prueba. PocketBase debe estar detenido:
+
+```powershell
+.\deploy\backup-pocketbase-dev.ps1
+```
+
+Por defecto el archivo `.cysbackup` se guarda en `OneDrive\Backups\Crecer-y-Ser`, fuera del proyecto. El script es compatible con Windows PowerShell 5.1 y PowerShell 7, solicita una frase de recuperación de al menos 16 caracteres y cifra mediante AES-256-CBC con autenticación HMAC-SHA256 y claves derivadas por PBKDF2-SHA256. La frase no se almacena; debe guardarse en un gestor de contraseñas independiente.
+
+El contenedor cifrado incluye la base saneada, `storage`, las credenciales locales y `teacher-link-dev.key` para permitir una restauración funcional. No incluye logs, backups internos ni secretos de producción.
+
+Para restaurar en otro equipo:
+
+```powershell
+.\deploy\setup-pocketbase-dev.ps1 -DownloadPocketBase -DownloadOnly
+.\deploy\restore-pocketbase-dev.ps1 -BackupPath "D:\ruta\backup.cysbackup"
+.\deploy\start-pocketbase-dev.ps1
+```
+
+La restauración exige un destino sin `pb_data`, autentica el contenido antes de escribir y restaura ACL restringidas. Una contraseña incorrecta o cualquier alteración del archivo cancela el proceso sin instalar datos.
+
+El primer backup real cifrado se creó en OneDrive y su SHA-256 se verificó el 20 de septiembre de 2026. La frase de recuperación queda bajo custodia personal fuera del repositorio.
+
 ## Flujo diario de desarrollo
 
 1. Actualizar el checkout y revisar `git status` antes de trabajar.
@@ -76,6 +125,14 @@ La clave docente local es distinta de la clave del VPS. La clave de producción 
 4. Iniciar Vite con `npm run dev` y comprobar que `VITE_POCKETBASE_URL` apunta a loopback.
 5. Usar únicamente cuentas y datos descartables del entorno local.
 6. Detener PocketBase con `Ctrl+C` al terminar si no se necesita mantenerlo activo.
+
+La verificación reproducible del backend local se ejecuta con:
+
+```powershell
+.\deploy\verify-pocketbase-dev.ps1
+```
+
+Después de una reconstrucción limpia se agrega `-ExpectSyntheticSeed` para comprobar también todas las cantidades del fixture.
 
 No se realizan pruebas destructivas contra `https://alumnos-api.duckdns.org`. Una tarea que necesite producción debe identificarlo explícitamente y limitarse al procedimiento documentado de despliegue o diagnóstico.
 
@@ -114,7 +171,7 @@ El procedimiento es:
 7. Aplicar las migraciones candidatas con los hooks compatibles y ejecutar pruebas de permisos, workflow, transacciones y concurrencia.
 8. Eliminar las copias crudas locales cuando la base saneada haya sido validada.
 
-La cadena histórica actual es incremental y no constituye todavía un bootstrap completo desde una base vacía. Hasta que exista una migración base validada, una instalación local nueva debe partir de una copia saneada o de una exportación completa controlada del esquema.
+La cadena histórica dispone de una baseline completa y fue validada desde una base vacía. Las migraciones nuevas deben seguir siendo incrementales; no modificar la baseline ni las migraciones que ya hayan alcanzado producción.
 
 ## Promoción a producción
 

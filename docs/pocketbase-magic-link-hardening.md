@@ -125,6 +125,8 @@ La migración fue probada con PocketBase 0.22.17 sobre una copia local y luego a
 
 La separación de entornos y el flujo obligatorio de creación, ensayo y promoción de migraciones se detallan en `docs/pocketbase-environments.md`.
 
+La migración `1789330000_created_initial_collections.js` permite reconstruir una base vacía con el esquema anterior a las migraciones de endurecimiento. En instalaciones existentes usa `alumnos` como guarda y no modifica colecciones ni datos. El seed de desarrollo vive fuera de `pb_migrations` y nunca forma parte del despliegue productivo.
+
 `pb_schema.json` es una fotografía legible para desarrollo y asistentes, pero no es el mecanismo de despliegue.
 
 PocketBase mantiene `pb_migrations`, versionado junto con el código. La evolución vigente ya está registrada en migraciones incrementales. A partir de ahora:

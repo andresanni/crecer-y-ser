@@ -27,6 +27,12 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `pb_schema.json`: snapshot legible del esquema resultante.
 - `deploy/pocketbase.service`: unidad systemd vigente.
 - `deploy/start-pocketbase-dev.ps1`: lanzador local restringido a loopback.
+- `deploy/setup-pocketbase-dev.ps1`: instalación y reconstrucción local desde cero.
+- `deploy/backup-pocketbase-dev.ps1`: backup local cifrado y autenticado.
+- `deploy/restore-pocketbase-dev.ps1`: restauración local hacia un destino vacío.
+- `deploy/verify-pocketbase-dev.ps1`: health, autenticación, aislamiento y controles del seed.
+- `deploy/pocketbase-version.json`: versión, artefactos y checksums oficiales fijados.
+- `deploy/pocketbase-dev-seed/`: datos sintéticos exclusivos de desarrollo.
 - `deploy/Caddyfile`: proxy vigente.
 - `docs/pocketbase-api.md`: contrato HTTP propio.
 - `docs/pocketbase-magic-link-hardening.md`: seguridad, pruebas y secuencia de migración.
@@ -35,7 +41,9 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 
 `pb_data`, los backups, los certificados y cualquier `.env` son estado operativo o secretos y no deben incorporarse al repositorio.
 
-La instancia de desarrollo vive en `C:\pocketbase`, usa el mismo PocketBase `0.22.17` y consume `pb_hooks` y `pb_migrations` desde el checkout. Se inicia con `deploy/start-pocketbase-dev.ps1`. Nunca usar el `pb_data` local como artefacto de despliegue.
+Los scripts locales de backup y restauración son compatibles con Windows PowerShell 5.1 y PowerShell 7. El contenedor `.cysbackup` usa AES-256-CBC, HMAC-SHA256 y PBKDF2-SHA256; la frase de recuperación se conserva únicamente en un gestor de contraseñas externo.
+
+La instancia de desarrollo vive en `C:\pocketbase`, usa el mismo PocketBase `0.22.17` y consume `pb_hooks` y `pb_migrations` desde el checkout. Puede reconstruirse con `deploy/setup-pocketbase-dev.ps1` y se inicia con `deploy/start-pocketbase-dev.ps1`. Nunca usar el `pb_data` local como artefacto de despliegue.
 
 `/root/pb/teacher-link.env` debe pertenecer a `root:root`, tener permisos `0600` y definir `CYS_TEACHER_LINK_KEY` con exactamente 32 caracteres. La unidad systemd lo carga mediante `EnvironmentFile`; perder esa clave impide recuperar enlaces existentes, aunque sus hashes continúan siendo válidos para autenticación.
 

@@ -10,6 +10,9 @@ esac
 
 test -f "$stage_dir/teacherAccess.js"
 test -f "$stage_dir/teacher_access.pb.js"
+test -f "$stage_dir/1789330000_created_initial_collections.js"
+test -f "$stage_dir/1789334557_hardened_teacher_access_tokens.js"
+test -f "$stage_dir/1789338120_close_public_gradebook_rules.js"
 test -f "$stage_dir/1789342800_created_gradebook_workflows.js"
 test -f "$stage_dir/1789346400_simplified_unidirectional_gradebook_workflow.js"
 test -f "$stage_dir/1789471993_removed_teacher_access_expiration.js"
@@ -33,6 +36,15 @@ fi
 if test -d /root/pb/pb_hooks; then
   cp -a /root/pb/pb_hooks "$backup_dir/pb_hooks"
 fi
+if test -f /root/pb/pb_migrations/1789330000_created_initial_collections.js; then
+  cp -a /root/pb/pb_migrations/1789330000_created_initial_collections.js "$backup_dir/"
+fi
+if test -f /root/pb/pb_migrations/1789334557_hardened_teacher_access_tokens.js; then
+  cp -a /root/pb/pb_migrations/1789334557_hardened_teacher_access_tokens.js "$backup_dir/"
+fi
+if test -f /root/pb/pb_migrations/1789338120_close_public_gradebook_rules.js; then
+  cp -a /root/pb/pb_migrations/1789338120_close_public_gradebook_rules.js "$backup_dir/"
+fi
 if test -f /root/pb/pb_migrations/1789342800_created_gradebook_workflows.js; then
   cp -a /root/pb/pb_migrations/1789342800_created_gradebook_workflows.js "$backup_dir/"
 fi
@@ -53,6 +65,9 @@ cp -a /etc/systemd/system/pocketbase.service "$backup_dir/pocketbase.service"
 install -d -m 0755 /root/pb/pb_hooks/lib /root/pb/pb_migrations
 install -m 0644 "$stage_dir/teacherAccess.js" /root/pb/pb_hooks/lib/teacherAccess.js
 install -m 0644 "$stage_dir/teacher_access.pb.js" /root/pb/pb_hooks/teacher_access.pb.js
+install -m 0644 "$stage_dir/1789330000_created_initial_collections.js" /root/pb/pb_migrations/1789330000_created_initial_collections.js
+install -m 0644 "$stage_dir/1789334557_hardened_teacher_access_tokens.js" /root/pb/pb_migrations/1789334557_hardened_teacher_access_tokens.js
+install -m 0644 "$stage_dir/1789338120_close_public_gradebook_rules.js" /root/pb/pb_migrations/1789338120_close_public_gradebook_rules.js
 install -m 0644 "$stage_dir/1789342800_created_gradebook_workflows.js" /root/pb/pb_migrations/1789342800_created_gradebook_workflows.js
 install -m 0644 "$stage_dir/1789346400_simplified_unidirectional_gradebook_workflow.js" /root/pb/pb_migrations/1789346400_simplified_unidirectional_gradebook_workflow.js
 install -m 0644 "$stage_dir/1789471993_removed_teacher_access_expiration.js" /root/pb/pb_migrations/1789471993_removed_teacher_access_expiration.js

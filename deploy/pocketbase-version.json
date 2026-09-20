@@ -1,0 +1,14 @@
+{
+  "version": "0.22.17",
+  "releaseUrl": "https://github.com/pocketbase/pocketbase/releases/tag/v0.22.17",
+  "artifacts": {
+    "windows-arm64": {
+      "file": "pocketbase_0.22.17_windows_arm64.zip",
+      "sha256": "3a248d6fe9039cd4856ce4082550a2bc87721cc09c8c1b361c117590dcbcd1e2"
+    },
+    "windows-amd64": {
+      "file": "pocketbase_0.22.17_windows_amd64.zip",
+      "sha256": "9527700a1d2e1aaacf97f0be5b8713f09c81cedeb2c69f76947b6ff6d0060900"
+    }
+  }
+}
