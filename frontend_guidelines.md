@@ -12,7 +12,8 @@
 *   **Revisión directiva:** En `CONTROL_DIRECTIVO`, las respuestas se presentan como texto informativo por defecto. Cada materia habilita sus propios controles mediante `Editar` y conserva `Guardar` y `Descartar` dentro de la misma tarjeta. Sólo una materia puede editarse por vez y no se puede cambiar de alumno dejando modificaciones pendientes.
 *   **Routing:** React Router v7.
 *   **Backend / BaaS:** PocketBase SDK (`pocketbase` npm package).
-    *   URL del servidor: `https://alumnos-api.duckdns.org`
+    *   Desarrollo: `http://127.0.0.1:8090`, definido mediante `.env.development.local` y nunca versionado.
+    *   Producción: `https://alumnos-api.duckdns.org`, que debe definirse explícitamente en el build productivo.
     *   **Esquema de Base de Datos:** `pb_migrations/` es la evolución ejecutable y versionada. `pb_schema.json` es el snapshot legible derivado para consultar colecciones, campos, reglas de acceso y relaciones `expand`; no se despliega editándolo manualmente.
 
 ## 2. Arquitectura y Patrones de Diseño
@@ -22,6 +23,7 @@
     *   El modelo de dominio frontend (`camelCase`) se usa en componentes y estado de UI.
     *   Cada módulo debe implementar su adaptador (ej: `alumnoAdapter`) para transformar registros `*Record` a entidades de dominio.
 *   **Conexión PocketBase:** No existe un servidor Node.js intermedio. Las pantallas institucionales consumen colecciones autenticadas mediante `src/core/pocketbase.ts`. La carga docente consume sólo el gateway versionado en `pb_hooks`; su contrato está en `docs/pocketbase-api.md`.
+*   **Separación de entornos:** El desarrollo cotidiano usa exclusivamente la instancia local saneada. Esquema, reglas y lógica se promueven mediante `pb_migrations` y `pb_hooks`; nunca se copia `pb_data` local al VPS. El flujo completo está en `docs/pocketbase-environments.md`.
 *   **Workflow de boletines:** Existe una sola instancia por curso y período. `BORRADOR_DOCENTE` habilita únicamente al enlace y `CONTROL_DIRECTIVO` es el estado terminal que habilita únicamente a la sesión institucional. El traspaso es unidireccional: nunca devolver una entrega a la docente ni emitir una nueva llave después del envío. No montar el editor fuera del estado autorizado ni reintentar automáticamente una escritura rechazada con `401` o `403`.
 *   **Estado del tablero:** `COMPLETO` representa una entrega efectiva en `CONTROL_DIRECTIVO`, no sólo un porcentaje calculado. Un borrador con respuestas y sin llave docente se presenta como `PAUSADO`; emitir un enlace nuevo lo reanuda sin descartar el trabajo previo.
 *   **Concurrencia institucional:** Toda corrección directiva envía la `revision` leída como `expectedRevision`. PocketBase la compara dentro de la transacción y responde `409` sin escrituras cuando quedó vencida. Realtime sólo invalida vistas; Zustand conserva versiones e invalidaciones, no reemplaza la autoridad del servidor. Los formularios con cambios pendientes nunca se refrescan silenciosamente ni reintentan un conflicto. El patrón reusable está en `docs/concurrency-model.md`.

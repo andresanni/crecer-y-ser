@@ -32,6 +32,12 @@ export interface ContactoInfo {
   horario: string;
 }
 
+export interface AcadeuInfo {
+  url: string;
+  label: string;
+  description: string;
+}
+
 export interface LandingData {
   schoolName: string;
   schoolCode: string;
@@ -49,6 +55,7 @@ export interface LandingData {
     commitmentPercentage: string;
     platformVersion: string;
   };
+  acadeu: AcadeuInfo;
   propuestas: PropuestaPilar[];
   niveles: NivelEducativo[];
   novedades: NovedadItem[];
@@ -58,7 +65,7 @@ export interface LandingData {
 export const landingData: LandingData = {
   schoolName: 'Crecer y Ser',
   schoolCode: 'Colegio A-1134',
-  tagline: 'Formación Académica y Emocional',
+  tagline: 'Educación Inicial y Primaria',
   badgeText: 'Admisiones 2027 — Inscripciones Abiertas',
   heroTitle: {
     prefix: 'Colegio Crecer y Ser Educamos para la   ',
@@ -76,6 +83,11 @@ export const landingData: LandingData = {
     levelsCount: '2',
     commitmentPercentage: '100%',
     platformVersion: '2.0',
+  },
+  acadeu: {
+    url: 'https://plataforma.acadeu.com/i/crecer-y-ser-caba',
+    label: 'Acceso Familias',
+    description: 'Acceso a la plataforma escolar Acadeu',
   },
   propuestas: [
     {

@@ -3,19 +3,17 @@ import { Row, Col, Typography, Space, Tag, Button } from 'antd';
 import {
   ArrowRightOutlined,
   CheckCircleOutlined,
-  LoginOutlined,
-  SafetyCertificateOutlined,
   StarOutlined,
 } from '@ant-design/icons';
 import { landingData } from '../data/landingData';
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Paragraph } = Typography;
 
 interface LandingHeroProps {
-  onGoToApp: () => void;
+  onGoToApp?: () => void;
 }
 
-export const LandingHero: React.FC<LandingHeroProps> = ({ onGoToApp }) => {
+export const LandingHero: React.FC<LandingHeroProps> = () => {
   return (
     <section className="landing-hero">
       <div className="hero-backdrop" />
@@ -34,17 +32,20 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onGoToApp }) => {
                 {landingData.heroSubtitle}
               </Paragraph>
 
-              <Space size="middle" wrap className="hero-cta-group">
-                <Button
-                  type="primary"
-                  size="large"
-                  icon={<LoginOutlined />}
-                  iconPosition="end"
-                  onClick={onGoToApp}
-                  className="btn-primary-gradient hero-btn-main"
+              <Space size="middle" wrap className="hero-cta-group" align="center">
+                <a
+                  href={landingData.acadeu.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hero-acadeu-btn"
+                  title="Ingresar a la Plataforma Escolar Acadeu"
                 >
-                  Acceder a la Plataforma
-                </Button>
+                  <span className="acadeu-btn-badge">
+                    <img src="/acadeu-logo.svg" alt="Acadeu" className="acadeu-logo-img" />
+                  </span>
+                  <span className="acadeu-btn-label">{landingData.acadeu.label}</span>
+                  <ArrowRightOutlined className="acadeu-btn-icon" />
+                </a>
 
                 <Button
                   size="large"
@@ -54,6 +55,11 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onGoToApp }) => {
                   Conocer Propuesta
                 </Button>
               </Space>
+
+              <div className="hero-acadeu-info">
+                <CheckCircleOutlined style={{ color: '#2563eb', fontSize: 13 }} />
+                <span>{landingData.acadeu.description}</span>
+              </div>
 
               <div className="hero-trust-list">
                 {landingData.trustPoints.map((point, index) => (
@@ -66,60 +72,20 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onGoToApp }) => {
             </div>
           </Col>
 
-          <Col xs={24} lg={11}>
-            <div className="hero-visual-card">
-              <div className="visual-card-glass">
-                <div className="card-badge-top">
-                  <SafetyCertificateOutlined style={{ color: '#10b981', fontSize: 20 }} />
-                  <span>{landingData.schoolCode} — Oficial</span>
-                </div>
-
-                <div className="hero-card-header">
-                  <div className="hero-card-icon">
-                    <img src="/isotype.png" alt={landingData.schoolName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  </div>
-                  <div>
-                    <Title level={4} style={{ margin: 0 }}>{landingData.schoolName}</Title>
-                    <Text type="secondary">{landingData.tagline}</Text>
-                  </div>
-                </div>
-
-                <div className="hero-card-stats-grid">
-                  <div className="hero-stat-box">
-                    <div className="stat-value">{landingData.metrics.historyYears}</div>
-                    <div className="stat-label">Años de Historia</div>
-                  </div>
-                  <div className="hero-stat-box">
-                    <div className="stat-value">{landingData.metrics.levelsCount}</div>
-                    <div className="stat-label">Niveles Educativos</div>
-                  </div>
-                  <div className="hero-stat-box">
-                    <div className="stat-value">{landingData.metrics.commitmentPercentage}</div>
-                    <div className="stat-label">Compromiso</div>
-                  </div>
-                  <div className="hero-stat-box">
-                    <div className="stat-value">{landingData.metrics.platformVersion}</div>
-                    <div className="stat-label">Plataforma Web</div>
-                  </div>
-                </div>
-
-                <div className="hero-app-preview-cta">
-                  <Space align="center" style={{ justifyContent: 'space-between', width: '100%' }}>
-                    <div>
-                      <Text strong style={{ display: 'block', fontSize: 13 }}>¿Sos parte del colegio?</Text>
-                      <Text type="secondary" style={{ fontSize: 12 }}>Ingresá a la App de gestión institucional</Text>
-                    </div>
-                    <Button
-                      type="primary"
-                      size="small"
-                      icon={<ArrowRightOutlined />}
-                      onClick={onGoToApp}
-                      style={{ borderRadius: 8 }}
-                    >
-                      Ir a la App
-                    </Button>
-                  </Space>
-                </div>
+          <Col xs={24} lg={11} className="hero-image-col">
+            <div className="hero-bleed-wrapper">
+              <img
+                src="/colegio-fachada.jpg"
+                alt="Fachada Institucional Colegio Crecer y Ser"
+                className="hero-bleed-img"
+              />
+              <div className="hero-bleed-scrim" />
+              <div className="hero-bleed-brand">
+                <img
+                  src="/isotype.png"
+                  alt={landingData.schoolName}
+                  className="hero-direct-isotype"
+                />
               </div>
             </div>
           </Col>

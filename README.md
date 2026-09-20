@@ -23,7 +23,21 @@ Aplicación web de gestión escolar para alumnos, responsables, inscripciones, e
 
 ## Desarrollo
 
-```bash
+Iniciar primero PocketBase local:
+
+```powershell
+.\deploy\start-pocketbase-dev.ps1
+```
+
+Crear `.env.development.local`, sin versionarlo:
+
+```dotenv
+VITE_POCKETBASE_URL=http://127.0.0.1:8090
+```
+
+Luego iniciar el frontend:
+
+```powershell
 npm install
 npm run dev
 ```
@@ -35,7 +49,7 @@ npm run lint
 npm run build
 ```
 
-La conexión se configura mediante `VITE_POCKETBASE_URL`. Copiar `.env.example` a `.env` para el entorno local y no versionar credenciales.
+La conexión se configura mediante `VITE_POCKETBASE_URL`. Desarrollo debe apuntar a la instancia saneada de loopback; producción usa `https://alumnos-api.duckdns.org`. No versionar archivos `.env`, credenciales, claves, backups ni `pb_data`.
 
 ## Documentación
 
@@ -46,7 +60,9 @@ La conexión se configura mediante `VITE_POCKETBASE_URL`. Copiar `.env.example` 
 - `docs/magic-link-gradebook.md`: arquitectura del workflow docente–directivo.
 - `docs/pocketbase-api.md`: contrato de las rutas propias de PocketBase.
 - `docs/pocketbase-magic-link-hardening.md`: modelo de seguridad y estado del despliegue.
+- `docs/pocketbase-environments.md`: separación local/VPS y flujo de migraciones, datos, promoción y rollback.
 - `docs/gradebook-workflow-test-plan.md`: matriz y registro de aceptación del workflow.
 - `deploy/README.md`: topología y operación reproducible del VPS.
+- `deploy/start-pocketbase-dev.ps1`: inicio reproducible del backend local.
 - `pb_migrations/`: evolución ejecutable del esquema y las reglas.
 - `pb_schema.json`: snapshot legible derivado del backend vigente.

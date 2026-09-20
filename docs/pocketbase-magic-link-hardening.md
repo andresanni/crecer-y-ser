@@ -123,6 +123,8 @@ La migración fue probada con PocketBase 0.22.17 sobre una copia local y luego a
 
 ## Gestión profesional del esquema
 
+La separación de entornos y el flujo obligatorio de creación, ensayo y promoción de migraciones se detallan en `docs/pocketbase-environments.md`.
+
 `pb_schema.json` es una fotografía legible para desarrollo y asistentes, pero no es el mecanismo de despliegue.
 
 PocketBase mantiene `pb_migrations`, versionado junto con el código. La evolución vigente ya está registrada en migraciones incrementales. A partir de ahora:

@@ -2,6 +2,8 @@
 
 Esta carpeta conserva la configuración reproducible del proceso y del proxy. Los archivos aquí versionados reflejan la instancia de producción, pero no incluyen certificados, credenciales, bases de datos ni backups.
 
+La separación entre desarrollo local y producción, incluido el flujo de migraciones, refresco saneado y rollback, se define en `docs/pocketbase-environments.md`.
+
 ## Topología
 
 | Componente | Ruta o destino |
@@ -24,6 +26,7 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `pb_hooks/`: gateway HTTP y autorización de enlaces docentes.
 - `pb_schema.json`: snapshot legible del esquema resultante.
 - `deploy/pocketbase.service`: unidad systemd vigente.
+- `deploy/start-pocketbase-dev.ps1`: lanzador local restringido a loopback.
 - `deploy/Caddyfile`: proxy vigente.
 - `docs/pocketbase-api.md`: contrato HTTP propio.
 - `docs/pocketbase-magic-link-hardening.md`: seguridad, pruebas y secuencia de migración.
@@ -31,6 +34,8 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `docs/concurrency-model.md`: protocolo reusable de revisión, transacción, Realtime y estado local.
 
 `pb_data`, los backups, los certificados y cualquier `.env` son estado operativo o secretos y no deben incorporarse al repositorio.
+
+La instancia de desarrollo vive en `C:\pocketbase`, usa el mismo PocketBase `0.22.17` y consume `pb_hooks` y `pb_migrations` desde el checkout. Se inicia con `deploy/start-pocketbase-dev.ps1`. Nunca usar el `pb_data` local como artefacto de despliegue.
 
 `/root/pb/teacher-link.env` debe pertenecer a `root:root`, tener permisos `0600` y definir `CYS_TEACHER_LINK_KEY` con exactamente 32 caracteres. La unidad systemd lo carga mediante `EnvironmentFile`; perder esa clave impide recuperar enlaces existentes, aunque sus hashes continúan siendo válidos para autenticación.
 
@@ -45,6 +50,8 @@ Desde Windows, el flujo reproducible preferido es:
 ```
 
 El publicador usa SSH en el puerto `22022`, crea un staging único, detiene PocketBase, respalda la base y los hooks vigentes en `/root/pb/deploy_backups/<fecha>`, instala exactamente las migraciones y los hooks del repositorio, reinicia el servicio y reintenta durante una ventana acotada hasta que el health check y la protección autenticada de las rutas nuevas respondan correctamente. Si el proceso se interrumpe mientras PocketBase está detenido, el script remoto intenta iniciarlo mediante su `trap` de salida.
+
+El conjunto de artefactos está enumerado de forma explícita en `publish-pocketbase.ps1` y `apply-pocketbase-workflow.sh`. Hasta reemplazarlo por un manifiesto general, cada migración nueva debe agregarse a ambos scripts y verificarse en el staging antes del despliegue.
 
 El procedimiento manual equivalente es:
 

@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 16 de septiembre de 2026.
+Actualizado: 20 de septiembre de 2026.
 
 ## Propósito
 
@@ -53,6 +53,10 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 - `pb_schema.json`: snapshot legible del backend y sus relaciones.
 - `deploy`: unidad systemd, Caddyfile e instrucciones operativas del VPS.
 
+PocketBase dispone de dos entornos independientes sobre la versión `0.22.17`. Producción continúa en el VPS y desarrollo funciona localmente en Windows ARM64, aislado en `C:\pocketbase` y accesible sólo mediante `127.0.0.1:8090`. El frontend local usa `.env.development.local`; datos, credenciales, claves y backups permanecen fuera del repositorio y de OneDrive.
+
+La instancia local se inicializó el 20 de septiembre de 2026 desde una copia consistente y anonimizada de producción. No conserva usuarios, administradores, enlaces docentes, logs ni backups productivos. `pb_migrations` y `pb_hooks` se cargan directamente desde el checkout, por lo que Git es el canal de promoción del backend. `pb_data` nunca viaja de desarrollo al VPS. El contrato completo de entornos, refresco, migraciones, promoción y rollback está en `docs/pocketbase-environments.md`.
+
 Los servicios transforman registros `snake_case` de PocketBase en modelos de dominio `camelCase`. No existe un backend Node intermedio; las operaciones públicas privilegiadas se implementan como hooks de PocketBase versionados con el proyecto.
 
 La carga institucional y la carga por enlace comparten el editor de boletín y se diferencian mediante `GradebookAccessPolicy` y `GradebookDataSource`. PocketBase dispone desde el 14 de septiembre de 2026 de gateways separados que vuelven a validar autorización, alcance y estado dentro de cada transacción. `/carga` usa exclusivamente las rutas docentes y cada enlace abarca un curso y período completos; no se admiten accesos por materia.
@@ -95,5 +99,6 @@ El tablero distingue el avance académico del control operativo. `Completado` ex
 - El workflow unidireccional fue validado sobre una copia aislada y desplegado; el servicio, el esquema de dos estados y la ausencia de rutas de retorno fueron verificados en el VPS.
 - La recuperación cifrada y el modelo de llave única sin `activo` están desplegados; el índice de alcance y la retirada del endpoint de estado fueron verificados en el VPS.
 - La protección optimista del gateway está desplegada en PocketBase con el respaldo `/root/pb/deploy_backups/20260916-085138`. La carrera aislada sobre una copia de `pb_data` confirmó un único guardado, rechazo `409` de la revisión vencida y recepción del evento Realtime. El frontend compatible está validado localmente y pendiente de publicación por el canal de hosting de la aplicación.
+- El entorno PocketBase local está instalado, saneado y validado. Responde al health check, escucha sólo en loopback, autentica exclusivamente cuentas locales y carga los hooks y migraciones versionados del repositorio.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.
