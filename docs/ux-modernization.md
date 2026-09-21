@@ -1,6 +1,6 @@
 # Arquitectura UX/UI vigente
 
-La modernización visual fue aprobada y fusionada en `master` el 12 de septiembre de 2026. Este documento describe el contrato actual, no el historial de la rama de trabajo.
+La modernización visual fue desarrollada originalmente en la rama `feature/ui-ux-modernization`, aprobada y fusionada en `master` el 12 de septiembre de 2026. Como parte de las tareas de limpieza y paridad de ramas del 21 de septiembre de 2026, la rama `feature/ui-ux-modernization` fue eliminada en local y remoto al encontrarse plenamente integrada en el historial de `master`. Este documento describe el contrato actual, no el historial de la rama de trabajo.
 
 ## Principios
 
