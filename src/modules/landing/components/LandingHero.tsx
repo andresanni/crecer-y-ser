@@ -3,6 +3,7 @@ import { Row, Col, Typography, Space, Tag, Button } from 'antd';
 import {
   ArrowRightOutlined,
   CheckCircleOutlined,
+  SafetyCertificateOutlined,
   StarOutlined,
 } from '@ant-design/icons';
 import { landingData } from '../data/landingData';
@@ -18,8 +19,8 @@ export const LandingHero: React.FC<LandingHeroProps> = () => {
     <section className="landing-hero">
       <div className="hero-backdrop" />
       <div className="landing-section-inner hero-content">
-        <Row gutter={[32, 32]} align="middle">
-          <Col xs={24} lg={14}>
+        <Row gutter={[48, 40]} align="middle">
+          <Col xs={24} lg={13}>
             <div className="hero-text-block">
               <Tag className="hero-pill-badge" icon={<StarOutlined style={{ color: '#fbbf24' }} />}>
                 {landingData.badgeText}
@@ -72,9 +73,47 @@ export const LandingHero: React.FC<LandingHeroProps> = () => {
             </div>
           </Col>
 
-          <Col xs={24} lg={10}>
-            <div className="hero-brand-panel">
-              <img src="/logo.png" className="hero-direct-logo" alt={landingData.schoolName} />
+          <Col xs={24} lg={11}>
+            <div className="hero-showcase">
+              <div className="hero-visual-card">
+                <div className="hero-facade-wrapper">
+                  <img
+                    src="/colegio-fachada.jpg"
+                    alt={`Instalaciones del ${landingData.schoolName}`}
+                    className="hero-facade-image"
+                    fetchPriority="high"
+                    width="560"
+                    height="420"
+                  />
+                </div>
+
+                <div className="hero-floating-badge hero-floating-badge-top">
+                  <img
+                    src="/isotipo.png"
+                    alt={landingData.schoolName}
+                    className="hero-badge-crest"
+                    width="40"
+                    height="40"
+                  />
+                  <div className="hero-badge-meta">
+                    <span className="hero-badge-name">{landingData.schoolName}</span>
+                    <span className="hero-badge-status">
+                      <SafetyCertificateOutlined className="hero-badge-icon" />
+                      {landingData.schoolCode} · Oficial
+                    </span>
+                  </div>
+                </div>
+
+                <div className="hero-floating-badge hero-floating-badge-bottom">
+                  <div className="hero-metric-figure">
+                    <span className="hero-metric-number">{landingData.metrics.historyYears}</span>
+                  </div>
+                  <div className="hero-metric-meta">
+                    <span className="hero-metric-label">Años de Trayectoria</span>
+                    <span className="hero-metric-sub">Nivel Inicial y Primario</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </Col>
         </Row>

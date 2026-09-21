@@ -68,7 +68,7 @@ export const landingData: LandingData = {
   tagline: 'Educación Inicial y Primaria',
   badgeText: 'Admisiones 2027 — Inscripciones Abiertas',
   heroTitle: {
-    prefix: 'Colegio Crecer y Ser Educamos para la   ',
+    prefix: 'Educamos para la ',
     gradient: 'vida',
   },
   heroSubtitle:
