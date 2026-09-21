@@ -38,12 +38,19 @@ export interface AcadeuInfo {
   description: string;
 }
 
+export interface InstagramInfo {
+  url: string;
+  label: string;
+  handle: string;
+}
+
 export interface LandingData {
   schoolName: string;
   schoolCode: string;
   tagline: string;
   badgeText: string;
   heroTitle: {
+    institution: string;
     prefix: string;
     gradient: string;
   };
@@ -56,6 +63,7 @@ export interface LandingData {
     platformVersion: string;
   };
   acadeu: AcadeuInfo;
+  instagram: InstagramInfo;
   propuestas: PropuestaPilar[];
   niveles: NivelEducativo[];
   novedades: NovedadItem[];
@@ -68,6 +76,7 @@ export const landingData: LandingData = {
   tagline: 'Educación Inicial y Primaria',
   badgeText: 'Admisiones 2027 — Inscripciones Abiertas',
   heroTitle: {
+    institution: 'Colegio Crecer y Ser',
     prefix: 'Educamos para la ',
     gradient: 'vida',
   },
@@ -86,8 +95,13 @@ export const landingData: LandingData = {
   },
   acadeu: {
     url: 'https://plataforma.acadeu.com/i/crecer-y-ser-caba',
-    label: 'Acceso Familias',
+    label: 'Acceso a la plataforma',
     description: 'Acceso a la plataforma escolar Acadeu',
+  },
+  instagram: {
+    url: 'https://www.instagram.com/colegiocreceryser/?hl=es-la',
+    label: 'Instagram Institucional',
+    handle: '@colegiocreceryser',
   },
   propuestas: [
     {

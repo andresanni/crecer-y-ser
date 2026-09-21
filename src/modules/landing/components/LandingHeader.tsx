@@ -20,10 +20,6 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoToApp }) => {
             <div className="landing-logo-wrapper">
               <img src="/logo.png" alt={`${landingData.schoolName} Logo`} className="landing-logo-img" />
             </div>
-            <div className="landing-brand-text">
-              <span className="landing-brand-name">{landingData.schoolName}</span>
-              <span className="landing-brand-sub">{landingData.schoolCode}</span>
-            </div>
           </div>
 
           <nav className="landing-desktop-nav">
