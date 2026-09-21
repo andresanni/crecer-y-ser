@@ -19,7 +19,7 @@ export const LandingHero: React.FC<LandingHeroProps> = () => {
       <div className="hero-backdrop" />
       <div className="landing-section-inner hero-content">
         <Row gutter={[32, 32]} align="middle">
-          <Col xs={24} lg={13}>
+          <Col xs={24} lg={14}>
             <div className="hero-text-block">
               <Tag className="hero-pill-badge" icon={<StarOutlined style={{ color: '#fbbf24' }} />}>
                 {landingData.badgeText}
@@ -72,21 +72,9 @@ export const LandingHero: React.FC<LandingHeroProps> = () => {
             </div>
           </Col>
 
-          <Col xs={24} lg={11} className="hero-image-col">
-            <div className="hero-bleed-wrapper">
-              <img
-                src="/colegio-fachada.jpg"
-                alt="Fachada Institucional Colegio Crecer y Ser"
-                className="hero-bleed-img"
-              />
-              <div className="hero-bleed-scrim" />
-              <div className="hero-bleed-brand">
-                <img
-                  src="/isotype.png"
-                  alt={landingData.schoolName}
-                  className="hero-direct-isotype"
-                />
-              </div>
+          <Col xs={24} lg={10}>
+            <div className="hero-brand-panel">
+              <img src="/logo.png" className="hero-direct-logo" alt={landingData.schoolName} />
             </div>
           </Col>
         </Row>
