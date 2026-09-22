@@ -138,6 +138,33 @@ Después de una reconstrucción limpia se agrega `-ExpectSyntheticSeed` para com
 
 No se realizan pruebas destructivas contra `https://alumnos-api.duckdns.org`. Una tarea que necesite producción debe identificarlo explícitamente y limitarse al procedimiento documentado de despliegue o diagnóstico.
 
+## Servicio de Correo (SMTP) y Formulario de Contacto
+
+El formulario público de contacto de la landing despacha consultas hacia `secretariacreceryser@gmail.com` a través del endpoint privilegiado `POST /api/cys/contacto` (manejado por `pb_hooks/contacto.pb.js` y `pb_hooks/lib/contactService.js`). Este mecanismo utiliza `$app.newMailClient().send(...)` de PocketBase.
+
+### Configuración en Desarrollo (Local)
+
+Habilitada el 22 de septiembre de 2026:
+
+1. **Panel:** `http://127.0.0.1:8090/_/` -> **Settings** -> **Mail settings**.
+2. **Use SMTP mail server:** Activado.
+3. **Host:** `smtp.gmail.com` | **Port:** `587` (StartTLS).
+4. **Auth method:** PLAIN (default).
+5. **Username:** `secretariacreceryser@gmail.com`.
+6. **Password:** Contraseña de aplicación de Google de 16 caracteres (generada en la cuenta de Google con 2FA).
+7. **Sender address:** `secretariacreceryser@gmail.com` | **Sender name:** `Colegio Crecer y Ser`.
+8. **Prueba:** Verificada exitosamente con entrega de correo de prueba.
+
+### Replicación en Producción (VPS)
+
+Al promover los cambios del repositorio al VPS:
+
+1. El hook `pb_hooks/contacto.pb.js` y su librería se transfieren mediante Git y se activan al reiniciar `pocketbase.service` (con `deploy/apply-pocketbase-workflow.sh`).
+2. El administrador debe ingresar al panel administrativo de producción: `https://alumnos-api.duckdns.org/_/` -> **Settings** -> **Mail settings**.
+3. Cargar exactamente los mismos parámetros SMTP de Gmail (utilizando la misma contraseña de aplicación o una nueva asignada para producción).
+4. Enviar un correo de prueba desde el panel para confirmar la conectividad saliente del VPS por el puerto 587.
+5. Guardar los cambios. La configuración queda persistida en `/root/pb/pb_data` sin requerir variables de entorno adicionales.
+
 ## Creación de migraciones
 
 Toda modificación de colecciones, campos, reglas o índices empieza y se valida en desarrollo.

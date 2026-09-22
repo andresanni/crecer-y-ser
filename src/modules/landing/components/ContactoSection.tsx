@@ -3,6 +3,8 @@ import { Row, Col, Typography, Card, Tag, Form, Input, Select, Button, App as An
 import { ClockCircleOutlined, EnvironmentOutlined, MailOutlined, PhoneOutlined, SendOutlined } from '@ant-design/icons';
 import { landingData } from '../data/landingData';
 
+import { sendContactInquiry } from '../services/contactService';
+
 const { Title, Paragraph, Text } = Typography;
 
 export const ContactoSection: React.FC = () => {
@@ -10,13 +12,25 @@ export const ContactoSection: React.FC = () => {
   const [formLoading, setFormLoading] = useState(false);
   const [contactForm] = Form.useForm();
 
-  const handleContactSubmit = (values: Record<string, string>) => {
+  const handleContactSubmit = async (values: Record<string, string>) => {
     setFormLoading(true);
-    setTimeout(() => {
-      setFormLoading(false);
-      message.success(`¡Gracias ${values.nombre}! Tu consulta ha sido enviada con éxito. Nos contactaremos a la brevedad.`);
+    try {
+      const res = await sendContactInquiry({
+        nombre: values.nombre?.trim(),
+        email: values.email?.trim(),
+        telefono: values.telefono?.trim() || undefined,
+        nivel: values.nivel as 'inicial' | 'primario',
+        mensaje: values.mensaje?.trim(),
+        _hp: values._hp,
+      });
+      message.success(res.message);
       contactForm.resetFields();
-    }, 800);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'No se pudo enviar la consulta. Por favor, intentá nuevamente.';
+      message.error(msg);
+    } finally {
+      setFormLoading(false);
+    }
   };
 
   return (
@@ -80,14 +94,23 @@ export const ContactoSection: React.FC = () => {
                 onFinish={handleContactSubmit}
                 requiredMark={false}
               >
+                <Form.Item name="_hp" style={{ display: 'none' }} aria-hidden="true">
+                  <Input tabIndex={-1} autoComplete="off" />
+                </Form.Item>
+
                 <Row gutter={[16, 0]}>
                   <Col xs={24} sm={12}>
                     <Form.Item
                       name="nombre"
                       label="Nombre y Apellido"
-                      rules={[{ required: true, message: 'Por favor ingresá tu nombre' }]}
+                      rules={[
+                        { required: true, message: 'Por favor ingresá tu nombre y apellido' },
+                        { min: 2, message: 'El nombre debe tener al menos 2 caracteres' },
+                        { max: 100, message: 'El nombre no puede superar los 100 caracteres' },
+                        { whitespace: true, message: 'El nombre no puede estar en blanco' },
+                      ]}
                     >
-                      <Input placeholder="Ej. María González" size="large" />
+                      <Input placeholder="Ej. María González" size="large" maxLength={100} />
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12}>
@@ -97,32 +120,52 @@ export const ContactoSection: React.FC = () => {
                       rules={[
                         { required: true, message: 'Por favor ingresá tu correo' },
                         { type: 'email', message: 'Ingresá un email válido' },
+                        { max: 100, message: 'El correo no puede superar los 100 caracteres' },
                       ]}
                     >
-                      <Input placeholder="nombre@correo.com" size="large" />
+                      <Input placeholder="nombre@correo.com" size="large" maxLength={100} />
                     </Form.Item>
                   </Col>
                 </Row>
 
                 <Row gutter={[16, 0]}>
                   <Col xs={24} sm={12}>
-                    <Form.Item name="telefono" label="Teléfono / WhatsApp">
-                      <Input placeholder="Ej. 11 5555 4444" size="large" />
+                    <Form.Item
+                      name="telefono"
+                      label="Teléfono / WhatsApp"
+                      rules={[
+                        { max: 40, message: 'El teléfono no puede superar los 40 caracteres' },
+                      ]}
+                    >
+                      <Input placeholder="Ej. 11 5555 4444" size="large" maxLength={40} />
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12}>
-                    <Form.Item name="nivel" label="Nivel de Interés">
+                    <Form.Item
+                      name="nivel"
+                      label="Nivel de Interés"
+                      rules={[
+                        { required: true, message: 'Por favor seleccioná el nivel de interés' },
+                      ]}
+                    >
                       <Select placeholder="Seleccionar nivel" size="large">
                         <Select.Option value="inicial">Nivel Inicial (Jardín)</Select.Option>
                         <Select.Option value="primario">Nivel Primario</Select.Option>
-                        <Select.Option value="secundario">Nivel Secundario</Select.Option>
                       </Select>
                     </Form.Item>
                   </Col>
                 </Row>
 
-                <Form.Item name="mensaje" label="Consulta o Comentario">
-                  <Input.TextArea rows={3} placeholder="Contanos tu consulta..." />
+                <Form.Item
+                  name="mensaje"
+                  label="Consulta o Comentario"
+                  rules={[
+                    { required: true, message: 'Por favor ingresá tu consulta' },
+                    { min: 5, message: 'La consulta debe tener al menos 5 caracteres' },
+                    { max: 2000, message: 'La consulta no puede superar los 2000 caracteres' },
+                  ]}
+                >
+                  <Input.TextArea rows={3} placeholder="Contanos tu consulta..." maxLength={2000} showCount />
                 </Form.Item>
 
                 <Button
@@ -131,6 +174,7 @@ export const ContactoSection: React.FC = () => {
                   size="large"
                   block
                   loading={formLoading}
+                  disabled={formLoading}
                   icon={<SendOutlined />}
                   className="btn-primary-gradient"
                   style={{ height: 48, marginTop: 8 }}

@@ -47,22 +47,22 @@ Se permite ajustar composición, copy, espaciado, jerarquía, imágenes y compor
 
 ## Formulario de consultas
 
-No implementar el formulario hasta que el propietario defina explícitamente el destino de las consultas, los campos definitivos, la política de conservación y si se requiere consentimiento o aviso de privacidad.
+El formulario de consultas (`ContactoSection.tsx`) se encuentra plenamente operativo y conectado al gateway seguro de PocketBase:
 
-La implementación aprobada debe cumplir como mínimo:
-
-- no contener credenciales ni secretos en el bundle de Vite;
-- no escribir directamente desde el navegador en una colección pública de PocketBase;
-- usar un gateway del servidor u otro proveedor expresamente aprobado;
-- validar y limitar longitudes tanto en cliente como en servidor;
-- normalizar entradas y tratar todo texto recibido como no confiable;
-- incluir mitigación razonable de spam y abuso, con limitación de frecuencia en el servidor;
-- no registrar el cuerpo completo de las consultas ni datos personales innecesarios;
-- mostrar éxito sólo después de una confirmación real del servidor;
-- conservar los campos y mostrar un error accionable cuando falle el envío;
-- impedir envíos duplicados mientras una solicitud está en curso.
-
-Si se elige PocketBase como receptor, cualquier colección, regla, hook o migración debe seguir `docs/pocketbase-environments.md`, `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`. Primero se implementa y prueba localmente; nunca se experimenta con datos reales en el VPS.
+- **Endpoint de backend:** `POST /api/cys/contacto` (registrado en `pb_hooks/contacto.pb.js` y resuelto por `pb_hooks/lib/contactService.js`).
+- **Destino del correo:** `secretariacreceryser@gmail.com`.
+- **Cabecera Reply-To:** Configurada automáticamente con el email del remitente para permitir responderle directamente desde la bandeja de secretaría.
+- **Template institucional:** Encabezado con `CONSULTA RECIBIDA VÍA SITIO WEB`, datos estructurados de contacto, nivel seleccionado (`Nivel Inicial (Jardín)` o `Nivel Primario`), fecha y hora, y cuerpo formateado de la consulta.
+- **Protección y mitigación:**
+  - Campo *honeypot* invisible (`_hp`) para atrapar bots sin fricción para usuarios legítimos.
+  - Rate limiting por IP en memoria en el servidor (máximo 5 solicitudes cada 10 minutos, con excepción para loopback en desarrollo local).
+  - Límite de tamaño de cuerpo en PocketBase de 16 KB (`$apis.bodyLimit(16384)`).
+  - Validación de longitudes y tipos tanto en cliente (Ant Design Form) como en servidor.
+  - Sanitización HTML en el servidor para prevenir inyecciones.
+- **Comportamiento en cliente:**
+  - Deshabilita el botón y muestra estado de carga durante el despacho para evitar envíos duplicados.
+  - Muestra mensaje de éxito y resetea los campos únicamente tras recibir confirmación `200 OK` del servidor.
+  - En caso de error, muestra una notificación clara y conserva los campos completados para que el usuario no pierda su consulta.
 
 ## Fuera de alcance
 
