@@ -26,15 +26,16 @@ export const NivelesSection: React.FC = () => {
         <Row gutter={[32, 28]} justify="center">
           {landingData.niveles.map((nivel) => (
             <Col key={nivel.id} xs={24} sm={18} md={11} lg={10}>
-              <Card className="level-card" bordered={false}>
-                <div className="level-icon">
+              <Card className={`level-card level-card-${nivel.id}`} bordered={false}>
+                <div className={`level-accent-bar level-accent-${nivel.id}`} />
+                <div className={`level-icon level-icon-${nivel.id}`}>
                   {levelIconMap[nivel.iconName]}
                 </div>
                 <Title level={3} className="level-card-title">{nivel.title}</Title>
                 <Paragraph className="level-card-text">
                   {nivel.description}
                 </Paragraph>
-                <div className="level-card-divider" />
+                <div className={`level-card-divider level-divider-${nivel.id}`} />
                 <ul className="level-list">
                   {nivel.features.map((feature, i) => (
                     <li key={i}>

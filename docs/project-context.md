@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 20 de septiembre de 2026.
+Actualizado: 23 de septiembre de 2026.
 
 ## Propósito
 
@@ -107,5 +107,7 @@ El tablero distingue el avance académico del control operativo. `Completado` ex
 - La preparación del frontend para Vercel está versionada y validada: build productivo con URL explícita, rechazo de variable ausente o loopback, fallback SPA para rutas profundas y compatibilidad CORS confirmada contra el VPS.
 - La cadena de migraciones incluye una baseline condicional anterior a la primera evolución incremental. Una base vacía puede reconstruirse con datos sintéticos mediante `deploy/setup-pocketbase-dev.ps1`; el backup local cifrado y la restauración autenticada también fueron probados de extremo a extremo.
 - El primer contenedor real de recuperación local se creó en OneDrive y se verificó por SHA-256 el 20 de septiembre de 2026. La frase de recuperación no se guarda en el proyecto y queda bajo custodia personal.
+- El formulario de contacto de la landing, el servicio SMTP de Gmail (puerto 587) y el endpoint seguro `/api/cys/contacto` fueron probados y configurados en desarrollo local y en el VPS de producción. Los scripts de despliegue `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh` incluyen la transferencia y verificación de los hooks de contacto.
+- La landing institucional y la pantalla de acceso (`/login`) disponen de soporte responsive adaptado para pantallas móviles, con diseño renovado para los niveles educativos.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.

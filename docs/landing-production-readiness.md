@@ -1,6 +1,6 @@
 # Preparación productiva de la landing
 
-Actualizado: 20 de septiembre de 2026.
+Actualizado: 23 de septiembre de 2026.
 
 ## Propósito de la rama
 

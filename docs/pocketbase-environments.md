@@ -1,6 +1,6 @@
 # Entornos y promoción de PocketBase
 
-Actualizado: 20 de septiembre de 2026.
+Actualizado: 23 de septiembre de 2026.
 
 ## Decisión arquitectónica
 
@@ -157,13 +157,13 @@ Habilitada el 22 de septiembre de 2026:
 
 ### Replicación en Producción (VPS)
 
-Al promover los cambios del repositorio al VPS:
+Configurada y verificada el 23 de septiembre de 2026:
 
-1. El hook `pb_hooks/contacto.pb.js` y su librería se transfieren mediante Git y se activan al reiniciar `pocketbase.service` (con `deploy/apply-pocketbase-workflow.sh`).
-2. El administrador debe ingresar al panel administrativo de producción: `https://alumnos-api.duckdns.org/_/` -> **Settings** -> **Mail settings**.
-3. Cargar exactamente los mismos parámetros SMTP de Gmail (utilizando la misma contraseña de aplicación o una nueva asignada para producción).
-4. Enviar un correo de prueba desde el panel para confirmar la conectividad saliente del VPS por el puerto 587.
-5. Guardar los cambios. La configuración queda persistida en `/root/pb/pb_data` sin requerir variables de entorno adicionales.
+1. **Panel:** `https://alumnos-api.duckdns.org/_/` -> **Settings** -> **Mail settings**.
+2. **Use SMTP mail server:** Activado con credenciales de aplicación de Gmail para `secretariacreceryser@gmail.com` (StartTLS puerto 587).
+3. **Prueba:** Confirmada la conectividad y recepción de prueba desde el VPS.
+4. **Despliegue de hooks:** `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh` transfieren e instalan `contacto.pb.js` y `lib/contactService.js` en `/root/pb/pb_hooks/`, verificando que `POST /api/cys/contacto` responda adecuadamente tras el reinicio del servicio `pocketbase`.
+5. La configuración SMTP queda persistida en `/root/pb/pb_data` sin requerir variables de entorno adicionales.
 
 ## Creación de migraciones
 

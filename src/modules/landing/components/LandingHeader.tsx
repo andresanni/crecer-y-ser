@@ -45,7 +45,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoToApp }) => {
               onClick={onGoToApp}
               className="btn-primary-gradient landing-cta-btn"
             >
-              Entrar a la App
+              CyS Directivos 2027
             </Button>
 
             <Button

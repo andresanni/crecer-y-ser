@@ -95,7 +95,7 @@ export const landingData: LandingData = {
   },
   acadeu: {
     url: 'https://plataforma.acadeu.com/i/crecer-y-ser-caba',
-    label: 'Acceso a la plataforma',
+    label: 'Plataforma Acadeu',
     description: 'Acceso a la plataforma escolar Acadeu',
   },
   instagram: {

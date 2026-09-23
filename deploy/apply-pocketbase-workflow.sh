@@ -10,6 +10,8 @@ esac
 
 test -f "$stage_dir/teacherAccess.js"
 test -f "$stage_dir/teacher_access.pb.js"
+test -f "$stage_dir/contactService.js"
+test -f "$stage_dir/contacto.pb.js"
 test -f "$stage_dir/1789330000_created_initial_collections.js"
 test -f "$stage_dir/1789334557_hardened_teacher_access_tokens.js"
 test -f "$stage_dir/1789338120_close_public_gradebook_rules.js"
@@ -65,6 +67,8 @@ cp -a /etc/systemd/system/pocketbase.service "$backup_dir/pocketbase.service"
 install -d -m 0755 /root/pb/pb_hooks/lib /root/pb/pb_migrations
 install -m 0644 "$stage_dir/teacherAccess.js" /root/pb/pb_hooks/lib/teacherAccess.js
 install -m 0644 "$stage_dir/teacher_access.pb.js" /root/pb/pb_hooks/teacher_access.pb.js
+install -m 0644 "$stage_dir/contactService.js" /root/pb/pb_hooks/lib/contactService.js
+install -m 0644 "$stage_dir/contacto.pb.js" /root/pb/pb_hooks/contacto.pb.js
 install -m 0644 "$stage_dir/1789330000_created_initial_collections.js" /root/pb/pb_migrations/1789330000_created_initial_collections.js
 install -m 0644 "$stage_dir/1789334557_hardened_teacher_access_tokens.js" /root/pb/pb_migrations/1789334557_hardened_teacher_access_tokens.js
 install -m 0644 "$stage_dir/1789338120_close_public_gradebook_rules.js" /root/pb/pb_migrations/1789338120_close_public_gradebook_rules.js
@@ -90,4 +94,6 @@ until curl -fsS http://127.0.0.1:8090/api/health; do
 done
 status_code="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/cys/directivo/instancias/aaaaaaaaaaaaaaa/bbbbbbbbbbbbbbb)"
 test "$status_code" = "401"
+contact_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8090/api/cys/contacto)"
+test "$contact_status" = "400"
 journalctl -u pocketbase --since "5 minutes ago" --no-pager
