@@ -79,7 +79,8 @@ La configuración versionada valida el entorno de build y resuelve las rutas pro
 - `docs/pocketbase-magic-link-hardening.md`: modelo de seguridad y estado del despliegue.
 - `docs/pocketbase-environments.md`: separación local/VPS y flujo de migraciones, datos, promoción y rollback.
 - `docs/vercel-deployment.md`: publicación del frontend, variables, previews, verificación y rollback en Vercel.
-- `docs/landing-production-readiness.md`: alcance, seguridad, aceptación y merge de la puesta a punto de la landing pública.
+- `docs/landing-production-readiness.md`: cierre y contrato permanente de la landing pública y su formulario.
+- `docs/branching-strategy.md`: roles de `dev` y `master`, integración, releases, hotfixes, CI y relación con los entornos.
 - `docs/gradebook-workflow-test-plan.md`: matriz y registro de aceptación del workflow.
 - `deploy/README.md`: topología y operación reproducible del VPS.
 - `deploy/start-pocketbase-dev.ps1`: inicio reproducible del backend local.

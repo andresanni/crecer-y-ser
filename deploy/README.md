@@ -67,6 +67,8 @@ El procedimiento manual equivalente es:
 install -d -m 0755 /root/pb/pb_hooks/lib /root/pb/pb_migrations
 install -m 0644 staging/pb_hooks/lib/teacherAccess.js /root/pb/pb_hooks/lib/teacherAccess.js
 install -m 0644 staging/pb_hooks/teacher_access.pb.js /root/pb/pb_hooks/teacher_access.pb.js
+install -m 0644 staging/pb_hooks/lib/contactService.js /root/pb/pb_hooks/lib/contactService.js
+install -m 0644 staging/pb_hooks/contacto.pb.js /root/pb/pb_hooks/contacto.pb.js
 install -m 0644 staging/pb_migrations/*.js /root/pb/pb_migrations/
 install -m 0644 staging/deploy/pocketbase.service /etc/systemd/system/pocketbase.service
 install -m 0644 staging/deploy/Caddyfile /etc/caddy/Caddyfile
@@ -82,6 +84,7 @@ Las migraciones se aplican automáticamente al iniciar por `--automigrate=true`.
 
 ```bash
 curl -fsS https://alumnos-api.duckdns.org/api/health
+test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST https://alumnos-api.duckdns.org/api/cys/contacto)" = "400"
 journalctl -u pocketbase -n 100 --no-pager
 systemctl show pocketbase -p ActiveState -p SubState -p ExecMainStatus -p ExecStart -p WorkingDirectory
 ```

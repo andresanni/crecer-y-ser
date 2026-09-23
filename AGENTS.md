@@ -14,6 +14,7 @@ Antes de modificar código, consultar:
 6. `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md` antes de cambiar hooks, migraciones, reglas o despliegue de PocketBase.
 7. `docs/pocketbase-environments.md` antes de crear, probar, promover, revertir o sincronizar cambios entre PocketBase local y el VPS.
 8. `docs/landing-production-readiness.md` cuando el trabajo afecte contenido, diseño, recursos o formulario de la landing pública.
+9. `docs/branching-strategy.md` antes de crear ramas, integrar cambios, preparar releases o aplicar hotfixes.
 
 ## Reglas de trabajo
 

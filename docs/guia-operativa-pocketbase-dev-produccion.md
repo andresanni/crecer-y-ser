@@ -106,7 +106,7 @@ Antes de ingresar o modificar datos, comprobar:
 
 El resultado esperado debe mostrar todos los controles en `true`, especialmente `loopbackOnly`, `anonymousDataHidden` y `authenticatedDataAvailable`.
 
-No iniciar el frontend local si falta `.env.development.local`: existe todavía un fallback histórico hacia producción y se debe evitar cualquier conexión accidental al VPS.
+No iniciar el frontend local si falta `.env.development.local`: el cliente ya no tiene fallback y se detendrá para impedir una conexión accidental a un entorno incorrecto.
 
 ## Caso 1: llevar una feature de desarrollo a producción
 

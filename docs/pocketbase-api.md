@@ -6,6 +6,34 @@ Las pantallas institucionales autenticadas leen las colecciones estándar median
 
 La credencial docente viaja en `X-CYS-Teacher-Token`. Las respuestas del gateway llevan `Cache-Control: no-store`. PocketBase conserva SHA-256 para validación, un prefijo administrativo y una copia cifrada que sólo puede recuperar una sesión institucional.
 
+## Ruta pública de contacto
+
+### `POST /api/cys/contacto`
+
+Recibe una consulta pública de la landing sin autenticación:
+
+```json
+{
+  "nombre": "Persona de prueba",
+  "email": "prueba@example.com",
+  "telefono": "11 0000 0000",
+  "nivel": "inicial",
+  "mensaje": "Consulta sintética para validar el formulario.",
+  "_hp": ""
+}
+```
+
+`nombre`, `email`, `nivel` y `mensaje` son obligatorios. `nivel` admite `inicial` o `primario`; `telefono` es opcional y `_hp` es el honeypot del formulario. El cuerpo no puede superar 16 KB.
+
+El servidor valida tipos y longitudes, escapa el contenido para HTML y envía el correo mediante la configuración SMTP privada de PocketBase. No persiste la consulta en colecciones. La limitación vigente admite cinco solicitudes cada diez minutos por IP y vive en memoria, por lo que se reinicia junto con el proceso. Loopback queda exceptuado para pruebas locales.
+
+- `200`: el servidor aceptó y envió la consulta, o descartó silenciosamente un honeypot poblado.
+- `400`: cuerpo o campos inválidos.
+- `429`: límite temporal excedido.
+- `500`: PocketBase no pudo despachar el correo.
+
+El cliente sólo muestra éxito después de recibir `200`. Ante cualquier error conserva los campos para permitir un nuevo intento.
+
 ## Rutas docentes
 
 ### `GET /api/cys/docente/contexto`

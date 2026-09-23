@@ -155,6 +155,8 @@ Habilitada el 22 de septiembre de 2026:
 7. **Sender address:** `secretariacreceryser@gmail.com` | **Sender name:** `Colegio Crecer y Ser`.
 8. **Prueba:** Verificada exitosamente con entrega de correo de prueba.
 
+La configuración SMTP se guarda dentro de `pb_data` y no forma parte de Git. Una reconstrucción local desde cero requiere repetir esta configuración; una restauración del backup local cifrado conserva el estado incluido en la base respaldada.
+
 ### Replicación en Producción (VPS)
 
 Configurada y verificada el 23 de septiembre de 2026:
