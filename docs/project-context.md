@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 20 de septiembre de 2026.
+Actualizado: 23 de septiembre de 2026.
 
 ## Propósito
 
@@ -57,9 +57,11 @@ PocketBase dispone de dos entornos independientes sobre la versión `0.22.17`. P
 
 El frontend productivo está preparado como SPA de Vite para Vercel. La configuración versionada resuelve rutas profundas de React Router y exige una URL HTTPS explícita de PocketBase durante el build remoto. El cliente no conserva un fallback productivo, por lo que un entorno incompleto falla de forma visible en vez de conectarse a otra base. Mientras no exista un PocketBase de staging, los Preview Deployments no reciben acceso a ningún backend. El procedimiento canónico está en `docs/vercel-deployment.md`.
 
+La preparación final de la landing pública se desarrolla temporalmente en `codex/landing-production-ready`. Su alcance incluye reemplazar contenido de ejemplo, verificar recursos y activar de forma segura el formulario de consultas. No modifica todavía el modelo permanente de ramas ni autoriza escrituras públicas directas en PocketBase. El contrato de trabajo y los criterios para fusionarla están en `docs/landing-production-readiness.md`.
+
 La instancia local se inicializó el 20 de septiembre de 2026 desde una copia consistente y anonimizada de producción. No conserva usuarios, administradores, enlaces docentes, logs ni backups productivos. También existe una reconstrucción desde cero mediante baseline, migraciones, credenciales locales generadas y seed sintético; el simulacro completo fue validado sobre un directorio vacío. `pb_migrations` y `pb_hooks` se cargan directamente desde el checkout, por lo que Git es el canal de promoción del backend. `pb_data` nunca viaja de desarrollo al VPS. El contrato canónico está en `docs/pocketbase-environments.md` y la explicación operativa para el propietario del proyecto en `docs/guia-operativa-pocketbase-dev-produccion.md`.
 
-Los servicios transforman registros `snake_case` de PocketBase en modelos de dominio `camelCase`. No existe un backend Node intermedio; las operaciones públicas privilegiadas se implementan como hooks de PocketBase versionados con el proyecto.
+Los servicios transforman registros `snake_case` de PocketBase en modelos de dominio `camelCase`. No existe un backend Node intermedio; las operaciones públicas privilegiadas se implementan como hooks de PocketBase versionados con el proyecto. El formulario de contacto de la landing despacha consultas mediante el endpoint `/api/cys/contacto` (manejado por `pb_hooks/contacto.pb.js` y `pb_hooks/lib/contactService.js`), con protecciones honeypot, limitación de tasa por IP y envío SMTP institucional hacia `secretariacreceryser@gmail.com`.
 
 La carga institucional y la carga por enlace comparten el editor de boletín y se diferencian mediante `GradebookAccessPolicy` y `GradebookDataSource`. PocketBase dispone desde el 14 de septiembre de 2026 de gateways separados que vuelven a validar autorización, alcance y estado dentro de cada transacción. `/carga` usa exclusivamente las rutas docentes y cada enlace abarca un curso y período completos; no se admiten accesos por materia.
 
@@ -105,5 +107,7 @@ El tablero distingue el avance académico del control operativo. `Completado` ex
 - La preparación del frontend para Vercel está versionada y validada: build productivo con URL explícita, rechazo de variable ausente o loopback, fallback SPA para rutas profundas y compatibilidad CORS confirmada contra el VPS.
 - La cadena de migraciones incluye una baseline condicional anterior a la primera evolución incremental. Una base vacía puede reconstruirse con datos sintéticos mediante `deploy/setup-pocketbase-dev.ps1`; el backup local cifrado y la restauración autenticada también fueron probados de extremo a extremo.
 - El primer contenedor real de recuperación local se creó en OneDrive y se verificó por SHA-256 el 20 de septiembre de 2026. La frase de recuperación no se guarda en el proyecto y queda bajo custodia personal.
+- El formulario de contacto de la landing, el servicio SMTP de Gmail (puerto 587) y el endpoint seguro `/api/cys/contacto` fueron probados y configurados en desarrollo local y en el VPS de producción. Los scripts de despliegue `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh` incluyen la transferencia y verificación de los hooks de contacto.
+- La landing institucional y la pantalla de acceso (`/login`) disponen de soporte responsive adaptado para pantallas móviles, con diseño renovado para los niveles educativos.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.

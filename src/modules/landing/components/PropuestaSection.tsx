@@ -14,10 +14,11 @@ const iconMap = {
 
 export const PropuestaSection: React.FC = () => {
   return (
-    <section id="propuesta" className="landing-section">
-      <div className="landing-section-inner">
+    <section id="propuesta" className="landing-section propuesta-section">
+      <div className="propuesta-backdrop" aria-hidden="true" />
+      <div className="landing-section-inner propuesta-content">
         <div className="section-header text-center">
-          <Tag color="blue" className="section-tag">NUESTRA PROPUESTA</Tag>
+          <Tag className="section-tag">NUESTRA PROPUESTA</Tag>
           <Title level={2} className="section-title">Pilares de Nuestra Educación</Title>
           <Paragraph className="section-description">
             Brindamos una formación sólida sustentada en el pensamiento crítico, la calidez humana y la incorporación activa de la tecnología.
@@ -27,7 +28,7 @@ export const PropuestaSection: React.FC = () => {
         <Row gutter={[24, 24]}>
           {landingData.propuestas.map((pilar) => (
             <Col key={pilar.id} xs={24} sm={12} lg={6}>
-              <Card className="feature-card" bordered={false}>
+              <Card className={`feature-card ${pilar.colorTheme}`} bordered={false}>
                 <div className={`feature-icon-box ${pilar.colorTheme}`}>
                   {iconMap[pilar.iconName]}
                 </div>

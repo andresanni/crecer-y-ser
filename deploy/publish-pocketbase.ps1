@@ -30,6 +30,8 @@ if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el staging remoto." }
 $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\teacherAccess.js"; Target = "teacherAccess.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\teacher_access.pb.js"; Target = "teacher_access.pb.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\contactService.js"; Target = "contactService.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\contacto.pb.js"; Target = "contacto.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789330000_created_initial_collections.js"; Target = "1789330000_created_initial_collections.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789334557_hardened_teacher_access_tokens.js"; Target = "1789334557_hardened_teacher_access_tokens.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789338120_close_public_gradebook_rules.js"; Target = "1789338120_close_public_gradebook_rules.js" },

@@ -13,30 +13,29 @@ const levelIconMap = {
 
 export const NivelesSection: React.FC = () => {
   return (
-    <section id="niveles" className="landing-section alt-bg">
+    <section id="niveles" className="landing-section niveles-section alt-bg">
       <div className="landing-section-inner">
         <div className="section-header text-center">
-          <Tag color="cyan" className="section-tag">OFERTA ACADÉMICA</Tag>
+          <Tag className="section-tag">OFERTA ACADÉMICA</Tag>
           <Title level={2} className="section-title">Niveles Educativos</Title>
           <Paragraph className="section-description">
             Un camino articulado desde la primera infancia hasta la preparación para los estudios superiores y la vida ciudadana.
           </Paragraph>
         </div>
 
-        <Row gutter={[24, 24]}>
+        <Row gutter={[32, 28]} justify="center">
           {landingData.niveles.map((nivel) => (
-            <Col key={nivel.id} xs={24} md={8}>
-              <Card className={`level-card ${nivel.isFeatured ? 'featured' : ''}`}>
-                <div className={`level-badge ${nivel.isFeatured ? 'featured-badge' : ''}`}>
-                  {nivel.badge}
-                </div>
-                <div className="level-icon">
+            <Col key={nivel.id} xs={24} sm={18} md={11} lg={10}>
+              <Card className={`level-card level-card-${nivel.id}`} bordered={false}>
+                <div className={`level-accent-bar level-accent-${nivel.id}`} />
+                <div className={`level-icon level-icon-${nivel.id}`}>
                   {levelIconMap[nivel.iconName]}
                 </div>
                 <Title level={3} className="level-card-title">{nivel.title}</Title>
                 <Paragraph className="level-card-text">
                   {nivel.description}
                 </Paragraph>
+                <div className={`level-card-divider level-divider-${nivel.id}`} />
                 <ul className="level-list">
                   {nivel.features.map((feature, i) => (
                     <li key={i}>

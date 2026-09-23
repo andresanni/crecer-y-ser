@@ -1,7 +1,7 @@
 export interface PropuestaPilar {
   id: string;
   iconName: 'book' | 'rocket' | 'heart' | 'trophy';
-  colorTheme: 'blue' | 'emerald' | 'purple' | 'amber';
+  colorTheme: 'blue' | 'sky' | 'red' | 'amber';
   title: string;
   description: string;
 }
@@ -38,12 +38,19 @@ export interface AcadeuInfo {
   description: string;
 }
 
+export interface InstagramInfo {
+  url: string;
+  label: string;
+  handle: string;
+}
+
 export interface LandingData {
   schoolName: string;
   schoolCode: string;
   tagline: string;
   badgeText: string;
   heroTitle: {
+    institution: string;
     prefix: string;
     gradient: string;
   };
@@ -56,6 +63,7 @@ export interface LandingData {
     platformVersion: string;
   };
   acadeu: AcadeuInfo;
+  instagram: InstagramInfo;
   propuestas: PropuestaPilar[];
   niveles: NivelEducativo[];
   novedades: NovedadItem[];
@@ -68,7 +76,8 @@ export const landingData: LandingData = {
   tagline: 'Educación Inicial y Primaria',
   badgeText: 'Admisiones 2027 — Inscripciones Abiertas',
   heroTitle: {
-    prefix: 'Colegio Crecer y Ser Educamos para la   ',
+    institution: 'Colegio Crecer y Ser',
+    prefix: 'Educamos para la ',
     gradient: 'vida',
   },
   heroSubtitle:
@@ -86,8 +95,13 @@ export const landingData: LandingData = {
   },
   acadeu: {
     url: 'https://plataforma.acadeu.com/i/crecer-y-ser-caba',
-    label: 'Acceso Familias',
+    label: 'Plataforma Acadeu',
     description: 'Acceso a la plataforma escolar Acadeu',
+  },
+  instagram: {
+    url: 'https://www.instagram.com/colegiocreceryser/?hl=es-la',
+    label: 'Instagram Institucional',
+    handle: '@colegiocreceryser',
   },
   propuestas: [
     {
@@ -101,7 +115,7 @@ export const landingData: LandingData = {
     {
       id: 'innovacion',
       iconName: 'rocket',
-      colorTheme: 'emerald',
+      colorTheme: 'sky',
       title: 'Innovación y Tecnología',
       description:
         'Incorporación de herramientas digitales, robótica y pensamiento computacional desde etapas tempranas.',
@@ -109,7 +123,7 @@ export const landingData: LandingData = {
     {
       id: 'emocional',
       iconName: 'heart',
-      colorTheme: 'purple',
+      colorTheme: 'red',
       title: 'Educación Emocional',
       description:
         'Desarrollo de habilidades socioafectivas, empatía y convivencia armónica en un ámbito contenedor.',
@@ -183,9 +197,9 @@ export const landingData: LandingData = {
     },
   ],
   contacto: {
-    direccion: 'Calle Principal 1234, Ciudad (Placeholder)',
-    telefonos: '(011) 4567-8900 / Whatsapp: +54 9 11 1234-5678',
-    email: 'contacto@creceryser.edu.ar',
+    direccion: 'Av Olivera 1536, CABA',
+    telefonos: '3221-1789 / 3221-3306',
+    email: 'colegiocreceryser@gmail.com',
     horario: 'Lunes a Viernes de 08:00 a 16:30 hs',
   },
 };

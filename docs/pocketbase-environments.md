@@ -1,6 +1,6 @@
 # Entornos y promoción de PocketBase
 
-Actualizado: 20 de septiembre de 2026.
+Actualizado: 23 de septiembre de 2026.
 
 ## Decisión arquitectónica
 
@@ -137,6 +137,33 @@ La verificación reproducible del backend local se ejecuta con:
 Después de una reconstrucción limpia se agrega `-ExpectSyntheticSeed` para comprobar también todas las cantidades del fixture.
 
 No se realizan pruebas destructivas contra `https://alumnos-api.duckdns.org`. Una tarea que necesite producción debe identificarlo explícitamente y limitarse al procedimiento documentado de despliegue o diagnóstico.
+
+## Servicio de Correo (SMTP) y Formulario de Contacto
+
+El formulario público de contacto de la landing despacha consultas hacia `secretariacreceryser@gmail.com` a través del endpoint privilegiado `POST /api/cys/contacto` (manejado por `pb_hooks/contacto.pb.js` y `pb_hooks/lib/contactService.js`). Este mecanismo utiliza `$app.newMailClient().send(...)` de PocketBase.
+
+### Configuración en Desarrollo (Local)
+
+Habilitada el 22 de septiembre de 2026:
+
+1. **Panel:** `http://127.0.0.1:8090/_/` -> **Settings** -> **Mail settings**.
+2. **Use SMTP mail server:** Activado.
+3. **Host:** `smtp.gmail.com` | **Port:** `587` (StartTLS).
+4. **Auth method:** PLAIN (default).
+5. **Username:** `secretariacreceryser@gmail.com`.
+6. **Password:** Contraseña de aplicación de Google de 16 caracteres (generada en la cuenta de Google con 2FA).
+7. **Sender address:** `secretariacreceryser@gmail.com` | **Sender name:** `Colegio Crecer y Ser`.
+8. **Prueba:** Verificada exitosamente con entrega de correo de prueba.
+
+### Replicación en Producción (VPS)
+
+Configurada y verificada el 23 de septiembre de 2026:
+
+1. **Panel:** `https://alumnos-api.duckdns.org/_/` -> **Settings** -> **Mail settings**.
+2. **Use SMTP mail server:** Activado con credenciales de aplicación de Gmail para `secretariacreceryser@gmail.com` (StartTLS puerto 587).
+3. **Prueba:** Confirmada la conectividad y recepción de prueba desde el VPS.
+4. **Despliegue de hooks:** `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh` transfieren e instalan `contacto.pb.js` y `lib/contactService.js` en `/root/pb/pb_hooks/`, verificando que `POST /api/cys/contacto` responda adecuadamente tras el reinicio del servicio `pocketbase`.
+5. La configuración SMTP queda persistida en `/root/pb/pb_data` sin requerir variables de entorno adicionales.
 
 ## Creación de migraciones
 

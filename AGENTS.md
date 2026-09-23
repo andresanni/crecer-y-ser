@@ -13,6 +13,7 @@ Antes de modificar código, consultar:
 5. `docs/magic-link-gradebook.md` y `docs/pocketbase-api.md` cuando el trabajo afecte boletines, enlaces docentes o sus transiciones de estado.
 6. `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md` antes de cambiar hooks, migraciones, reglas o despliegue de PocketBase.
 7. `docs/pocketbase-environments.md` antes de crear, probar, promover, revertir o sincronizar cambios entre PocketBase local y el VPS.
+8. `docs/landing-production-readiness.md` cuando el trabajo afecte contenido, diseño, recursos o formulario de la landing pública.
 
 ## Reglas de trabajo
 

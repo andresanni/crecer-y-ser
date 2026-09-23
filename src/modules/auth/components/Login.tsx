@@ -1,14 +1,14 @@
 import ui from '../../../shared/styles/ui.module.css';
 import React, { useState } from 'react';
-import { Form, Input, Button, App as AntdApp, Typography, Space, Tag } from 'antd';
+import { Form, Input, Button, App as AntdApp, Typography, Space } from 'antd';
 import {
   LockOutlined,
   MailOutlined,
   ArrowRightOutlined,
   SafetyCertificateOutlined,
-  ThunderboltOutlined,
   CheckCircleOutlined,
   GlobalOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import pb from '../../../core/pocketbase';
@@ -40,61 +40,63 @@ export const Login: React.FC = () => {
         <section className="login-intro">
           <div className={ui.splitRow}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div className="brand-logo-collapsed" style={{ width: 44, height: 44, margin: 0, padding: 4 }}>
-                <img src="/isotype.png" alt="Colegio Crecer y Ser" className="brand-logo-img" />
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  minWidth: 44,
+                  background: '#ffffff',
+                  borderRadius: 12,
+                  padding: 6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                }}
+              >
+                <img
+                  src="/isotype.png"
+                  alt="Colegio Crecer y Ser"
+                  className="brand-logo-img"
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                />
               </div>
-              <span className="brand-copy">
-                <strong style={{ fontSize: 17, color: '#ffffff' }}>Crecer y Ser</strong>
-                <span style={{ color: '#93c5fd', fontSize: 11 }}>Colegio A-1134</span>
-              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
+                <strong style={{ fontSize: 17, color: '#ffffff', fontWeight: 700 }}>Crecer y Ser</strong>
+                <span style={{ color: '#93c5fd', fontSize: 11, fontWeight: 500, letterSpacing: 0.3 }}>Colegio A-1134</span>
+              </div>
             </div>
             <Button
               type="text"
               icon={<GlobalOutlined style={{ color: '#bfdbfe' }} />}
               onClick={() => navigate('/')}
-              style={{ color: '#bfdbfe', fontSize: 12, borderRadius: 8 }}
+              style={{ color: '#c8daf0ff', fontSize: 14, borderRadius: 8 }}
             >
               Volver a la Web
             </Button>
           </div>
 
-          <div style={{ margin: '32px 0' }}>
-            <Tag
-              icon={<ThunderboltOutlined />}
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.25)',
-                borderRadius: 20,
-                padding: '4px 12px',
-                fontSize: 12,
-                fontWeight: 600,
-                marginBottom: 16,
-              }}
-            >
-              Plataforma Institucional 2.0
-            </Tag>
-
-            <h1>Todo lo importante, más claro.</h1>
-            <p>Una forma simple, moderna y cercana de acompañar la gestión y trayectoria de cada estudiante.</p>
+          <div style={{ margin: '32px 0' }} className="login-intro-content">
+            <h1>Nueva plataforma de gestión escolar.</h1>
+            <p>Plataforma exclusiva para el personal directivo y docente del Colegio Crecer y Ser.</p>
 
             <Space orientation="vertical" size={12} style={{ marginTop: 28 }}>
               <Space size={10} style={{ color: '#dbeafe', fontSize: 13 }}>
                 <CheckCircleOutlined style={{ color: '#60a5fa' }} />
-                <span>Sincronización de registros en tiempo real</span>
+                <span>Gestión de alumnos</span>
               </Space>
               <Space size={10} style={{ color: '#dbeafe', fontSize: 13 }}>
                 <CheckCircleOutlined style={{ color: '#60a5fa' }} />
-                <span>Control de legajos y datos estudiantiles</span>
+                <span>Generador de Informes y Boletines</span>
               </Space>
               <Space size={10} style={{ color: '#dbeafe', fontSize: 13 }}>
                 <SafetyCertificateOutlined style={{ color: '#60a5fa' }} />
-                <span>Acceso seguro mediante autenticación encriptada</span>
+                <span>Una nueva forma de acompañar la trayectoria de cada estudiante</span>
               </Space>
             </Space>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 16 }}>
+          <div className="login-intro-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: 16 }}>
             <span style={{ color: '#93c5fd', fontSize: 12 }}>© 2026 Crecer y Ser • Colegio A-1134</span>
             <span className="pulse-dot" />
           </div>
@@ -165,6 +167,11 @@ export const Login: React.FC = () => {
                 Ingresar al sistema
               </Button>
             </Form.Item>
+
+            <div className="login-mobile-notice">
+              <InfoCircleOutlined style={{ fontSize: 15, flexShrink: 0 }} />
+              <span>Plataforma institucional directiva y docente (acceso optimizado para computadoras de escritorio).</span>
+            </div>
           </Form>
         </section>
       </div>
