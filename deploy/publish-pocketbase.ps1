@@ -49,7 +49,7 @@ foreach ($artifact in $artifacts) {
   if ($LASTEXITCODE -ne 0) { throw "No se pudo copiar $($artifact.Source)." }
 }
 
-& ssh @sshArguments $remoteTarget "chmod 0700 '$remoteStage/apply-pocketbase-workflow.sh' && '$remoteStage/apply-pocketbase-workflow.sh' '$remoteStage' '$releaseId'"
+& ssh @sshArguments $remoteTarget "sed -i 's/\r$//' '$remoteStage/apply-pocketbase-workflow.sh' && chmod 0700 '$remoteStage/apply-pocketbase-workflow.sh' && '$remoteStage/apply-pocketbase-workflow.sh' '$remoteStage' '$releaseId'"
 if ($LASTEXITCODE -ne 0) { throw "El despliegue remoto no superó la verificación." }
 
 Write-Output "PocketBase actualizado. Respaldo: /root/pb/deploy_backups/$releaseId"
