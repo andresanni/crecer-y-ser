@@ -65,6 +65,15 @@ import {
   type EstadoProgresoAlumno,
 } from '../models/boletin.model';
 import type { GradebookAccessPolicy } from '../models/gradebookAccess.model';
+import styles from './VistaPorAlumno.module.css';
+
+const criterioFieldKey = (cursoMateriaId: string, criterioId: string) => (
+  `criterio:${cursoMateriaId}:${criterioId}`
+);
+
+const calificacionGeneralFieldKey = (cursoMateriaId: string) => (
+  `general:${cursoMateriaId}`
+);
 
 interface VistaPorAlumnoProps {
   periodoId: string;
@@ -116,6 +125,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const { message, modal } = App.useApp();
   const dataSource = access.dataSource || staffGradebookDataSource;
   const [editingMateriaId, setEditingMateriaId] = useState<string | null>(null);
+  const [editingGradeField, setEditingGradeField] = useState<string | null>(null);
   const [loadedRevision, setLoadedRevision] = useState<number | undefined>(workflowRevision);
   const [revisionConflict, setRevisionConflict] = useState(false);
   const workflowRevisionRef = useRef(workflowRevision);
@@ -284,6 +294,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         const cierre = snapshot.cierre;
         if (!active) return;
         setMateriasState(newMateriasState);
+        setEditingGradeField(null);
         setAsistenciaState({
           cierreId: cierre?.id,
           asistencias: cierre?.asistencias ?? 0,
@@ -429,6 +440,22 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const handleSave = async () => {
     if (hasRevisionConflict || (readOnly && !editingMateriaId) || !selectedInscripcionId || !periodoId || !alumnoDataReady) return;
 
+    const incompleteMateria = cursoMaterias.find((cm) => {
+      const mat = materiasState[cm.id];
+      if (!mat?.isModified) return false;
+      const criteriosCompletos = (criteriosMap[cm.id] || []).every(
+        (criterio) => Boolean(mat.criteriosValores[criterio.id]),
+      );
+      const calificacionGeneralCompleta = esMateriaConducta(cm.materiaNombre)
+        || Boolean(mat.calificacionGeneralId);
+      return !criteriosCompletos || !calificacionGeneralCompleta;
+    });
+
+    if (incompleteMateria) {
+      message.warning(`Completá todas las calificaciones obligatorias de ${incompleteMateria.materiaNombre} antes de guardar.`);
+      return;
+    }
+
     try {
       setSaving(true);
       const materias = cursoMaterias.flatMap((cm) => {
@@ -444,7 +471,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           })),
         }];
       });
-      const cierre = access.canEditPeriodClosure && asistenciaState.isModified
+      const cierre = access.canEditPeriodClosure
+        && (access.mode === 'magic-link' || asistenciaState.isModified)
         ? {
           asistencias: asistenciaState.asistencias,
           inasistencias: asistenciaState.inasistencias,
@@ -572,6 +600,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         return next;
       });
       setAsistenciaState((prev) => ({ ...prev, isModified: false }));
+      setEditingGradeField(null);
       if (readOnly) setEditingMateriaId(null);
       onSaveSuccess?.(result.revision);
     } catch (err) {
@@ -1425,6 +1454,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                                   {num}.
                                 </span>
                                 {crit.nombre}
+                                {access.mode === 'magic-link' && (
+                                  <Typography.Text type="danger" aria-hidden="true"> *</Typography.Text>
+                                )}
                               </Typography.Text>
                             </div>
 
@@ -1439,24 +1471,65 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               >
                                 {valoresEscala.find((v) => v.id === valActual)?.etiqueta || 'Sin calificar'}
                               </Typography.Text>
+                            ) : access.mode === 'magic-link'
+                              && valActual
+                              && editingGradeField !== criterioFieldKey(cm.id, crit.id) ? (
+                              <Space size={8} wrap className={styles.gradeSummary}>
+                                <Typography.Text strong className={styles.gradeValue}>
+                                  {valoresEscala.find((v) => v.id === valActual)?.etiqueta || 'Sin calificar'}
+                                </Typography.Text>
+                                <Tooltip title="Modificar calificación">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    shape="circle"
+                                    aria-label="Modificar calificación"
+                                    icon={<EditOutlined />}
+                                    onClick={() => setEditingGradeField(criterioFieldKey(cm.id, crit.id))}
+                                  />
+                                </Tooltip>
+                              </Space>
                             ) : (
-                              <Select
-                                size="middle"
-                                placeholder="Calificar..."
-                                allowClear
-                                value={valActual}
-                                onChange={(val) => handleCriterioChange(cm.id, crit.id, val || null)}
-                                style={{ width: 280, maxWidth: '100%' }}
-                                className={getClassNameForValor(valActual)}
-                                options={valoresEscalaDesc.map((v) => ({
-                                  value: v.id,
-                                  label: (
-                                    <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
-                                      {v.etiqueta}
-                                    </span>
-                                  ),
-                                }))}
-                              />
+                              <div className={styles.gradeEditor}>
+                                <Select
+                                  size="middle"
+                                  placeholder="Calificar..."
+                                  aria-required="true"
+                                  autoFocus={editingGradeField === criterioFieldKey(cm.id, crit.id)}
+                                  value={valActual}
+                                  onChange={(val) => {
+                                    handleCriterioChange(cm.id, crit.id, val || null);
+                                    setEditingGradeField(null);
+                                  }}
+                                  onSelect={() => setEditingGradeField(null)}
+                                  onBlur={() => {
+                                    if (valActual) setEditingGradeField(null);
+                                  }}
+                                  className={`${getClassNameForValor(valActual)} ${styles.gradeSelect}`}
+                                  options={valoresEscalaDesc.map((v) => ({
+                                    value: v.id,
+                                    label: (
+                                      <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
+                                        {v.etiqueta}
+                                      </span>
+                                    ),
+                                  }))}
+                                />
+                                {access.mode === 'magic-link'
+                                  && valActual
+                                  && editingGradeField === criterioFieldKey(cm.id, crit.id) && (
+                                  <Tooltip title="Cancelar modificación">
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      shape="circle"
+                                      aria-label="Cancelar modificación"
+                                      icon={<CloseOutlined />}
+                                      onClick={() => setEditingGradeField(null)}
+                                    />
+                                  </Tooltip>
+                                )}
+                              </div>
                             )}
                           </div>
                         </Col>
@@ -1499,6 +1572,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             </div>
                             <Typography.Text style={{ fontSize: 14, color: '#1e3a8a', fontWeight: 700 }}>
                               Calificación General
+                              {access.mode === 'magic-link' && (
+                                <Typography.Text type="danger" aria-hidden="true"> *</Typography.Text>
+                              )}
                             </Typography.Text>
                           </div>
 
@@ -1513,24 +1589,65 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             >
                               {valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || 'Sin calificar'}
                             </Typography.Text>
+                          ) : access.mode === 'magic-link'
+                            && mat.calificacionGeneralId
+                            && editingGradeField !== calificacionGeneralFieldKey(cm.id) ? (
+                            <Space size={8} wrap className={styles.gradeSummary}>
+                              <Typography.Text strong className={styles.gradeValue}>
+                                {valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || 'Sin calificar'}
+                              </Typography.Text>
+                              <Tooltip title="Modificar calificación">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  shape="circle"
+                                  aria-label="Modificar calificación general"
+                                  icon={<EditOutlined />}
+                                  onClick={() => setEditingGradeField(calificacionGeneralFieldKey(cm.id))}
+                                />
+                              </Tooltip>
+                            </Space>
                           ) : (
-                            <Select
-                              size="middle"
-                              placeholder="Calificar..."
-                              allowClear
-                              value={mat.calificacionGeneralId || undefined}
-                              onChange={(val) => handleCalificacionGeneralChange(cm.id, val || null)}
-                              style={{ width: 280, maxWidth: '100%' }}
-                              className={getClassNameForValor(mat.calificacionGeneralId)}
-                              options={valoresEscalaDesc.map((v) => ({
-                                value: v.id,
-                                label: (
-                                  <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
-                                    {v.etiqueta}
-                                  </span>
-                                ),
-                              }))}
-                            />
+                            <div className={styles.gradeEditor}>
+                              <Select
+                                size="middle"
+                                placeholder="Calificar..."
+                                aria-required="true"
+                                autoFocus={editingGradeField === calificacionGeneralFieldKey(cm.id)}
+                                value={mat.calificacionGeneralId || undefined}
+                                onChange={(val) => {
+                                  handleCalificacionGeneralChange(cm.id, val || null);
+                                  setEditingGradeField(null);
+                                }}
+                                onSelect={() => setEditingGradeField(null)}
+                                onBlur={() => {
+                                  if (mat.calificacionGeneralId) setEditingGradeField(null);
+                                }}
+                                className={`${getClassNameForValor(mat.calificacionGeneralId)} ${styles.gradeSelect}`}
+                                options={valoresEscalaDesc.map((v) => ({
+                                  value: v.id,
+                                  label: (
+                                    <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
+                                      {v.etiqueta}
+                                    </span>
+                                  ),
+                                }))}
+                              />
+                              {access.mode === 'magic-link'
+                                && mat.calificacionGeneralId
+                                && editingGradeField === calificacionGeneralFieldKey(cm.id) && (
+                                <Tooltip title="Cancelar modificación">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    shape="circle"
+                                    aria-label="Cancelar modificación"
+                                    icon={<CloseOutlined />}
+                                    onClick={() => setEditingGradeField(null)}
+                                  />
+                                </Tooltip>
+                              )}
+                            </div>
                           )}
                         </div>
                       </Col>
@@ -1560,10 +1677,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               <Col xs={24} sm={8}>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
                   <Typography.Text strong className={ui.secondaryCaption}>
-                    ASISTENCIAS
+                    ASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
                   {readOnly ? <Typography.Text strong>{asistenciaState.asistencias}</Typography.Text> : (
                     <InputNumber
+                      aria-required="true"
                       min={0}
                       max={180}
                       className={ui.fullWidth}
@@ -1577,10 +1695,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               <Col xs={12} sm={8}>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
                   <Typography.Text strong className={ui.secondaryCaption}>
-                    INASISTENCIAS
+                    INASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
                   {readOnly ? <Typography.Text strong>{asistenciaState.inasistencias}</Typography.Text> : (
                     <InputNumber
+                      aria-required="true"
                       min={0}
                       max={180}
                       className={ui.fullWidth}
@@ -1594,10 +1713,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               <Col xs={12} sm={8}>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
                   <Typography.Text strong className={ui.secondaryCaption}>
-                    LLEGADAS TARDE
+                    LLEGADAS TARDE <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
                   {readOnly ? <Typography.Text strong>{asistenciaState.llegadasTarde}</Typography.Text> : (
                     <InputNumber
+                      aria-required="true"
                       min={0}
                       max={180}
                       className={ui.fullWidth}

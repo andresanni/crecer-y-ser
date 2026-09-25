@@ -490,6 +490,18 @@ function saveEvaluation(txDao, access, enrollment, input, materials, values) {
     return { criterioId: criterionId, valorEscalaId: valueId }
   })
 
+  if (!isConductSubject(txDao, material) && !generalValueId) {
+    throw new BadRequestError("La calificación general es obligatoria.")
+  }
+
+  var submittedCriterionMap = {}
+  normalizedCriteria.forEach((item) => {
+    submittedCriterionMap[item.criterioId] = true
+  })
+  if (Object.keys(allowedCriteria).some((criterionId) => !submittedCriterionMap[criterionId])) {
+    throw new BadRequestError("Todos los criterios de evaluación son obligatorios.")
+  }
+
   var periodId = access.getString("periodo_id")
   var evaluation = findFirstByFilter(
     txDao,
