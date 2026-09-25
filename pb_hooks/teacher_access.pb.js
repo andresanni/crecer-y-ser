@@ -33,6 +33,31 @@ routerAdd("PUT", "/api/cys/directivo/alumnos/:inscripcionId", (c) => {
   return access.saveStaffStudent(c)
 }, $apis.requireRecordAuth("users"), $apis.bodyLimit(1048576))
 
+routerAdd("GET", "/api/cys/directivo/revision/:cursoId/:periodoId", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.staffReview(c)
+}, $apis.requireRecordAuth("users"))
+
+routerAdd("POST", "/api/cys/directivo/revision/:cursoId/:periodoId/sincronizar-matricula", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.synchronizeReviewEnrollments(c)
+}, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
+
+routerAdd("GET", "/api/cys/directivo/etapas/:periodoId", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.staffStages(c)
+}, $apis.requireRecordAuth("users"))
+
+routerAdd("POST", "/api/cys/directivo/boletines/:inscripcionId/visar", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.approveStudent(c)
+}, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
+
+routerAdd("POST", "/api/cys/directivo/boletines/:inscripcionId/retirar-visado", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.revokeStudentApproval(c)
+}, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
+
 routerAdd("POST", "/api/cys/enlaces-docentes", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.issue(c)

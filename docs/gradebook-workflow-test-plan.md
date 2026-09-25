@@ -104,3 +104,14 @@ El 16 de septiembre de 2026 se desplegó el control optimista directivo con el r
 ## Criterio de aprobación
 
 El workflow queda aprobado cuando el envío conserva todos los datos, invalida definitivamente el acceso docente, nunca existen dos roles con escritura simultánea, las rutas obsoletas no están disponibles y ningún fallo transaccional deja información parcial.
+
+## Extensión de visado y configuración anual
+
+1. Configurar cinco criterios por materia para el ciclo activo. Confirmar que el servidor rechaza la emisión si falta la escala, un valor o cualquier criterio.
+2. Emitir el enlace y comprobar que el constructor ya no puede modificar materias, orden ni criterios del curso y ciclo. Verificar también que las colecciones protegidas rechazan escrituras directas.
+3. Entregar un curso completo y confirmar una fila `PENDIENTE_REVISION` por alumno, sin visados automáticos.
+4. Visar un alumno, comprobar usuario, fecha y revisión; repetir la acción y confirmar que no genera otra revisión.
+5. Guardar una corrección de ese alumno y confirmar que sólo su visado se retira. Intentar visar con una revisión anterior y comprobar `409` sin cambios.
+6. Incorporar un alumno después de la entrega. Confirmar que el backend informa el desajuste, que la sincronización agrega sólo su fila y que no permite visar su boletín incompleto.
+7. Visar todos los boletines requeridos y confirmar `LISTO_PARA_PDF`. Retirar un visado y comprobar el regreso inmediato a `REVISION_DIRECTIVA`.
+8. Crear un ciclo nuevo y confirmar que su constructor comienza con una malla independiente de la del ciclo anterior.

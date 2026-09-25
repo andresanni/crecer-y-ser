@@ -20,6 +20,26 @@ interface StaffSaveDto {
   instancia: StaffWorkflowStateDto;
 }
 
+export interface StaffReviewBulletin {
+  inscripcionId: string;
+  nombreCompleto: string;
+  numeroOrden: number | null;
+  estado: 'PENDIENTE_REVISION' | 'VISADO';
+  revisionContenido: number;
+  revisionVisada: number | null;
+  visadoAt: string | null;
+  visadoPor: string | null;
+}
+
+export interface StaffReviewDto {
+  instancia: StaffWorkflowStateDto;
+  etapa: 'REVISION_DIRECTIVA' | 'LISTO_PARA_PDF';
+  totalBoletines: number;
+  visados: number;
+  alumnosSinIncorporar: number;
+  boletines: StaffReviewBulletin[];
+}
+
 interface StaffStudentDto {
   revision: number;
   evaluaciones: Array<{
@@ -147,6 +167,42 @@ export const getStaffGradebookWorkflow = async (
   if (!response.instancia) return null;
   return mapStaffWorkflow(response.instancia, cursoId, periodoId);
 };
+
+export const getStaffGradebookReview = async (
+  cursoId: string,
+  periodoId: string,
+): Promise<StaffReviewDto> => pb.send<StaffReviewDto>(
+  `/api/cys/directivo/revision/${cursoId}/${periodoId}`,
+  { requestKey: null },
+);
+
+export const synchronizeStaffReviewEnrollments = async (
+  cursoId: string,
+  periodoId: string,
+  expectedRevision: number,
+): Promise<StaffSaveDto & { incorporados: number }> => pb.send(
+  `/api/cys/directivo/revision/${cursoId}/${periodoId}/sincronizar-matricula`,
+  {
+    method: 'POST',
+    body: { expectedRevision },
+    requestKey: null,
+  },
+);
+
+export const changeStaffBulletinApproval = async (
+  inscripcionId: string,
+  periodoId: string,
+  expectedRevision: number,
+  expectedContentRevision: number,
+  approve: boolean,
+): Promise<StaffSaveDto> => pb.send<StaffSaveDto>(
+  `/api/cys/directivo/boletines/${inscripcionId}/${approve ? 'visar' : 'retirar-visado'}`,
+  {
+    method: 'POST',
+    body: { periodoId, expectedRevision, expectedContentRevision },
+    requestKey: null,
+  },
+);
 
 const mapStaffWorkflow = (
   workflow: StaffWorkflowStateDto,

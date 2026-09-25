@@ -77,6 +77,199 @@ function findWorkflow(dao, courseId, periodId) {
   )
 }
 
+function findApproval(dao, workflowId, enrollmentId) {
+  return findFirstByFilter(
+    dao,
+    "visados_boletin",
+    "instancia_id = {:workflowId} && inscripcion_id = {:enrollmentId}",
+    { workflowId: workflowId, enrollmentId: enrollmentId }
+  )
+}
+
+function requireApproval(dao, workflow, enrollmentId) {
+  var approval = findApproval(dao, workflow.getId(), enrollmentId)
+  if (!approval) {
+    throw new ForbiddenError("El alumno no pertenece a la entrega de este bimestre.")
+  }
+  return approval
+}
+
+function currentEnrollments(dao, workflow) {
+  var period = requireRecord(dao, "periodos", workflow.getString("periodo_id"))
+  return findByFilter(
+    dao,
+    "inscripciones",
+    "curso_id = {:courseId} && ciclo_id = {:cycleId} && estado != 'Baja'",
+    "numero_orden",
+    { courseId: workflow.getString("curso_id"), cycleId: period.getString("ciclo_id") }
+  )
+}
+
+function missingReviewEnrollments(dao, workflow, approvals) {
+  var included = {}
+  approvals.forEach((approval) => { included[approval.getString("inscripcion_id")] = true })
+  return currentEnrollments(dao, workflow).filter((enrollment) => !included[enrollment.getId()])
+}
+
+function approvalDto(approval) {
+  return {
+    inscripcionId: approval.getString("inscripcion_id"),
+    estado: approval.getString("estado"),
+    revisionContenido: approval.getInt("revision_contenido"),
+    revisionVisada: approval.getString("estado") === "VISADO" ? approval.getInt("revision_visada") : null,
+    visadoAt: approval.getString("visado_at") || null,
+    visadoPor: approval.getString("visado_por") || null
+  }
+}
+
+function staffReview(c) {
+  noStore(c)
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    var course = requireRecord(txDao, "cursos", c.pathParam("cursoId"))
+    var period = requireRecord(txDao, "periodos", c.pathParam("periodoId"))
+    var workflow = requireStaffWorkflow(txDao, course.getId(), period.getId())
+    var approvals = findByFilter(
+      txDao,
+      "visados_boletin",
+      "instancia_id = {:workflowId}",
+      "created",
+      { workflowId: workflow.getId() }
+    )
+    var missingEnrollments = missingReviewEnrollments(txDao, workflow, approvals)
+    var approvedCount = 0
+    var students = approvals.map((approval) => {
+      if (approval.getString("estado") === "VISADO") approvedCount += 1
+      var enrollment = requireRecord(txDao, "inscripciones", approval.getString("inscripcion_id"))
+      var student = requireRecord(txDao, "alumnos", enrollment.getString("alumno_id"))
+      return Object.assign(approvalDto(approval), {
+        nombreCompleto: (student.getString("apellidos") + ", " + student.getString("nombres")).trim(),
+        numeroOrden: enrollment.getInt("numero_orden") || null
+      })
+    })
+    response = {
+      instancia: workflowDto(workflow),
+      etapa: approvals.length > 0 && approvedCount === approvals.length && missingEnrollments.length === 0 ? "LISTO_PARA_PDF" : "REVISION_DIRECTIVA",
+      totalBoletines: approvals.length,
+      visados: approvedCount,
+      alumnosSinIncorporar: missingEnrollments.length,
+      boletines: students
+    }
+  })
+  return c.json(200, response)
+}
+
+function synchronizeReviewEnrollments(c) {
+  noStore(c)
+  var body = new DynamicModel({ expectedRevision: -1 })
+  c.bind(body)
+  var expectedRevision = Number(body.expectedRevision)
+  if (!isFinite(expectedRevision) || expectedRevision < 0 || Math.floor(expectedRevision) !== expectedRevision) {
+    throw new BadRequestError("La revisión esperada no es válida.")
+  }
+  var result
+  var conflictRevision = null
+  $app.dao().runInTransaction((txDao) => {
+    var course = requireRecord(txDao, "cursos", c.pathParam("cursoId"))
+    var period = requireRecord(txDao, "periodos", c.pathParam("periodoId"))
+    var workflow = requireStaffWorkflow(txDao, course.getId(), period.getId())
+    if (workflow.getInt("revision") !== expectedRevision) {
+      conflictRevision = workflow.getInt("revision")
+      return
+    }
+    var approvals = findByFilter(
+      txDao,
+      "visados_boletin",
+      "instancia_id = {:workflowId}",
+      "",
+      { workflowId: workflow.getId() }
+    )
+    var missing = missingReviewEnrollments(txDao, workflow, approvals)
+    var collection = txDao.findCollectionByNameOrId("visados_boletin")
+    missing.forEach((enrollment) => {
+      var approval = new Record(collection)
+      approval.set("instancia_id", workflow.getId())
+      approval.set("inscripcion_id", enrollment.getId())
+      approval.set("estado", "PENDIENTE_REVISION")
+      approval.set("revision_contenido", 0)
+      txDao.saveRecord(approval)
+    })
+    if (missing.length > 0) {
+      workflow.set("revision", workflow.getInt("revision") + 1)
+      txDao.saveRecord(workflow)
+    }
+    result = { instancia: workflowDto(workflow), incorporados: missing.length }
+  })
+  if (conflictRevision !== null) {
+    return c.json(409, { message: "El curso cambió desde la última lectura.", currentRevision: conflictRevision })
+  }
+  return c.json(200, result)
+}
+
+function changeApproval(c, approve) {
+  noStore(c)
+  var body = new DynamicModel({ periodoId: "", expectedRevision: -1, expectedContentRevision: -1 })
+  c.bind(body)
+  var data = JSON.parse(JSON.stringify(body))
+  var expectedRevision = Number(data.expectedRevision)
+  var expectedContentRevision = Number(data.expectedContentRevision)
+  if (
+    !isFinite(expectedRevision) || expectedRevision < 0 || Math.floor(expectedRevision) !== expectedRevision ||
+    !isFinite(expectedContentRevision) || expectedContentRevision < 0 || Math.floor(expectedContentRevision) !== expectedContentRevision
+  ) {
+    throw new BadRequestError("La revisión esperada no es válida.")
+  }
+  var response
+  var conflictRevision = null
+  $app.dao().runInTransaction((txDao) => {
+    var enrollment = requireRecord(txDao, "inscripciones", c.pathParam("inscripcionId"))
+    var period = requireRecord(txDao, "periodos", stringValue(data.periodoId, 15))
+    if (enrollment.getString("ciclo_id") !== period.getString("ciclo_id")) {
+      throw new ForbiddenError("El alumno no pertenece al ciclo seleccionado.")
+    }
+    var workflow = requireStaffWorkflow(txDao, enrollment.getString("curso_id"), period.getId())
+    var approval = requireApproval(txDao, workflow, enrollment.getId())
+    if (workflow.getInt("revision") !== expectedRevision || approval.getInt("revision_contenido") !== expectedContentRevision) {
+      conflictRevision = workflow.getInt("revision")
+      return
+    }
+    if ((approve && approval.getString("estado") === "VISADO") || (!approve && approval.getString("estado") === "PENDIENTE_REVISION")) {
+      response = { instancia: workflowDto(workflow), boletin: approvalDto(approval) }
+      return
+    }
+    if (approve) {
+      if (!studentReadyForApproval(txDao, workflow, enrollment)) {
+        throw new BadRequestError("El boletín del alumno todavía está incompleto.")
+      }
+      approval.set("estado", "VISADO")
+      approval.set("revision_visada", approval.getInt("revision_contenido"))
+      approval.set("visado_at", new Date().toISOString())
+      approval.set("visado_por", c.get("authRecord").getId())
+    } else {
+      approval.set("estado", "PENDIENTE_REVISION")
+      approval.set("revision_visada", null)
+      approval.set("visado_at", "")
+      approval.set("visado_por", "")
+    }
+    txDao.saveRecord(approval)
+    workflow.set("revision", workflow.getInt("revision") + 1)
+    txDao.saveRecord(workflow)
+    response = { instancia: workflowDto(workflow), boletin: approvalDto(approval) }
+  })
+  if (conflictRevision !== null) {
+    return c.json(409, { message: "El curso cambió desde la última lectura.", currentRevision: conflictRevision })
+  }
+  return c.json(200, response)
+}
+
+function approveStudent(c) {
+  return changeApproval(c, true)
+}
+
+function revokeStudentApproval(c) {
+  return changeApproval(c, false)
+}
+
 function workflowDto(record) {
   return {
     id: record.getId(),
@@ -143,12 +336,13 @@ function deleteOtherTokens(dao, courseId, periodId, exceptId) {
 
 function courseMaterials(dao, access) {
   var courseId = access.getString("curso_id")
+  var period = requireRecord(dao, "periodos", access.getString("periodo_id"))
   return findByFilter(
     dao,
     "curso_materias",
-    "curso_id = {:courseId}",
+    "curso_id = {:courseId} && ciclo_id = {:cycleId}",
     "orden_visual",
-    { courseId: courseId }
+    { courseId: courseId, cycleId: period.getString("ciclo_id") }
   )
 }
 
@@ -219,6 +413,7 @@ function materialDto(dao, record) {
   return {
     id: record.getId(),
     cursoId: record.getString("curso_id"),
+    cicloId: record.getString("ciclo_id"),
     materiaId: subject.getId(),
     materiaNombre: subject.getString("nombre"),
     ordenVisual: record.getInt("orden_visual")
@@ -234,6 +429,42 @@ function isConductSubject(dao, courseMaterial) {
     name.indexOf("CONVIVENCIA") !== -1 ||
     name.indexOf("CONDUCTA") !== -1
   )
+}
+
+function studentReadyForApproval(dao, workflow, enrollment) {
+  var periodId = workflow.getString("periodo_id")
+  var materials = courseMaterials(dao, workflow)
+  if (materials.length === 0) return false
+  var allMaterialsComplete = materials.every((material) => {
+    var evaluation = findFirstByFilter(
+      dao,
+      "evaluaciones_materia",
+      "inscripcion_id = {:enrollmentId} && curso_materia_id = {:materialId} && periodo_id = {:periodId}",
+      { enrollmentId: enrollment.getId(), materialId: material.getId(), periodId: periodId }
+    )
+    if (!evaluation) return false
+    if (!isConductSubject(dao, material) && !evaluation.getString("calificacion_general_id")) return false
+    var criteria = criteriaMap(dao, material.getId())
+    var submitted = findByFilter(
+      dao,
+      "evaluaciones_criterios",
+      "evaluacion_materia_id = {:evaluationId}",
+      "",
+      { evaluationId: evaluation.getId() }
+    )
+    var selected = {}
+    submitted.forEach((item) => {
+      if (item.getString("valor_escala_id")) selected[item.getString("criterio_id")] = true
+    })
+    return Object.keys(criteria).every((criterionId) => Boolean(selected[criterionId]))
+  })
+  var closure = findFirstByFilter(
+    dao,
+    "cierres_periodo_alumno",
+    "inscripcion_id = {:enrollmentId} && periodo_id = {:periodId}",
+    { enrollmentId: enrollment.getId(), periodId: periodId }
+  )
+  return allMaterialsComplete && Boolean(closure)
 }
 
 function gradebookCompleteness(dao, access) {
@@ -316,6 +547,72 @@ function gradebookCompleteness(dao, access) {
     alumnosCompletos: enrollments.length - pending.length,
     pendientes: pending
   }
+}
+
+function requireConfigurationReady(dao, course, period) {
+  if (!configurationReady(dao, course, period)) {
+    throw new BadRequestError("Completá la escala y los cinco criterios de cada materia antes de emitir el enlace.")
+  }
+}
+
+function configurationReady(dao, course, period) {
+  if (!course.getString("escala_id")) {
+    return false
+  }
+  var access = {
+    getString: (field) => field === "curso_id" ? course.getId() : period.getId()
+  }
+  var materials = courseMaterials(dao, access)
+  if (materials.length === 0 || Object.keys(scaleValueMap(dao, access)).length === 0) {
+    return false
+  }
+  return materials.every((material) => Object.keys(criteriaMap(dao, material.getId())).length === 5)
+}
+
+function staffStages(c) {
+  noStore(c)
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    var period = requireRecord(txDao, "periodos", c.pathParam("periodoId"))
+    var courses = findByFilter(txDao, "cursos", "id != ''", "nombre", {})
+    response = courses.map((course) => {
+      var workflow = findWorkflow(txDao, course.getId(), period.getId())
+      var token = findFirstByFilter(
+        txDao,
+        "tokens_acceso_docente",
+        "curso_id = {:courseId} && periodo_id = {:periodId}",
+        { courseId: course.getId(), periodId: period.getId() }
+      )
+      var stage = "PENDIENTE_CONFIGURACION"
+      var approvals = []
+      var approvedCount = 0
+      if (!workflow) {
+        if (configurationReady(txDao, course, period)) stage = "PENDIENTE_EMISION"
+      } else if (workflow.getString("estado") === "BORRADOR_DOCENTE") {
+        stage = token ? "CARGA_DOCENTE" : "CARGA_PAUSADA"
+      } else {
+        approvals = findByFilter(
+          txDao,
+          "visados_boletin",
+          "instancia_id = {:workflowId}",
+          "",
+          { workflowId: workflow.getId() }
+        )
+        approvedCount = approvals.filter((approval) => approval.getString("estado") === "VISADO").length
+        stage = approvals.length > 0 && approvedCount === approvals.length && missingReviewEnrollments(txDao, workflow, approvals).length === 0
+          ? "LISTO_PARA_PDF"
+          : "REVISION_DIRECTIVA"
+      }
+      return {
+        cursoId: course.getId(),
+        etapa: stage,
+        revision: workflow ? workflow.getInt("revision") : null,
+        totalBoletines: approvals.length,
+        visados: approvedCount
+      }
+    })
+  })
+  return c.json(200, { cursos: response })
 }
 
 function context(c) {
@@ -675,10 +972,11 @@ function staffStudent(c) {
   $app.dao().runInTransaction((txDao) => {
     var enrollment = requireRecord(txDao, "inscripciones", enrollmentId)
     var period = requireRecord(txDao, "periodos", periodId)
-    if (enrollment.getString("ciclo_id") !== period.getString("ciclo_id") || enrollment.getString("estado") === "Baja") {
+    if (enrollment.getString("ciclo_id") !== period.getString("ciclo_id")) {
       throw new ForbiddenError("El alumno no pertenece al curso y ciclo seleccionados.")
     }
     var workflow = requireStaffWorkflow(txDao, enrollment.getString("curso_id"), period.getId())
+    requireApproval(txDao, workflow, enrollmentId)
     response = studentSnapshot(txDao, workflow, enrollment)
     response.revision = workflow.getInt("revision")
   })
@@ -701,16 +999,21 @@ function saveStaffStudent(c) {
     throw new BadRequestError("Se recibieron demasiadas materias.")
   }
 
+  if (evaluations.length === 0 && (!data.cierre || Object.keys(data.cierre).length === 0) && (!data.apoyos || Object.keys(data.apoyos).length === 0)) {
+    throw new BadRequestError("La corrección no contiene cambios.")
+  }
+
   var response
   var conflictRevision = null
   $app.dao().runInTransaction((txDao) => {
     var enrollment = requireRecord(txDao, "inscripciones", enrollmentId)
     var courseId = enrollment.getString("curso_id")
     var period = requireRecord(txDao, "periodos", periodId)
-    if (enrollment.getString("ciclo_id") !== period.getString("ciclo_id") || enrollment.getString("estado") === "Baja") {
+    if (enrollment.getString("ciclo_id") !== period.getString("ciclo_id")) {
       throw new ForbiddenError("El alumno no pertenece al curso y ciclo seleccionados.")
     }
     var workflow = requireStaffWorkflow(txDao, courseId, period.getId())
+    var approval = requireApproval(txDao, workflow, enrollmentId)
     if (workflow.getInt("revision") !== expectedRevision) {
       conflictRevision = workflow.getInt("revision")
       return
@@ -724,6 +1027,12 @@ function saveStaffStudent(c) {
     if (data.apoyos && Object.keys(data.apoyos).length > 0) {
       saveSupport(txDao, workflow, enrollment, data.apoyos)
     }
+    approval.set("revision_contenido", approval.getInt("revision_contenido") + 1)
+    approval.set("estado", "PENDIENTE_REVISION")
+    approval.set("revision_visada", null)
+    approval.set("visado_at", "")
+    approval.set("visado_por", "")
+    txDao.saveRecord(approval)
     workflow.set("revision", workflow.getInt("revision") + 1)
     txDao.saveRecord(workflow)
     response = { instancia: workflowDto(workflow) }
@@ -756,6 +1065,23 @@ function submitPeriod(c) {
     }
 
     applySupportDefaults(txDao, transactionalAccess)
+    var period = requireRecord(txDao, "periodos", transactionalAccess.getString("periodo_id"))
+    var enrollments = findByFilter(
+      txDao,
+      "inscripciones",
+      "curso_id = {:courseId} && ciclo_id = {:cycleId} && estado != 'Baja'",
+      "numero_orden",
+      { courseId: transactionalAccess.getString("curso_id"), cycleId: period.getString("ciclo_id") }
+    )
+    var approvalCollection = txDao.findCollectionByNameOrId("visados_boletin")
+    enrollments.forEach((enrollment) => {
+      var approval = new Record(approvalCollection)
+      approval.set("instancia_id", workflow.getId())
+      approval.set("inscripcion_id", enrollment.getId())
+      approval.set("estado", "PENDIENTE_REVISION")
+      approval.set("revision_contenido", 0)
+      txDao.saveRecord(approval)
+    })
     workflow.set("estado", "CONTROL_DIRECTIVO")
     workflow.set("revision", workflow.getInt("revision") + 1)
     workflow.set("enviado_at", new Date().toISOString())
@@ -800,6 +1126,7 @@ function issue(c) {
   }
   var response
   $app.dao().runInTransaction((txDao) => {
+    requireConfigurationReady(txDao, course, period)
     ensureDraftWorkflow(txDao, course.getId(), period.getId())
     deleteOtherTokens(txDao, course.getId(), period.getId(), "")
     var record = new Record(txDao.findCollectionByNameOrId("tokens_acceso_docente"))
@@ -881,6 +1208,11 @@ module.exports = {
   staffWorkflow: staffWorkflow,
   staffStudent: staffStudent,
   saveStaffStudent: saveStaffStudent,
+  staffReview: staffReview,
+  synchronizeReviewEnrollments: synchronizeReviewEnrollments,
+  staffStages: staffStages,
+  approveStudent: approveStudent,
+  revokeStudentApproval: revokeStudentApproval,
   submitPeriod: submitPeriod,
   issue: issue,
   rotate: rotate,

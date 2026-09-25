@@ -35,10 +35,10 @@ import {
   type ProgresoCursoResumen,
   type EstadoProgresoAlumno,
   type EstadoMonitoreoCurso,
+  type EtapaBoletinCurso,
   type CursoMonitoreoResumen,
   type MonitoreoInstitucionalData,
   type TokenAccesoDocente,
-  type InstanciaCargaBoletinRecord,
   type ProgresoConstructorCurso,
   esMateriaConducta,
 } from '../models/boletin.model';
@@ -57,13 +57,19 @@ const COLLECTION_EVALUACIONES_MATERIA = 'evaluaciones_materia';
 const COLLECTION_EVALUACIONES_CRITERIOS = 'evaluaciones_criterios';
 const COLLECTION_CIERRES_PERIODO = 'cierres_periodo_alumno';
 const COLLECTION_INSCRIPCIONES = 'inscripciones';
-const COLLECTION_INSTANCIAS_CARGA = 'instancias_carga_boletin';
 
 const isNotFoundResponse = (error: unknown) => (
   error instanceof ClientResponseError && error.status === 404
 );
 
 export const boletinService = {
+
+  getConfigurationStatus: async (cursoId: string, cicloId: string): Promise<{ editable: boolean }> => (
+    pb.send<{ editable: boolean }>(
+      `/api/cys/directivo/configuracion/estado/${cursoId}/${cicloId}`,
+      { requestKey: null },
+    )
+  ),
 
 
 
@@ -113,9 +119,9 @@ export const boletinService = {
 
 
 
-  getMateriasByCurso: async (cursoId: string): Promise<CursoMateria[]> => {
+  getMateriasByCurso: async (cursoId: string, cicloId: string): Promise<CursoMateria[]> => {
     const records = await pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
-      filter: `curso_id = "${cursoId}"`,
+      filter: `curso_id = "${cursoId}" && ciclo_id = "${cicloId}"`,
       expand: 'materia_id,curso_id',
       sort: 'orden_visual',
     });
@@ -124,44 +130,34 @@ export const boletinService = {
 
   assignMateriaToCurso: async (
     cursoId: string,
+    cicloId: string,
     materiaId: string,
     ordenVisual: number
   ): Promise<CursoMateria> => {
-    const record = await pb.collection(COLLECTION_CURSO_MATERIAS).create<CursoMateriaRecord>(
-      {
-        curso_id: cursoId,
-        materia_id: materiaId,
-        orden_visual: ordenVisual,
-      },
-      {
-        expand: 'materia_id,curso_id',
-      }
-    );
-    return cursoMateriaAdapter(record);
+    const record = await pb.send<{
+      id: string;
+      cursoId: string;
+      cicloId: string;
+      materiaId: string;
+      materiaNombre: string;
+      ordenVisual: number;
+    }>('/api/cys/directivo/configuracion/materias', {
+      method: 'POST',
+      body: { cursoId, cicloId, materiaId, ordenVisual },
+    });
+    return { ...record, createdAt: '', updatedAt: '' };
   },
 
   removeMateriaFromCurso: async (cursoMateriaId: string): Promise<boolean> => {
-    try {
-      const criterios = await pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>({
-        filter: `curso_materia_id = "${cursoMateriaId}"`,
-      });
-      for (const crit of criterios) {
-        await pb.collection(COLLECTION_CRITERIOS).delete(crit.id);
-      }
-    } catch (err) {
-      console.warn('Error al limpiar criterios previos de curso_materia:', err);
-    }
-
-    await pb.collection(COLLECTION_CURSO_MATERIAS).delete(cursoMateriaId);
+    await pb.send(`/api/cys/directivo/configuracion/materias/${cursoMateriaId}`, { method: 'DELETE' });
     return true;
   },
 
   updateCursoMateriasOrder: async (items: { id: string; orden_visual: number }[]): Promise<void> => {
-    for (const item of items) {
-      await pb.collection(COLLECTION_CURSO_MATERIAS).update(item.id, {
-        orden_visual: item.orden_visual,
-      });
-    }
+    await pb.send('/api/cys/directivo/configuracion/materias/orden', {
+      method: 'PUT',
+      body: { items },
+    });
   },
 
 
@@ -179,40 +175,16 @@ export const boletinService = {
     cursoMateriaId: string,
     criterios: CriterioFormItem[]
   ): Promise<CriterioEvaluacion[]> => {
-    const existentes = await pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>({
-      filter: `curso_materia_id = "${cursoMateriaId}"`,
+    const response = await pb.send<{ criterios: Array<{
+      id: string;
+      cursoMateriaId: string;
+      nombre: string;
+      ordenVisual: number;
+    }> }>(`/api/cys/directivo/configuracion/materias/${cursoMateriaId}/criterios`, {
+      method: 'PUT',
+      body: { criterios: criterios.filter((item) => item.nombre.trim()) },
     });
-
-    const existentesMap = new Map(existentes.map((c) => [c.id, c]));
-    const processedIds = new Set<string>();
-
-    for (const item of criterios) {
-      const trimmedNombre = item.nombre.trim();
-      if (!trimmedNombre) continue;
-
-      if (item.id && existentesMap.has(item.id)) {
-        await pb.collection(COLLECTION_CRITERIOS).update(item.id, {
-          nombre: trimmedNombre,
-          orden_visual: item.orden_visual,
-        });
-        processedIds.add(item.id);
-      } else {
-        const created = await pb.collection(COLLECTION_CRITERIOS).create<CriterioEvaluacionRecord>({
-          curso_materia_id: cursoMateriaId,
-          nombre: trimmedNombre,
-          orden_visual: item.orden_visual,
-        });
-        processedIds.add(created.id);
-      }
-    }
-
-    for (const exist of existentes) {
-      if (!processedIds.has(exist.id)) {
-        await pb.collection(COLLECTION_CRITERIOS).delete(exist.id);
-      }
-    }
-
-    return boletinService.getCriteriosByCursoMateria(cursoMateriaId);
+    return response.criterios.map((item) => ({ ...item, createdAt: '', updatedAt: '' }));
   },
 
 
@@ -297,9 +269,9 @@ export const boletinService = {
     }
   },
 
-  getAlumnosRegularesByCurso: async (
+  getAlumnosByCursoCiclo: async (
     cursoId: string,
-    cicloId?: string,
+    cicloId: string,
   ): Promise<AlumnoInscriptoRow[]> => {
     interface InscripcionRaw {
       id: string;
@@ -314,9 +286,8 @@ export const boletinService = {
       };
     }
 
-    const cycleFilter = cicloId ? ` && ciclo_id = "${cicloId}"` : '';
     const records = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<InscripcionRaw>({
-      filter: `curso_id = "${cursoId}"${cycleFilter} && estado != "Baja"`,
+      filter: `curso_id = "${cursoId}" && ciclo_id = "${cicloId}"`,
       expand: 'alumno_id',
     });
 
@@ -662,6 +633,7 @@ export const boletinService = {
     }
 
     try {
+      const periodo = await boletinService.getPeriodoById(periodoId);
 
       const cursosRecords = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
         sort: 'nombre',
@@ -678,7 +650,7 @@ export const boletinService = {
         alumno_id: string;
         estado: string;
       }>({
-        filter: 'estado != "Baja"',
+        filter: `ciclo_id = "${periodo.cicloId}" && estado != "Baja"`,
       });
 
 
@@ -694,6 +666,7 @@ export const boletinService = {
 
 
       const cmRecords = await pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
+        filter: `ciclo_id = "${periodo.cicloId}"`,
         expand: 'materia_id',
       });
       const cursoMateriasMap: Record<string, CursoMateria[]> = {};
@@ -716,19 +689,17 @@ export const boletinService = {
       }
 
 
-      const [tokenRecords, workflowRecords] = await Promise.all([
+      const [tokenRecords, stageResponse] = await Promise.all([
         accesoDocenteService.list(undefined, periodoId),
-        pb.collection(COLLECTION_INSTANCIAS_CARGA).getFullList<InstanciaCargaBoletinRecord>({
-          filter: `periodo_id = "${periodoId}"`,
-          fields: 'id,curso_id,estado',
-        }),
+        pb.send<{ cursos: Array<{
+          cursoId: string;
+          etapa: EtapaBoletinCurso;
+          visados: number;
+          totalBoletines: number;
+        }> }>(`/api/cys/directivo/etapas/${periodoId}`, { requestKey: null }),
       ]);
       const tokens = tokenRecords;
-      const deliveredCourseIds = new Set(
-        workflowRecords
-          .filter((workflow) => workflow.estado === 'CONTROL_DIRECTIVO')
-          .map((workflow) => workflow.curso_id),
-      );
+      const stagesByCourse = new Map(stageResponse.cursos.map((stage) => [stage.cursoId, stage]));
 
       const tokensCursoMap: Record<string, TokenAccesoDocente> = {};
       for (const t of tokens) {
@@ -799,7 +770,9 @@ export const boletinService = {
         const materiasCurso = cursoMateriasMap[cur.id] || [];
         const totalMateriasCurso = materiasCurso.length;
         const tokenGeneral = tokensCursoMap[cur.id];
-        const entregado = deliveredCourseIds.has(cur.id);
+        const stage = stagesByCourse.get(cur.id);
+        if (!stage) throw new Error(`Falta la etapa del curso ${cur.id}`);
+        const entregado = stage.etapa === 'REVISION_DIRECTIVA' || stage.etapa === 'LISTO_PARA_PDF';
 
         let alumnosCompletosCurso = 0;
         let alumnosEnProgresoCurso = 0;
@@ -830,17 +803,16 @@ export const boletinService = {
           : 0;
 
         let estado: EstadoMonitoreoCurso = 'SIN_INICIAR';
-        const tieneCarga = alumnosCompletosCurso > 0 || alumnosEnProgresoCurso > 0;
         if (entregado) {
           estado = 'COMPLETO';
           cursosCompletosCount++;
-        } else if (tieneCarga && !tokenGeneral) {
+        } else if (stage.etapa === 'CARGA_PAUSADA') {
           estado = 'PAUSADO';
           cursosPausadosCount++;
-        } else if (tieneCarga) {
+        } else if (stage.etapa === 'CARGA_DOCENTE') {
           estado = 'EN_PROGRESO';
           cursosEnProgresoCount++;
-        } else if (!tokenGeneral) {
+        } else if (stage.etapa === 'PENDIENTE_EMISION') {
           estado = 'SIN_ENLACE';
           cursosSinTokenCount++;
           cursosSinIniciarCount++;
@@ -859,6 +831,9 @@ export const boletinService = {
           alumnosSinIniciar: alumnosSinIniciarCurso,
           porcentaje: porcentajeCurso,
           estado,
+          etapa: stage.etapa,
+          visados: stage.visados,
+          totalBoletines: stage.totalBoletines,
           entregado,
           tokenDocente: tokenGeneral,
         });
@@ -874,20 +849,14 @@ export const boletinService = {
       };
     } catch (err) {
       console.error('[boletinService.getMonitoreoInstitucional] Error:', err);
-      return {
-        cursosCompletosCount: 0,
-        cursosEnProgresoCount: 0,
-        cursosPausadosCount: 0,
-        cursosSinIniciarCount: 0,
-        cursosSinTokenCount: 0,
-        cursos: [],
-      };
+      throw err;
     }
   },
-  getProgresoConstructorCursos: async (): Promise<Record<string, ProgresoConstructorCurso>> => {
+  getProgresoConstructorCursos: async (cicloId: string): Promise<Record<string, ProgresoConstructorCurso>> => {
     try {
       const [cursoMaterias, criterios] = await Promise.all([
         pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
+          filter: `ciclo_id = "${cicloId}"`,
           fields: 'id,curso_id,materia_id',
         }),
         pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>({

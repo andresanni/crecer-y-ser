@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 23 de septiembre de 2026.
+Actualizado: 25 de septiembre de 2026.
 
 ## Propósito
 
@@ -74,6 +74,12 @@ La carga institucional y la carga por enlace comparten el editor de boletín y s
 | `BORRADOR_DOCENTE` | Docente mediante enlace vigente | Envío completo a dirección |
 | `CONTROL_DIRECTIVO` | Usuario institucional autenticado | Estado terminal con revisión y corrección |
 
+La configuración de `curso_materias` pertenece ahora a un ciclo lectivo. Materias, orden y criterios se modifican mediante el gateway institucional y quedan cerrados para ese curso y ciclo desde la primera emisión de un enlace. La emisión exige escala con valores, materias y exactamente cinco criterios por materia. El constructor de un ciclo nuevo comienza con su propia malla; el catálogo de nombres de materias continúa compartido.
+
+`visados_boletin` representa la revisión individual posterior a la entrega, con una fila por instancia y matrícula. La entrega crea las filas en `PENDIENTE_REVISION`; dirección puede pasar cada una a `VISADO` con una revisión esperada. Una corrección retira automáticamente el visado del alumno afectado e incrementa su revisión de contenido. La revisión del curso permanece bajo `CONTROL_DIRECTIVO`; `LISTO_PARA_PDF` es una proyección autoritativa del servidor cuando todos los boletines requeridos están visados. No hay generación de PDF implementada todavía.
+
+El gateway institucional informa etapas de curso y conteos de visados; el tablero ya no deduce el workflow a partir de porcentajes. Los porcentajes siguen indicando progreso académico. Si ingresa un alumno después de la entrega, la revisión informa el desajuste y ofrece incorporarlo explícitamente sin alterar los boletines ya visados. Los alumnos dados de baja después de la entrega conservan su fila de revisión.
+
 El guardado docente es progresivo, pero el envío es atómico y sólo ocurre cuando el servidor verifica la completitud de todo el curso. El traspaso elimina inmediatamente la llave docente y no puede revertirse. Dirección recibe una revisión de solo lectura y corrige de forma atómica por materia: sólo una puede editarse por vez y sus acciones de guardado o descarte permanecen en la tarjeta correspondiente. La interfaz nunca monta dos formularios editables a la vez y las colecciones de notas, criterios y cierres no admiten escrituras directas desde clientes.
 
 Las correcciones directivas usan concurrencia optimista por curso y período. Un gateway de lectura devuelve la libreta completa y su revisión desde una misma transacción; cada guardado envía esa versión como precondición. PocketBase la compara dentro de la transacción y rechaza con `409` cualquier revisión vencida antes de escribir. Los cambios de instancia se distribuyen por Realtime; Zustand conserva versiones monotónicas e invalida tablero, resumen y detalle. Un cambio remoto nunca reemplaza un formulario con datos locales pendientes y un resultado de red incierto exige reconciliación antes de reintentar. `docs/concurrency-model.md` define este patrón para las próximas features multiusuario.
@@ -94,9 +100,11 @@ El producto es desktop first para equipos escolares, con validación prioritaria
 
 La sección institucional `Carga de notas` concentra el seguimiento y la operación por curso. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
 
-El tablero distingue el avance académico del control operativo. `Completado` exige una entrega en `CONTROL_DIRECTIVO`; `En progreso` indica un borrador con una llave emitida y `Pausado` identifica respuestas parciales sin llave docente. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
+El tablero distingue el avance académico del control operativo. Las etapas `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF` provienen del servidor. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
 
 ## Estado de calidad
+
+La evolución de visado y malla anual está implementada en la rama de trabajo y aplicada únicamente al PocketBase local. Se verificó en una base sintética aislada y sobre una copia consistente de la base de desarrollo existente. La generación dinámica del PDF y la promoción al VPS todavía no forman parte de este cambio.
 
 - `npm run lint`: sin errores ni advertencias al finalizar la modernización.
 - `npm run build`: correcto.

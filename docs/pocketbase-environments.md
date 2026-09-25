@@ -1,6 +1,6 @@
 # Entornos y promoción de PocketBase
 
-Actualizado: 23 de septiembre de 2026.
+Actualizado: 25 de septiembre de 2026.
 
 ## Decisión arquitectónica
 
@@ -9,9 +9,11 @@ Crecer y Ser opera con dos instancias independientes de PocketBase `0.22.17`:
 | Entorno | Ubicación | URL | Datos |
 | --- | --- | --- | --- |
 | Desarrollo | Equipo Windows ARM64, `C:\pocketbase` | `http://127.0.0.1:8090` | Datos descartables y una copia anonimizada de producción |
-| Producción | VPS, `/root/pb` | `https://alumnos-api.duckdns.org` | Datos escolares reales |
+| Producción | VPS, `/root/pb` | `https://alumnos-api.duckdns.org` | Datos de desarrollo descartables mientras la app no está operativa |
 
-No existe replicación continua ni sincronización bidireccional. Git transporta esquema, reglas, hooks, frontend y documentación. Los archivos `pb_data` son estado propio de cada entorno y nunca se promueven desde desarrollo a producción.
+No existe replicación continua ni sincronización bidireccional. Git transporta esquema, reglas, hooks, frontend y documentación. Los archivos `pb_data` son estado propio de cada entorno y nunca se promueven desde desarrollo a producción. Ambos entornos contienen por ahora datos de prueba, según la aclaración del responsable del proyecto.
+
+La evolución de visado y configuración anual agrega `visados_boletin` y `curso_materias.ciclo_id`. La migración asigna las materias anteriores al ciclo marcado como actual, o al más reciente si no hay uno marcado, y crea visados pendientes para las entregas existentes. No presupone aprobación de boletines históricos. Antes de promoverla al VPS se ensaya sobre una copia aislada de su base de desarrollo y se despliegan juntos los hooks y las migraciones nuevas; no se reemplaza `pb_data`.
 
 El repositorio continúa siendo la fuente canónica de:
 

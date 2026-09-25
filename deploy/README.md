@@ -39,6 +39,8 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `docs/gradebook-workflow-test-plan.md`: matriz funcional, de seguridad y concurrencia posterior al despliegue.
 - `docs/concurrency-model.md`: protocolo reusable de revisión, transacción, Realtime y estado local.
 
+Las migraciones `1790364300_added_gradebook_approvals.js` y `1790364400_versioned_curriculum_by_cycle.js` agregan el visado individual y la malla por ciclo. Los hooks `curriculum.pb.js` y `lib/curriculum.js` deben publicarse junto con `teacher_access.pb.js` y `lib/teacherAccess.js`. El publicador y el instalador remoto enumeran estos archivos explícitamente.
+
 `pb_data`, los backups, los certificados y cualquier `.env` son estado operativo o secretos y no deben incorporarse al repositorio.
 
 Los scripts locales de backup y restauración son compatibles con Windows PowerShell 5.1 y PowerShell 7. El contenedor `.cysbackup` usa AES-256-CBC, HMAC-SHA256 y PBKDF2-SHA256; la frase de recuperación se conserva únicamente en un gestor de contraseñas externo.

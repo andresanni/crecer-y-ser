@@ -10,6 +10,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   cursoId: string;
+  cicloId: string;
   cursoNombre: string;
   assignedMateriaIds: string[];
   onMateriasAdded: () => void;
@@ -27,6 +28,7 @@ const MateriaSelectorModalSession: React.FC<Props> = ({
   open,
   onClose,
   cursoId,
+  cicloId,
   cursoNombre,
   assignedMateriaIds,
   onMateriasAdded,
@@ -77,7 +79,7 @@ const MateriaSelectorModalSession: React.FC<Props> = ({
 
       let baseOrder = assignedMateriaIds.length + 1;
       for (const matId of selectedIds) {
-        await boletinService.assignMateriaToCurso(cursoId, matId, baseOrder++);
+        await boletinService.assignMateriaToCurso(cursoId, cicloId, matId, baseOrder++);
       }
       message.success(`${selectedIds.length} materia(s) agregada(s) a ${cursoNombre}`);
       onMateriasAdded();
