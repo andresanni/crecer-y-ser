@@ -17,7 +17,9 @@ Cada enlace docente representa la carga completa de un curso y un período escol
 
 `materia_id` permanece físicamente en `tokens_acceso_docente` como deuda de compatibilidad de esquema. El gateway rechaza los enlaces legados que tengan ese campo informado y también rechaza intentos de emitir nuevos enlaces con `materiaId`. El campo no forma parte del contrato vigente y podrá retirarse en una migración posterior independiente.
 
-El guardado persiste únicamente los bloques modificados. Durante la etapa de borrador seguirá permitiendo que la docente avance en sesiones breves sin enviar el curso completo.
+El guardado persiste las materias y los apoyos modificados; el cierre numérico del alumno acompaña cada operación docente. Durante la etapa de borrador seguirá permitiendo que la docente avance en sesiones breves sin enviar el curso completo.
+
+En el acceso docente, cada calificación seleccionada se presenta como un valor informativo con una acción `Modificar`; los campos todavía pendientes conservan el selector. Una materia modificada sólo puede guardarse cuando contiene todos sus criterios y, excepto en las materias formativas identificadas como conducta, la calificación general. El cierre del alumno acompaña cada guardado con asistencias, inasistencias y llegadas tarde numéricas; cero es un valor válido y observaciones es el único campo opcional de ese bloque.
 
 La emisión y la rotación muestran el enlace en una ventana de resultado. Mientras sea la llave vigente, dirección también puede recuperar el mismo secreto para copiarlo o compartirlo sin rotación.
 

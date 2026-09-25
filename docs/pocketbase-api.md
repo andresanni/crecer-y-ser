@@ -79,6 +79,8 @@ Recibe únicamente bloques modificados:
 
 PocketBase vuelve a validar enlace, curso, período, inscripción, cada materia enviada, criterios y escala. El guardado completo se ejecuta en una transacción.
 
+Cada materia incluida debe contener todos sus criterios configurados y, salvo las materias formativas identificadas como conducta, una calificación general. Cuando se incluye `cierre`, `asistencias`, `inasistencias` y `llegadasTarde` son enteros obligatorios entre 0 y 180; `0` representa ausencia de novedades. `observaciones` es opcional y puede enviarse como cadena vacía. El editor docente incluye el cierre en cada guardado para que esos tres valores siempre viajen explícitamente.
+
 Los enlaces legados que tengan `materia_id` informado no pueden usar el gateway. La emisión rechaza `materiaId`; todo acceso nuevo abarca el curso y período completos.
 
 ### `POST /api/cys/docente/enviar`

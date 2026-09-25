@@ -1,0 +1,28 @@
+.gradeSummary {
+  justify-content: flex-end;
+  min-width: 180px;
+}
+
+.gradeValue {
+  color: var(--cys-color-primary-text);
+}
+
+.gradeEditor {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  max-width: 100%;
+  width: 280px;
+}
+
+.gradeSelect {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 575px) {
+  .gradeSummary {
+    justify-content: space-between;
+    width: 100%;
+  }
+}
