@@ -387,11 +387,7 @@ function context(c) {
   })
 }
 
-function student(c) {
-  var access = requireAccess(c)
-  var dao = $app.dao()
-  requireDraftWorkflow(dao, access)
-  var enrollment = requireEnrollment(dao, access, c.pathParam("inscripcionId"))
+function studentSnapshot(dao, access, enrollment) {
   var periodId = access.getString("periodo_id")
   var materials = allowedMaterialMap(dao, access)
   var evaluations = findByFilter(
@@ -439,7 +435,7 @@ function student(c) {
     }
   }
 
-  return c.json(200, {
+  return {
     evaluaciones: evaluationDtos,
     cierre: closure,
     apoyos: {
@@ -447,7 +443,15 @@ function student(c) {
       poseeApoyos: enrollment.getString("posee_apoyos") || "-",
       cualesApoyos: enrollment.getString("cuales_apoyos")
     }
-  })
+  }
+}
+
+function student(c) {
+  var access = requireAccess(c)
+  var dao = $app.dao()
+  requireDraftWorkflow(dao, access)
+  var enrollment = requireEnrollment(dao, access, c.pathParam("inscripcionId"))
+  return c.json(200, studentSnapshot(dao, access, enrollment))
 }
 
 function stringValue(value, maxLength) {
@@ -663,6 +667,24 @@ function staffWorkflow(c) {
   return c.json(200, { instancia: workflow ? workflowDto(workflow) : null })
 }
 
+function staffStudent(c) {
+  noStore(c)
+  var enrollmentId = c.pathParam("inscripcionId")
+  var periodId = stringValue(c.queryParam("periodoId"), 15)
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    var enrollment = requireRecord(txDao, "inscripciones", enrollmentId)
+    var period = requireRecord(txDao, "periodos", periodId)
+    if (enrollment.getString("ciclo_id") !== period.getString("ciclo_id") || enrollment.getString("estado") === "Baja") {
+      throw new ForbiddenError("El alumno no pertenece al curso y ciclo seleccionados.")
+    }
+    var workflow = requireStaffWorkflow(txDao, enrollment.getString("curso_id"), period.getId())
+    response = studentSnapshot(txDao, workflow, enrollment)
+    response.revision = workflow.getInt("revision")
+  })
+  return c.json(200, response)
+}
+
 function saveStaffStudent(c) {
   noStore(c)
   var enrollmentId = c.pathParam("inscripcionId")
@@ -857,6 +879,7 @@ module.exports = {
   student: student,
   saveStudent: saveStudent,
   staffWorkflow: staffWorkflow,
+  staffStudent: staffStudent,
   saveStaffStudent: saveStaffStudent,
   submitPeriod: submitPeriod,
   issue: issue,

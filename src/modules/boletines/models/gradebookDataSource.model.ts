@@ -21,6 +21,7 @@ export interface GradebookSupportState {
 }
 
 export interface GradebookStudentSnapshot {
+  revision?: number;
   materias: Record<string, GradebookSubjectState>;
   cierre: CierrePeriodoAlumno | null;
   apoyos: GradebookSupportState | null;

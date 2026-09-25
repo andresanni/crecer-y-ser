@@ -21,19 +21,33 @@ export const gradebookScopeKey = (cursoId: string, periodoId: string) => `${curs
 export const useGradebookConcurrencyStore = create<GradebookConcurrencyState>((set) => ({
   workflows: {},
   periodSequences: {},
-  receiveWorkflow: (workflow) => set((state) => ({
-    workflows: {
-      ...state.workflows,
-      [gradebookScopeKey(workflow.cursoId, workflow.periodoId)]: workflow,
-    },
-    periodSequences: {
-      ...state.periodSequences,
-      [workflow.periodoId]: (state.periodSequences[workflow.periodoId] || 0) + 1,
-    },
-  })),
+  receiveWorkflow: (workflow) => set((state) => {
+    const key = gradebookScopeKey(workflow.cursoId, workflow.periodoId);
+    const current = state.workflows[key];
+    if (current && current.revision > workflow.revision) return state;
+    if (
+      current
+      && current.revision === workflow.revision
+      && current.id === workflow.id
+      && current.estado === workflow.estado
+    ) return state;
+    return {
+      workflows: {
+        ...state.workflows,
+        [key]: workflow,
+      },
+      periodSequences: {
+        ...state.periodSequences,
+        [workflow.periodoId]: (state.periodSequences[workflow.periodoId] || 0) + 1,
+      },
+    };
+  }),
   receiveDeletedWorkflow: (workflow) => set((state) => {
+    const key = gradebookScopeKey(workflow.cursoId, workflow.periodoId);
+    const current = state.workflows[key];
+    if (current && current.revision > workflow.revision) return state;
     const workflows = { ...state.workflows };
-    delete workflows[gradebookScopeKey(workflow.cursoId, workflow.periodoId)];
+    delete workflows[key];
     return {
       workflows,
       periodSequences: {

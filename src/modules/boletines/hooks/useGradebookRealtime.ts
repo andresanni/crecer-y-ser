@@ -24,7 +24,7 @@ export const useGradebookRealtime = () => {
     let active = true;
     let unsubscribe: (() => void) | undefined;
     const subscribe = async () => {
-      unsubscribe = await pb.collection('instancias_carga_boletin').subscribe<WorkflowRealtimeRecord>(
+      const stop = await pb.collection('instancias_carga_boletin').subscribe<WorkflowRealtimeRecord>(
         '*',
         (event: RecordSubscription<WorkflowRealtimeRecord>) => {
           if (!active) return;
@@ -37,8 +37,15 @@ export const useGradebookRealtime = () => {
           }
         },
       );
+      if (!active) {
+        stop();
+        return;
+      }
+      unsubscribe = stop;
     };
-    void subscribe();
+    void subscribe().catch((error) => {
+      if (active) console.error('No se pudo iniciar la sincronización de boletines.', error);
+    });
     return () => {
       active = false;
       unsubscribe?.();

@@ -96,6 +96,10 @@ El 16 de septiembre de 2026 se desplegó el control optimista directivo con el r
 - Interrumpir Realtime en la segunda sesión, guardar primero desde la otra y comprobar que `expectedRevision` provoca `409` sin escrituras parciales ni reintento automático.
 - Mantener dos sesiones institucionales editando materias diferentes y confirmar la política conservadora por curso y período: sólo el primer guardado se confirma; el segundo debe releer antes de aplicar su cambio.
 - Confirmar que el tablero de cursos y el resumen por alumno se recalculan tras cada revisión remota confirmada.
+- Leer una libreta mientras otra sesión guarda y comprobar que la respuesta contiene todos los bloques correspondientes a la misma `revision`, sin combinar datos anteriores y posteriores.
+- Modificar integración escolar desde una sesión, recibir Realtime en la segunda y comprobar que la relectura trae el valor confirmado desde `inscripciones`, no el valor cacheado del listado.
+- Entregar al store una revisión menor después de una mayor y confirmar que la versión local no retrocede ni invalida nuevamente el período.
+- Simular una respuesta perdida o `5xx`, confirmar que el borrador permanece visible y que Guardar sigue bloqueado hasta ejecutar la reconciliación autoritativa.
 
 ## Criterio de aprobación
 

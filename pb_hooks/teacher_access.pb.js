@@ -23,6 +23,11 @@ routerAdd("GET", "/api/cys/directivo/instancias/:cursoId/:periodoId", (c) => {
   return access.staffWorkflow(c)
 }, $apis.requireRecordAuth("users"))
 
+routerAdd("GET", "/api/cys/directivo/alumnos/:inscripcionId", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.staffStudent(c)
+}, $apis.requireRecordAuth("users"))
+
 routerAdd("PUT", "/api/cys/directivo/alumnos/:inscripcionId", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.saveStaffStudent(c)

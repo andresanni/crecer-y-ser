@@ -20,6 +20,29 @@ interface StaffSaveDto {
   instancia: StaffWorkflowStateDto;
 }
 
+interface StaffStudentDto {
+  revision: number;
+  evaluaciones: Array<{
+    id: string;
+    cursoMateriaId: string;
+    ppi: boolean;
+    calificacionGeneralId: string | null;
+    criterios: Array<{ criterioId: string; valorEscalaId: string }>;
+  }>;
+  cierre: {
+    id: string;
+    asistencias: number;
+    inasistencias: number;
+    llegadasTarde: number;
+    observaciones: string;
+  } | null;
+  apoyos: {
+    promocionoConAcompanamiento: string;
+    poseeApoyos: string;
+    cualesApoyos: string;
+  };
+}
+
 export class GradebookRevisionConflictError extends Error {
   readonly currentRevision?: number;
 
@@ -30,26 +53,51 @@ export class GradebookRevisionConflictError extends Error {
   }
 }
 
+export class GradebookSaveOutcomeUnknownError extends Error {
+  constructor() {
+    super('No se pudo confirmar el resultado del guardado.');
+    this.name = 'GradebookSaveOutcomeUnknownError';
+  }
+}
+
 const loadStaffStudent = async (
   inscripcionId: string,
   periodoId: string,
-  apoyos: {
-    promocionoConAcompanamiento?: string;
-    poseeApoyos?: string;
-    cualesApoyos?: string;
-  },
 ) => {
-  const [materias, cierre] = await Promise.all([
-    boletinService.getEvaluacionesByInscripcionAndPeriodo(inscripcionId, periodoId),
-    boletinService.getCierrePeriodoAlumno(inscripcionId, periodoId),
-  ]);
+  const dto = await pb.send<StaffStudentDto>(
+    `/api/cys/directivo/alumnos/${inscripcionId}?periodoId=${encodeURIComponent(periodoId)}`,
+    { requestKey: null },
+  );
+  const materias = Object.fromEntries(dto.evaluaciones.map((evaluacion) => [
+    evaluacion.cursoMateriaId,
+    {
+      evaluacionMateriaId: evaluacion.id,
+      ppi: evaluacion.ppi,
+      calificacionGeneralId: evaluacion.calificacionGeneralId,
+      criteriosValores: Object.fromEntries(evaluacion.criterios.map((criterio) => [
+        criterio.criterioId,
+        criterio.valorEscalaId,
+      ])),
+    },
+  ]));
   return {
+    revision: dto.revision,
     materias,
-    cierre,
+    cierre: dto.cierre ? {
+      id: dto.cierre.id,
+      inscripcionId,
+      periodoId,
+      asistencias: dto.cierre.asistencias,
+      inasistencias: dto.cierre.inasistencias,
+      llegadasTarde: dto.cierre.llegadasTarde,
+      observaciones: dto.cierre.observaciones,
+      createdAt: '',
+      updatedAt: '',
+    } : null,
     apoyos: {
-      promocionoConAcompanamiento: apoyos.promocionoConAcompanamiento || '-',
-      poseeApoyos: apoyos.poseeApoyos || '-',
-      cualesApoyos: apoyos.cualesApoyos || '',
+      promocionoConAcompanamiento: dto.apoyos.promocionoConAcompanamiento || '-',
+      poseeApoyos: dto.apoyos.poseeApoyos || '-',
+      cualesApoyos: dto.apoyos.cualesApoyos || '',
     },
   };
 };
@@ -75,6 +123,14 @@ const saveStaffStudent = async (data: GradebookStudentWrite) => {
       throw new GradebookRevisionConflictError(
         Number.isFinite(currentRevision) ? currentRevision : undefined,
       );
+    }
+    if (
+      !(error instanceof ClientResponseError)
+      || error.status === 0
+      || error.status === 408
+      || error.status >= 500
+    ) {
+      throw new GradebookSaveOutcomeUnknownError();
     }
     throw error;
   }
@@ -115,7 +171,7 @@ export const staffGradebookDataSource: GradebookDataSource = {
   getProgreso: (alumnos, cursoMaterias, criteriosMap, periodoId) => (
     boletinService.getProgresoCursoPeriodo(alumnos, cursoMaterias, criteriosMap, periodoId)
   ),
-  getAlumno: (alumno, periodoId) => loadStaffStudent(alumno.inscripcionId, periodoId, alumno),
+  getAlumno: (alumno, periodoId) => loadStaffStudent(alumno.inscripcionId, periodoId),
   saveAlumno: async (data) => {
     const response = await saveStaffStudent(data);
     return {
