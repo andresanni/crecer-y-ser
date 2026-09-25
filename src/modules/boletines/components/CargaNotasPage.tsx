@@ -1,19 +1,38 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CargaNotasDashboardPage } from './MonitoreoProgresoPage';
 import { PlanillaCalificacionesPage } from './PlanillaCalificacionesPage';
+import { SeleccionBimestrePage } from './SeleccionBimestrePage';
 
 export const CargaNotasPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const hasSelectedCourse = Boolean(searchParams.get('curso') && searchParams.get('periodo'));
+  const selectedCursoId = searchParams.get('curso');
+  const selectedPeriodoId = searchParams.get('periodo');
 
-  if (hasSelectedCourse) {
+  if (!selectedPeriodoId) {
     return (
-      <PlanillaCalificacionesPage
-        onBackToDashboard={() => navigate('/app/boletines/calificaciones')}
+      <SeleccionBimestrePage
+        onSelectPeriod={(periodoId) => (
+          navigate(`/app/boletines/calificaciones?periodo=${encodeURIComponent(periodoId)}`)
+        )}
       />
     );
   }
 
-  return <CargaNotasDashboardPage />;
+  if (selectedCursoId) {
+    return (
+      <PlanillaCalificacionesPage
+        onBackToDashboard={() => (
+          navigate(`/app/boletines/calificaciones?periodo=${encodeURIComponent(selectedPeriodoId)}`)
+        )}
+      />
+    );
+  }
+
+  return (
+    <CargaNotasDashboardPage
+      periodoId={selectedPeriodoId}
+      onBackToPeriodSelection={() => navigate('/app/boletines/calificaciones')}
+    />
+  );
 };

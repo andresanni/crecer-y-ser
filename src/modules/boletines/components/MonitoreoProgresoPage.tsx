@@ -9,7 +9,6 @@ import {
   Typography,
   Space,
   Button,
-  Select,
   Segmented,
   Tooltip,
   Empty,
@@ -26,6 +25,8 @@ import {
   ExclamationCircleOutlined,
   EyeOutlined,
   MinusCircleOutlined,
+  ArrowLeftOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
@@ -44,7 +45,15 @@ import { useGradebookConcurrencyStore } from '../store/gradebookConcurrencyStore
 const { Text } = Typography;
 type CursoMonitoreo = MonitoreoInstitucionalData['cursos'][number];
 
-export const CargaNotasDashboardPage: React.FC = () => {
+interface CargaNotasDashboardPageProps {
+  periodoId: string;
+  onBackToPeriodSelection: () => void;
+}
+
+export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = ({
+  periodoId,
+  onBackToPeriodSelection,
+}) => {
   const { message } = App.useApp();
   const navigate = useNavigate();
   const { cicloActual } = useAppStore();
@@ -53,9 +62,8 @@ export const CargaNotasDashboardPage: React.FC = () => {
 
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
-  const [selectedPeriodoId, setSelectedPeriodoId] = useState<string | null>(null);
   const realtimePeriodSequence = useGradebookConcurrencyStore((state) => (
-    selectedPeriodoId ? state.periodSequences[selectedPeriodoId] || 0 : 0
+    state.periodSequences[periodoId] || 0
   ));
 
   const [data, setData] = useState<MonitoreoInstitucionalData>({
@@ -87,9 +95,6 @@ export const CargaNotasDashboardPage: React.FC = () => {
           const periodosData = await boletinService.getPeriodosByCiclo(cicloActual.id);
           if (!active) return;
           setPeriodos(periodosData);
-          if (periodosData.length > 0) {
-            setSelectedPeriodoId((prev) => prev || periodosData[0].id);
-          }
         }
       } catch (err) {
         console.error(err);
@@ -107,12 +112,11 @@ export const CargaNotasDashboardPage: React.FC = () => {
   const [monitoreoRevision, setMonitoreoRevision] = useState(0);
   const loadMonitoreo = () => setMonitoreoRevision((value) => value + 1);
   useEffect(() => {
-    if (!selectedPeriodoId) return;
     let active = true;
     const fetchMonitoreo = async () => {
       try {
         setLoading(true);
-        const res = await boletinService.getMonitoreoInstitucional(selectedPeriodoId);
+        const res = await boletinService.getMonitoreoInstitucional(periodoId);
         if (active) setData(res);
       } catch (err) {
         if (!active) return;
@@ -124,7 +128,12 @@ export const CargaNotasDashboardPage: React.FC = () => {
     };
     void fetchMonitoreo();
     return () => { active = false; };
-  }, [selectedPeriodoId, monitoreoRevision, realtimePeriodSequence, message]);
+  }, [periodoId, monitoreoRevision, realtimePeriodSequence, message]);
+
+  const selectedPeriodo = useMemo(
+    () => periodos.find((periodo) => periodo.id === periodoId),
+    [periodoId, periodos],
+  );
 
   const cursosFiltrados = useMemo(() => {
     if (filtroEstado === 'TODOS') return data.cursos;
@@ -245,7 +254,7 @@ export const CargaNotasDashboardPage: React.FC = () => {
               disabled={!cur.entregado}
               onClick={() => {
                 if (!cur.entregado) return;
-                navigate(`/app/boletines/calificaciones?curso=${cur.cursoId}&periodo=${selectedPeriodoId || ''}`);
+                navigate(`/app/boletines/calificaciones?curso=${cur.cursoId}&periodo=${encodeURIComponent(periodoId)}`);
               }}
               style={{ borderRadius: 6, fontWeight: 600, fontSize: 11.5, height: 28 }}
             >
@@ -261,21 +270,13 @@ export const CargaNotasDashboardPage: React.FC = () => {
   return (
     <SectionLayout title="Carga de notas" icon={<TableOutlined />} actions={
         <Space size="middle" wrap>
-          { }
-          <div className={ui.inlineControls}>
-            <Text strong style={{ fontSize: 13, color: 'var(--cys-color-text-description)' }}>
-              Bimestre / Período:
-            </Text>
-            <Select
-              style={{ width: 170 }}
-              value={selectedPeriodoId}
-              onChange={(val) => setSelectedPeriodoId(val)}
-              options={periodos.map((p) => ({
-                value: p.id,
-                label: p.nombre,
-              }))}
-            />
-          </div>
+          <Button icon={<ArrowLeftOutlined />} onClick={onBackToPeriodSelection}>
+            Cambiar bimestre
+          </Button>
+
+          <Tag color="blue" icon={<CalendarOutlined />}>
+            {selectedPeriodo?.nombre || 'Bimestre seleccionado'}
+          </Tag>
 
           <Button
             icon={<LinkOutlined className={ui.primary} />}
@@ -353,7 +354,7 @@ export const CargaNotasDashboardPage: React.FC = () => {
         cursos={cursos}
         periodos={periodos}
         activeCursoId={selectedCursoForModal}
-        activePeriodoId={selectedPeriodoId}
+        activePeriodoId={periodoId}
       />
     </SectionLayout>
   );

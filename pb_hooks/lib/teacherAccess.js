@@ -576,10 +576,46 @@ function saveSupport(txDao, access, enrollment, input) {
   if (["SI", "NO", "-"].indexOf(promotion) === -1 || ["SI", "NO", "-"].indexOf(support) === -1) {
     throw new BadRequestError("El estado de apoyos no es válido.")
   }
+  var periodNumber = requireRecord(txDao, "periodos", access.getString("periodo_id")).getInt("numero_periodo")
+  if (periodNumber === 1 && support === "-") support = "NO"
+  if (periodNumber === 4 && promotion === "-") promotion = "NO"
+  var supportDetail = support === "SI" ? stringValue(input.cualesApoyos, 1000) : ""
+  if (support === "SI" && !supportDetail) {
+    throw new BadRequestError("El detalle de los apoyos es obligatorio.")
+  }
   enrollment.set("promociono_con_acompanamiento", promotion)
   enrollment.set("posee_apoyos", support)
-  enrollment.set("cuales_apoyos", support === "SI" ? stringValue(input.cualesApoyos, 1000) : "")
+  enrollment.set("cuales_apoyos", supportDetail)
   txDao.saveRecord(enrollment)
+}
+
+function applySupportDefaults(txDao, access) {
+  var period = requireRecord(txDao, "periodos", access.getString("periodo_id"))
+  var periodNumber = period.getInt("numero_periodo")
+  if (periodNumber !== 1 && periodNumber !== 4) return
+
+  var enrollments = findByFilter(
+    txDao,
+    "inscripciones",
+    "curso_id = {:courseId} && ciclo_id = {:cycleId} && estado != 'Baja'",
+    "numero_orden",
+    {
+      courseId: access.getString("curso_id"),
+      cycleId: period.getString("ciclo_id")
+    }
+  )
+
+  enrollments.forEach((enrollment) => {
+    if (periodNumber === 1 && ["SI", "NO"].indexOf(enrollment.getString("posee_apoyos")) === -1) {
+      enrollment.set("posee_apoyos", "NO")
+      enrollment.set("cuales_apoyos", "")
+      txDao.saveRecord(enrollment)
+    }
+    if (periodNumber === 4 && ["SI", "NO"].indexOf(enrollment.getString("promociono_con_acompanamiento")) === -1) {
+      enrollment.set("promociono_con_acompanamiento", "NO")
+      txDao.saveRecord(enrollment)
+    }
+  })
 }
 
 function saveStudent(c) {
@@ -697,6 +733,7 @@ function submitPeriod(c) {
       return
     }
 
+    applySupportDefaults(txDao, transactionalAccess)
     workflow.set("estado", "CONTROL_DIRECTIVO")
     workflow.set("revision", workflow.getInt("revision") + 1)
     workflow.set("enviado_at", new Date().toISOString())

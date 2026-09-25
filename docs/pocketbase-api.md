@@ -81,6 +81,8 @@ PocketBase vuelve a validar enlace, curso, período, inscripción, cada materia 
 
 Cada materia incluida debe contener todos sus criterios configurados y, salvo las materias formativas identificadas como conducta, una calificación general. Cuando se incluye `cierre`, `asistencias`, `inasistencias` y `llegadasTarde` son enteros obligatorios entre 0 y 180; `0` representa ausencia de novedades. `observaciones` es opcional y puede enviarse como cadena vacía. El editor docente incluye el cierre en cada guardado para que esos tres valores siempre viajen explícitamente.
 
+Los campos de integración son anuales aunque se completen desde el boletín. En el primer bimestre, `poseeApoyos` vacío o `-` se normaliza a `NO`; si su valor es `SI`, `cualesApoyos` es obligatorio y una cadena vacía produce `400`. En el cuarto se aplica la misma normalización a `promocionoConAcompanamiento`. El cliente envía el bloque `apoyos` en cada guardado docente de esos períodos y el envío final aplica la normalización a cualquier registro histórico que todavía permanezca sin especificar.
+
 Los enlaces legados que tengan `materia_id` informado no pueden usar el gateway. La emisión rechaza `materiaId`; todo acceso nuevo abarca el curso y período completos.
 
 ### `POST /api/cys/docente/enviar`
