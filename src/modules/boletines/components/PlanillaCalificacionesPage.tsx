@@ -1,6 +1,6 @@
 import ui from '../../../shared/styles/ui.module.css';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Card,
   Button,
@@ -211,7 +211,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     };
   }, [realtimeWorkflow, workflow]);
 
-  const handleSaveSuccess = (revision?: number) => {
+  const handleSaveSuccess = useCallback((revision?: number) => {
     if (revision === undefined) return;
     setWorkflow((current) => {
       if (!current) return current;
@@ -219,7 +219,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       receiveWorkflow(workflowVersionFromInstance(next));
       return next;
     });
-  };
+  }, [receiveWorkflow]);
 
   const selectedPeriodo = useMemo(
     () => periodos.find((p) => p.id === selectedPeriodoId),
@@ -329,6 +329,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
               readOnly
               workflowRevision={effectiveWorkflow.revision}
               onSaveSuccess={handleSaveSuccess}
+              onRevisionObserved={handleSaveSuccess}
               initialInscripcionId={reviewInscripcionId}
               onPendingChangesChange={setDetailHasChanges}
             />

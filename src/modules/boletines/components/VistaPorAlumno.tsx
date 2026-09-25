@@ -47,6 +47,7 @@ import {
 } from '@ant-design/icons';
 import {
   GradebookRevisionConflictError,
+  GradebookSaveOutcomeUnknownError,
   staffGradebookDataSource,
 } from '../services/gradebookDataSource.service';
 import {
@@ -85,6 +86,7 @@ interface VistaPorAlumnoProps {
   readOnly?: boolean;
   workflowRevision?: number;
   onSaveSuccess?: (revision?: number) => void;
+  onRevisionObserved?: (revision: number) => void;
   initialInscripcionId?: string;
   onPendingChangesChange?: (hasChanges: boolean) => void;
 }
@@ -123,6 +125,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   readOnly = false,
   workflowRevision,
   onSaveSuccess,
+  onRevisionObserved,
   initialInscripcionId,
   onPendingChangesChange,
 }) => {
@@ -133,6 +136,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const [editingGradeField, setEditingGradeField] = useState<string | null>(null);
   const [loadedRevision, setLoadedRevision] = useState<number | undefined>(workflowRevision);
   const [revisionConflict, setRevisionConflict] = useState(false);
+  const [saveOutcomeUnknown, setSaveOutcomeUnknown] = useState(false);
   const workflowRevisionRef = useRef(workflowRevision);
   useEffect(() => {
     workflowRevisionRef.current = workflowRevision;
@@ -286,6 +290,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         const currentAlumno = alumnos.find((alumno) => alumno.inscripcionId === selectedInscripcionId);
         if (!currentAlumno) return;
         const snapshot = await dataSource.getAlumno(currentAlumno, periodoId);
+        if (access.mode === 'staff' && snapshot.revision === undefined) {
+          throw new Error('La lectura institucional no informó su revisión.');
+        }
         const evalMap = snapshot.materias;
 
         const newMateriasState: Record<string, MateriaAlumnoState> = {};
@@ -332,8 +339,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           cualesApoyos: apoyos?.cualesApoyos || curAlu?.cualesApoyos || '',
           isModified: false,
         });
-        setLoadedRevision(workflowRevisionRef.current);
+        setLoadedRevision(snapshot.revision ?? workflowRevisionRef.current);
+        if (snapshot.revision !== undefined) onRevisionObserved?.(snapshot.revision);
         setRevisionConflict(false);
+        setSaveOutcomeUnknown(false);
         setAlumnoResult({ key: alumnoRequestKey, failed: false });
       } catch (err) {
         if (!active) return;
@@ -347,7 +356,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     };
     void fetchAlumnoData();
     return () => { active = false; };
-  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey, dataSource, access, periodo?.numeroPeriodo]);
+  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey, dataSource, access, periodo?.numeroPeriodo, onRevisionObserved]);
 
 
   const handleCriterioChange = (
@@ -459,6 +468,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const handleSave = async () => {
     if (
       hasRevisionConflict
+      || saveOutcomeUnknown
       || (readOnly && !editingMateriaId && !editingSection)
       || !selectedInscripcionId
       || !periodoId
@@ -534,6 +544,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       });
       setLoadedRevision(result.revision ?? workflowRevision);
       setRevisionConflict(false);
+      setSaveOutcomeUnknown(false);
 
       if (apoyos) {
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
@@ -652,6 +663,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         setRevisionConflict(true);
         onSaveSuccess?.(err.currentRevision);
         message.warning('Otra sesión actualizó esta planilla. No se guardó ningún cambio.');
+      } else if (err instanceof GradebookSaveOutcomeUnknownError) {
+        setSaveOutcomeUnknown(true);
+        message.warning('No se pudo confirmar el resultado. Comprobá la versión actual antes de continuar.');
       } else {
         message.error('Error al guardar datos del estudiante');
       }
@@ -729,12 +743,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         onOk: () => {
           setEditingMateriaId(null);
           setEditingSection(null);
+          setSaveOutcomeUnknown(false);
           setSelectedInscripcionId(targetStudent.inscripcionId);
         },
       });
     } else {
       setEditingMateriaId(null);
       setEditingSection(null);
+      setSaveOutcomeUnknown(false);
       setSelectedInscripcionId(targetStudent.inscripcionId);
     }
   };
@@ -913,22 +929,25 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
   return (
     <div className={ui.page}>
-      {hasRevisionConflict && (
+      {(hasRevisionConflict || saveOutcomeUnknown) && (
         <Alert
           type="warning"
           showIcon
-          title="Esta planilla cambió en otra sesión"
-          description="Tus cambios locales no se sobrescribieron ni se guardaron. Cargá la versión actual antes de continuar."
+          title={saveOutcomeUnknown ? 'No se pudo confirmar el guardado' : 'Esta planilla cambió en otra sesión'}
+          description={saveOutcomeUnknown
+            ? 'Los cambios permanecen en pantalla, pero es necesario comprobar el estado confirmado antes de volver a guardar.'
+            : 'Tus cambios locales no se sobrescribieron ni se guardaron. Cargá la versión actual antes de continuar.'}
           action={(
             <Button
               onClick={() => {
                 setEditingMateriaId(null);
                 setEditingSection(null);
                 setRevisionConflict(false);
+                setSaveOutcomeUnknown(false);
                 loadAlumnoData();
               }}
             >
-              Cargar versión actual
+              {saveOutcomeUnknown ? 'Comprobar estado actual' : 'Cargar versión actual'}
             </Button>
           )}
         />
@@ -1166,7 +1185,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   size="small"
                   icon={<SaveOutlined />}
                   loading={saving}
-                  disabled={!apoyoState.isModified || hasRevisionConflict}
+                  disabled={!apoyoState.isModified || hasRevisionConflict || saveOutcomeUnknown}
                   onClick={() => void handleSave()}
                 >
                   Guardar
@@ -1531,7 +1550,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                           size="small"
                           icon={<SaveOutlined />}
                           loading={saving}
-                          disabled={!mat.isModified || hasRevisionConflict}
+                          disabled={!mat.isModified || hasRevisionConflict || saveOutcomeUnknown}
                           onClick={() => void handleSave()}
                         >
                           Guardar
@@ -1852,7 +1871,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                         size="small"
                         icon={<SaveOutlined />}
                         loading={saving}
-                        disabled={!asistenciaState.isModified || hasRevisionConflict}
+                        disabled={!asistenciaState.isModified || hasRevisionConflict || saveOutcomeUnknown}
                         onClick={() => void handleSave()}
                       >
                         Guardar
@@ -2010,7 +2029,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Space size={10}>
             <Button
               onClick={() => void loadAlumnoData()}
-              disabled={saving || hasRevisionConflict}
+              disabled={saving || hasRevisionConflict || saveOutcomeUnknown}
               style={{ borderRadius: 8, fontWeight: 600 }}
             >
               Descartar
@@ -2020,7 +2039,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               icon={<SaveOutlined />}
               onClick={handleSave}
               loading={saving}
-              disabled={hasRevisionConflict}
+              disabled={hasRevisionConflict || saveOutcomeUnknown}
               className="btn-primary-gradient"
               style={{ borderRadius: 8, fontWeight: 600, paddingInline: 20 }}
             >

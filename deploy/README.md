@@ -91,7 +91,7 @@ systemctl show pocketbase -p ActiveState -p SubState -p ExecMainStatus -p ExecSt
 
 Además deben probarse la llave vigente, una llave reemplazada, una eliminada, una entrega completada y el rechazo de acceso anónimo a las colecciones protegidas. Nunca pegar secretos reales en logs, documentación o tickets.
 
-La protección optimista puede verificarse sin escribir en producción ejecutando `deploy/test-pocketbase-concurrency.sh` como `root` en el VPS. El script copia `pb_data` a un directorio temporal validado, levanta una instancia aislada en `127.0.0.1:18091`, construye un fixture directivo en esa copia, suscribe Realtime y envía dos correcciones vacías con la misma revisión. La aprobación exige un resultado `200 409`, un único incremento de revisión y la recepción del evento realtime. La copia y los procesos temporales se eliminan al salir.
+La protección optimista puede verificarse sin escribir en producción ejecutando `deploy/test-pocketbase-concurrency.sh` como `root` en el VPS. El script copia `pb_data` a un directorio temporal validado, levanta una instancia aislada en `127.0.0.1:18091`, construye un fixture directivo en esa copia, suscribe Realtime y envía dos cierres diferentes con la misma revisión. La aprobación exige un resultado `200 409`, un único incremento, la persistencia exclusiva del cierre ganador, una instantánea institucional con la revisión confirmada y la recepción del evento realtime. La copia y los procesos temporales se eliminan al salir.
 
 ## Recuperación
 

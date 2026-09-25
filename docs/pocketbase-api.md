@@ -2,7 +2,7 @@
 
 ## Principio de acceso
 
-Las pantallas institucionales autenticadas leen las colecciones estándar mediante el SDK de PocketBase. Las escrituras de la planilla pasan por el gateway para aplicar el workflow y una transacción única. La ruta pública `/carga` no consume colecciones: usa exclusivamente el gateway definido en `pb_hooks`.
+Las pantallas institucionales autenticadas leen las colecciones estándar mediante el SDK de PocketBase, excepto la instantánea editable de una libreta, que pasa por el gateway para asociar todos sus datos con una revisión coherente. Las escrituras de la planilla también pasan por el gateway para aplicar el workflow y una transacción única. La ruta pública `/carga` no consume colecciones: usa exclusivamente el gateway definido en `pb_hooks`.
 
 La credencial docente viaja en `X-CYS-Teacher-Token`. Las respuestas del gateway llevan `Cache-Control: no-store`. PocketBase conserva SHA-256 para validación, un prefijo administrativo y una copia cifrada que sólo puede recuperar una sesión institucional.
 
@@ -117,11 +117,19 @@ Estas rutas exigen una sesión de la colección `users`.
 
 Devuelve la instancia del curso y período, o `null` si la carga todavía no fue iniciada. El frontend usa el estado para montar el editor únicamente durante `CONTROL_DIRECTIVO`.
 
+### `GET /api/cys/directivo/alumnos/:inscripcionId?periodoId=:periodoId`
+
+Devuelve una instantánea institucional coherente con `revision`, evaluaciones, criterios evaluados, PPI, cierre e integración escolar. La pertenencia de la inscripción, el ciclo y el estado `CONTROL_DIRECTIVO` se validan antes de responder.
+
+Todos los bloques y la revisión se leen dentro de una misma transacción. Esa `revision` es la única precondición válida para el siguiente guardado; no debe sustituirse por una revisión recibida por Realtime ni combinarse con datos cacheados de otra consulta.
+
 ### `PUT /api/cys/directivo/alumnos/:inscripcionId`
 
 Recibe `periodoId`, `expectedRevision` y los mismos bloques `materias`, `cierre` y `apoyos` del guardado docente. Dentro de una única transacción valida que la instancia continúe en `CONTROL_DIRECTIVO`, comprueba curso y ciclo, compara la revisión y persiste todos los bloques modificados. Si la revisión coincide, incrementa `revision` y devuelve la instancia resultante.
 
 Si otra sesión confirmó una operación desde la lectura original, responde `409` con `currentRevision` y no modifica ningún registro. El cliente debe conservar el borrador local, informar el conflicto y exigir una relectura antes de volver a guardar. No se permite el reintento automático.
+
+Ante un timeout, fallo de red o `5xx`, el resultado se considera incierto. El cliente conserva lo visible, bloquea nuevos guardados y exige consultar la instantánea autoritativa antes de continuar.
 
 No existen rutas institucionales para devolver una entrega, cerrar la instancia o reabrirla. `CONTROL_DIRECTIVO` es terminal y sólo admite las correcciones realizadas mediante el endpoint de alumno.
 

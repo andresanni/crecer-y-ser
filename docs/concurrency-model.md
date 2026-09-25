@@ -21,7 +21,7 @@ La granularidad es deliberadamente conservadora: dos correcciones concurrentes d
 
 ## Protocolo de escritura directiva
 
-1. El cliente lee la instancia y conserva `revision` como versión base.
+1. El cliente obtiene los datos editables y `revision` desde una misma instantánea autoritativa.
 2. El formulario envía `expectedRevision` junto con los bloques modificados.
 3. Dentro de la transacción, PocketBase vuelve a validar autenticación, estado `CONTROL_DIRECTIVO`, alcance y versión.
 4. Si `expectedRevision` no coincide, el gateway responde `409` antes de modificar cualquier registro.
@@ -29,6 +29,14 @@ La granularidad es deliberadamente conservadora: dos correcciones concurrentes d
 6. El cliente adopta la nueva revisión sólo después de la confirmación del servidor.
 
 El chequeo y la escritura deben permanecer dentro de la misma transacción. Una comparación hecha únicamente en el navegador o antes de abrir la transacción presenta una ventana de carrera.
+
+## Protocolo de lectura autoritativa
+
+Una precondición de escritura sólo es válida si identifica exactamente los datos que la persona vio. Toda pantalla concurrente editable debe obtener el agregado y su revisión mediante una lectura coherente del servidor.
+
+Para la revisión de boletines, `GET /api/cys/directivo/alumnos/:inscripcionId?periodoId=:periodoId` lee dentro de una transacción la instancia, evaluaciones, criterios, PPI, integración escolar, asistencias y observaciones. La respuesta incluye la `revision` observada en esa misma transacción. El formulario usa exclusivamente esa revisión como `expectedRevision`.
+
+No se permite construir una instantánea editable combinando consultas independientes ni completar campos con datos cacheados de un listado. Realtime puede solicitar una nueva lectura, pero su revisión no debe asignarse retroactivamente a datos obtenidos antes del evento.
 
 ## Sincronización en el frontend
 
@@ -39,6 +47,8 @@ PocketBase Realtime publica cambios de `instancias_carga_boletin`. El store de c
 - Si el alumno visible no tiene cambios locales, el detalle se vuelve a leer.
 - Si existe una materia en edición o cambios locales, se marca conflicto y se bloquea el guardado. La interfaz conserva el borrador local hasta que la persona decide cargar la versión actual.
 - Aunque Realtime llegue tarde, se desconecte o se pierda, `expectedRevision` mantiene la integridad en el servidor.
+- Las revisiones del store son monotónicas: una respuesta HTTP o evento atrasado nunca puede reemplazar una revisión mayor.
+- Una suscripción que termina de abrirse después de desmontar la pantalla debe cerrarse inmediatamente y sus errores deben quedar contenidos.
 
 Zustand no replica la base completa ni mezcla respuestas optimistas. Almacena metadatos de coherencia; los datos académicos se vuelven a obtener desde PocketBase.
 
@@ -53,7 +63,9 @@ Una actualización visual inmediata posterior al guardado puede mejorar la respu
 - `400`: contrato o referencias inválidas; corregir la solicitud.
 - `401` o `403`: retirar la capacidad de edición y volver a validar sesión o workflow.
 - `409`: no se escribió nada; conservar el borrador local, informar el conflicto y exigir una lectura actual antes de otro guardado.
-- Fallo de red o `5xx`: el resultado puede ser incierto; consultar la revisión y el estado antes de permitir repetir una operación no idempotente.
+- Timeout, fallo de red o `5xx`: el resultado puede ser incierto; consultar la revisión y el estado antes de permitir repetir una operación no idempotente.
+
+Cuando el resultado es incierto, la interfaz conserva los cambios visibles, bloquea otro guardado y ofrece una acción explícita para cargar la instantánea confirmada. No debe asumir ni éxito ni fracaso a partir de la ausencia de respuesta.
 
 ## Lista de diseño para nuevas features
 
@@ -67,6 +79,8 @@ Antes de implementar una escritura multiusuario se debe definir:
 6. La política para datos locales pendientes frente a cambios remotos.
 7. La semántica de `409`, errores inciertos e idempotencia.
 8. Las pruebas con dos sesiones, incluyendo escrituras simultáneas, eventos retrasados y reconexión.
+9. Cómo se obtiene una instantánea coherente del agregado junto con su revisión.
+10. Cómo se impide que respuestas o eventos atrasados hagan retroceder la versión local.
 
 No se considera resuelta la concurrencia sólo por usar Realtime, deshabilitar botones en una pestaña o actualizar Zustand. La aprobación requiere una precondición autoritativa en el servidor y una prueba que demuestre ausencia de actualizaciones perdidas.
 

@@ -30,6 +30,7 @@ $anonymousStudents = Invoke-RestMethod -Uri "$BaseUri/api/collections/alumnos/re
 $authenticatedStudents = Invoke-RestMethod -Uri "$BaseUri/api/collections/alumnos/records?page=1&perPage=1&skipTotal=0" -Headers $appHeaders
 $teacherGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/docente/contexto" -SkipHttpErrorCheck
 $directorGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/directivo/instancias/aaaaaaaaaaaaaaa/bbbbbbbbbbbbbbb" -SkipHttpErrorCheck
+$directorStudentGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/directivo/alumnos/aaaaaaaaaaaaaaa?periodoId=bbbbbbbbbbbbbbb" -SkipHttpErrorCheck
 $listener = Get-NetTCPConnection -LocalPort 8090 -State Listen -ErrorAction SilentlyContinue
 
 $checks = [ordered]@{
@@ -40,6 +41,7 @@ $checks = [ordered]@{
   authenticatedDataAvailable = $authenticatedStudents.totalItems -gt 0
   teacherGatewayProtected = $teacherGateway.StatusCode -eq 401
   directorGatewayProtected = $directorGateway.StatusCode -eq 401
+  directorStudentGatewayProtected = $directorStudentGateway.StatusCode -eq 401
   loopbackOnly = $listener -and @($listener | Where-Object { $_.LocalAddress -ne "127.0.0.1" }).Count -eq 0
   teacherKeyValid = (Get-Content -Raw -LiteralPath $teacherKeyPath).Trim().Length -eq 32
 }
