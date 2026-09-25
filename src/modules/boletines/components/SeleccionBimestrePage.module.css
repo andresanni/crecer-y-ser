@@ -1,0 +1,113 @@
+.introduction {
+  background: linear-gradient(135deg, var(--cys-color-primary-bg), var(--cys-color-fill-quaternary));
+  border: 1px solid var(--cys-color-primary-border);
+}
+
+.introduction :global(.ant-card-body) {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.introductionIcon {
+  align-items: center;
+  background: var(--cys-color-primary);
+  border-radius: 12px;
+  color: #fff;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 24px;
+  height: 50px;
+  justify-content: center;
+  width: 50px;
+}
+
+.title {
+  margin: 0 !important;
+}
+
+.description {
+  margin: 4px 0 0 !important;
+}
+
+.introduction :global(.ant-tag) {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.loadingPanel {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 220px;
+}
+
+.periodCard {
+  align-items: center;
+  background: var(--cys-color-bg-container);
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: 14px;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 16px;
+  min-height: 104px;
+  padding: 18px 20px;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  width: 100%;
+}
+
+.periodCard:hover {
+  border-color: var(--cys-color-primary-border);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.12);
+  transform: translateY(-2px);
+}
+
+.periodCard:focus-visible {
+  outline: 3px solid var(--cys-color-primary-border);
+  outline-offset: 2px;
+}
+
+.periodNumber {
+  align-items: center;
+  background: var(--cys-color-primary);
+  border-radius: 12px;
+  color: #fff;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 22px;
+  font-weight: 800;
+  height: 54px;
+  justify-content: center;
+  width: 54px;
+}
+
+.periodInfo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.periodName {
+  font-size: 16px;
+}
+
+.arrow {
+  color: var(--cys-color-primary-text);
+  flex: 0 0 auto;
+  font-size: 16px;
+}
+
+@media (max-width: 575px) {
+  .introduction :global(.ant-card-body) {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .introduction :global(.ant-tag) {
+    margin-left: 66px;
+  }
+}

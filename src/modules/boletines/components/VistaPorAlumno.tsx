@@ -85,6 +85,8 @@ interface VistaPorAlumnoProps {
   readOnly?: boolean;
   workflowRevision?: number;
   onSaveSuccess?: (revision?: number) => void;
+  initialInscripcionId?: string;
+  onPendingChangesChange?: (hasChanges: boolean) => void;
 }
 
 interface MateriaAlumnoState {
@@ -121,10 +123,13 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   readOnly = false,
   workflowRevision,
   onSaveSuccess,
+  initialInscripcionId,
+  onPendingChangesChange,
 }) => {
   const { message, modal } = App.useApp();
   const dataSource = access.dataSource || staffGradebookDataSource;
   const [editingMateriaId, setEditingMateriaId] = useState<string | null>(null);
+  const [editingSection, setEditingSection] = useState<'support' | 'closure' | null>(null);
   const [editingGradeField, setEditingGradeField] = useState<string | null>(null);
   const [loadedRevision, setLoadedRevision] = useState<number | undefined>(workflowRevision);
   const [revisionConflict, setRevisionConflict] = useState(false);
@@ -148,7 +153,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   }, [valoresEscala]);
 
 
-  const [requestedInscripcionId, setSelectedInscripcionId] = useState<string | null>(null);
+  const [requestedInscripcionId, setSelectedInscripcionId] = useState<string | null>(
+    initialInscripcionId || null,
+  );
   const selectedInscripcionId = alumnos.some((alumno) => alumno.inscripcionId === requestedInscripcionId)
     ? requestedInscripcionId
     : alumnos[0]?.inscripcionId ?? null;
@@ -260,7 +267,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     const supportModified = access.canEditStudentSupport && Boolean(apoyoState.isModified);
     return matsModified || closureModified || supportModified;
   }, [access.canEditPeriodClosure, access.canEditStudentSupport, materiasState, asistenciaState, apoyoState]);
-  const refreshRevision = hasChanges || editingMateriaId ? loadedRevision : workflowRevision;
+  useEffect(() => {
+    onPendingChangesChange?.(hasChanges);
+  }, [hasChanges, onPendingChangesChange]);
+  const refreshRevision = hasChanges || editingMateriaId || editingSection ? loadedRevision : workflowRevision;
   const alumnoRequestKey = [selectedInscripcionId, periodoId, alumnoRevision, refreshRevision].join(':');
   const [alumnoResult, setAlumnoResult] = useState({ key: '', failed: false });
   const alumnoDataReady = alumnoResult.key === alumnoRequestKey && !alumnoResult.failed && !loadingEvaluaciones;
@@ -307,9 +317,18 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
         const apoyos = snapshot.apoyos;
+        const promocionoConAcompanamiento = apoyos?.promocionoConAcompanamiento
+          || curAlu?.promocionoConAcompanamiento
+          || '-';
+        const poseeApoyos = apoyos?.poseeApoyos || curAlu?.poseeApoyos || '-';
         setApoyoState({
-          promocionoConAcompanamiento: apoyos?.promocionoConAcompanamiento || curAlu?.promocionoConAcompanamiento || '-',
-          poseeApoyos: apoyos?.poseeApoyos || curAlu?.poseeApoyos || '-',
+          promocionoConAcompanamiento: periodo?.numeroPeriodo === 4
+            && promocionoConAcompanamiento === '-'
+            ? 'NO'
+            : promocionoConAcompanamiento,
+          poseeApoyos: periodo?.numeroPeriodo === 1 && poseeApoyos === '-'
+            ? 'NO'
+            : poseeApoyos,
           cualesApoyos: apoyos?.cualesApoyos || curAlu?.cualesApoyos || '',
           isModified: false,
         });
@@ -328,7 +347,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     };
     void fetchAlumnoData();
     return () => { active = false; };
-  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey, dataSource, access]);
+  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey, dataSource, access, periodo?.numeroPeriodo]);
 
 
   const handleCriterioChange = (
@@ -434,11 +453,26 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     workflowRevision !== undefined
       && loadedRevision !== undefined
       && workflowRevision !== loadedRevision
-      && (hasChanges || editingMateriaId),
+      && (hasChanges || editingMateriaId || editingSection),
   );
 
   const handleSave = async () => {
-    if (hasRevisionConflict || (readOnly && !editingMateriaId) || !selectedInscripcionId || !periodoId || !alumnoDataReady) return;
+    if (
+      hasRevisionConflict
+      || (readOnly && !editingMateriaId && !editingSection)
+      || !selectedInscripcionId
+      || !periodoId
+      || !alumnoDataReady
+    ) return;
+
+    if (
+      isPrimerBimestre
+      && apoyoState.poseeApoyos === 'SI'
+      && !apoyoState.cualesApoyos.trim()
+    ) {
+      message.warning('Detallá cuáles son los apoyos antes de guardar.');
+      return;
+    }
 
     const incompleteMateria = cursoMaterias.find((cm) => {
       const mat = materiasState[cm.id];
@@ -480,7 +514,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           observaciones: asistenciaState.observaciones,
         }
         : undefined;
-      const apoyos = access.canEditStudentSupport && apoyoState.isModified
+      const shouldPersistSupportDefaults = access.mode === 'magic-link'
+        && (isPrimerBimestre || isCuartoBimestre);
+      const apoyos = access.canEditStudentSupport
+        && (apoyoState.isModified || shouldPersistSupportDefaults)
         ? {
           promocionoConAcompanamiento: apoyoState.promocionoConAcompanamiento,
           poseeApoyos: apoyoState.poseeApoyos,
@@ -601,7 +638,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       });
       setAsistenciaState((prev) => ({ ...prev, isModified: false }));
       setEditingGradeField(null);
-      if (readOnly) setEditingMateriaId(null);
+      if (readOnly) {
+        setEditingMateriaId(null);
+        setEditingSection(null);
+      }
       onSaveSuccess?.(result.revision);
     } catch (err) {
       console.error(err);
@@ -688,11 +728,13 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         cancelText: 'Permanecer aquí',
         onOk: () => {
           setEditingMateriaId(null);
+          setEditingSection(null);
           setSelectedInscripcionId(targetStudent.inscripcionId);
         },
       });
     } else {
       setEditingMateriaId(null);
+      setEditingSection(null);
       setSelectedInscripcionId(targetStudent.inscripcionId);
     }
   };
@@ -711,6 +753,32 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     modal.confirm({
       title: '¿Descartar los cambios de esta materia?',
       content: 'La materia volverá a mostrar las calificaciones guardadas.',
+      okText: 'Descartar cambios',
+      cancelText: 'Continuar editando',
+      okButtonProps: { danger: true },
+      onOk: discard,
+    });
+  };
+
+  const handleDiscardSection = (
+    section: 'support' | 'closure',
+    isModified: boolean,
+  ) => {
+    const discard = () => {
+      setEditingSection(null);
+      if (isModified) loadAlumnoData();
+    };
+
+    if (!isModified) {
+      discard();
+      return;
+    }
+
+    modal.confirm({
+      title: section === 'support'
+        ? '¿Descartar los cambios de integración escolar?'
+        : '¿Descartar los cambios del cierre?',
+      content: 'La sección volverá a mostrar los datos guardados.',
       okText: 'Descartar cambios',
       cancelText: 'Continuar editando',
       okButtonProps: { danger: true },
@@ -745,6 +813,65 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     const percent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
     return { completedCount, total, percent };
   }, [cursoMaterias, materiasState, criteriosMap]);
+
+  const studentIdentity = currentAlumno ? (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        cursor: access.mode === 'magic-link' ? 'pointer' : 'default',
+        padding: '4px 10px',
+        borderRadius: 8,
+        transition: 'all 0.15s ease',
+        minWidth: 0,
+      }}
+    >
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          background: '#2563eb',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#ffffff',
+          fontWeight: 700,
+          fontSize: 13,
+          flexShrink: 0,
+          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+        }}
+      >
+        {currentAlumno.numeroOrden || <UserOutlined />}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+        <div className={ui.tightRow}>
+          <Typography.Text strong ellipsis style={{ fontSize: 15, color: 'var(--cys-color-text)' }}>
+            {currentAlumno.nombreCompleto}
+          </Typography.Text>
+          {access.mode === 'magic-link' && (
+            <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', flexShrink: 0 }} />
+          )}
+        </div>
+        <div className={ui.inlineControls}>
+          <Tag
+            color={stats.percent === 100 ? 'green' : 'blue'}
+            style={{ fontWeight: 700, margin: 0, fontSize: 10.5, padding: '1px 6px' }}
+          >
+            {stats.completedCount}/{stats.total} materias ({stats.percent}%)
+          </Tag>
+          <Progress
+            percent={stats.percent}
+            showInfo={false}
+            strokeColor={stats.percent === 100 ? '#10b981' : '#2563eb'}
+            size="small"
+            style={{ width: 110, margin: 0 }}
+          />
+        </div>
+      </div>
+    </div>
+  ) : null;
 
 
   const alumnosDrawerFiltrados = useMemo(() => {
@@ -796,6 +923,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             <Button
               onClick={() => {
                 setEditingMateriaId(null);
+                setEditingSection(null);
                 setRevisionConflict(false);
                 loadAlumnoData();
               }}
@@ -838,7 +966,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 Anterior
               </Button>
             </Tooltip>
-            <Popover
+            {access.mode === 'magic-link' ? (
+              <Popover
               open={stickySelectorOpen}
               onOpenChange={setStickySelectorOpen}
               trigger="click"
@@ -961,61 +1090,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               </div>
             }
             >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  cursor: 'pointer',
-                  padding: '4px 10px',
-                  borderRadius: 8,
-                  transition: 'all 0.15s ease',
-                  minWidth: 0,
-                }}
-              >
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 8,
-                    background: '#2563eb',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: 13,
-                    flexShrink: 0,
-                    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-                  }}
-                >
-                  {currentAlumno.numeroOrden || <UserOutlined />}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                  <div className={ui.tightRow}>
-                    <Typography.Text strong ellipsis style={{ fontSize: 15, color: 'var(--cys-color-text)' }}>
-                      {currentAlumno.nombreCompleto}
-                    </Typography.Text>
-                    <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', flexShrink: 0 }} />
-                  </div>
-                  <div className={ui.inlineControls}>
-                    <Tag
-                      color={stats.percent === 100 ? 'green' : 'blue'}
-                      style={{ fontWeight: 700, margin: 0, fontSize: 10.5, padding: '1px 6px' }}
-                    >
-                      {stats.completedCount}/{stats.total} materias ({stats.percent}%)
-                    </Tag>
-                    <Progress
-                      percent={stats.percent}
-                      showInfo={false}
-                      strokeColor={stats.percent === 100 ? '#10b981' : '#2563eb'}
-                      size="small"
-                      style={{ width: 110, margin: 0 }}
-                    />
-                  </div>
-                </div>
-              </div>
+              {studentIdentity}
             </Popover>
+            ) : studentIdentity}
             <Tooltip title="Alumno siguiente">
               <Button
                 type="text"
@@ -1029,13 +1106,15 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <Button
-              icon={<DashboardOutlined className={ui.primary} />}
-              onClick={() => setDrawerResumenOpen(true)}
-              style={{ borderRadius: 8, fontWeight: 600 }}
-            >
-              Guía del Curso
-            </Button>
+            {access.mode === 'magic-link' && (
+              <Button
+                icon={<DashboardOutlined className={ui.primary} />}
+                onClick={() => setDrawerResumenOpen(true)}
+                style={{ borderRadius: 8, fontWeight: 600 }}
+              >
+                Guía del Curso
+              </Button>
+            )}
             {access.canSubmitPeriod && (
               <Button
                 type="primary"
@@ -1064,13 +1143,48 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             }}
             styles={{ body: { padding: '12px 16px' } }}
           >
-        <div style={{ marginBottom: 12 }}>
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <Space size={6} align="center">
             <SafetyCertificateOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 15 }} />
             <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
               Apoyos e Integración Escolar (Trayectoria Anual)
             </Typography.Text>
           </Space>
+          {readOnly && (isPrimerBimestre || isCuartoBimestre) && (
+            editingSection === 'support' ? (
+              <Space size={6}>
+                <Button
+                  size="small"
+                  icon={<CloseOutlined />}
+                  disabled={saving}
+                  onClick={() => handleDiscardSection('support', Boolean(apoyoState.isModified))}
+                >
+                  Descartar
+                </Button>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<SaveOutlined />}
+                  loading={saving}
+                  disabled={!apoyoState.isModified || hasRevisionConflict}
+                  onClick={() => void handleSave()}
+                >
+                  Guardar
+                </Button>
+              </Space>
+            ) : (
+              <Tooltip title={editingMateriaId || editingSection ? 'Guardá o descartá la sección que estás editando.' : 'Editar integración escolar'}>
+                <Button
+                  size="small"
+                  icon={<EditOutlined />}
+                  disabled={Boolean(editingMateriaId || editingSection)}
+                  onClick={() => setEditingSection('support')}
+                >
+                  Editar
+                </Button>
+              </Tooltip>
+            )
+          )}
         </div>
 
         <Row gutter={[16, 14]}>
@@ -1117,7 +1231,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     </Typography.Text>
                     <Tooltip title={!isPrimerBimestre ? 'Los dispositivos de apoyo se establecen al inicio del ciclo lectivo en el 1° Bimestre.' : undefined}>
                       <div>
-                        {readOnly ? (
+                        {readOnly && (editingSection !== 'support' || !isPrimerBimestre) ? (
                           <Typography.Text strong>
                             {apoyoState.poseeApoyos === 'SI' ? 'Sí' : apoyoState.poseeApoyos === 'NO' ? 'No' : 'Sin especificar'}
                           </Typography.Text>
@@ -1131,7 +1245,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             options={[
                               { value: 'SI', label: 'Sí' },
                               { value: 'NO', label: 'No' },
-                              { value: '-', label: 'Sin especificar (—)' },
+                              ...(!isPrimerBimestre
+                                ? [{ value: '-', label: 'Sin especificar (—)' }]
+                                : []),
                             ]}
                           />
                         )}
@@ -1151,7 +1267,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     >
                       ¿Cuáles? {isPrimerBimestre && apoyoState.poseeApoyos === 'SI' && <span style={{ color: '#ef4444' }}>*</span>}
                     </Typography.Text>
-                    {readOnly ? (
+                    {readOnly && (editingSection !== 'support' || !isPrimerBimestre) ? (
                       <Typography.Text strong>
                         {apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos || 'Sin detalle' : 'No corresponde'}
                       </Typography.Text>
@@ -1224,7 +1340,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   }
                 >
                   <div>
-                    {readOnly ? (
+                    {readOnly && (editingSection !== 'support' || !isCuartoBimestre) ? (
                       <Typography.Text strong>
                         {apoyoState.promocionoConAcompanamiento === 'SI' ? 'Sí' : apoyoState.promocionoConAcompanamiento === 'NO' ? 'No' : 'Sin especificar'}
                       </Typography.Text>
@@ -1238,7 +1354,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                         options={[
                           { value: 'SI', label: 'Sí' },
                           { value: 'NO', label: 'No' },
-                          { value: '-', label: 'Sin especificar (—)' },
+                          ...(!isCuartoBimestre
+                            ? [{ value: '-', label: 'Sin especificar (—)' }]
+                            : []),
                         ]}
                       />
                     )}
@@ -1273,7 +1391,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             const esConducta = esMateriaConducta(cm.materiaNombre);
             const isEditingMateria = editingMateriaId === cm.id;
             const isMateriaReadOnly = readOnly && !isEditingMateria;
-            const anotherMateriaIsEditing = Boolean(editingMateriaId && !isEditingMateria);
+            const anotherEditorIsActive = Boolean(
+              (editingMateriaId && !isEditingMateria) || editingSection,
+            );
 
             const isMateriaComplete =
               crits.length > 0 &&
@@ -1365,7 +1485,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
                   { }
                   <Space size={8} align="center" wrap style={{ flexShrink: 0 }}>
-                    {!esConducta && (
+                    {!esConducta && (!readOnly || isMateriaReadOnly) && (
                       <Space size={6} align="center" style={{ flexShrink: 0 }}>
                         <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
                           <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
@@ -1373,7 +1493,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                           </Tag>
                         </Tooltip>
                         {isMateriaReadOnly ? (
-                          <Typography.Text strong>{mat.ppi ? 'Sí' : 'No'}</Typography.Text>
+                          <Typography.Text strong style={{ color: '#ffffff' }}>
+                            {mat.ppi ? 'Sí' : 'No'}
+                          </Typography.Text>
                         ) : (
                           <Switch
                             size="small"
@@ -1387,7 +1509,15 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       </Space>
                     )}
                     {readOnly && (isEditingMateria ? (
-                      <Space size={6}>
+                      <Space
+                        size={6}
+                        style={{
+                          padding: 4,
+                          borderRadius: 9,
+                          background: 'rgba(255, 255, 255, 0.96)',
+                          boxShadow: '0 2px 8px rgba(15, 23, 42, 0.18)',
+                        }}
+                      >
                         <Button
                           size="small"
                           icon={<CloseOutlined />}
@@ -1408,11 +1538,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                         </Button>
                       </Space>
                     ) : (
-                      <Tooltip title={anotherMateriaIsEditing ? 'Guardá o descartá la materia que estás editando.' : 'Editar únicamente esta materia'}>
+                      <Tooltip title={anotherEditorIsActive ? 'Guardá o descartá la sección que estás editando.' : 'Editar únicamente esta materia'}>
                         <Button
                           size="small"
                           icon={<EditOutlined />}
-                          disabled={anotherMateriaIsEditing}
+                          disabled={anotherEditorIsActive}
                           onClick={() => setEditingMateriaId(cm.id)}
                         >
                           Editar
@@ -1423,6 +1553,39 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 </div>
 
                 <Divider style={{ margin: '8px 0 10px' }} />
+
+                {readOnly && isEditingMateria && !esConducta && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                      padding: '9px 12px',
+                      marginBottom: 10,
+                      borderRadius: 9,
+                      background: 'rgba(124, 58, 237, 0.07)',
+                      border: '1px solid rgba(124, 58, 237, 0.2)',
+                    }}
+                  >
+                    <Space size={8}>
+                      <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
+                        <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
+                          PPI
+                        </Tag>
+                      </Tooltip>
+                      <Typography.Text strong>Proyecto Pedagógico Individual</Typography.Text>
+                    </Space>
+                    <Switch
+                      checked={mat.ppi}
+                      onChange={(checked) => handlePpiChange(cm.id, checked)}
+                      checkedChildren="SÍ"
+                      unCheckedChildren="NO"
+                      style={{ background: mat.ppi ? '#7c3aed' : undefined }}
+                    />
+                  </div>
+                )}
 
                 { }
                 {crits.length === 0 ? (
@@ -1661,6 +1824,54 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           { }
           {access.canEditPeriodClosure && (
             <>
+              {readOnly && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Typography.Text strong style={{ fontSize: 14.5 }}>
+                    Cierre del alumno
+                  </Typography.Text>
+                  {editingSection === 'closure' ? (
+                    <Space size={6}>
+                      <Button
+                        size="small"
+                        icon={<CloseOutlined />}
+                        disabled={saving}
+                        onClick={() => handleDiscardSection('closure', Boolean(asistenciaState.isModified))}
+                      >
+                        Descartar
+                      </Button>
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<SaveOutlined />}
+                        loading={saving}
+                        disabled={!asistenciaState.isModified || hasRevisionConflict}
+                        onClick={() => void handleSave()}
+                      >
+                        Guardar
+                      </Button>
+                    </Space>
+                  ) : (
+                    <Tooltip title={editingMateriaId || editingSection ? 'Guardá o descartá la sección que estás editando.' : 'Editar asistencias y observaciones'}>
+                      <Button
+                        size="small"
+                        icon={<EditOutlined />}
+                        disabled={Boolean(editingMateriaId || editingSection)}
+                        onClick={() => setEditingSection('closure')}
+                      >
+                        Editar
+                      </Button>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
               <Card
                 style={{
                   borderRadius: 14,
@@ -1679,7 +1890,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     ASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
-                  {readOnly ? <Typography.Text strong>{asistenciaState.asistencias}</Typography.Text> : (
+                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.asistencias}</Typography.Text> : (
                     <InputNumber
                       aria-required="true"
                       min={0}
@@ -1697,7 +1908,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     INASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
-                  {readOnly ? <Typography.Text strong>{asistenciaState.inasistencias}</Typography.Text> : (
+                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.inasistencias}</Typography.Text> : (
                     <InputNumber
                       aria-required="true"
                       min={0}
@@ -1715,7 +1926,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     LLEGADAS TARDE <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
-                  {readOnly ? <Typography.Text strong>{asistenciaState.llegadasTarde}</Typography.Text> : (
+                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.llegadasTarde}</Typography.Text> : (
                     <InputNumber
                       aria-required="true"
                       min={0}
@@ -1746,7 +1957,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     OBSERVACIONES
                   </Typography.Text>
-                  {readOnly ? (
+                  {readOnly && editingSection !== 'closure' ? (
                     <Typography.Paragraph style={{ margin: 0 }}>
                       {asistenciaState.observaciones || 'Sin observaciones'}
                     </Typography.Paragraph>
