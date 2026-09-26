@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowRightOutlined, CheckCircleOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
-import { Card, Col, Empty, Input, Row, Space, Tag, Typography } from 'antd';
+import { Card, Col, Empty, Input, Row, Tag, Typography } from 'antd';
 import type { AlumnoInscriptoRow } from '../models/boletin.model';
+import type { StaffReviewBulletin } from '../services/gradebookDataSource.service';
 import styles from './RevisionCursoOverview.module.css';
 
 interface RevisionCursoOverviewProps {
   alumnos: AlumnoInscriptoRow[];
+  boletines: StaffReviewBulletin[];
   onSelectStudent: (inscripcionId: string) => void;
 }
 
@@ -42,6 +44,7 @@ export const RevisionCursoHeader: React.FC<RevisionCursoHeaderProps> = ({
 
 export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
   alumnos,
+  boletines,
   onSelectStudent,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,6 +56,10 @@ export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
       || String(alumno.numeroOrden || '').includes(normalizedQuery)
     ));
   }, [alumnos, searchQuery]);
+  const bulletinByEnrollment = useMemo(
+    () => new Map(boletines.map((boletin) => [boletin.inscripcionId, boletin])),
+    [boletines],
+  );
 
   return (
     <Card className={styles.container} styles={{ body: { padding: 0 } }}>
@@ -96,12 +103,13 @@ export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
                     </span>
                     <div className={styles.studentName}>
                       <Typography.Text strong>{alumno.nombreCompleto}</Typography.Text>
-                      <Space size={5}>
-                        <CheckCircleOutlined className={styles.readyIcon} />
-                        <Typography.Text type="secondary" className={styles.readyText}>
-                          Listo para revisar
-                        </Typography.Text>
-                      </Space>
+                      <Tag color={bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO' ? 'success' : 'warning'}>
+                        {bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO'
+                          ? 'Visado'
+                          : bulletinByEnrollment.has(alumno.inscripcionId)
+                            ? 'Pendiente de visado'
+                            : 'Pendiente de incorporar'}
+                      </Tag>
                     </div>
                   </div>
                   <ArrowRightOutlined className={styles.arrow} />

@@ -133,6 +133,32 @@ Ante un timeout, fallo de red o `5xx`, el resultado se considera incierto. El cl
 
 No existen rutas institucionales para devolver una entrega, cerrar la instancia o reabrirla. `CONTROL_DIRECTIVO` es terminal y sólo admite las correcciones realizadas mediante el endpoint de alumno.
 
+## Configuración curricular anual
+
+`curso_materias` incluye `ciclo_id`. Las escrituras directas de `curso_materias` y `criterios_evaluacion` están cerradas para sesiones autenticadas. El constructor usa estas rutas institucionales:
+
+| Ruta | Operación |
+| --- | --- |
+| `GET /api/cys/directivo/configuracion/estado/:cursoId/:cicloId` | Informa si la malla anual continúa editable. |
+| `POST /api/cys/directivo/configuracion/materias` | Asignar una materia a `cursoId` y `cicloId`, con `materiaId` y `ordenVisual`. |
+| `DELETE /api/cys/directivo/configuracion/materias/:cursoMateriaId` | Quitar la materia y sus criterios en una transacción. |
+| `PUT /api/cys/directivo/configuracion/materias/orden` | Actualizar conjuntamente el orden de materias del mismo curso y ciclo. |
+| `PUT /api/cys/directivo/configuracion/materias/:cursoMateriaId/criterios` | Reemplazar los criterios de una materia en una transacción; admite hasta cinco. |
+
+Cada operación revalida dentro de la transacción que ningún bimestre del curso y ciclo haya iniciado su workflow. La emisión del enlace exige escala con valores, al menos una materia y exactamente cinco criterios por materia. El catálogo global de materias conserva la creación autenticada; sus nombres no se editan desde el constructor.
+
+## Etapas y visado de boletines
+
+`GET /api/cys/directivo/etapas/:periodoId` devuelve, para cada curso, `etapa`, `revision`, `totalBoletines` y `visados`. Las etapas son `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF`. Son una proyección del servidor: el estado persistido de control sigue siendo `BORRADOR_DOCENTE` o `CONTROL_DIRECTIVO`.
+
+`GET /api/cys/directivo/revision/:cursoId/:periodoId` devuelve desde una transacción la instancia, su revisión, el conteo y la lista de boletines con `estado`, `revisionContenido`, fecha y usuario de visado. `alumnosSinIncorporar` informa altas activas posteriores a la entrega. Los boletines históricos se migran como `PENDIENTE_REVISION`; ningún registro se visa por inferencia.
+
+`POST /api/cys/directivo/revision/:cursoId/:periodoId/sincronizar-matricula` recibe `{ "expectedRevision": 7 }`. Agrega las matrículas activas ausentes como pendientes, conserva las filas existentes e incrementa la revisión sólo si hubo incorporaciones. Un `409` indica que se debe releer el curso antes de repetir la operación.
+
+`POST /api/cys/directivo/boletines/:inscripcionId/visar` y `POST /api/cys/directivo/boletines/:inscripcionId/retirar-visado` reciben `periodoId`, `expectedRevision` y `expectedContentRevision`. Comparan ambas revisiones en la transacción. El visado exige que el boletín individual tenga todas sus materias, criterios y cierre completos. Una operación repetida sobre el mismo estado no incrementa la revisión. La corrección directiva de ese alumno incrementa `revision_contenido` y retira su visado en la misma transacción.
+
+`visados_boletin` es legible para usuarios institucionales y rechaza creación, edición y eliminación directas. La generación de PDF no está implementada; `LISTO_PARA_PDF` expresa únicamente la condición necesaria para la siguiente fase.
+
 ## Respuestas de autorización
 
 - `401`: enlace ausente, inválido, reemplazado o eliminado.

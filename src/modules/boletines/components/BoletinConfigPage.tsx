@@ -17,6 +17,7 @@ import {
   Empty,
   Badge,
   Progress,
+  Alert,
 } from 'antd';
 import {
   BookOutlined,
@@ -49,6 +50,7 @@ import { useAppStore } from '../../../store/appStore';
 export const BoletinConfigPage: React.FC = () => {
   const { message } = App.useApp();
   const { cicloActual } = useAppStore();
+  const cicloId = cicloActual?.id;
 
 
   const [cursos, setCursos] = useState<Curso[]>([]);
@@ -62,6 +64,7 @@ export const BoletinConfigPage: React.FC = () => {
   const [loadingCursos, setLoadingCursos] = useState(false);
   const [loadingMaterias, setLoadingMaterias] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const [configurationLocked, setConfigurationLocked] = useState(false);
 
 
   const [openSelectorModal, setOpenSelectorModal] = useState(false);
@@ -71,12 +74,13 @@ export const BoletinConfigPage: React.FC = () => {
 
   const loadProgresoGlobal = useCallback(async () => {
     try {
-      const pMap = await boletinService.getProgresoConstructorCursos();
+      if (!cicloId) return;
+      const pMap = await boletinService.getProgresoConstructorCursos(cicloId);
       setProgresoCursosMap(pMap);
     } catch (err) {
       console.error('Error al calcular progreso global:', err);
     }
-  }, []);
+  }, [cicloId]);
 
 
   useEffect(() => {
@@ -86,7 +90,7 @@ export const BoletinConfigPage: React.FC = () => {
         setLoadingCursos(true);
         const [data, pMap] = await Promise.all([
           boletinService.getCursos(),
-          boletinService.getProgresoConstructorCursos(),
+          cicloId ? boletinService.getProgresoConstructorCursos(cicloId) : Promise.resolve({}),
         ]);
         if (!active) return;
         setCursos(data);
@@ -104,24 +108,29 @@ export const BoletinConfigPage: React.FC = () => {
 
     void loadCursos();
     return () => { active = false; };
-  }, [message]);
+  }, [message, cicloId]);
 
 
   const [materiasRevision, setMateriasRevision] = useState(0);
   const loadMateriasCurso = () => setMateriasRevision((value) => value + 1);
   useEffect(() => {
-    if (!selectedCursoId) return;
+    if (!selectedCursoId || !cicloId) return;
     let active = true;
     const fetchMaterias = async () => {
       try {
         setLoadingMaterias(true);
-        const materias = await boletinService.getMateriasByCurso(selectedCursoId);
+        setConfigurationLocked(true);
+        const [materias, status] = await Promise.all([
+          boletinService.getMateriasByCurso(selectedCursoId, cicloId),
+          boletinService.getConfigurationStatus(selectedCursoId, cicloId),
+        ]);
         const entries = await Promise.all(materias.map(async (materia) => {
           const criterios = await boletinService.getCriteriosByCursoMateria(materia.id);
           return [materia.id, criterios.length] as const;
         }));
         if (!active) return;
         setCursoMaterias(materias);
+        setConfigurationLocked(!status.editable);
         setCriteriosCounts(Object.fromEntries(entries));
         setSelectedCursoMateria((prev) => materias.find((materia) => materia.id === prev?.id) ?? materias[0] ?? null);
       } catch (err) {
@@ -136,10 +145,11 @@ export const BoletinConfigPage: React.FC = () => {
     };
     void fetchMaterias();
     return () => { active = false; };
-  }, [selectedCursoId, materiasRevision, message]);
+  }, [selectedCursoId, materiasRevision, message, cicloId]);
 
 
   const handleMoveMateria = async (index: number, direction: 'up' | 'down') => {
+    if (configurationLocked) return;
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= cursoMaterias.length) return;
 
@@ -170,6 +180,7 @@ export const BoletinConfigPage: React.FC = () => {
 
 
   const handleRemoveMateria = async (cmId: string, nombre: string) => {
+    if (configurationLocked) return;
     try {
       await boletinService.removeMateriaFromCurso(cmId);
       message.success(`Materia "${nombre}" removida del curso`);
@@ -252,7 +263,7 @@ export const BoletinConfigPage: React.FC = () => {
               size="small"
               type="text"
               icon={<ArrowUpOutlined />}
-              disabled={index === 0 || reordering}
+              disabled={configurationLocked || index === 0 || reordering}
               onClick={(e) => {
                 e.stopPropagation();
                 handleMoveMateria(index, 'up');
@@ -264,7 +275,7 @@ export const BoletinConfigPage: React.FC = () => {
               size="small"
               type="text"
               icon={<ArrowDownOutlined />}
-              disabled={index === cursoMaterias.length - 1 || reordering}
+              disabled={configurationLocked || index === cursoMaterias.length - 1 || reordering}
               onClick={(e) => {
                 e.stopPropagation();
                 handleMoveMateria(index, 'down');
@@ -296,6 +307,7 @@ export const BoletinConfigPage: React.FC = () => {
             type="text"
             danger
             icon={<DeleteOutlined />}
+            disabled={configurationLocked}
             onClick={(e) => e.stopPropagation()}
           />
         </Popconfirm>
@@ -496,6 +508,15 @@ export const BoletinConfigPage: React.FC = () => {
         </Row>
       </Card>
 
+      {configurationLocked && (
+        <Alert
+          type="info"
+          showIcon
+          title="Malla anual cerrada"
+          description="Este curso ya inició un bimestre. Podés consultar sus materias y criterios; la próxima configuración se hará en el ciclo siguiente."
+        />
+      )}
+
       { }
       <Row gutter={[20, 20]}>
         { }
@@ -535,7 +556,7 @@ export const BoletinConfigPage: React.FC = () => {
                   type="primary"
                   size="small"
                   icon={<PlusOutlined />}
-                  disabled={!selectedCursoId}
+                  disabled={!selectedCursoId || configurationLocked}
                   onClick={() => setOpenSelectorModal(true)}
                   className="btn-primary-gradient"
                   style={{ borderRadius: 6, fontWeight: 600, paddingInline: 12 }}
@@ -579,6 +600,7 @@ export const BoletinConfigPage: React.FC = () => {
         <Col xs={24} lg={13} xl={14}>
           <CriteriosManager
             cursoMateria={selectedCursoMateria}
+            readOnly={configurationLocked}
             onSaved={() => {
               if (selectedCursoId) {
                 loadMateriasCurso();
@@ -590,11 +612,12 @@ export const BoletinConfigPage: React.FC = () => {
       </Row>
 
       { }
-      {selectedCurso && (
+      {selectedCurso && cicloActual && (
         <MateriaSelectorModal
           open={openSelectorModal}
           onClose={() => setOpenSelectorModal(false)}
           cursoId={selectedCurso.id}
+          cicloId={cicloActual.id}
           cursoNombre={selectedCurso.nombre}
           assignedMateriaIds={cursoMaterias.map((cm) => cm.materiaId)}
           onMateriasAdded={() => {

@@ -31,6 +31,9 @@ $authenticatedStudents = Invoke-RestMethod -Uri "$BaseUri/api/collections/alumno
 $teacherGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/docente/contexto" -SkipHttpErrorCheck
 $directorGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/directivo/instancias/aaaaaaaaaaaaaaa/bbbbbbbbbbbbbbb" -SkipHttpErrorCheck
 $directorStudentGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/directivo/alumnos/aaaaaaaaaaaaaaa?periodoId=bbbbbbbbbbbbbbb" -SkipHttpErrorCheck
+$stageGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/directivo/etapas/aaaaaaaaaaaaaaa" -SkipHttpErrorCheck
+$reviewGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/directivo/revision/aaaaaaaaaaaaaaa/bbbbbbbbbbbbbbb" -SkipHttpErrorCheck
+$curriculumGateway = Invoke-WebRequest -Uri "$BaseUri/api/cys/directivo/configuracion/materias/aaaaaaaaaaaaaaa" -Method Delete -SkipHttpErrorCheck
 $listener = Get-NetTCPConnection -LocalPort 8090 -State Listen -ErrorAction SilentlyContinue
 
 $checks = [ordered]@{
@@ -42,6 +45,9 @@ $checks = [ordered]@{
   teacherGatewayProtected = $teacherGateway.StatusCode -eq 401
   directorGatewayProtected = $directorGateway.StatusCode -eq 401
   directorStudentGatewayProtected = $directorStudentGateway.StatusCode -eq 401
+  stageGatewayProtected = $stageGateway.StatusCode -eq 401
+  reviewGatewayProtected = $reviewGateway.StatusCode -eq 401
+  curriculumGatewayProtected = $curriculumGateway.StatusCode -eq 401
   loopbackOnly = $listener -and @($listener | Where-Object { $_.LocalAddress -ne "127.0.0.1" }).Count -eq 0
   teacherKeyValid = (Get-Content -Raw -LiteralPath $teacherKeyPath).Trim().Length -eq 32
 }
@@ -64,6 +70,7 @@ if ($ExpectSyntheticSeed) {
     inscripciones = 6
     tokens_acceso_docente = 0
     instancias_carga_boletin = 0
+    visados_boletin = 0
   }
   $seedMatches = $true
   foreach ($collection in $expected.Keys) {

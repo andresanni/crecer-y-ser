@@ -198,8 +198,17 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
       key: 'estado',
       width: 190,
       render: (_, cur) => {
+        if (cur.etapa === 'LISTO_PARA_PDF') {
+          return <Tag color="success" icon={<CheckCircleOutlined />}>Listo para PDF</Tag>;
+        }
+        if (cur.etapa === 'REVISION_DIRECTIVA') {
+          return <Tag color="processing" icon={<EyeOutlined />}>En revisión · {cur.visados}/{cur.totalBoletines} visados</Tag>;
+        }
+        if (cur.etapa === 'PENDIENTE_CONFIGURACION') {
+          return <Tag color="default" icon={<ExclamationCircleOutlined />}>Configurar criterios</Tag>;
+        }
         if (cur.estado === 'COMPLETO') {
-          return <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>Completo</Tag>;
+          return <Tag color="success" icon={<CheckCircleOutlined />}>Entregado</Tag>;
         }
         if (cur.estado === 'EN_PROGRESO') {
           return <Tag color="warning" icon={<ClockCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>{cur.porcentaje === 100 ? 'Lista para entregar' : 'En carga'}</Tag>;
@@ -308,11 +317,11 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
             { value: 'TODOS', label: `Todos (${data.cursos.length})` },
             {
               value: 'COMPLETO',
-              label: <span className={ui.tightRow}><CheckCircleOutlined /> Completos ({data.cursosCompletosCount})</span>,
+                label: <span className={ui.tightRow}><CheckCircleOutlined /> Entregados ({data.cursosCompletosCount})</span>,
             },
             {
               value: 'INCOMPLETO',
-              label: <span className={ui.tightRow}><MinusCircleOutlined /> Incompletos ({data.cursos.length - data.cursosCompletosCount})</span>,
+                label: <span className={ui.tightRow}><MinusCircleOutlined /> Sin entregar ({data.cursos.length - data.cursosCompletosCount})</span>,
             },
           ]}
         />

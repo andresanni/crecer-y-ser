@@ -1,6 +1,6 @@
 # Estrategia de ramas y promoción
 
-Actualizado: 23 de septiembre de 2026.
+Actualizado: 26 de septiembre de 2026.
 
 ## Objetivo
 
@@ -50,7 +50,7 @@ Una release se prepara mediante pull request de `dev` hacia `master`.
 7. Esperar el deployment de Vercel y ejecutar la aceptación productiva.
 8. Crear un tag anotado para releases o baselines relevantes.
 
-Vercel despliega únicamente `master`. Mientras no exista un PocketBase de staging, `dev` y las ramas temporales no generan Preview Deployments y nunca reciben la URL del backend productivo.
+Vercel construye y publica únicamente `master`. Mientras no exista un PocketBase de staging, `dev` y las ramas temporales omiten el build de Preview y nunca reciben la URL del backend productivo. Los eventos de pull request pueden dejar un deployment omitido visible en Vercel.
 
 ## Hotfixes
 

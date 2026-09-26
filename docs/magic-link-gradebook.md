@@ -99,6 +99,10 @@ Los apoyos anuales continúan físicamente en `inscripciones`, pero toda modific
 
 `CONTROL_DIRECTIVO` no tiene transición de salida. Una vez aceptado el envío, el servidor elimina la llave del alcance y ninguna operación institucional puede devolver la instancia a `BORRADOR_DOCENTE`, crear un acceso correctivo ni cerrar o reabrir el bimestre. Toda modificación posterior pertenece exclusivamente al equipo directivo.
 
+La entrega crea además un registro `PENDIENTE_REVISION` por alumno en `visados_boletin`. El visado y su retiro son decisiones individuales del equipo directivo y no cambian el control del curso. Una corrección posterior retira el visado del alumno corregido. La etapa `LISTO_PARA_PDF` se calcula en el servidor cuando todos los boletines de la entrega están visados y no hay matrículas activas pendientes de incorporar.
+
+La malla curricular está asociada al ciclo lectivo y queda cerrada para ese curso y año cuando se emite el primer enlace del bimestre. La emisión valida la configuración completa en el servidor; el borrador docente y los boletines entregados conservan así el conjunto de materias y criterios con que comenzaron.
+
 ## Aceptación
 
 La migración se validó sobre una copia aislada con una instancia histórica `CERRADO` y después se desplegó con backup. El recorrido funcional debe seguir validando que un envío incompleto devuelve `422` sin perder el borrador, que el guardado progresivo persiste, que el curso completo pasa a `CONTROL_DIRECTIVO`, que la llave queda eliminada y que dirección puede revisar y corregir sin que exista una ruta de regreso al acceso docente.

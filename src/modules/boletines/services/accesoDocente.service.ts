@@ -52,6 +52,7 @@ interface TeacherContextDto {
   materias: Array<{
     id: string;
     cursoId: string;
+    cicloId: string;
     materiaId: string;
     materiaNombre: string;
     ordenVisual: number;

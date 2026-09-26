@@ -10,6 +10,7 @@ import {
   Empty,
   Spin,
   Alert,
+  Tag,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -17,11 +18,18 @@ import {
   ArrowLeftOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
+import { ClientResponseError } from 'pocketbase';
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
 import { RevisionCursoHeader, RevisionCursoOverview } from './RevisionCursoOverview';
 import { staffGradebookAccess } from '../models/gradebookAccess.model';
-import { getStaffGradebookWorkflow } from '../services/gradebookDataSource.service';
+import {
+  changeStaffBulletinApproval,
+  getStaffGradebookReview,
+  getStaffGradebookWorkflow,
+  synchronizeStaffReviewEnrollments,
+  type StaffReviewDto,
+} from '../services/gradebookDataSource.service';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
 import type {
   CursoMateria,
@@ -72,6 +80,9 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const [reloadCounter, setReloadCounter] = useState(0);
   const [reviewInscripcionId, setReviewInscripcionId] = useState<string | null>(null);
   const [detailHasChanges, setDetailHasChanges] = useState(false);
+  const [reviewSnapshot, setReview] = useState<StaffReviewDto | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [approvalBusy, setApprovalBusy] = useState(false);
   const realtimeWorkflow = useGradebookConcurrencyStore((state) => (
     selectedCursoId && selectedPeriodoId
       ? state.workflows[gradebookScopeKey(selectedCursoId, selectedPeriodoId)]
@@ -126,7 +137,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
 
 
   useEffect(() => {
-    if (!selectedCursoId) return;
+    if (!selectedCursoId || !cicloActual?.id) return;
     let active = true;
     const fetchCursoData = async () => {
       try {
@@ -134,8 +145,8 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
         const cur = cursos.find((c) => c.id === selectedCursoId);
 
         const [materias, regularAlumnos] = await Promise.all([
-          boletinService.getMateriasByCurso(selectedCursoId),
-          boletinService.getAlumnosRegularesByCurso(selectedCursoId, cicloActual?.id),
+          boletinService.getMateriasByCurso(selectedCursoId, cicloActual.id),
+          boletinService.getAlumnosByCursoCiclo(selectedCursoId, cicloActual.id),
         ]);
 
         if (!active) return;
@@ -210,6 +221,35 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       updatedAt: workflow?.updatedAt || '',
     };
   }, [realtimeWorkflow, workflow]);
+  const review = effectiveWorkflow?.estado === 'CONTROL_DIRECTIVO'
+    && reviewSnapshot?.instancia.id === effectiveWorkflow.id
+    && reviewSnapshot.instancia.revision === effectiveWorkflow.revision
+    ? reviewSnapshot
+    : null;
+
+  useEffect(() => {
+    if (!selectedCursoId || !selectedPeriodoId || effectiveWorkflow?.estado !== 'CONTROL_DIRECTIVO') {
+      return;
+    }
+    let active = true;
+    const fetchReview = async () => {
+      setReviewLoading(true);
+      setReview(null);
+      try {
+        const data = await getStaffGradebookReview(selectedCursoId, selectedPeriodoId);
+        if (active) setReview(data);
+      } catch (error) {
+        if (active) {
+          console.error(error);
+          message.error('No se pudo consultar el estado de los visados');
+        }
+      } finally {
+        if (active) setReviewLoading(false);
+      }
+    };
+    void fetchReview();
+    return () => { active = false; };
+  }, [selectedCursoId, selectedPeriodoId, effectiveWorkflow?.estado, effectiveWorkflow?.revision, reloadCounter, message]);
 
   const handleSaveSuccess = useCallback((revision?: number) => {
     if (revision === undefined) return;
@@ -229,6 +269,10 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     () => cursos.find((curso) => curso.id === selectedCursoId),
     [cursos, selectedCursoId],
   );
+  const reviewStudents = useMemo(() => {
+    const included = new Set(review?.boletines.map((item) => item.inscripcionId) || []);
+    return alumnos.filter((alumno) => alumno.estado !== 'Baja' || included.has(alumno.inscripcionId));
+  }, [alumnos, review]);
 
   const handleBack = () => {
     if (!reviewInscripcionId) {
@@ -253,8 +297,72 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   };
 
   const handleSelectStudent = (inscripcionId: string) => {
+    if (!review?.boletines.some((item) => item.inscripcionId === inscripcionId)) {
+      message.warning('Actualizá la matrícula de la revisión antes de abrir este boletín.');
+      return;
+    }
     setDetailHasChanges(false);
     setReviewInscripcionId(inscripcionId);
+  };
+
+  const handleSyncEnrollments = async () => {
+    if (!review || !selectedCursoId || !selectedPeriodoId) return;
+    setApprovalBusy(true);
+    try {
+      const result = await synchronizeStaffReviewEnrollments(
+        selectedCursoId,
+        selectedPeriodoId,
+        review.instancia.revision,
+      );
+      handleSaveSuccess(result.instancia.revision);
+      setReloadCounter((value) => value + 1);
+      message.success(`${result.incorporados} alumno(s) incorporado(s) a la revisión`);
+    } catch (error) {
+      if (error instanceof ClientResponseError && error.status === 409) {
+        setReloadCounter((value) => value + 1);
+        message.warning('El curso cambió en otra sesión. Revisá la matrícula actualizada.');
+      } else {
+        message.error('No se pudo actualizar la matrícula de la revisión');
+      }
+    } finally {
+      setApprovalBusy(false);
+    }
+  };
+
+  const selectedBulletin = review?.boletines.find((item) => item.inscripcionId === reviewInscripcionId);
+  const handleApproval = (approve: boolean) => {
+    if (!selectedBulletin || !selectedPeriodoId || !review || detailHasChanges) return;
+    modal.confirm({
+      title: approve ? '¿Visar este boletín?' : '¿Retirar el visado?',
+      content: approve
+        ? 'Confirmás que revisaste el boletín completo. Una corrección posterior retirará automáticamente el visado.'
+        : 'El boletín volverá a quedar pendiente de revisión.',
+      okText: approve ? 'Visar' : 'Retirar visado',
+      onOk: async () => {
+        setApprovalBusy(true);
+        try {
+          const result = await changeStaffBulletinApproval(
+            selectedBulletin.inscripcionId,
+            selectedPeriodoId,
+            review.instancia.revision,
+            selectedBulletin.revisionContenido,
+            approve,
+          );
+          handleSaveSuccess(result.instancia.revision);
+          message.success(approve ? 'Boletín visado' : 'Visado retirado');
+        } catch (error) {
+          if (error instanceof ClientResponseError && error.status === 409) {
+            message.warning('El curso cambió en otra sesión. Se actualizará el estado antes de continuar.');
+            setReloadCounter((value) => value + 1);
+          } else {
+            message.error('No se pudo actualizar el visado');
+          }
+          throw error;
+        } finally {
+          setApprovalBusy(false);
+        }
+      },
+    });
   };
 
   return (
@@ -317,7 +425,36 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             cursoNombre={selectedCurso ? `${selectedCurso.nombre} · ${selectedCurso.turno}` : 'Curso'}
             periodoNombre={selectedPeriodo?.nombre || 'Período escolar'}
           />
+          <Space wrap>
+            <Tag color={review?.etapa === 'LISTO_PARA_PDF' ? 'success' : 'processing'}>
+              {review ? `${review.visados} de ${review.totalBoletines} boletines visados` : 'Consultando visados'}
+            </Tag>
+            {review?.etapa === 'LISTO_PARA_PDF' && <Tag color="success">Listo para generar PDFs</Tag>}
+          </Space>
+          {review && review.alumnosSinIncorporar > 0 && (
+            <Alert
+              type="warning"
+              showIcon
+              title={`${review.alumnosSinIncorporar} alumno(s) ingresaron después de la entrega`}
+              description="Incorporalos a la revisión para completar sus boletines sin modificar los visados existentes."
+              action={<Button loading={approvalBusy} onClick={() => void handleSyncEnrollments()}>Actualizar matrícula</Button>}
+            />
+          )}
           {reviewInscripcionId ? (
+            <>
+            <Space wrap>
+              <Tag color={selectedBulletin?.estado === 'VISADO' ? 'success' : 'warning'}>
+                {selectedBulletin?.estado === 'VISADO' ? 'Visado' : 'Pendiente de visado'}
+              </Tag>
+              <Button
+                type={selectedBulletin?.estado === 'VISADO' ? 'default' : 'primary'}
+                disabled={!selectedBulletin || detailHasChanges || reviewLoading}
+                loading={approvalBusy}
+                onClick={() => handleApproval(selectedBulletin?.estado !== 'VISADO')}
+              >
+                {selectedBulletin?.estado === 'VISADO' ? 'Retirar visado' : 'Visar boletín'}
+              </Button>
+            </Space>
             <VistaPorAlumno
               key={`${selectedCursoId}:${selectedPeriodoId}:${reviewInscripcionId}:${reloadCounter}`}
               periodoId={selectedPeriodoId || ''}
@@ -333,9 +470,22 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
               initialInscripcionId={reviewInscripcionId}
               onPendingChangesChange={setDetailHasChanges}
             />
+            </>
+          ) : reviewLoading ? (
+            <Card className={ui.loadingPanel}>
+              <Spin description="Consultando boletines entregados..." />
+            </Card>
+          ) : !review ? (
+            <Alert
+              type="error"
+              showIcon
+              title="No se pudo consultar la revisión del curso"
+              action={<Button onClick={() => setReloadCounter((value) => value + 1)}>Reintentar</Button>}
+            />
           ) : (
             <RevisionCursoOverview
-              alumnos={alumnos}
+              alumnos={reviewStudents}
+              boletines={review.boletines}
               onSelectStudent={handleSelectStudent}
             />
           )}
