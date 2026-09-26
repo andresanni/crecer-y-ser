@@ -1,6 +1,6 @@
 # Despliegue del frontend en Vercel
 
-Actualizado: 23 de septiembre de 2026.
+Actualizado: 26 de septiembre de 2026.
 
 ## Topología
 
@@ -37,7 +37,9 @@ El build de Vercel exige `VITE_POCKETBASE_URL`, HTTPS y un host no local. El cli
 
 ## Política de Preview Deployments
 
-`vercel.json` habilita deployments automáticos únicamente para `master` y desactiva `dev` y todas las ramas temporales. No se configura `VITE_POCKETBASE_URL` para Preview mientras sólo existan los backends local y productivo. Así ninguna rama de desarrollo se conecta a datos reales ni genera builds fallidos por falta de backend.
+`vercel.json` limita los deployments automáticos a `master` mediante `git.deploymentEnabled`. Además, `ignoreCommand` omite cualquier build cuyo `VERCEL_ENV` no sea `production`; Vercel interpreta la salida 0 como omisión y la salida 1 como continuación. Esta segunda regla cubre eventos de pull request que llegaron a iniciar un Preview pese a la configuración de ramas. Puede aparecer un deployment omitido en Vercel, pero no debe ejecutarse `npm run build:vercel` ni producir un check fallido por ausencia del backend.
+
+No se configura `VITE_POCKETBASE_URL` para Preview mientras sólo existan los backends local y productivo. El PocketBase del VPS se reserva para Production.
 
 Si en el futuro se crea un PocketBase de staging con datos sintéticos, se deberá habilitar nuevamente el patrón de ramas correspondiente y asignar su origen HTTPS a Preview. No debe usarse loopback ni la instancia productiva para ese propósito.
 

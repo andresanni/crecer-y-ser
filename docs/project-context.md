@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 25 de septiembre de 2026.
+Actualizado: 26 de septiembre de 2026.
 
 ## Propósito
 
@@ -119,7 +119,7 @@ La evolución de visado y malla anual está implementada en la rama de trabajo y
 - El primer contenedor real de recuperación local se creó en OneDrive y se verificó por SHA-256 el 20 de septiembre de 2026. La frase de recuperación no se guarda en el proyecto y queda bajo custodia personal.
 - El formulario de contacto de la landing, el servicio SMTP de Gmail (puerto 587) y el endpoint seguro `/api/cys/contacto` fueron probados y configurados en desarrollo local y en el VPS de producción. Los scripts de despliegue `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh` incluyen la transferencia y verificación de los hooks de contacto.
 - La landing institucional y la pantalla de acceso (`/login`) disponen de soporte responsive adaptado para pantallas móviles, con diseño renovado para los niveles educativos.
-- La integración continua ejecuta instalación reproducible, auditoría de dependencias productivas, lint y build sobre `dev`, `master` y sus pull requests. Vercel despliega automáticamente sólo `master`; las demás ramas permanecen sin deployment mientras no exista un backend de staging.
+- La integración continua ejecuta instalación reproducible, auditoría de dependencias productivas, lint y build sobre `dev`, `master` y sus pull requests. Vercel construye y publica únicamente `master`; el build de Preview se omite para las demás ramas mientras no exista un backend de staging.
 - La auditoría de dependencias no informa vulnerabilidades conocidas después de actualizar React Router a `7.18.4`, posterior a la corrección de seguridad `7.18.2`, y renovar las dependencias transitivas compatibles del lockfile.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.
