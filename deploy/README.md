@@ -41,6 +41,8 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 
 Las migraciones `1790364300_added_gradebook_approvals.js` y `1790364400_versioned_curriculum_by_cycle.js` agregan el visado individual y la malla por ciclo. Los hooks `curriculum.pb.js` y `lib/curriculum.js` deben publicarse junto con `teacher_access.pb.js` y `lib/teacherAccess.js`. El publicador y el instalador remoto enumeran estos archivos explícitamente.
 
+La versión quedó desplegada el 26 de septiembre de 2026 con respaldo `/root/pb/deploy_backups/20260926-094932`. El ensayo previo aplicó ambas migraciones sobre una copia aislada de `pb_data` del VPS. Tras el despliegue se comprobaron las migraciones registradas, las nuevas columnas y colección, cero materias sin ciclo, hashes iguales para los cuatro hooks y las dos migraciones nuevas, health `200` y rechazo anónimo `401` en etapas, revisión y configuración. El frontend productivo anterior a esta feature aún no es compatible con las nuevas reglas de escritura del constructor.
+
 `pb_data`, los backups, los certificados y cualquier `.env` son estado operativo o secretos y no deben incorporarse al repositorio.
 
 Los scripts locales de backup y restauración son compatibles con Windows PowerShell 5.1 y PowerShell 7. El contenedor `.cysbackup` usa AES-256-CBC, HMAC-SHA256 y PBKDF2-SHA256; la frase de recuperación se conserva únicamente en un gestor de contraseñas externo.

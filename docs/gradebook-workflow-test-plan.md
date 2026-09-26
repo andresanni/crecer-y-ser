@@ -18,6 +18,8 @@ El 15 de septiembre de 2026 se desplegaron en el VPS las migraciones unidireccio
 
 El 16 de septiembre de 2026 se desplegó el control optimista directivo con el respaldo `/root/pb/deploy_backups/20260916-085138`. `deploy/test-pocketbase-concurrency.sh` se ejecutó sobre una copia temporal de `pb_data`: dos escrituras simultáneas con revisión `4` produjeron `200` y `409`, la revisión avanzó una sola vez a `5` y el evento actualizado llegó por Realtime. No se modificaron datos productivos. Permanece pendiente la regresión visual con dos navegadores después de publicar el frontend compatible.
 
+El 26 de septiembre de 2026 se ensayaron las migraciones de visado y malla anual sobre una copia aislada de la base del VPS y luego se publicaron con los hooks versionados. Respaldo: `/root/pb/deploy_backups/20260926-094932`. El servicio quedó activo; las rutas nuevas respondieron `401` sin sesión, `curso_materias.ciclo_id` está poblado y la colección `visados_boletin` existe. PocketBase local pasó las 13 comprobaciones de `deploy/verify-pocketbase-dev.ps1`. La matriz funcional de esta extensión sigue destinada a pruebas manuales en `dev`; no se ha publicado aún el frontend compatible en `master`.
+
 ## Matriz funcional
 
 ### 1. Apertura de la instancia

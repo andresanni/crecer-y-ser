@@ -104,7 +104,9 @@ El tablero distingue el avance académico del control operativo. Las etapas `PEN
 
 ## Estado de calidad
 
-La evolución de visado y malla anual está implementada en la rama de trabajo y aplicada únicamente al PocketBase local. Se verificó en una base sintética aislada y sobre una copia consistente de la base de desarrollo existente. La generación dinámica del PDF y la promoción al VPS todavía no forman parte de este cambio.
+La evolución de visado y malla anual está implementada y aplicada en PocketBase local y en el VPS. Se verificó en una base sintética aislada, sobre una copia de desarrollo local y sobre una copia consistente de la base del VPS. El despliegue remoto del 26 de septiembre de 2026 tiene el respaldo `/root/pb/deploy_backups/20260926-094932`. La generación dinámica del PDF sigue pendiente.
+
+El frontend productivo de `master` todavía usa escrituras directas del constructor curricular que la nueva migración rechaza. Hasta promover un frontend compatible después de las pruebas en `dev`, el constructor publicado en Vercel no debe usarse para configurar materias o criterios. El desarrollo local y el VPS tienen el backend actualizado; la publicación del frontend queda como paso de la release.
 
 - `npm run lint`: sin errores ni advertencias al finalizar la modernización.
 - `npm run build`: correcto.
