@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 26 de septiembre de 2026.
+Actualizado: 27 de septiembre de 2026.
 
 ## Propósito
 
@@ -101,6 +101,19 @@ El producto es desktop first para equipos escolares, con validación prioritaria
 La sección institucional `Carga de notas` concentra el seguimiento y la operación por curso. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
 
 El tablero distingue el avance académico del control operativo. Las etapas `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF` provienen del servidor. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
+
+La tabla de grados muestra por separado el progreso de llenado docente y el de revisión directiva. La revisión se presenta como no habilitada hasta que el curso se entrega; luego muestra el conteo de boletines visados sobre el total de la entrega. El estado indica sólo la instancia del workflow, sin repetir ese conteo. Los grados se identifican por su número y el tablero no filtra por condición de entrega.
+Cada curso muestra una única acción según la etapa: acceso al gestor de enlaces antes de la entrega o apertura de la revisión después. La tabla distribuye sus columnas según el ancho disponible y conserva desplazamiento horizontal sólo para pantallas estrechas.
+
+En la libreta directiva, Anterior y Siguiente recorren únicamente los boletines incorporados a la revisión. La selección del alumno pertenece a la pantalla de revisión para mantener sincronizados la libreta, el estado de visado y la acción correspondiente; los extremos de la lista no permiten avanzar fuera del curso.
+Después de una corrección confirmada, la libreta conserva su contenido y posición de scroll mientras consulta la nueva instantánea. Durante esa lectura los controles quedan temporalmente inactivos; una falla mantiene los datos anteriores visibles y ofrece reintentar, sin habilitar escrituras con una revisión vencida.
+
+La cabecera de revisión destaca el curso, turno y bimestre sin repetir la entrega. En el detalle, el estado individual de visado, su acción y el conteo del curso permanecen en la barra sticky del alumno. El porcentaje de materias en esa barra se reserva para la carga docente; la revisión parte de boletines ya entregados. Los estilos de esta composición viven junto a los componentes y usan los tokens del tema.
+La barra sticky se adhiere al borde superior del viewport al desplazarse; el encabezado del shell participa del flujo normal y no requiere reservar un espacio superior.
+En las tarjetas de materias de la revisión directiva se omite el indicador de completitud, ya implícita en la entrega. El valor de PPI se muestra en el encabezado y su interruptor ocupa ese mismo lugar durante la edición, junto a las acciones de guardar o descartar. La carga docente conserva sus indicadores de completitud.
+Los conceptos pedagógicos de cada materia usan una medida máxima de lectura y reservan una zona propia para la calificación. Cuando la tarjeta se estrecha, la calificación pasa debajo del texto para evitar superposiciones; esta composición se comparte entre revisión directiva y carga docente.
+
+Apoyos e Integración Escolar se presenta como una tarjeta de evaluación con la misma estructura visual de las materias: franja de título, insignia y controles de edición locales. La etiqueta `Trayectoria anual` y las tarjetas internas de primer y cuarto bimestre conservan su alcance funcional.
 
 ## Estado de calidad
 

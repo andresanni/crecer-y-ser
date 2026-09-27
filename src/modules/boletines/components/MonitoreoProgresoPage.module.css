@@ -1,0 +1,21 @@
+.gradeColumn {
+  white-space: nowrap;
+}
+
+.progressCell {
+  width: 100%;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.actionButton {
+  max-width: 100%;
+  font-weight: 600;
+  border-radius: 6px;
+}

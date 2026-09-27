@@ -1,3 +1,196 @@
+.studentBanner {
+  align-items: center;
+  background: var(--cys-color-bg-container);
+  border: 1px solid var(--cys-color-primary-border);
+  border-radius: var(--cys-border-radius-lg);
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 95;
+}
+
+.studentNavigation,
+.studentActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.studentIdentity {
+  align-items: center;
+  border-radius: var(--cys-border-radius-sm);
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  padding: 4px 10px;
+}
+
+.studentIdentityInteractive {
+  cursor: pointer;
+}
+
+.studentNumber {
+  align-items: center;
+  background: var(--cys-color-primary);
+  border-radius: var(--cys-border-radius-sm);
+  color: #fff;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.studentDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.studentName {
+  color: var(--cys-color-text);
+  font-size: 15px;
+}
+
+.studentRefreshStatus {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.visuallyHidden {
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+.evaluationCard:global(.ant-card) {
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: var(--cys-border-radius-lg);
+  box-shadow: var(--card-shadow);
+}
+
+.evaluationCardModified:global(.ant-card) {
+  border-color: var(--cys-color-primary);
+}
+
+.evaluationHeader {
+  align-items: center;
+  background: linear-gradient(135deg, var(--cys-brand-royal-dark), var(--cys-brand-blue-base));
+  border: 1px solid var(--cys-brand-royal-primary);
+  border-radius: var(--cys-border-radius);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 10px 12px;
+}
+
+.evaluationHeading {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.evaluationNumber {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: var(--cys-border-radius-xs);
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+  height: 26px;
+  justify-content: center;
+  width: 26px;
+}
+
+.evaluationTitle:global(.ant-typography) {
+  color: #fff;
+  font-size: 14.5px;
+}
+
+.evaluationTitleIcon {
+  margin-right: 6px;
+}
+
+.evaluationMetaTag:global(.ant-tag) {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: var(--cys-border-radius-xs);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  margin: 0;
+  padding: 1px 7px;
+}
+
+.evaluationHeaderTools {
+  flex: 0 0 auto;
+}
+
+.evaluationActions {
+  background: #fff;
+  border-radius: var(--cys-border-radius-sm);
+  padding: 4px;
+}
+
+.evaluationDivider:global(.ant-divider) {
+  margin: 8px 0 10px;
+}
+
+.criterionRow {
+  align-items: center;
+  background: var(--cys-color-fill-quaternary);
+  border-radius: var(--cys-border-radius-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 7px 14px;
+}
+
+.criterionDescription {
+  flex: 1 1 60ch;
+  max-width: 68ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.criterionGrade {
+  display: flex;
+  flex: 0 1 280px;
+  justify-content: flex-end;
+  margin-left: auto;
+  max-width: 100%;
+  min-width: 0;
+  text-align: right;
+}
+
+@media (max-width: 575px) {
+  .studentBanner {
+    align-items: flex-start;
+  }
+
+  .studentActions {
+    justify-content: flex-start;
+    width: 100%;
+  }
+}
+
 .gradeSummary {
   justify-content: flex-end;
   min-width: 180px;
