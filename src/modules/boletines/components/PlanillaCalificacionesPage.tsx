@@ -1,35 +1,39 @@
 import ui from '../../../shared/styles/ui.module.css';
+import styles from './PlanillaCalificacionesPage.module.css';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Card,
-  Select,
   Button,
-  Typography,
   Space,
-  Tag,
   App,
   Tooltip,
-  Row,
-  Col,
   Empty,
   Spin,
   Alert,
+  Tag,
+  Typography,
 } from 'antd';
 import {
   ReloadOutlined,
-  LinkOutlined,
-  CalendarOutlined,
-  IdcardOutlined,
   TableOutlined,
   ArrowLeftOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
+import { ClientResponseError } from 'pocketbase';
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
+import { RevisionCursoHeader, RevisionCursoOverview } from './RevisionCursoOverview';
 import { staffGradebookAccess } from '../models/gradebookAccess.model';
-import { getStaffGradebookWorkflow } from '../services/gradebookDataSource.service';
-import { GestorEnlacesModal } from './GestorEnlacesModal';
+import {
+  changeStaffBulletinApproval,
+  getStaffGradebookReview,
+  getStaffGradebookWorkflow,
+  synchronizeStaffReviewEnrollments,
+  type StaffReviewDto,
+} from '../services/gradebookDataSource.service';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
 import type {
   CursoMateria,
@@ -46,8 +50,6 @@ import {
   workflowVersionFromInstance,
 } from '../store/gradebookConcurrencyStore';
 
-const { Text } = Typography;
-
 interface PlanillaCalificacionesPageProps {
   onBackToDashboard?: () => void;
 }
@@ -55,7 +57,7 @@ interface PlanillaCalificacionesPageProps {
 export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProps> = ({
   onBackToDashboard,
 }) => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const { cicloActual } = useAppStore();
   useGradebookRealtime();
   const [searchParams] = useSearchParams();
@@ -64,9 +66,9 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
 
 
   const [cursos, setCursos] = useState<Curso[]>([]);
-  const [selectedCursoId, setSelectedCursoId] = useState<string | null>(urlCursoId);
+  const selectedCursoId = urlCursoId;
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
-  const [selectedPeriodoId, setSelectedPeriodoId] = useState<string | null>(urlPeriodoId);
+  const selectedPeriodoId = urlPeriodoId;
 
 
   const [cursoMaterias, setCursoMaterias] = useState<CursoMateria[]>([]);
@@ -80,15 +82,17 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const [loadingWorkflow, setLoadingWorkflow] = useState(false);
   const [workflow, setWorkflow] = useState<InstanciaCargaBoletin | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
+  const [reviewInscripcionId, setReviewInscripcionId] = useState<string | null>(null);
+  const [detailHasChanges, setDetailHasChanges] = useState(false);
+  const [reviewSnapshot, setReview] = useState<StaffReviewDto | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [approvalBusy, setApprovalBusy] = useState(false);
   const realtimeWorkflow = useGradebookConcurrencyStore((state) => (
     selectedCursoId && selectedPeriodoId
       ? state.workflows[gradebookScopeKey(selectedCursoId, selectedPeriodoId)]
       : undefined
   ));
   const receiveWorkflow = useGradebookConcurrencyStore((state) => state.receiveWorkflow);
-
-
-  const [gestorEnlacesOpen, setGestorEnlacesOpen] = useState(false);
 
 
   useEffect(() => {
@@ -99,9 +103,6 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
         const data = await boletinService.getCursos();
         if (!active) return;
         setCursos(data);
-        if (data.length > 0) {
-          setSelectedCursoId((prev) => prev || urlCursoId || data[0].id);
-        }
       } catch (err) {
         console.error(err);
         message.error('Error al cargar cursos');
@@ -113,7 +114,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     return () => {
       active = false;
     };
-  }, [message, reloadCounter, urlCursoId]);
+  }, [message, reloadCounter]);
 
 
   useEffect(() => {
@@ -125,9 +126,6 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
         const data = await boletinService.getPeriodosByCiclo(cicloActual.id);
         if (!active) return;
         setPeriodos(data);
-        if (data.length > 0) {
-          setSelectedPeriodoId((prev) => prev || urlPeriodoId || data[0].id);
-        }
       } catch (err) {
         console.error(err);
         message.error('Error al cargar períodos escolares');
@@ -139,11 +137,11 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     return () => {
       active = false;
     };
-  }, [cicloActual?.id, message, reloadCounter, urlPeriodoId]);
+  }, [cicloActual?.id, message, reloadCounter]);
 
 
   useEffect(() => {
-    if (!selectedCursoId) return;
+    if (!selectedCursoId || !cicloActual?.id) return;
     let active = true;
     const fetchCursoData = async () => {
       try {
@@ -151,8 +149,8 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
         const cur = cursos.find((c) => c.id === selectedCursoId);
 
         const [materias, regularAlumnos] = await Promise.all([
-          boletinService.getMateriasByCurso(selectedCursoId),
-          boletinService.getAlumnosRegularesByCurso(selectedCursoId, cicloActual?.id),
+          boletinService.getMateriasByCurso(selectedCursoId, cicloActual.id),
+          boletinService.getAlumnosByCursoCiclo(selectedCursoId, cicloActual.id),
         ]);
 
         if (!active) return;
@@ -227,8 +225,39 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       updatedAt: workflow?.updatedAt || '',
     };
   }, [realtimeWorkflow, workflow]);
+  const review = effectiveWorkflow?.estado === 'CONTROL_DIRECTIVO'
+    && reviewSnapshot?.instancia.id === effectiveWorkflow.id
+    && reviewSnapshot.instancia.revision === effectiveWorkflow.revision
+    ? reviewSnapshot
+    : null;
+  const visibleReview = review || (
+    reviewSnapshot?.instancia.id === effectiveWorkflow?.id ? reviewSnapshot : null
+  );
 
-  const handleSaveSuccess = (revision?: number) => {
+  useEffect(() => {
+    if (!selectedCursoId || !selectedPeriodoId || effectiveWorkflow?.estado !== 'CONTROL_DIRECTIVO') {
+      return;
+    }
+    let active = true;
+    const fetchReview = async () => {
+      setReviewLoading(true);
+      try {
+        const data = await getStaffGradebookReview(selectedCursoId, selectedPeriodoId);
+        if (active) setReview(data);
+      } catch (error) {
+        if (active) {
+          console.error(error);
+          message.error('No se pudo consultar el estado de los visados');
+        }
+      } finally {
+        if (active) setReviewLoading(false);
+      }
+    };
+    void fetchReview();
+    return () => { active = false; };
+  }, [selectedCursoId, selectedPeriodoId, effectiveWorkflow?.estado, effectiveWorkflow?.revision, reloadCounter, message]);
+
+  const handleSaveSuccess = useCallback((revision?: number) => {
     if (revision === undefined) return;
     setWorkflow((current) => {
       if (!current) return current;
@@ -236,124 +265,133 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       receiveWorkflow(workflowVersionFromInstance(next));
       return next;
     });
-  };
+  }, [receiveWorkflow]);
 
   const selectedPeriodo = useMemo(
     () => periodos.find((p) => p.id === selectedPeriodoId),
     [periodos, selectedPeriodoId]
   );
+  const selectedCurso = useMemo(
+    () => cursos.find((curso) => curso.id === selectedCursoId),
+    [cursos, selectedCursoId],
+  );
+  const reviewStudents = useMemo(() => {
+    const included = new Set(visibleReview?.boletines.map((item) => item.inscripcionId) || []);
+    return alumnos.filter((alumno) => alumno.estado !== 'Baja' || included.has(alumno.inscripcionId));
+  }, [alumnos, visibleReview]);
+  const reviewableStudents = useMemo(() => {
+    const included = new Set(visibleReview?.boletines.map((item) => item.inscripcionId) || []);
+    return reviewStudents.filter((alumno) => included.has(alumno.inscripcionId));
+  }, [reviewStudents, visibleReview]);
+
+  const handleBack = () => {
+    if (!reviewInscripcionId) {
+      onBackToDashboard?.();
+      return;
+    }
+    if (!detailHasChanges) {
+      setReviewInscripcionId(null);
+      return;
+    }
+    modal.confirm({
+      title: '¿Volver al listado sin guardar?',
+      content: 'Los cambios pendientes de este alumno se perderán.',
+      okText: 'Volver sin guardar',
+      okType: 'danger',
+      cancelText: 'Continuar revisando',
+      onOk: () => {
+        setDetailHasChanges(false);
+        setReviewInscripcionId(null);
+      },
+    });
+  };
+
+  const handleSelectStudent = (inscripcionId: string) => {
+    if (!review?.boletines.some((item) => item.inscripcionId === inscripcionId)) {
+      message.warning('Actualizá la matrícula de la revisión antes de abrir este boletín.');
+      return;
+    }
+    setDetailHasChanges(false);
+    setReviewInscripcionId(inscripcionId);
+  };
+
+  const handleSyncEnrollments = async () => {
+    if (!review || !selectedCursoId || !selectedPeriodoId) return;
+    setApprovalBusy(true);
+    try {
+      const result = await synchronizeStaffReviewEnrollments(
+        selectedCursoId,
+        selectedPeriodoId,
+        review.instancia.revision,
+      );
+      handleSaveSuccess(result.instancia.revision);
+      setReloadCounter((value) => value + 1);
+      message.success(`${result.incorporados} alumno(s) incorporado(s) a la revisión`);
+    } catch (error) {
+      if (error instanceof ClientResponseError && error.status === 409) {
+        setReloadCounter((value) => value + 1);
+        message.warning('El curso cambió en otra sesión. Revisá la matrícula actualizada.');
+      } else {
+        message.error('No se pudo actualizar la matrícula de la revisión');
+      }
+    } finally {
+      setApprovalBusy(false);
+    }
+  };
+
+  const selectedBulletin = visibleReview?.boletines.find((item) => item.inscripcionId === reviewInscripcionId);
+  const handleApproval = (approve: boolean) => {
+    if (!selectedBulletin || !selectedPeriodoId || !review || detailHasChanges) return;
+    modal.confirm({
+      title: approve ? '¿Visar este boletín?' : '¿Retirar el visado?',
+      content: approve
+        ? 'Confirmás que revisaste el boletín completo. Una corrección posterior retirará automáticamente el visado.'
+        : 'El boletín volverá a quedar pendiente de revisión.',
+      okText: approve ? 'Visar' : 'Retirar visado',
+      onOk: async () => {
+        setApprovalBusy(true);
+        try {
+          const result = await changeStaffBulletinApproval(
+            selectedBulletin.inscripcionId,
+            selectedPeriodoId,
+            review.instancia.revision,
+            selectedBulletin.revisionContenido,
+            approve,
+          );
+          handleSaveSuccess(result.instancia.revision);
+          message.success(approve ? 'Boletín visado' : 'Visado retirado');
+        } catch (error) {
+          if (error instanceof ClientResponseError && error.status === 409) {
+            message.warning('El curso cambió en otra sesión. Se actualizará el estado antes de continuar.');
+            setReloadCounter((value) => value + 1);
+          } else {
+            message.error('No se pudo actualizar el visado');
+          }
+          throw error;
+        } finally {
+          setApprovalBusy(false);
+        }
+      },
+    });
+  };
 
   return (
-    <SectionLayout title="Carga de notas de boletines" icon={<TableOutlined />} actions={
+    <SectionLayout title="Bimestres" icon={<TableOutlined />} actions={
         <Space size="middle" wrap>
-          {onBackToDashboard && (
-            <Button icon={<ArrowLeftOutlined />} onClick={onBackToDashboard}>
-              Volver a cursos
+          {(reviewInscripcionId || onBackToDashboard) && (
+            <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
+              {reviewInscripcionId ? 'Volver al listado del curso' : 'Volver a cursos'}
             </Button>
           )}
-          <Button
-            icon={<LinkOutlined className={ui.primary} />}
-            onClick={() => setGestorEnlacesOpen(true)}
-            style={{ borderRadius: 8, fontWeight: 600 }}
-          >
-            Enlaces Mágicos Docentes
-          </Button>
           <Tooltip title="Actualizar datos">
             <Button
               icon={<ReloadOutlined />}
               onClick={() => setReloadCounter((c) => c + 1)}
-              loading={loadingCursoData || loadingPeriodos}
+              loading={loadingCursos || loadingCursoData || loadingPeriodos}
             />
           </Tooltip>
         </Space>
       }>
-
-      { }
-      <Card
-        style={{
-          borderRadius: 14,
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
-          border: "1px solid var(--cys-color-border-secondary)",
-        }}
-        styles={{ body: { padding: '14px 18px' } }}
-      >
-        <Row gutter={[16, 12]} align="middle">
-          <Col xs={24} sm={12} md={8}>
-            <Space orientation="vertical" size={2} className={ui.fullWidth}>
-              <Text strong className={ui.secondaryCaption}>
-                <IdcardOutlined style={{ marginRight: 4 }} />
-                CURSO / GRADO
-              </Text>
-              <Select
-                size="middle"
-                className={ui.fullWidth}
-                placeholder="Seleccione curso..."
-                loading={loadingCursos}
-                value={selectedCursoId}
-                onChange={(val) => setSelectedCursoId(val)}
-                options={cursos.map((c) => ({
-                  value: c.id,
-                  label: `${c.nombre} (${c.turno})`,
-                }))}
-              />
-            </Space>
-          </Col>
-
-          <Col xs={24} sm={12} md={8}>
-            <Space orientation="vertical" size={2} className={ui.fullWidth}>
-              <Text strong className={ui.secondaryCaption}>
-                <CalendarOutlined style={{ marginRight: 4 }} />
-                PERÍODO ESCOLAR (BIMESTRE)
-              </Text>
-              <Select
-                size="middle"
-                className={ui.fullWidth}
-                placeholder="Seleccione bimestre..."
-                loading={loadingPeriodos}
-                value={selectedPeriodoId}
-                onChange={(val) => setSelectedPeriodoId(val)}
-                options={periodos.map((p) => ({
-                  value: p.id,
-                  label: p.nombre,
-                }))}
-              />
-            </Space>
-          </Col>
-
-          <Col xs={24} md={8}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'flex-end',
-                height: '100%',
-              }}
-            >
-              {selectedPeriodo && (
-                <Tag
-                  style={{
-                    borderRadius: 8,
-                    fontWeight: 700,
-                    fontSize: 13,
-                    padding: '5px 12px',
-                    background: 'rgba(37, 99, 235, 0.08)',
-                    color: 'var(--cys-color-primary-text)',
-                    border: '1px solid rgba(37, 99, 235, 0.22)',
-                    boxShadow: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    margin: 0,
-                  }}
-                >
-                  <CalendarOutlined style={{ fontSize: 13, color: 'var(--cys-color-primary-text)' }} />
-                  <span>{selectedPeriodo.numeroPeriodo}° Bimestre</span>
-                </Tag>
-              )}
-            </div>
-          </Col>
-        </Row>
-      </Card>
 
       { }
       {!selectedCursoId || !selectedPeriodoId ? (
@@ -366,7 +404,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
         </Card>
       ) : cursoMaterias.length === 0 ? (
         <Card className={ui.emptyPanel}>
-          <Empty description="Este curso no tiene materias asignadas. Configure la malla curricular en el Constructor de Boletines." />
+          <Empty description="Este curso no tiene materias asignadas. Configurá la malla curricular en Constructor." />
         </Card>
       ) : !effectiveWorkflow ? (
         <Card>
@@ -374,12 +412,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             type="info"
             showIcon
             title="La carga docente todavía no fue iniciada"
-            description="Emití un enlace mágico para abrir la instancia de este curso y bimestre. El formulario directivo se habilitará cuando la docente envíe la carga completa."
-            action={(
-              <Button icon={<LinkOutlined />} onClick={() => setGestorEnlacesOpen(true)}>
-                Gestionar enlace
-              </Button>
-            )}
+            description="Volvé al tablero de cursos para iniciar la carga docente de este curso y bimestre."
           />
         </Card>
       ) : effectiveWorkflow.estado === 'BORRADOR_DOCENTE' ? (
@@ -397,31 +430,101 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
           />
         </Card>
       ) : (
-        <VistaPorAlumno
-          key={`${selectedCursoId}:${selectedPeriodoId}:${reloadCounter}`}
-          periodoId={selectedPeriodoId || ''}
-          alumnos={alumnos}
-          cursoMaterias={cursoMaterias}
-          valoresEscala={valoresEscala}
-          periodo={selectedPeriodo}
-          access={staffGradebookAccess}
-          readOnly
-          workflowRevision={effectiveWorkflow.revision}
-          onSaveSuccess={handleSaveSuccess}
-        />
+        <>
+          <RevisionCursoHeader
+            cursoNombre={selectedCurso ? `${selectedCurso.nombre} · ${selectedCurso.turno}` : 'Curso'}
+            periodoNombre={selectedPeriodo?.nombre || 'Período escolar'}
+          />
+          {!reviewInscripcionId && (
+            <Space wrap>
+              <Tag color={review?.etapa === 'LISTO_PARA_PDF' ? 'success' : 'processing'}>
+                {review ? `${review.visados} de ${review.totalBoletines} boletines visados` : 'Consultando visados'}
+              </Tag>
+              {review?.etapa === 'LISTO_PARA_PDF' && <Tag color="success">Listo para generar PDFs</Tag>}
+            </Space>
+          )}
+          {review && review.alumnosSinIncorporar > 0 && (
+            <Alert
+              type="warning"
+              showIcon
+              title={`${review.alumnosSinIncorporar} alumno(s) ingresaron después de la entrega`}
+              description="Incorporalos a la revisión para completar sus boletines sin modificar los visados existentes."
+              action={<Button loading={approvalBusy} onClick={() => void handleSyncEnrollments()}>Actualizar matrícula</Button>}
+            />
+          )}
+          {reviewInscripcionId && selectedBulletin ? (
+            <VistaPorAlumno
+              key={`${selectedCursoId}:${selectedPeriodoId}:${reviewInscripcionId}:${reloadCounter}`}
+              periodoId={selectedPeriodoId || ''}
+              alumnos={reviewableStudents}
+              cursoMaterias={cursoMaterias}
+              valoresEscala={valoresEscala}
+              periodo={selectedPeriodo}
+              access={staffGradebookAccess}
+              readOnly
+              workflowRevision={effectiveWorkflow.revision}
+              onSaveSuccess={handleSaveSuccess}
+              onRevisionObserved={handleSaveSuccess}
+              initialInscripcionId={reviewInscripcionId}
+              onStudentChange={handleSelectStudent}
+              studentNavigationDisabled={!review || reviewLoading}
+              reviewControls={(
+                <div className={styles.reviewControls}>
+                  <Tag
+                    color={review ? selectedBulletin.estado === 'VISADO' ? 'success' : 'warning' : 'default'}
+                    icon={review && selectedBulletin.estado === 'VISADO' ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
+                    className={styles.reviewStatus}
+                  >
+                    {review
+                      ? selectedBulletin.estado === 'VISADO' ? 'Visado' : 'Pendiente de visado'
+                      : reviewLoading ? 'Actualizando visado' : 'No se pudo actualizar el visado'}
+                  </Tag>
+                  <Typography.Text type="secondary" className={styles.reviewCount}>
+                    {review ? `${review.visados} de ${review.totalBoletines} visados` : 'Consultando progreso'}
+                  </Typography.Text>
+                  <Button
+                    type={selectedBulletin.estado === 'VISADO' ? 'default' : 'primary'}
+                    disabled={!review || detailHasChanges || reviewLoading}
+                    loading={approvalBusy}
+                    onClick={() => handleApproval(selectedBulletin.estado !== 'VISADO')}
+                  >
+                    {selectedBulletin.estado === 'VISADO' ? 'Retirar visado' : 'Visar boletín'}
+                  </Button>
+                </div>
+              )}
+              onPendingChangesChange={setDetailHasChanges}
+            />
+          ) : reviewInscripcionId && reviewLoading ? (
+            <Card className={ui.loadingPanel}>
+              <Spin description="Consultando el visado del alumno..." />
+            </Card>
+          ) : reviewInscripcionId ? (
+            <Alert
+              type="error"
+              showIcon
+              title="Este boletín no está disponible en la revisión actual"
+              action={<Button onClick={() => setReviewInscripcionId(null)}>Volver al listado</Button>}
+            />
+          ) : reviewLoading ? (
+            <Card className={ui.loadingPanel}>
+              <Spin description="Consultando boletines entregados..." />
+            </Card>
+          ) : !review ? (
+            <Alert
+              type="error"
+              showIcon
+              title="No se pudo consultar la revisión del curso"
+              action={<Button onClick={() => setReloadCounter((value) => value + 1)}>Reintentar</Button>}
+            />
+          ) : (
+            <RevisionCursoOverview
+              alumnos={reviewStudents}
+              boletines={review.boletines}
+              onSelectStudent={handleSelectStudent}
+            />
+          )}
+        </>
       )}
-
-      <GestorEnlacesModal
-        open={gestorEnlacesOpen}
-        onClose={() => {
-          setGestorEnlacesOpen(false);
-          setReloadCounter((value) => value + 1);
-        }}
-        cursos={cursos}
-        periodos={periodos}
-        activeCursoId={selectedCursoId}
-        activePeriodoId={selectedPeriodoId}
-      />
     </SectionLayout>
   );
 };

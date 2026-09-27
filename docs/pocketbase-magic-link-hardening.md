@@ -14,6 +14,7 @@ Las rutas seguras disponibles son:
 - `POST /api/cys/enlaces-docentes/:tokenId/rotar`, restringida a usuarios institucionales autenticados
 - `POST /api/cys/enlaces-docentes/:tokenId/recuperar`, restringida a usuarios institucionales autenticados
 - `GET /api/cys/directivo/instancias/:cursoId/:periodoId`, restringida a usuarios institucionales autenticados
+- `GET /api/cys/directivo/alumnos/:inscripcionId?periodoId=:periodoId`, restringida a usuarios institucionales autenticados
 - `PUT /api/cys/directivo/alumnos/:inscripcionId`, restringida a usuarios institucionales autenticados
 
 Las rutas docentes reciben la credencial en `X-CYS-Teacher-Token`, revalidan existencia, secreto, alcance y workflow en cada solicitud y responden con `Cache-Control: no-store`. Los enlaces nuevos guardan SHA-256 tanto en `token` como en `token_hash` y sólo muestran `token_prefijo` como referencia administrativa. Los enlaces legados de curso completo conservan validez por comparación de hash; los accesos legados limitados a una materia son rechazados por el gateway.
@@ -30,7 +31,7 @@ La migración `1789342800_created_gradebook_workflows.js` incorporó `instancias
 
 La fase institucional agregó la consulta de estado y un guardado transaccional restringido a `CONTROL_DIRECTIVO`. La misma migración bloqueó creación, actualización y eliminación directa de evaluaciones, criterios evaluados y cierres. La interfaz no monta el editor institucional mientras la docente conserva el control.
 
-La concurrencia entre sesiones institucionales se protege mediante `expectedRevision`: el gateway compara la versión dentro de la transacción antes de tocar evaluaciones, criterios, apoyos o cierres. Una versión vencida produce `409` sin escrituras. PocketBase Realtime notifica el cambio de la instancia para invalidar las vistas, pero la comparación transaccional sigue siendo la garantía de integridad. El hook se desplegó el 16 de septiembre de 2026 con el respaldo `/root/pb/deploy_backups/20260916-085138` y la carrera aislada confirmó `200`, `409`, un único incremento y evento Realtime.
+La concurrencia entre sesiones institucionales se protege mediante una instantánea de lectura y una precondición de escritura. El gateway de alumno devuelve evaluaciones, PPI, apoyos, cierre y `revision` leídos dentro de una misma transacción. El guardado compara esa versión dentro de otra transacción antes de tocar registros; una versión vencida produce `409` sin escrituras. PocketBase Realtime notifica el cambio de la instancia para invalidar las vistas, pero nunca asigna una revisión nueva a datos cacheados. El hook inicial se desplegó el 16 de septiembre de 2026 con el respaldo `/root/pb/deploy_backups/20260916-085138` y la carrera aislada confirmó `200`, `409`, un único incremento y evento Realtime.
 
 La migración `1789346400_simplified_unidirectional_gradebook_workflow.js` convierte cualquier instancia histórica `CERRADO` en `CONTROL_DIRECTIVO`, elimina ese estado y sus campos de auditoría y deja `CONTROL_DIRECTIVO` como estado terminal. Se validó primero sobre una copia con un registro cerrado y luego se desplegó con el respaldo `/root/pb/deploy_backups/20260915-081914`. Los hooks ya no exponen rutas de devolución, cierre o reapertura, por lo que un envío docente nunca puede recuperar acceso docente.
 

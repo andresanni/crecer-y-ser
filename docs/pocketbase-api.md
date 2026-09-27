@@ -2,7 +2,7 @@
 
 ## Principio de acceso
 
-Las pantallas institucionales autenticadas leen las colecciones estándar mediante el SDK de PocketBase. Las escrituras de la planilla pasan por el gateway para aplicar el workflow y una transacción única. La ruta pública `/carga` no consume colecciones: usa exclusivamente el gateway definido en `pb_hooks`.
+Las pantallas institucionales autenticadas leen las colecciones estándar mediante el SDK de PocketBase, excepto la instantánea editable de una libreta, que pasa por el gateway para asociar todos sus datos con una revisión coherente. Las escrituras de la planilla también pasan por el gateway para aplicar el workflow y una transacción única. La ruta pública `/carga` no consume colecciones: usa exclusivamente el gateway definido en `pb_hooks`.
 
 La credencial docente viaja en `X-CYS-Teacher-Token`. Las respuestas del gateway llevan `Cache-Control: no-store`. PocketBase conserva SHA-256 para validación, un prefijo administrativo y una copia cifrada que sólo puede recuperar una sesión institucional.
 
@@ -79,6 +79,10 @@ Recibe únicamente bloques modificados:
 
 PocketBase vuelve a validar enlace, curso, período, inscripción, cada materia enviada, criterios y escala. El guardado completo se ejecuta en una transacción.
 
+Cada materia incluida debe contener todos sus criterios configurados y, salvo las materias formativas identificadas como conducta, una calificación general. Cuando se incluye `cierre`, `asistencias`, `inasistencias` y `llegadasTarde` son enteros obligatorios entre 0 y 180; `0` representa ausencia de novedades. `observaciones` es opcional y puede enviarse como cadena vacía. El editor docente incluye el cierre en cada guardado para que esos tres valores siempre viajen explícitamente.
+
+Los campos de integración son anuales aunque se completen desde el boletín. En el primer bimestre, `poseeApoyos` vacío o `-` se normaliza a `NO`; si su valor es `SI`, `cualesApoyos` es obligatorio y una cadena vacía produce `400`. En el cuarto se aplica la misma normalización a `promocionoConAcompanamiento`. El cliente envía el bloque `apoyos` en cada guardado docente de esos períodos y el envío final aplica la normalización a cualquier registro histórico que todavía permanezca sin especificar.
+
 Los enlaces legados que tengan `materia_id` informado no pueden usar el gateway. La emisión rechaza `materiaId`; todo acceso nuevo abarca el curso y período completos.
 
 ### `POST /api/cys/docente/enviar`
@@ -113,13 +117,47 @@ Estas rutas exigen una sesión de la colección `users`.
 
 Devuelve la instancia del curso y período, o `null` si la carga todavía no fue iniciada. El frontend usa el estado para montar el editor únicamente durante `CONTROL_DIRECTIVO`.
 
+### `GET /api/cys/directivo/alumnos/:inscripcionId?periodoId=:periodoId`
+
+Devuelve una instantánea institucional coherente con `revision`, evaluaciones, criterios evaluados, PPI, cierre e integración escolar. La pertenencia de la inscripción, el ciclo y el estado `CONTROL_DIRECTIVO` se validan antes de responder.
+
+Todos los bloques y la revisión se leen dentro de una misma transacción. Esa `revision` es la única precondición válida para el siguiente guardado; no debe sustituirse por una revisión recibida por Realtime ni combinarse con datos cacheados de otra consulta.
+
 ### `PUT /api/cys/directivo/alumnos/:inscripcionId`
 
 Recibe `periodoId`, `expectedRevision` y los mismos bloques `materias`, `cierre` y `apoyos` del guardado docente. Dentro de una única transacción valida que la instancia continúe en `CONTROL_DIRECTIVO`, comprueba curso y ciclo, compara la revisión y persiste todos los bloques modificados. Si la revisión coincide, incrementa `revision` y devuelve la instancia resultante.
 
 Si otra sesión confirmó una operación desde la lectura original, responde `409` con `currentRevision` y no modifica ningún registro. El cliente debe conservar el borrador local, informar el conflicto y exigir una relectura antes de volver a guardar. No se permite el reintento automático.
 
+Ante un timeout, fallo de red o `5xx`, el resultado se considera incierto. El cliente conserva lo visible, bloquea nuevos guardados y exige consultar la instantánea autoritativa antes de continuar.
+
 No existen rutas institucionales para devolver una entrega, cerrar la instancia o reabrirla. `CONTROL_DIRECTIVO` es terminal y sólo admite las correcciones realizadas mediante el endpoint de alumno.
+
+## Configuración curricular anual
+
+`curso_materias` incluye `ciclo_id`. Las escrituras directas de `curso_materias` y `criterios_evaluacion` están cerradas para sesiones autenticadas. El constructor usa estas rutas institucionales:
+
+| Ruta | Operación |
+| --- | --- |
+| `GET /api/cys/directivo/configuracion/estado/:cursoId/:cicloId` | Informa si la malla anual continúa editable. |
+| `POST /api/cys/directivo/configuracion/materias` | Asignar una materia a `cursoId` y `cicloId`, con `materiaId` y `ordenVisual`. |
+| `DELETE /api/cys/directivo/configuracion/materias/:cursoMateriaId` | Quitar la materia y sus criterios en una transacción. |
+| `PUT /api/cys/directivo/configuracion/materias/orden` | Actualizar conjuntamente el orden de materias del mismo curso y ciclo. |
+| `PUT /api/cys/directivo/configuracion/materias/:cursoMateriaId/criterios` | Reemplazar los criterios de una materia en una transacción; admite hasta cinco. |
+
+Cada operación revalida dentro de la transacción que ningún bimestre del curso y ciclo haya iniciado su workflow. La emisión del enlace exige escala con valores, al menos una materia y exactamente cinco criterios por materia. El catálogo global de materias conserva la creación autenticada; sus nombres no se editan desde el constructor.
+
+## Etapas y visado de boletines
+
+`GET /api/cys/directivo/etapas/:periodoId` devuelve, para cada curso, `etapa`, `revision`, `totalBoletines` y `visados`. Las etapas son `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF`. Son una proyección del servidor: el estado persistido de control sigue siendo `BORRADOR_DOCENTE` o `CONTROL_DIRECTIVO`.
+
+`GET /api/cys/directivo/revision/:cursoId/:periodoId` devuelve desde una transacción la instancia, su revisión, el conteo y la lista de boletines con `estado`, `revisionContenido`, fecha y usuario de visado. `alumnosSinIncorporar` informa altas activas posteriores a la entrega. Los boletines históricos se migran como `PENDIENTE_REVISION`; ningún registro se visa por inferencia.
+
+`POST /api/cys/directivo/revision/:cursoId/:periodoId/sincronizar-matricula` recibe `{ "expectedRevision": 7 }`. Agrega las matrículas activas ausentes como pendientes, conserva las filas existentes e incrementa la revisión sólo si hubo incorporaciones. Un `409` indica que se debe releer el curso antes de repetir la operación.
+
+`POST /api/cys/directivo/boletines/:inscripcionId/visar` y `POST /api/cys/directivo/boletines/:inscripcionId/retirar-visado` reciben `periodoId`, `expectedRevision` y `expectedContentRevision`. Comparan ambas revisiones en la transacción. El visado exige que el boletín individual tenga todas sus materias, criterios y cierre completos. Una operación repetida sobre el mismo estado no incrementa la revisión. La corrección directiva de ese alumno incrementa `revision_contenido` y retira su visado en la misma transacción.
+
+`visados_boletin` es legible para usuarios institucionales y rechaza creación, edición y eliminación directas. La generación de PDF no está implementada; `LISTO_PARA_PDF` expresa únicamente la condición necesaria para la siguiente fase.
 
 ## Respuestas de autorización
 

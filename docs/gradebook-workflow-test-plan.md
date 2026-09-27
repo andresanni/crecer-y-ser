@@ -18,6 +18,8 @@ El 15 de septiembre de 2026 se desplegaron en el VPS las migraciones unidireccio
 
 El 16 de septiembre de 2026 se desplegó el control optimista directivo con el respaldo `/root/pb/deploy_backups/20260916-085138`. `deploy/test-pocketbase-concurrency.sh` se ejecutó sobre una copia temporal de `pb_data`: dos escrituras simultáneas con revisión `4` produjeron `200` y `409`, la revisión avanzó una sola vez a `5` y el evento actualizado llegó por Realtime. No se modificaron datos productivos. Permanece pendiente la regresión visual con dos navegadores después de publicar el frontend compatible.
 
+El 26 de septiembre de 2026 se ensayaron las migraciones de visado y malla anual sobre una copia aislada de la base del VPS y luego se publicaron con los hooks versionados. Respaldo: `/root/pb/deploy_backups/20260926-094932`. El servicio quedó activo; las rutas nuevas respondieron `401` sin sesión, `curso_materias.ciclo_id` está poblado y la colección `visados_boletin` existe. PocketBase local pasó las 13 comprobaciones de `deploy/verify-pocketbase-dev.ps1`. La matriz funcional de esta extensión sigue destinada a pruebas manuales en `dev`; no se ha publicado aún el frontend compatible en `master`.
+
 ## Matriz funcional
 
 ### 1. Apertura de la instancia
@@ -96,7 +98,28 @@ El 16 de septiembre de 2026 se desplegó el control optimista directivo con el r
 - Interrumpir Realtime en la segunda sesión, guardar primero desde la otra y comprobar que `expectedRevision` provoca `409` sin escrituras parciales ni reintento automático.
 - Mantener dos sesiones institucionales editando materias diferentes y confirmar la política conservadora por curso y período: sólo el primer guardado se confirma; el segundo debe releer antes de aplicar su cambio.
 - Confirmar que el tablero de cursos y el resumen por alumno se recalculan tras cada revisión remota confirmada.
+- Leer una libreta mientras otra sesión guarda y comprobar que la respuesta contiene todos los bloques correspondientes a la misma `revision`, sin combinar datos anteriores y posteriores.
+- Modificar integración escolar desde una sesión, recibir Realtime en la segunda y comprobar que la relectura trae el valor confirmado desde `inscripciones`, no el valor cacheado del listado.
+- Entregar al store una revisión menor después de una mayor y confirmar que la versión local no retrocede ni invalida nuevamente el período.
+- Simular una respuesta perdida o `5xx`, confirmar que el borrador permanece visible y que Guardar sigue bloqueado hasta ejecutar la reconciliación autoritativa.
 
 ## Criterio de aprobación
 
 El workflow queda aprobado cuando el envío conserva todos los datos, invalida definitivamente el acceso docente, nunca existen dos roles con escritura simultánea, las rutas obsoletas no están disponibles y ningún fallo transaccional deja información parcial.
+
+## Extensión de visado y configuración anual
+
+1. Configurar cinco criterios por materia para el ciclo activo. Confirmar que el servidor rechaza la emisión si falta la escala, un valor o cualquier criterio.
+2. Emitir el enlace y comprobar que el constructor ya no puede modificar materias, orden ni criterios del curso y ciclo. Verificar también que las colecciones protegidas rechazan escrituras directas.
+3. Entregar un curso completo y confirmar una fila `PENDIENTE_REVISION` por alumno, sin visados automáticos.
+4. Visar un alumno, comprobar usuario, fecha y revisión; repetir la acción y confirmar que no genera otra revisión.
+5. Guardar una corrección de ese alumno y confirmar que sólo su visado se retira. Intentar visar con una revisión anterior y comprobar `409` sin cambios.
+6. Incorporar un alumno después de la entrega. Confirmar que el backend informa el desajuste, que la sincronización agrega sólo su fila y que no permite visar su boletín incompleto.
+7. Visar todos los boletines requeridos y confirmar `LISTO_PARA_PDF`. Retirar un visado y comprobar el regreso inmediato a `REVISION_DIRECTIVA`.
+8. Crear un ciclo nuevo y confirmar que su constructor comienza con una malla independiente de la del ciclo anterior.
+9. Abrir un boletín pendiente y recorrer Anterior y Siguiente entre alumnos con estados de visado distintos. Confirmar que el nombre, la libreta, el estado y la acción de visado corresponden siempre al mismo alumno.
+10. Llegar al primer y último boletín incorporado y confirmar que Anterior o Siguiente, respectivamente, quedan deshabilitados. Las matrículas pendientes de incorporar no deben aparecer en ese recorrido.
+11. Mantener una edición local sin guardar mientras otra sesión modifica la revisión. Confirmar que la libreta no se desmonta, que el visado y la navegación quedan bloqueados durante la actualización y que el borrador local permanece visible para resolver el conflicto.
+12. Guardar una corrección después de desplazarse hasta una materia baja de la libreta. Confirmar que la lectura posterior mantiene el contenido montado y la posición de scroll, que los controles permanecen inactivos hasta recibir la nueva revisión y que el visado refleja la corrección.
+13. Interrumpir esa relectura después de un guardado confirmado. Confirmar que la libreta anterior sigue visible, la escritura queda bloqueada y Reintentar obtiene una instantánea vigente sin llevar la pantalla al inicio.
+14. En revisión directiva, editar una materia con PPI y confirmar que el interruptor aparece en el encabezado, sin fila adicional ni etiqueta de completitud. Cambiar PPI, guardar y comprobar el valor actualizado; repetir y descartar para verificar que se restaura el valor anterior. Confirmar que la carga docente conserva su indicador de completitud.

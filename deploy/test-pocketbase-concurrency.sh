@@ -148,23 +148,31 @@ curl -fsS http://127.0.0.1:18091/api/realtime \
   --data-binary "$subscription_body" >/dev/null
 printf 'stage=realtime_subscribed\n'
 
-write_body="$(jq -nc \
+first_attendance=11
+second_attendance=22
+first_write_body="$(jq -nc \
   --arg periodId "$period_id" \
   --argjson expectedRevision "$initial_revision" \
-  '{periodoId:$periodId,expectedRevision:$expectedRevision,materias:[],cierre:{},apoyos:{}}')"
+  --argjson attendance "$first_attendance" \
+  '{periodoId:$periodId,expectedRevision:$expectedRevision,materias:[],cierre:{asistencias:$attendance,inasistencias:0,llegadasTarde:0,observaciones:"Primera escritura concurrente"},apoyos:{}}')"
+second_write_body="$(jq -nc \
+  --arg periodId "$period_id" \
+  --argjson expectedRevision "$initial_revision" \
+  --argjson attendance "$second_attendance" \
+  '{periodoId:$periodId,expectedRevision:$expectedRevision,materias:[],cierre:{asistencias:$attendance,inasistencias:0,llegadasTarde:0,observaciones:"Segunda escritura concurrente"},apoyos:{}}')"
 write_url="http://127.0.0.1:18091/api/cys/directivo/alumnos/$enrollment_id"
 
 curl -sS -o "$test_dir/first.json" -w '%{http_code}' "$write_url" \
   -X PUT \
   -H "Authorization: $user_token" \
   -H 'Content-Type: application/json' \
-  --data-binary "$write_body" >"$test_dir/first.status" &
+  --data-binary "$first_write_body" >"$test_dir/first.status" &
 first_pid="$!"
 curl -sS -o "$test_dir/second.json" -w '%{http_code}' "$write_url" \
   -X PUT \
   -H "Authorization: $user_token" \
   -H 'Content-Type: application/json' \
-  --data-binary "$write_body" >"$test_dir/second.status" &
+  --data-binary "$second_write_body" >"$test_dir/second.status" &
 second_pid="$!"
 wait "$first_pid"
 wait "$second_pid"
@@ -177,9 +185,11 @@ test "$statuses" = "200 409"
 if test "$first_status" = "200"; then
   success_file="$test_dir/first.json"
   conflict_file="$test_dir/second.json"
+  confirmed_attendance="$first_attendance"
 else
   success_file="$test_dir/second.json"
   conflict_file="$test_dir/first.json"
+  confirmed_attendance="$second_attendance"
 fi
 
 confirmed_revision="$(jq -er '.instancia.revision' "$success_file")"
@@ -187,6 +197,15 @@ conflict_revision="$(jq -er '.currentRevision' "$conflict_file")"
 expected_confirmed_revision=$((initial_revision + 1))
 test "$confirmed_revision" -eq "$expected_confirmed_revision"
 test "$conflict_revision" -eq "$expected_confirmed_revision"
+
+student_snapshot="$(curl -fsS --get "$write_url" \
+  -H "Authorization: $user_token" \
+  --data-urlencode "periodoId=$period_id")"
+snapshot_revision="$(printf '%s' "$student_snapshot" | jq -er '.revision')"
+snapshot_attendance="$(printf '%s' "$student_snapshot" | jq -er '.cierre.asistencias')"
+test "$snapshot_revision" -eq "$expected_confirmed_revision"
+test "$snapshot_attendance" -eq "$confirmed_attendance"
+printf 'stage=consistent_snapshot revision=%s attendance=%s\n' "$snapshot_revision" "$snapshot_attendance"
 
 attempt=0
 until grep -q "\"revision\":$expected_confirmed_revision" "$test_dir/realtime.events"; do

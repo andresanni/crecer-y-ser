@@ -30,6 +30,7 @@ import type { CursoMateria, CriterioEvaluacion, CriterioFormItem } from '../mode
 
 interface Props {
   cursoMateria: CursoMateria | null;
+  readOnly?: boolean;
   onSaved?: () => void;
 }
 
@@ -39,7 +40,7 @@ export const CriteriosManager: React.FC<Props> = (props) => (
   <CriteriosManagerSession key={props.cursoMateria?.id ?? 'none'} {...props} />
 );
 
-const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => {
+const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, readOnly = false, onSaved }) => {
   const { message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -104,6 +105,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
   };
 
   const handleStartEdit = (index: number) => {
+    if (readOnly) return;
     setEditingIndices((prev) => {
       const next = new Set(prev);
       next.add(index);
@@ -141,6 +143,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
   };
 
   const handleMove = async (index: number, direction: 'up' | 'down') => {
+    if (readOnly) return;
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= criterios.length) return;
 
@@ -180,7 +183,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
   };
 
   const handleSave = async () => {
-    if (!cursoMateria) return;
+    if (!cursoMateria || readOnly) return;
 
     const validos = criterios.filter((c) => c.nombre.trim().length > 0);
     if (validos.length === 0) {
@@ -205,6 +208,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
   };
 
   const handleSaveSingleSlot = async (index: number) => {
+    if (readOnly) return;
     setEditingIndices((prev) => {
       const next = new Set(prev);
       next.delete(index);
@@ -363,7 +367,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
             }}
           >
             {criterios.map((criterio, index) => {
-              const isEditing = editingIndices.has(index);
+              const isEditing = editingIndices.has(index) && !readOnly;
               const currentText = criterio.nombre.trim();
               const persistedText = persistedCriterios[index]?.nombre?.trim() || '';
               const isModified = currentText !== persistedText;
@@ -378,7 +382,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                   return (
                     <div
                       key={criterio.orden_visual}
-                      onClick={() => handleStartEdit(index)}
+                      onClick={() => { if (!readOnly) handleStartEdit(index); }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -387,7 +391,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                         borderRadius: 10,
                         border: "1px dashed var(--cys-color-border)",
                         background: 'var(--cys-color-fill-quaternary, #f8fafc)',
-                        cursor: 'pointer',
+                        cursor: readOnly ? 'default' : 'pointer',
                         transition: 'all 0.2s ease',
                       }}
                       className="cys-slot-empty-hover"
@@ -411,10 +415,10 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                       <div style={{ flex: 1 }}>
                         <Typography.Text type="secondary" style={{ fontSize: 13 }}>
                           <PlusOutlined style={{ marginRight: 6 }} />
-                          Hacer clic para redactar Criterio #{criterio.orden_visual}...
+                          {readOnly ? 'Sin criterio configurado' : `Hacer clic para redactar Criterio #${criterio.orden_visual}...`}
                         </Typography.Text>
                       </div>
-                      <Button size="small" type="link" icon={<PlusOutlined />} style={{ padding: 0 }}>
+                      <Button size="small" type="link" icon={<PlusOutlined />} disabled={readOnly} style={{ padding: 0 }}>
                         Agregar
                       </Button>
                     </div>
@@ -491,6 +495,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                         <Button
                           size="small"
                           icon={<EditOutlined />}
+                          disabled={readOnly}
                           onClick={() => handleStartEdit(index)}
                           style={{
                             borderRadius: 6,
@@ -508,7 +513,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                             size="small"
                             type="text"
                             icon={<ArrowUpOutlined className={ui.smallText} />}
-                            disabled={index === 0 || saving}
+                            disabled={readOnly || index === 0 || saving}
                             onClick={() => handleMove(index, 'up')}
                           />
                         </Tooltip>
@@ -517,7 +522,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                             size="small"
                             type="text"
                             icon={<ArrowDownOutlined className={ui.smallText} />}
-                            disabled={index === criterios.length - 1 || saving}
+                            disabled={readOnly || index === criterios.length - 1 || saving}
                             onClick={() => handleMove(index, 'down')}
                           />
                         </Tooltip>
@@ -574,7 +579,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                       onChange={(e) => handleInputChange(index, e.target.value)}
                       maxLength={250}
                       showCount
-                      disabled={saving}
+                      disabled={readOnly || saving}
                       style={{ borderRadius: 6, marginBottom: 4 }}
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 6 }}>
@@ -649,7 +654,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, onSaved }) => 
                 icon={<SaveOutlined />}
                 onClick={handleSave}
                 loading={saving}
-                disabled={!hasUnsavedChanges && filledCount > 0}
+                disabled={readOnly || (!hasUnsavedChanges && filledCount > 0)}
                 style={{
                   minWidth: 170,
                   fontWeight: 600,

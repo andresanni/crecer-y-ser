@@ -1,62 +1,56 @@
-.accessCard {
+.loadingPanel {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 220px;
+}
+
+.periodCard {
   align-items: center;
   background: var(--cys-color-bg-container);
   border: 1px solid var(--cys-color-border-secondary);
   border-radius: 14px;
   color: inherit;
+  cursor: pointer;
   display: flex;
+  font: inherit;
   gap: 14px;
-  height: 100%;
-  min-height: 100px;
-  padding: 18px;
-  text-decoration: none;
+  min-height: 82px;
+  padding: 16px 18px;
+  text-align: left;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  width: 100%;
 }
 
-.accessCard:hover {
+.periodCard:hover {
   border-color: var(--cys-color-primary-border);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.1);
-  color: inherit;
   transform: translateY(-2px);
 }
 
-.accessCard:focus-visible {
+.periodCard:focus-visible {
   outline: 3px solid var(--cys-color-primary-border);
   outline-offset: 2px;
 }
 
-.icon {
+.periodNumber {
   align-items: center;
   background: var(--cys-color-primary-bg);
   border-radius: 10px;
   color: var(--cys-color-primary-text);
   display: flex;
   flex: 0 0 auto;
-  font-size: 20px;
-  height: 42px;
-  justify-content: center;
-  width: 42px;
-}
-
-.content {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
-.title {
-  color: var(--cys-color-text-heading);
-  font-family: var(--font-heading);
   font-size: 17px;
   font-weight: 700;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
 }
 
-.description {
-  color: var(--cys-color-text-secondary);
-  font-size: 13px;
-  line-height: 1.45;
+.periodName {
+  flex: 1;
+  font-size: 16px;
+  min-width: 0;
 }
 
 .arrow {

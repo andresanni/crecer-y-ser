@@ -23,20 +23,6 @@ export const THEME_CONSTANTS = {
   },
 
 
-  glass: {
-    light: {
-      background: 'rgba(255, 255, 255, 0.85)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      border: '1px solid rgba(226, 232, 240, 0.8)',
-    },
-    dark: {
-      background: 'rgba(15, 23, 42, 0.85)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      border: '1px solid rgba(255, 255, 255, 0.08)',
-    },
-  },
 } as const;
 
 

@@ -1,6 +1,6 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 23 de septiembre de 2026.
+Actualizado: 27 de septiembre de 2026.
 
 ## Propósito
 
@@ -16,7 +16,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 - Carga de calificaciones, asistencias, observaciones y apoyos por alumno.
 - Tablero unificado de carga, avance y revisión por curso.
 - Workflow de boletines con enlaces docentes descartables, guardado progresivo, envío completo y control institucional exclusivo.
-- Landing institucional y temas claro/oscuro.
+- Landing institucional y tema claro como única presentación en toda la aplicación.
 
 ## Stack vigente
 
@@ -37,13 +37,13 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 | `/login` | Acceso institucional |
 | `/carga` | Carga pública mediante token docente |
 | `/app/alumnos` | Directorio y gestión de alumnos |
-| `/app/boletines` | Portal de boletines |
-| `/app/boletines/calificaciones` | Tablero unificado de carga y revisión de notas |
-| `/app/boletines/constructor` | Constructor curricular |
+| `/app/boletines` | Accesos a Bimestres y Constructor |
+| `/app/boletines/calificaciones` | Bimestres: selección, tablero de carga y revisión |
+| `/app/boletines/constructor` | Constructor de la malla curricular |
 
 ## Arquitectura
 
-- `src/core`: cliente PocketBase y contexto transversal de tema.
+- `src/core`: cliente PocketBase y servicios transversales.
 - `src/store`: estado global de sesión y ciclo lectivo.
 - `src/modules`: dominios funcionales con componentes, modelos y servicios propios.
 - `src/shared`: composiciones, estilos y hooks reutilizables.
@@ -74,9 +74,15 @@ La carga institucional y la carga por enlace comparten el editor de boletín y s
 | `BORRADOR_DOCENTE` | Docente mediante enlace vigente | Envío completo a dirección |
 | `CONTROL_DIRECTIVO` | Usuario institucional autenticado | Estado terminal con revisión y corrección |
 
+La configuración de `curso_materias` pertenece ahora a un ciclo lectivo. Materias, orden y criterios se modifican mediante el gateway institucional y quedan cerrados para ese curso y ciclo desde la primera emisión de un enlace. La emisión exige escala con valores, materias y exactamente cinco criterios por materia. El constructor de un ciclo nuevo comienza con su propia malla; el catálogo de nombres de materias continúa compartido.
+
+`visados_boletin` representa la revisión individual posterior a la entrega, con una fila por instancia y matrícula. La entrega crea las filas en `PENDIENTE_REVISION`; dirección puede pasar cada una a `VISADO` con una revisión esperada. Una corrección retira automáticamente el visado del alumno afectado e incrementa su revisión de contenido. La revisión del curso permanece bajo `CONTROL_DIRECTIVO`; `LISTO_PARA_PDF` es una proyección autoritativa del servidor cuando todos los boletines requeridos están visados. No hay generación de PDF implementada todavía.
+
+El gateway institucional informa etapas de curso y conteos de visados; el tablero ya no deduce el workflow a partir de porcentajes. Los porcentajes siguen indicando progreso académico. Si ingresa un alumno después de la entrega, la revisión informa el desajuste y ofrece incorporarlo explícitamente sin alterar los boletines ya visados. Los alumnos dados de baja después de la entrega conservan su fila de revisión.
+
 El guardado docente es progresivo, pero el envío es atómico y sólo ocurre cuando el servidor verifica la completitud de todo el curso. El traspaso elimina inmediatamente la llave docente y no puede revertirse. Dirección recibe una revisión de solo lectura y corrige de forma atómica por materia: sólo una puede editarse por vez y sus acciones de guardado o descarte permanecen en la tarjeta correspondiente. La interfaz nunca monta dos formularios editables a la vez y las colecciones de notas, criterios y cierres no admiten escrituras directas desde clientes.
 
-Las correcciones directivas usan concurrencia optimista por curso y período. Cada guardado envía la revisión base, PocketBase la compara dentro de la transacción y rechaza con `409` cualquier versión vencida antes de escribir. Los cambios de instancia se distribuyen por Realtime; Zustand conserva las versiones observadas e invalida tablero, resumen y detalle. Un cambio remoto nunca reemplaza un formulario con datos locales pendientes. `docs/concurrency-model.md` define este patrón para las próximas features multiusuario.
+Las correcciones directivas usan concurrencia optimista por curso y período. Un gateway de lectura devuelve la libreta completa y su revisión desde una misma transacción; cada guardado envía esa versión como precondición. PocketBase la compara dentro de la transacción y rechaza con `409` cualquier revisión vencida antes de escribir. Los cambios de instancia se distribuyen por Realtime; Zustand conserva versiones monotónicas e invalida tablero, resumen y detalle. Un cambio remoto nunca reemplaza un formulario con datos locales pendientes y un resultado de red incierto exige reconciliación antes de reintentar. `docs/concurrency-model.md` define este patrón para las próximas features multiusuario.
 
 Las migraciones de workflow, los hooks y las reglas están versionados con el proyecto y desplegados en el VPS. `1789346400_simplified_unidirectional_gradebook_workflow.js` reduce la máquina a sus dos estados vigentes, `1789474000_added_recoverable_teacher_links.js` incorpora la recuperación cifrada y `1789477600_removed_teacher_link_state.js` elimina `activo` y garantiza una llave única por alcance. El contrato y los alcances se documentan en `docs/magic-link-gradebook.md`; la seguridad y las operaciones del VPS se describen en `docs/pocketbase-magic-link-hardening.md` y `deploy/README.md`.
 
@@ -92,11 +98,28 @@ La tipografía de títulos y navegación es Manrope; Inter se reserva para lectu
 
 El producto es desktop first para equipos escolares, con validación prioritaria en 1366, 1440 y 1920 px. El soporte móvil sigue siendo obligatorio para navegación, modales y tareas compatibles.
 
-La sección institucional `Carga de notas` concentra el seguimiento y la operación por curso. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
+La sección institucional `Bimestres` concentra la selección del período, el seguimiento y la operación por curso. La portada `Boletines` sólo ofrece accesos a `Bimestres` y `Constructor`, sin estadísticas ni consultas propias. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
 
-El tablero distingue el avance académico del control operativo. `Completado` exige una entrega en `CONTROL_DIRECTIVO`; `En progreso` indica un borrador con una llave emitida y `Pausado` identifica respuestas parciales sin llave docente. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
+El tablero distingue el avance académico del control operativo. Las etapas `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF` provienen del servidor. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
+
+La tabla de grados muestra por separado el progreso de llenado docente y el de revisión directiva. La revisión se presenta como no habilitada hasta que el curso se entrega; luego muestra el conteo de boletines visados sobre el total de la entrega. El estado indica sólo la instancia del workflow, sin repetir ese conteo. Los grados se identifican por su número y el tablero no filtra por condición de entrega.
+Cada curso muestra una única acción según la etapa: acceso al gestor de enlaces antes de la entrega o apertura de la revisión después. La tabla distribuye sus columnas según el ancho disponible y conserva desplazamiento horizontal sólo para pantallas estrechas.
+
+En la libreta directiva, Anterior y Siguiente recorren únicamente los boletines incorporados a la revisión. La selección del alumno pertenece a la pantalla de revisión para mantener sincronizados la libreta, el estado de visado y la acción correspondiente; los extremos de la lista no permiten avanzar fuera del curso.
+Después de una corrección confirmada, la libreta conserva su contenido y posición de scroll mientras consulta la nueva instantánea. Durante esa lectura los controles quedan temporalmente inactivos; una falla mantiene los datos anteriores visibles y ofrece reintentar, sin habilitar escrituras con una revisión vencida.
+
+La cabecera de revisión destaca el curso, turno y bimestre sin repetir la entrega. En el detalle, el estado individual de visado, su acción y el conteo del curso permanecen en la barra sticky del alumno. El porcentaje de materias en esa barra se reserva para la carga docente; la revisión parte de boletines ya entregados. Los estilos de esta composición viven junto a los componentes y usan los tokens del tema.
+La barra sticky se adhiere al borde superior del viewport al desplazarse; el encabezado del shell participa del flujo normal y no requiere reservar un espacio superior.
+En las tarjetas de materias de la revisión directiva se omite el indicador de completitud, ya implícita en la entrega. El valor de PPI se muestra en el encabezado y su interruptor ocupa ese mismo lugar durante la edición, junto a las acciones de guardar o descartar. La carga docente conserva sus indicadores de completitud.
+Los conceptos pedagógicos de cada materia usan una medida máxima de lectura y reservan una zona propia para la calificación. Cuando la tarjeta se estrecha, la calificación pasa debajo del texto para evitar superposiciones; esta composición se comparte entre revisión directiva y carga docente.
+
+Apoyos e Integración Escolar se presenta como una tarjeta de evaluación con la misma estructura visual de las materias: franja de título, insignia y controles de edición locales. La etiqueta `Trayectoria anual` y las tarjetas internas de primer y cuarto bimestre conservan su alcance funcional.
 
 ## Estado de calidad
+
+La evolución de visado y malla anual está implementada y aplicada en PocketBase local y en el VPS. Se verificó en una base sintética aislada, sobre una copia de desarrollo local y sobre una copia consistente de la base del VPS. El despliegue remoto del 26 de septiembre de 2026 tiene el respaldo `/root/pb/deploy_backups/20260926-094932`. La generación dinámica del PDF sigue pendiente.
+
+El frontend productivo de `master` todavía usa escrituras directas del constructor curricular que la nueva migración rechaza. Hasta promover un frontend compatible después de las pruebas en `dev`, el constructor publicado en Vercel no debe usarse para configurar materias o criterios. El desarrollo local y el VPS tienen el backend actualizado; la publicación del frontend queda como paso de la release.
 
 - `npm run lint`: sin errores ni advertencias al finalizar la modernización.
 - `npm run build`: correcto.
@@ -111,7 +134,7 @@ El tablero distingue el avance académico del control operativo. `Completado` ex
 - El primer contenedor real de recuperación local se creó en OneDrive y se verificó por SHA-256 el 20 de septiembre de 2026. La frase de recuperación no se guarda en el proyecto y queda bajo custodia personal.
 - El formulario de contacto de la landing, el servicio SMTP de Gmail (puerto 587) y el endpoint seguro `/api/cys/contacto` fueron probados y configurados en desarrollo local y en el VPS de producción. Los scripts de despliegue `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh` incluyen la transferencia y verificación de los hooks de contacto.
 - La landing institucional y la pantalla de acceso (`/login`) disponen de soporte responsive adaptado para pantallas móviles, con diseño renovado para los niveles educativos.
-- La integración continua ejecuta instalación reproducible, auditoría de dependencias productivas, lint y build sobre `dev`, `master` y sus pull requests. Vercel despliega automáticamente sólo `master`; las demás ramas permanecen sin deployment mientras no exista un backend de staging.
+- La integración continua ejecuta instalación reproducible, auditoría de dependencias productivas, lint y build sobre `dev`, `master` y sus pull requests. Vercel construye y publica únicamente `master`; el build de Preview se omite para las demás ramas mientras no exista un backend de staging.
 - La auditoría de dependencias no informa vulnerabilidades conocidas después de actualizar React Router a `7.18.4`, posterior a la corrección de seguridad `7.18.2`, y renovar las dependencias transitivas compatibles del lockfile.
 
 Las operaciones destructivas o de escritura sobre datos escolares deben probarse con datos descartables y confirmación explícita del alcance.

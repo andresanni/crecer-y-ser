@@ -71,6 +71,7 @@ export interface CursoMateriaRecord {
   created: string;
   updated: string;
   curso_id: string;
+  ciclo_id: string;
   materia_id: string;
   orden_visual: number;
   expand?: {
@@ -82,6 +83,7 @@ export interface CursoMateriaRecord {
 export interface CursoMateria {
   id: string;
   cursoId: string;
+  cicloId: string;
   materiaId: string;
   ordenVisual: number;
   materiaNombre: string;
@@ -94,6 +96,7 @@ export interface CursoMateria {
 export const cursoMateriaAdapter = (record: CursoMateriaRecord): CursoMateria => ({
   id: record.id,
   cursoId: record.curso_id,
+  cicloId: record.ciclo_id,
   materiaId: record.materia_id,
   ordenVisual: Number(record.orden_visual) || 0,
   materiaNombre: record.expand?.materia_id?.nombre || 'Materia sin nombre',
@@ -418,6 +421,14 @@ export type EstadoMonitoreoCurso =
   | 'SIN_INICIAR'
   | 'SIN_ENLACE';
 
+export type EtapaBoletinCurso =
+  | 'PENDIENTE_CONFIGURACION'
+  | 'PENDIENTE_EMISION'
+  | 'CARGA_DOCENTE'
+  | 'CARGA_PAUSADA'
+  | 'REVISION_DIRECTIVA'
+  | 'LISTO_PARA_PDF';
+
 export interface CursoMonitoreoResumen {
   cursoId: string;
   cursoNombre: string;
@@ -428,16 +439,14 @@ export interface CursoMonitoreoResumen {
   alumnosSinIniciar: number;
   porcentaje: number;
   estado: EstadoMonitoreoCurso;
+  etapa: EtapaBoletinCurso;
+  visados: number;
+  totalBoletines: number;
   entregado: boolean;
   tokenDocente?: TokenAccesoDocente;
 }
 
 export interface MonitoreoInstitucionalData {
-  cursosCompletosCount: number;
-  cursosEnProgresoCount: number;
-  cursosPausadosCount: number;
-  cursosSinIniciarCount: number;
-  cursosSinTokenCount: number;
   cursos: CursoMonitoreoResumen[];
 }
 

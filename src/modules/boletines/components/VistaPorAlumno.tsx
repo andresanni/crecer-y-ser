@@ -47,6 +47,7 @@ import {
 } from '@ant-design/icons';
 import {
   GradebookRevisionConflictError,
+  GradebookSaveOutcomeUnknownError,
   staffGradebookDataSource,
 } from '../services/gradebookDataSource.service';
 import {
@@ -65,6 +66,15 @@ import {
   type EstadoProgresoAlumno,
 } from '../models/boletin.model';
 import type { GradebookAccessPolicy } from '../models/gradebookAccess.model';
+import styles from './VistaPorAlumno.module.css';
+
+const criterioFieldKey = (cursoMateriaId: string, criterioId: string) => (
+  `criterio:${cursoMateriaId}:${criterioId}`
+);
+
+const calificacionGeneralFieldKey = (cursoMateriaId: string) => (
+  `general:${cursoMateriaId}`
+);
 
 interface VistaPorAlumnoProps {
   periodoId: string;
@@ -76,6 +86,12 @@ interface VistaPorAlumnoProps {
   readOnly?: boolean;
   workflowRevision?: number;
   onSaveSuccess?: (revision?: number) => void;
+  onRevisionObserved?: (revision: number) => void;
+  initialInscripcionId?: string;
+  onStudentChange?: (inscripcionId: string) => void;
+  studentNavigationDisabled?: boolean;
+  reviewControls?: React.ReactNode;
+  onPendingChangesChange?: (hasChanges: boolean) => void;
 }
 
 interface MateriaAlumnoState {
@@ -112,12 +128,21 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   readOnly = false,
   workflowRevision,
   onSaveSuccess,
+  onRevisionObserved,
+  initialInscripcionId,
+  onStudentChange,
+  studentNavigationDisabled = false,
+  reviewControls,
+  onPendingChangesChange,
 }) => {
   const { message, modal } = App.useApp();
   const dataSource = access.dataSource || staffGradebookDataSource;
   const [editingMateriaId, setEditingMateriaId] = useState<string | null>(null);
+  const [editingSection, setEditingSection] = useState<'support' | 'closure' | null>(null);
+  const [editingGradeField, setEditingGradeField] = useState<string | null>(null);
   const [loadedRevision, setLoadedRevision] = useState<number | undefined>(workflowRevision);
   const [revisionConflict, setRevisionConflict] = useState(false);
+  const [saveOutcomeUnknown, setSaveOutcomeUnknown] = useState(false);
   const workflowRevisionRef = useRef(workflowRevision);
   useEffect(() => {
     workflowRevisionRef.current = workflowRevision;
@@ -138,7 +163,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   }, [valoresEscala]);
 
 
-  const [requestedInscripcionId, setSelectedInscripcionId] = useState<string | null>(null);
+  const [requestedInscripcionId, setSelectedInscripcionId] = useState<string | null>(
+    initialInscripcionId || null,
+  );
   const selectedInscripcionId = alumnos.some((alumno) => alumno.inscripcionId === requestedInscripcionId)
     ? requestedInscripcionId
     : alumnos[0]?.inscripcionId ?? null;
@@ -243,6 +270,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
 
   const [alumnoRevision, setAlumnoRevision] = useState(0);
+  const [loadedStudentId, setLoadedStudentId] = useState<string | null>(null);
   const loadAlumnoData = useCallback(() => setAlumnoRevision((value) => value + 1), []);
   const hasChanges = useMemo(() => {
     const matsModified = Object.values(materiasState).some((m) => m.isModified);
@@ -250,10 +278,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     const supportModified = access.canEditStudentSupport && Boolean(apoyoState.isModified);
     return matsModified || closureModified || supportModified;
   }, [access.canEditPeriodClosure, access.canEditStudentSupport, materiasState, asistenciaState, apoyoState]);
-  const refreshRevision = hasChanges || editingMateriaId ? loadedRevision : workflowRevision;
+  useEffect(() => {
+    onPendingChangesChange?.(hasChanges);
+  }, [hasChanges, onPendingChangesChange]);
+  const refreshRevision = hasChanges || editingMateriaId || editingSection ? loadedRevision : workflowRevision;
   const alumnoRequestKey = [selectedInscripcionId, periodoId, alumnoRevision, refreshRevision].join(':');
   const [alumnoResult, setAlumnoResult] = useState({ key: '', failed: false });
   const alumnoDataReady = alumnoResult.key === alumnoRequestKey && !alumnoResult.failed && !loadingEvaluaciones;
+  const showingPreviousSnapshot = !alumnoDataReady && loadedStudentId === selectedInscripcionId;
   useEffect(() => {
     let active = true;
     const fetchAlumnoData = async () => {
@@ -266,6 +298,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         const currentAlumno = alumnos.find((alumno) => alumno.inscripcionId === selectedInscripcionId);
         if (!currentAlumno) return;
         const snapshot = await dataSource.getAlumno(currentAlumno, periodoId);
+        if (access.mode === 'staff' && snapshot.revision === undefined) {
+          throw new Error('La lectura institucional no informó su revisión.');
+        }
         const evalMap = snapshot.materias;
 
         const newMateriasState: Record<string, MateriaAlumnoState> = {};
@@ -284,6 +319,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         const cierre = snapshot.cierre;
         if (!active) return;
         setMateriasState(newMateriasState);
+        setEditingGradeField(null);
         setAsistenciaState({
           cierreId: cierre?.id,
           asistencias: cierre?.asistencias ?? 0,
@@ -296,14 +332,26 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
         const apoyos = snapshot.apoyos;
+        const promocionoConAcompanamiento = apoyos?.promocionoConAcompanamiento
+          || curAlu?.promocionoConAcompanamiento
+          || '-';
+        const poseeApoyos = apoyos?.poseeApoyos || curAlu?.poseeApoyos || '-';
         setApoyoState({
-          promocionoConAcompanamiento: apoyos?.promocionoConAcompanamiento || curAlu?.promocionoConAcompanamiento || '-',
-          poseeApoyos: apoyos?.poseeApoyos || curAlu?.poseeApoyos || '-',
+          promocionoConAcompanamiento: periodo?.numeroPeriodo === 4
+            && promocionoConAcompanamiento === '-'
+            ? 'NO'
+            : promocionoConAcompanamiento,
+          poseeApoyos: periodo?.numeroPeriodo === 1 && poseeApoyos === '-'
+            ? 'NO'
+            : poseeApoyos,
           cualesApoyos: apoyos?.cualesApoyos || curAlu?.cualesApoyos || '',
           isModified: false,
         });
-        setLoadedRevision(workflowRevisionRef.current);
+        setLoadedRevision(snapshot.revision ?? workflowRevisionRef.current);
+        if (snapshot.revision !== undefined) onRevisionObserved?.(snapshot.revision);
         setRevisionConflict(false);
+        setSaveOutcomeUnknown(false);
+        setLoadedStudentId(selectedInscripcionId);
         setAlumnoResult({ key: alumnoRequestKey, failed: false });
       } catch (err) {
         if (!active) return;
@@ -317,7 +365,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     };
     void fetchAlumnoData();
     return () => { active = false; };
-  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey, dataSource, access]);
+  }, [selectedInscripcionId, periodoId, cursoMaterias, alumnos, message, alumnoRevision, alumnoRequestKey, dataSource, access, periodo?.numeroPeriodo, onRevisionObserved]);
 
 
   const handleCriterioChange = (
@@ -423,11 +471,43 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     workflowRevision !== undefined
       && loadedRevision !== undefined
       && workflowRevision !== loadedRevision
-      && (hasChanges || editingMateriaId),
+      && (hasChanges || editingMateriaId || editingSection),
   );
 
   const handleSave = async () => {
-    if (hasRevisionConflict || (readOnly && !editingMateriaId) || !selectedInscripcionId || !periodoId || !alumnoDataReady) return;
+    if (
+      hasRevisionConflict
+      || saveOutcomeUnknown
+      || (readOnly && !editingMateriaId && !editingSection)
+      || !selectedInscripcionId
+      || !periodoId
+      || !alumnoDataReady
+    ) return;
+
+    if (
+      isPrimerBimestre
+      && apoyoState.poseeApoyos === 'SI'
+      && !apoyoState.cualesApoyos.trim()
+    ) {
+      message.warning('Detallá cuáles son los apoyos antes de guardar.');
+      return;
+    }
+
+    const incompleteMateria = cursoMaterias.find((cm) => {
+      const mat = materiasState[cm.id];
+      if (!mat?.isModified) return false;
+      const criteriosCompletos = (criteriosMap[cm.id] || []).every(
+        (criterio) => Boolean(mat.criteriosValores[criterio.id]),
+      );
+      const calificacionGeneralCompleta = esMateriaConducta(cm.materiaNombre)
+        || Boolean(mat.calificacionGeneralId);
+      return !criteriosCompletos || !calificacionGeneralCompleta;
+    });
+
+    if (incompleteMateria) {
+      message.warning(`Completá todas las calificaciones obligatorias de ${incompleteMateria.materiaNombre} antes de guardar.`);
+      return;
+    }
 
     try {
       setSaving(true);
@@ -444,7 +524,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           })),
         }];
       });
-      const cierre = access.canEditPeriodClosure && asistenciaState.isModified
+      const cierre = access.canEditPeriodClosure
+        && (access.mode === 'magic-link' || asistenciaState.isModified)
         ? {
           asistencias: asistenciaState.asistencias,
           inasistencias: asistenciaState.inasistencias,
@@ -452,7 +533,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           observaciones: asistenciaState.observaciones,
         }
         : undefined;
-      const apoyos = access.canEditStudentSupport && apoyoState.isModified
+      const shouldPersistSupportDefaults = access.mode === 'magic-link'
+        && (isPrimerBimestre || isCuartoBimestre);
+      const apoyos = access.canEditStudentSupport
+        && (apoyoState.isModified || shouldPersistSupportDefaults)
         ? {
           promocionoConAcompanamiento: apoyoState.promocionoConAcompanamiento,
           poseeApoyos: apoyoState.poseeApoyos,
@@ -469,6 +553,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       });
       setLoadedRevision(result.revision ?? workflowRevision);
       setRevisionConflict(false);
+      setSaveOutcomeUnknown(false);
 
       if (apoyos) {
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
@@ -572,7 +657,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         return next;
       });
       setAsistenciaState((prev) => ({ ...prev, isModified: false }));
-      if (readOnly) setEditingMateriaId(null);
+      setEditingGradeField(null);
+      if (readOnly) {
+        setEditingMateriaId(null);
+        setEditingSection(null);
+      }
       onSaveSuccess?.(result.revision);
     } catch (err) {
       console.error(err);
@@ -583,6 +672,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         setRevisionConflict(true);
         onSaveSuccess?.(err.currentRevision);
         message.warning('Otra sesión actualizó esta planilla. No se guardó ningún cambio.');
+      } else if (err instanceof GradebookSaveOutcomeUnknownError) {
+        setSaveOutcomeUnknown(true);
+        message.warning('No se pudo confirmar el resultado. Comprobá la versión actual antes de continuar.');
       } else {
         message.error('Error al guardar datos del estudiante');
       }
@@ -647,8 +739,18 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const isLast = currentIndex >= alumnos.length - 1;
 
   const navigateToStudent = (newIndex: number) => {
-    if (newIndex < 0 || newIndex >= alumnos.length) return;
+    if (studentNavigationDisabled || newIndex < 0 || newIndex >= alumnos.length) return;
     const targetStudent = alumnos[newIndex];
+    const selectStudent = () => {
+      setEditingMateriaId(null);
+      setEditingSection(null);
+      setSaveOutcomeUnknown(false);
+      if (onStudentChange) {
+        onStudentChange(targetStudent.inscripcionId);
+      } else {
+        setSelectedInscripcionId(targetStudent.inscripcionId);
+      }
+    };
 
     if (hasChanges) {
       modal.confirm({
@@ -657,14 +759,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         okText: 'Cambiar sin guardar',
         okType: 'danger',
         cancelText: 'Permanecer aquí',
-        onOk: () => {
-          setEditingMateriaId(null);
-          setSelectedInscripcionId(targetStudent.inscripcionId);
-        },
+        onOk: selectStudent,
       });
     } else {
-      setEditingMateriaId(null);
-      setSelectedInscripcionId(targetStudent.inscripcionId);
+      selectStudent();
     }
   };
 
@@ -682,6 +780,32 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     modal.confirm({
       title: '¿Descartar los cambios de esta materia?',
       content: 'La materia volverá a mostrar las calificaciones guardadas.',
+      okText: 'Descartar cambios',
+      cancelText: 'Continuar editando',
+      okButtonProps: { danger: true },
+      onOk: discard,
+    });
+  };
+
+  const handleDiscardSection = (
+    section: 'support' | 'closure',
+    isModified: boolean,
+  ) => {
+    const discard = () => {
+      setEditingSection(null);
+      if (isModified) loadAlumnoData();
+    };
+
+    if (!isModified) {
+      discard();
+      return;
+    }
+
+    modal.confirm({
+      title: section === 'support'
+        ? '¿Descartar los cambios de integración escolar?'
+        : '¿Descartar los cambios del cierre?',
+      content: 'La sección volverá a mostrar los datos guardados.',
       okText: 'Descartar cambios',
       cancelText: 'Continuar editando',
       okButtonProps: { danger: true },
@@ -717,6 +841,41 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return { completedCount, total, percent };
   }, [cursoMaterias, materiasState, criteriosMap]);
 
+  const studentIdentity = currentAlumno ? (
+    <div
+      className={`${styles.studentIdentity} ${access.mode === 'magic-link' ? styles.studentIdentityInteractive : ''}`}
+    >
+      <div className={styles.studentNumber}>
+        {currentAlumno.numeroOrden || <UserOutlined />}
+      </div>
+      <div className={styles.studentDetails}>
+        <div className={ui.tightRow}>
+          <Typography.Text strong ellipsis className={styles.studentName}>
+            {currentAlumno.nombreCompleto}
+          </Typography.Text>
+          {access.mode === 'magic-link' && (
+            <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', flexShrink: 0 }} />
+          )}
+        </div>
+        {access.mode === 'magic-link' && <div className={ui.inlineControls}>
+          <Tag
+            color={stats.percent === 100 ? 'green' : 'blue'}
+            style={{ fontWeight: 700, margin: 0, fontSize: 10.5, padding: '1px 6px' }}
+          >
+            {stats.completedCount}/{stats.total} materias ({stats.percent}%)
+          </Tag>
+          <Progress
+            percent={stats.percent}
+            showInfo={false}
+            strokeColor={stats.percent === 100 ? '#10b981' : '#2563eb'}
+            size="small"
+            style={{ width: 110, margin: 0 }}
+          />
+        </div>}
+      </div>
+    </div>
+  ) : null;
+
 
   const alumnosDrawerFiltrados = useMemo(() => {
     if (filtroDrawer === 'TODOS') return alumnos;
@@ -733,7 +892,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return <Empty description="No hay alumnos inscriptos en este curso." />;
   }
 
-  if (!alumnoDataReady) {
+  if (!alumnoDataReady && !showingPreviousSnapshot) {
     const failed = alumnoResult.key === alumnoRequestKey && alumnoResult.failed;
     return (
       <Card>
@@ -756,22 +915,43 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   }
 
   return (
-    <div className={ui.page}>
-      {hasRevisionConflict && (
+    <>
+    {showingPreviousSnapshot && (
+      <span role="status" className={styles.visuallyHidden}>
+        {alumnoResult.key === alumnoRequestKey && alumnoResult.failed
+          ? 'No se pudo actualizar la libreta. Reintentá la lectura.'
+          : 'Actualizando la libreta del alumno.'}
+      </span>
+    )}
+    {showingPreviousSnapshot && alumnoResult.key === alumnoRequestKey && alumnoResult.failed && (
+      <Alert
+        type="error"
+        showIcon
+        title="No se pudo actualizar la libreta"
+        description="Los datos anteriores siguen visibles. Reintentá la lectura antes de continuar."
+        action={<Button onClick={loadAlumnoData}>Reintentar</Button>}
+      />
+    )}
+    <div className={ui.page} aria-busy={showingPreviousSnapshot} inert={showingPreviousSnapshot}>
+      {(hasRevisionConflict || saveOutcomeUnknown) && (
         <Alert
           type="warning"
           showIcon
-          title="Esta planilla cambió en otra sesión"
-          description="Tus cambios locales no se sobrescribieron ni se guardaron. Cargá la versión actual antes de continuar."
+          title={saveOutcomeUnknown ? 'No se pudo confirmar el guardado' : 'Esta planilla cambió en otra sesión'}
+          description={saveOutcomeUnknown
+            ? 'Los cambios permanecen en pantalla, pero es necesario comprobar el estado confirmado antes de volver a guardar.'
+            : 'Tus cambios locales no se sobrescribieron ni se guardaron. Cargá la versión actual antes de continuar.'}
           action={(
             <Button
               onClick={() => {
                 setEditingMateriaId(null);
+                setEditingSection(null);
                 setRevisionConflict(false);
+                setSaveOutcomeUnknown(false);
                 loadAlumnoData();
               }}
             >
-              Cargar versión actual
+              {saveOutcomeUnknown ? 'Comprobar estado actual' : 'Cargar versión actual'}
             </Button>
           )}
         />
@@ -779,37 +959,30 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       { }
       {currentAlumno && (
         <div
-          className={`${ui.operationalContent} cys-sticky-student-banner`}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            padding: '10px 16px',
-            borderRadius: 12,
-            background: 'var(--cys-color-bg-container)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(37, 99, 235, 0.22)',
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.04)',
-            transition: 'all 0.2s ease',
-            flexWrap: 'wrap',
-          }}
+          className={`${ui.operationalContent} ${styles.studentBanner}`}
         >
           { }
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+          <div className={styles.studentNavigation}>
+            {showingPreviousSnapshot && (
+              <Typography.Text type="secondary" className={styles.studentRefreshStatus}>
+                {alumnoResult.key === alumnoRequestKey && alumnoResult.failed
+                  ? 'Actualización pendiente'
+                  : 'Actualizando libreta…'}
+              </Typography.Text>
+            )}
             <Tooltip title="Alumno anterior">
               <Button
                 type="text"
                 icon={<LeftOutlined style={{ fontSize: 11 }} />}
                 onClick={handlePrevStudent}
-                disabled={isFirst}
+                disabled={isFirst || studentNavigationDisabled}
                 style={{ borderRadius: 8, fontSize: 11.5, fontWeight: 600, color: 'var(--cys-color-text-description)' }}
               >
                 Anterior
               </Button>
             </Tooltip>
-            <Popover
+            {access.mode === 'magic-link' ? (
+              <Popover
               open={stickySelectorOpen}
               onOpenChange={setStickySelectorOpen}
               trigger="click"
@@ -932,66 +1105,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               </div>
             }
             >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  cursor: 'pointer',
-                  padding: '4px 10px',
-                  borderRadius: 8,
-                  transition: 'all 0.15s ease',
-                  minWidth: 0,
-                }}
-              >
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 8,
-                    background: '#2563eb',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontWeight: 700,
-                    fontSize: 13,
-                    flexShrink: 0,
-                    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-                  }}
-                >
-                  {currentAlumno.numeroOrden || <UserOutlined />}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-                  <div className={ui.tightRow}>
-                    <Typography.Text strong ellipsis style={{ fontSize: 15, color: 'var(--cys-color-text)' }}>
-                      {currentAlumno.nombreCompleto}
-                    </Typography.Text>
-                    <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', flexShrink: 0 }} />
-                  </div>
-                  <div className={ui.inlineControls}>
-                    <Tag
-                      color={stats.percent === 100 ? 'green' : 'blue'}
-                      style={{ fontWeight: 700, margin: 0, fontSize: 10.5, padding: '1px 6px' }}
-                    >
-                      {stats.completedCount}/{stats.total} materias ({stats.percent}%)
-                    </Tag>
-                    <Progress
-                      percent={stats.percent}
-                      showInfo={false}
-                      strokeColor={stats.percent === 100 ? '#10b981' : '#2563eb'}
-                      size="small"
-                      style={{ width: 110, margin: 0 }}
-                    />
-                  </div>
-                </div>
-              </div>
+              {studentIdentity}
             </Popover>
+            ) : studentIdentity}
             <Tooltip title="Alumno siguiente">
               <Button
                 type="text"
                 onClick={handleNextStudent}
-                disabled={isLast}
+                disabled={isLast || studentNavigationDisabled}
                 style={{ borderRadius: 8, fontSize: 11.5, fontWeight: 600, color: 'var(--cys-color-text-description)' }}
               >
                 Siguiente <RightOutlined style={{ fontSize: 11 }} />
@@ -999,14 +1120,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </Tooltip>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <Button
-              icon={<DashboardOutlined className={ui.primary} />}
-              onClick={() => setDrawerResumenOpen(true)}
-              style={{ borderRadius: 8, fontWeight: 600 }}
-            >
-              Guía del Curso
-            </Button>
+          <div className={styles.studentActions}>
+            {reviewControls}
+            {access.mode === 'magic-link' && (
+              <Button
+                icon={<DashboardOutlined className={ui.primary} />}
+                onClick={() => setDrawerResumenOpen(true)}
+                style={{ borderRadius: 8, fontWeight: 600 }}
+              >
+                Guía del Curso
+              </Button>
+            )}
             {access.canSubmitPeriod && (
               <Button
                 type="primary"
@@ -1026,23 +1150,54 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       {access.canEditStudentSupport && (
         <div className={ui.operationalContent}>
           <Card
-            style={{
-              borderRadius: 12,
-              border: apoyoState.isModified ? '1px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
-              background: 'var(--cys-color-bg-container, #ffffff)',
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)',
-              transition: 'all 0.2s ease',
-            }}
-            styles={{ body: { padding: '12px 16px' } }}
+            className={`${styles.evaluationCard} ${apoyoState.isModified ? styles.evaluationCardModified : ''}`}
+            styles={{ body: { padding: '16px 20px' } }}
           >
-        <div style={{ marginBottom: 12 }}>
-          <Space size={6} align="center">
-            <SafetyCertificateOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 15 }} />
-            <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
-              Apoyos e Integración Escolar (Trayectoria Anual)
+        <div className={styles.evaluationHeader}>
+          <div className={styles.evaluationHeading}>
+            <span className={styles.evaluationNumber}><SafetyCertificateOutlined /></span>
+            <Typography.Text strong className={styles.evaluationTitle}>
+              Apoyos e Integración Escolar
             </Typography.Text>
-          </Space>
+            <Tag className={styles.evaluationMetaTag}>Trayectoria anual</Tag>
+          </div>
+          {readOnly && (isPrimerBimestre || isCuartoBimestre) && (
+            editingSection === 'support' ? (
+              <Space size={6} className={styles.evaluationActions}>
+                <Button
+                  size="small"
+                  icon={<CloseOutlined />}
+                  disabled={saving}
+                  onClick={() => handleDiscardSection('support', Boolean(apoyoState.isModified))}
+                >
+                  Descartar
+                </Button>
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<SaveOutlined />}
+                  loading={saving}
+                  disabled={!apoyoState.isModified || hasRevisionConflict || saveOutcomeUnknown}
+                  onClick={() => void handleSave()}
+                >
+                  Guardar
+                </Button>
+              </Space>
+            ) : (
+              <Tooltip title={editingMateriaId || editingSection ? 'Guardá o descartá la sección que estás editando.' : 'Editar integración escolar'}>
+                <Button
+                  size="small"
+                  icon={<EditOutlined />}
+                  disabled={Boolean(editingMateriaId || editingSection)}
+                  onClick={() => setEditingSection('support')}
+                >
+                  Editar
+                </Button>
+              </Tooltip>
+            )
+          )}
         </div>
+        <Divider className={styles.evaluationDivider} />
 
         <Row gutter={[16, 14]}>
           { }
@@ -1088,7 +1243,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     </Typography.Text>
                     <Tooltip title={!isPrimerBimestre ? 'Los dispositivos de apoyo se establecen al inicio del ciclo lectivo en el 1° Bimestre.' : undefined}>
                       <div>
-                        {readOnly ? (
+                        {readOnly && (editingSection !== 'support' || !isPrimerBimestre) ? (
                           <Typography.Text strong>
                             {apoyoState.poseeApoyos === 'SI' ? 'Sí' : apoyoState.poseeApoyos === 'NO' ? 'No' : 'Sin especificar'}
                           </Typography.Text>
@@ -1102,7 +1257,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             options={[
                               { value: 'SI', label: 'Sí' },
                               { value: 'NO', label: 'No' },
-                              { value: '-', label: 'Sin especificar (—)' },
+                              ...(!isPrimerBimestre
+                                ? [{ value: '-', label: 'Sin especificar (—)' }]
+                                : []),
                             ]}
                           />
                         )}
@@ -1122,7 +1279,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     >
                       ¿Cuáles? {isPrimerBimestre && apoyoState.poseeApoyos === 'SI' && <span style={{ color: '#ef4444' }}>*</span>}
                     </Typography.Text>
-                    {readOnly ? (
+                    {readOnly && (editingSection !== 'support' || !isPrimerBimestre) ? (
                       <Typography.Text strong>
                         {apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos || 'Sin detalle' : 'No corresponde'}
                       </Typography.Text>
@@ -1195,7 +1352,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   }
                 >
                   <div>
-                    {readOnly ? (
+                    {readOnly && (editingSection !== 'support' || !isCuartoBimestre) ? (
                       <Typography.Text strong>
                         {apoyoState.promocionoConAcompanamiento === 'SI' ? 'Sí' : apoyoState.promocionoConAcompanamiento === 'NO' ? 'No' : 'Sin especificar'}
                       </Typography.Text>
@@ -1209,7 +1366,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                         options={[
                           { value: 'SI', label: 'Sí' },
                           { value: 'NO', label: 'No' },
-                          { value: '-', label: 'Sin especificar (—)' },
+                          ...(!isCuartoBimestre
+                            ? [{ value: '-', label: 'Sin especificar (—)' }]
+                            : []),
                         ]}
                       />
                     )}
@@ -1224,7 +1383,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       )}
 
       { }
-      {loadingEvaluaciones || loadingCriterios ? (
+      {(loadingEvaluaciones && !showingPreviousSnapshot) || loadingCriterios ? (
         <Card className={ui.loadingPanel}>
           <Spin description="Cargando materias del estudiante..." />
         </Card>
@@ -1244,7 +1403,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             const esConducta = esMateriaConducta(cm.materiaNombre);
             const isEditingMateria = editingMateriaId === cm.id;
             const isMateriaReadOnly = readOnly && !isEditingMateria;
-            const anotherMateriaIsEditing = Boolean(editingMateriaId && !isEditingMateria);
+            const anotherEditorIsActive = Boolean(
+              (editingMateriaId && !isEditingMateria) || editingSection,
+            );
 
             const isMateriaComplete =
               crits.length > 0 &&
@@ -1254,88 +1415,36 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             return (
               <Card
                 key={cm.id}
-                style={{
-                  borderRadius: 14,
-                  border: mat.isModified ? '1.5px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
-                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
-                  transition: 'all 0.2s ease',
-                }}
+                className={`${styles.evaluationCard} ${mat.isModified ? styles.evaluationCardModified : ''}`}
                 styles={{ body: { padding: '16px 20px' } }}
               >
                 { }
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, #1e40af, #2563eb)',
-                  border: '1px solid #1d4ed8',
-                }}
-                >
-                  <Space size={8} align="center" style={{ flexShrink: 0 }}>
-                    <div
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 6,
-                        background: 'rgba(255, 255, 255, 0.16)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        fontWeight: 700,
-                        fontSize: 12,
-                      }}
-                    >
-                      {matIdx + 1}
-                    </div>
-                    <div>
-                      <Typography.Text strong style={{ fontSize: 14.5, color: '#ffffff' }}>
-                        <BookOutlined style={{ marginRight: 6, color: '#ffffff' }} />
-                        {cm.materiaNombre}
-                      </Typography.Text>
-                    </div>
-                    {isMateriaComplete ? (
+                <div className={styles.evaluationHeader}>
+                  <div className={styles.evaluationHeading}>
+                    <span className={styles.evaluationNumber}>{matIdx + 1}</span>
+                    <Typography.Text strong className={styles.evaluationTitle}>
+                      <BookOutlined className={styles.evaluationTitleIcon} />
+                      {cm.materiaNombre}
+                    </Typography.Text>
+                    {!readOnly && (isMateriaComplete ? (
                       <Tag
                         icon={<CheckCircleOutlined />}
-                        style={{
-                          margin: 0,
-                          padding: '1px 7px',
-                          borderRadius: 6,
-                          border: '1px solid rgba(255, 255, 255, 0.34)',
-                          background: 'rgba(255, 255, 255, 0.18)',
-                          color: '#ffffff',
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                        }}
+                        className={styles.evaluationMetaTag}
                       >
                         Completa
                       </Tag>
                     ) : (
                       <Tag
                         icon={<ExclamationCircleOutlined />}
-                        style={{
-                          margin: 0,
-                          padding: '1px 7px',
-                          borderRadius: 6,
-                          border: '1px solid rgba(255, 255, 255, 0.25)',
-                          background: 'rgba(15, 23, 42, 0.16)',
-                          color: '#ffffff',
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                        }}
+                        className={styles.evaluationMetaTag}
                       >
                         Incompleta
                       </Tag>
-                    )}
-                  </Space>
+                    ))}
+                  </div>
 
                   { }
-                  <Space size={8} align="center" wrap style={{ flexShrink: 0 }}>
+                  <Space size={8} align="center" wrap className={styles.evaluationHeaderTools}>
                     {!esConducta && (
                       <Space size={6} align="center" style={{ flexShrink: 0 }}>
                         <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
@@ -1344,7 +1453,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                           </Tag>
                         </Tooltip>
                         {isMateriaReadOnly ? (
-                          <Typography.Text strong>{mat.ppi ? 'Sí' : 'No'}</Typography.Text>
+                          <Typography.Text strong style={{ color: '#ffffff' }}>
+                            {mat.ppi ? 'Sí' : 'No'}
+                          </Typography.Text>
                         ) : (
                           <Switch
                             size="small"
@@ -1358,7 +1469,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       </Space>
                     )}
                     {readOnly && (isEditingMateria ? (
-                      <Space size={6}>
+                      <Space
+                        size={6}
+                        className={styles.evaluationActions}
+                      >
                         <Button
                           size="small"
                           icon={<CloseOutlined />}
@@ -1372,18 +1486,18 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                           size="small"
                           icon={<SaveOutlined />}
                           loading={saving}
-                          disabled={!mat.isModified || hasRevisionConflict}
+                          disabled={!mat.isModified || hasRevisionConflict || saveOutcomeUnknown}
                           onClick={() => void handleSave()}
                         >
                           Guardar
                         </Button>
                       </Space>
                     ) : (
-                      <Tooltip title={anotherMateriaIsEditing ? 'Guardá o descartá la materia que estás editando.' : 'Editar únicamente esta materia'}>
+                      <Tooltip title={anotherEditorIsActive ? 'Guardá o descartá la sección que estás editando.' : 'Editar únicamente esta materia'}>
                         <Button
                           size="small"
                           icon={<EditOutlined />}
-                          disabled={anotherMateriaIsEditing}
+                          disabled={anotherEditorIsActive}
                           onClick={() => setEditingMateriaId(cm.id)}
                         >
                           Editar
@@ -1393,7 +1507,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   </Space>
                 </div>
 
-                <Divider style={{ margin: '8px 0 10px' }} />
+                <Divider className={styles.evaluationDivider} />
 
                 { }
                 {crits.length === 0 ? (
@@ -1406,28 +1520,21 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       const num = crit.ordenVisual || cIdx + 1;
                       const valActual = mat.criteriosValores[crit.id] || undefined;
                       return (
-                        <Col xs={24} sm={12} lg={24} key={crit.id}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              background: "var(--cys-color-fill-quaternary)",
-                              padding: '7px 14px',
-                              borderRadius: 8,
-                              gap: 12,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 240 }}>
+                        <Col span={24} key={crit.id}>
+                          <div className={styles.criterionRow}>
+                            <div className={styles.criterionDescription}>
                               <Typography.Text style={{ fontSize: 14, color: 'var(--cys-color-text)', fontWeight: 500, lineHeight: 1.4 }}>
                                 <span style={{ fontWeight: 700, color: 'var(--cys-color-primary-text)', marginRight: 8, fontSize: 14.5 }}>
                                   {num}.
                                 </span>
                                 {crit.nombre}
+                                {access.mode === 'magic-link' && (
+                                  <Typography.Text type="danger" aria-hidden="true"> *</Typography.Text>
+                                )}
                               </Typography.Text>
                             </div>
 
+                            <div className={styles.criterionGrade}>
                             {isMateriaReadOnly ? (
                               <Typography.Text
                                 strong
@@ -1439,25 +1546,67 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               >
                                 {valoresEscala.find((v) => v.id === valActual)?.etiqueta || 'Sin calificar'}
                               </Typography.Text>
+                            ) : access.mode === 'magic-link'
+                              && valActual
+                              && editingGradeField !== criterioFieldKey(cm.id, crit.id) ? (
+                              <Space size={8} wrap className={styles.gradeSummary}>
+                                <Typography.Text strong className={styles.gradeValue}>
+                                  {valoresEscala.find((v) => v.id === valActual)?.etiqueta || 'Sin calificar'}
+                                </Typography.Text>
+                                <Tooltip title="Modificar calificación">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    shape="circle"
+                                    aria-label="Modificar calificación"
+                                    icon={<EditOutlined />}
+                                    onClick={() => setEditingGradeField(criterioFieldKey(cm.id, crit.id))}
+                                  />
+                                </Tooltip>
+                              </Space>
                             ) : (
-                              <Select
-                                size="middle"
-                                placeholder="Calificar..."
-                                allowClear
-                                value={valActual}
-                                onChange={(val) => handleCriterioChange(cm.id, crit.id, val || null)}
-                                style={{ width: 280, maxWidth: '100%' }}
-                                className={getClassNameForValor(valActual)}
-                                options={valoresEscalaDesc.map((v) => ({
-                                  value: v.id,
-                                  label: (
-                                    <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
-                                      {v.etiqueta}
-                                    </span>
-                                  ),
-                                }))}
-                              />
+                              <div className={styles.gradeEditor}>
+                                <Select
+                                  size="middle"
+                                  placeholder="Calificar..."
+                                  aria-required="true"
+                                  autoFocus={editingGradeField === criterioFieldKey(cm.id, crit.id)}
+                                  value={valActual}
+                                  onChange={(val) => {
+                                    handleCriterioChange(cm.id, crit.id, val || null);
+                                    setEditingGradeField(null);
+                                  }}
+                                  onSelect={() => setEditingGradeField(null)}
+                                  onBlur={() => {
+                                    if (valActual) setEditingGradeField(null);
+                                  }}
+                                  className={`${getClassNameForValor(valActual)} ${styles.gradeSelect}`}
+                                  options={valoresEscalaDesc.map((v) => ({
+                                    value: v.id,
+                                    label: (
+                                      <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
+                                        {v.etiqueta}
+                                      </span>
+                                    ),
+                                  }))}
+                                />
+                                {access.mode === 'magic-link'
+                                  && valActual
+                                  && editingGradeField === criterioFieldKey(cm.id, crit.id) && (
+                                  <Tooltip title="Cancelar modificación">
+                                    <Button
+                                      type="text"
+                                      size="small"
+                                      shape="circle"
+                                      aria-label="Cancelar modificación"
+                                      icon={<CloseOutlined />}
+                                      onClick={() => setEditingGradeField(null)}
+                                    />
+                                  </Tooltip>
+                                )}
+                              </div>
                             )}
+                            </div>
                           </div>
                         </Col>
                       );
@@ -1465,7 +1614,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
                     { }
                     {!esConducta && (
-                      <Col xs={24} sm={12} lg={24}>
+                      <Col span={24}>
                         <div
                           style={{
                             display: 'flex',
@@ -1499,6 +1648,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             </div>
                             <Typography.Text style={{ fontSize: 14, color: '#1e3a8a', fontWeight: 700 }}>
                               Calificación General
+                              {access.mode === 'magic-link' && (
+                                <Typography.Text type="danger" aria-hidden="true"> *</Typography.Text>
+                              )}
                             </Typography.Text>
                           </div>
 
@@ -1513,24 +1665,65 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             >
                               {valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || 'Sin calificar'}
                             </Typography.Text>
+                          ) : access.mode === 'magic-link'
+                            && mat.calificacionGeneralId
+                            && editingGradeField !== calificacionGeneralFieldKey(cm.id) ? (
+                            <Space size={8} wrap className={styles.gradeSummary}>
+                              <Typography.Text strong className={styles.gradeValue}>
+                                {valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || 'Sin calificar'}
+                              </Typography.Text>
+                              <Tooltip title="Modificar calificación">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  shape="circle"
+                                  aria-label="Modificar calificación general"
+                                  icon={<EditOutlined />}
+                                  onClick={() => setEditingGradeField(calificacionGeneralFieldKey(cm.id))}
+                                />
+                              </Tooltip>
+                            </Space>
                           ) : (
-                            <Select
-                              size="middle"
-                              placeholder="Calificar..."
-                              allowClear
-                              value={mat.calificacionGeneralId || undefined}
-                              onChange={(val) => handleCalificacionGeneralChange(cm.id, val || null)}
-                              style={{ width: 280, maxWidth: '100%' }}
-                              className={getClassNameForValor(mat.calificacionGeneralId)}
-                              options={valoresEscalaDesc.map((v) => ({
-                                value: v.id,
-                                label: (
-                                  <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
-                                    {v.etiqueta}
-                                  </span>
-                                ),
-                              }))}
-                            />
+                            <div className={styles.gradeEditor}>
+                              <Select
+                                size="middle"
+                                placeholder="Calificar..."
+                                aria-required="true"
+                                autoFocus={editingGradeField === calificacionGeneralFieldKey(cm.id)}
+                                value={mat.calificacionGeneralId || undefined}
+                                onChange={(val) => {
+                                  handleCalificacionGeneralChange(cm.id, val || null);
+                                  setEditingGradeField(null);
+                                }}
+                                onSelect={() => setEditingGradeField(null)}
+                                onBlur={() => {
+                                  if (mat.calificacionGeneralId) setEditingGradeField(null);
+                                }}
+                                className={`${getClassNameForValor(mat.calificacionGeneralId)} ${styles.gradeSelect}`}
+                                options={valoresEscalaDesc.map((v) => ({
+                                  value: v.id,
+                                  label: (
+                                    <span style={{ color: gradeColor, fontWeight: 700, fontSize: 13 }}>
+                                      {v.etiqueta}
+                                    </span>
+                                  ),
+                                }))}
+                              />
+                              {access.mode === 'magic-link'
+                                && mat.calificacionGeneralId
+                                && editingGradeField === calificacionGeneralFieldKey(cm.id) && (
+                                <Tooltip title="Cancelar modificación">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    shape="circle"
+                                    aria-label="Cancelar modificación"
+                                    icon={<CloseOutlined />}
+                                    onClick={() => setEditingGradeField(null)}
+                                  />
+                                </Tooltip>
+                              )}
+                            </div>
                           )}
                         </div>
                       </Col>
@@ -1544,6 +1737,54 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           { }
           {access.canEditPeriodClosure && (
             <>
+              {readOnly && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Typography.Text strong style={{ fontSize: 14.5 }}>
+                    Cierre del alumno
+                  </Typography.Text>
+                  {editingSection === 'closure' ? (
+                    <Space size={6}>
+                      <Button
+                        size="small"
+                        icon={<CloseOutlined />}
+                        disabled={saving}
+                        onClick={() => handleDiscardSection('closure', Boolean(asistenciaState.isModified))}
+                      >
+                        Descartar
+                      </Button>
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<SaveOutlined />}
+                        loading={saving}
+                        disabled={!asistenciaState.isModified || hasRevisionConflict || saveOutcomeUnknown}
+                        onClick={() => void handleSave()}
+                      >
+                        Guardar
+                      </Button>
+                    </Space>
+                  ) : (
+                    <Tooltip title={editingMateriaId || editingSection ? 'Guardá o descartá la sección que estás editando.' : 'Editar asistencias y observaciones'}>
+                      <Button
+                        size="small"
+                        icon={<EditOutlined />}
+                        disabled={Boolean(editingMateriaId || editingSection)}
+                        onClick={() => setEditingSection('closure')}
+                      >
+                        Editar
+                      </Button>
+                    </Tooltip>
+                  )}
+                </div>
+              )}
               <Card
                 style={{
                   borderRadius: 14,
@@ -1560,10 +1801,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               <Col xs={24} sm={8}>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
                   <Typography.Text strong className={ui.secondaryCaption}>
-                    ASISTENCIAS
+                    ASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
-                  {readOnly ? <Typography.Text strong>{asistenciaState.asistencias}</Typography.Text> : (
+                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.asistencias}</Typography.Text> : (
                     <InputNumber
+                      aria-required="true"
                       min={0}
                       max={180}
                       className={ui.fullWidth}
@@ -1577,10 +1819,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               <Col xs={12} sm={8}>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
                   <Typography.Text strong className={ui.secondaryCaption}>
-                    INASISTENCIAS
+                    INASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
-                  {readOnly ? <Typography.Text strong>{asistenciaState.inasistencias}</Typography.Text> : (
+                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.inasistencias}</Typography.Text> : (
                     <InputNumber
+                      aria-required="true"
                       min={0}
                       max={180}
                       className={ui.fullWidth}
@@ -1594,10 +1837,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               <Col xs={12} sm={8}>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
                   <Typography.Text strong className={ui.secondaryCaption}>
-                    LLEGADAS TARDE
+                    LLEGADAS TARDE <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
                   </Typography.Text>
-                  {readOnly ? <Typography.Text strong>{asistenciaState.llegadasTarde}</Typography.Text> : (
+                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.llegadasTarde}</Typography.Text> : (
                     <InputNumber
+                      aria-required="true"
                       min={0}
                       max={180}
                       className={ui.fullWidth}
@@ -1626,7 +1870,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   <Typography.Text strong className={ui.secondaryCaption}>
                     OBSERVACIONES
                   </Typography.Text>
-                  {readOnly ? (
+                  {readOnly && editingSection !== 'closure' ? (
                     <Typography.Paragraph style={{ margin: 0 }}>
                       {asistenciaState.observaciones || 'Sin observaciones'}
                     </Typography.Paragraph>
@@ -1679,7 +1923,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Space size={10}>
             <Button
               onClick={() => void loadAlumnoData()}
-              disabled={saving || hasRevisionConflict}
+              disabled={saving || hasRevisionConflict || saveOutcomeUnknown}
               style={{ borderRadius: 8, fontWeight: 600 }}
             >
               Descartar
@@ -1689,7 +1933,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               icon={<SaveOutlined />}
               onClick={handleSave}
               loading={saving}
-              disabled={hasRevisionConflict}
+              disabled={hasRevisionConflict || saveOutcomeUnknown}
               className="btn-primary-gradient"
               style={{ borderRadius: 8, fontWeight: 600, paddingInline: 20 }}
             >
@@ -1850,5 +2094,6 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         </div>
       </Drawer>
     </div>
+    </>
   );
 };

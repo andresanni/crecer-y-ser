@@ -12,7 +12,7 @@ La landing productiva está disponible en `https://crecer-y-ser-ten.vercel.app/`
 
 - Contenido institucional y recursos visuales actualizados.
 - Hero, propuesta, niveles, footer y acceso institucional adaptados a móvil.
-- Navegación, enlaces externos, temas y recursos verificados.
+- Navegación, enlaces externos y recursos verificados.
 - Formulario conectado a PocketBase y SMTP institucional.
 - Scripts de despliegue ampliados para incluir los hooks de contacto.
 - Lint, build y comprobaciones productivas superadas antes del merge.
@@ -38,6 +38,7 @@ No se incorporan placeholders ni afirmaciones inventadas a `master`.
 La landing respeta `frontend_guidelines.md` y `docs/ux-modernization.md`:
 
 - reutiliza los tokens, tipografías y paleta existentes;
+- usa exclusivamente el tema claro;
 - evita duplicar estilos compartidos o ampliar selectores globales sin necesidad;
 - prioriza componentes y propiedades nativas de Ant Design;
 - conserva soporte móvil y validación en anchos representativos de móvil, 1366, 1440 y 1920 px;

@@ -1,18 +1,13 @@
 import { theme as antdTheme } from 'antd';
 import type { ThemeConfig } from 'antd';
-import { lightTokens, darkTokens } from './tokens';
+import { lightTokens } from './tokens';
 import { BRAND_COLORS } from './colors';
 
-
-
-
-export const getAntdTheme = (isDarkMode: boolean): ThemeConfig => {
-  const activeTokens = isDarkMode ? darkTokens : lightTokens;
-
+export const getAntdTheme = (): ThemeConfig => {
   return {
-    algorithm: isDarkMode ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+    algorithm: antdTheme.defaultAlgorithm,
     cssVar: { prefix: 'cys' },
-    token: activeTokens,
+    token: lightTokens,
     components: {
       Button: {
         controlHeightLG: 46,
@@ -26,14 +21,14 @@ export const getAntdTheme = (isDarkMode: boolean): ThemeConfig => {
       },
       Card: {
         borderRadiusLG: 16,
-        colorBgContainer: isDarkMode ? BRAND_COLORS.slate[800] : '#ffffff',
-        colorBorderSecondary: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(226, 232, 240, 0.8)',
+        colorBgContainer: '#ffffff',
+        colorBorderSecondary: 'rgba(226, 232, 240, 0.8)',
       },
       Table: {
-        headerBg: isDarkMode ? BRAND_COLORS.slate[900] : BRAND_COLORS.slate[50],
-        headerColor: isDarkMode ? BRAND_COLORS.slate[300] : BRAND_COLORS.slate[600],
-        rowHoverBg: isDarkMode ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
-        colorBgContainer: isDarkMode ? BRAND_COLORS.slate[800] : '#ffffff',
+        headerBg: BRAND_COLORS.slate[50],
+        headerColor: BRAND_COLORS.slate[600],
+        rowHoverBg: '#eff6ff',
+        colorBgContainer: '#ffffff',
         borderRadius: 12,
       },
       Input: {
@@ -66,8 +61,8 @@ export const getAntdTheme = (isDarkMode: boolean): ThemeConfig => {
       },
       Modal: {
         borderRadiusLG: 20,
-        contentBg: isDarkMode ? BRAND_COLORS.slate[800] : '#ffffff',
-        headerBg: isDarkMode ? BRAND_COLORS.slate[900] : BRAND_COLORS.slate[50],
+        contentBg: '#ffffff',
+        headerBg: BRAND_COLORS.slate[50],
       },
       Menu: {
         itemBorderRadius: 10,
@@ -75,13 +70,8 @@ export const getAntdTheme = (isDarkMode: boolean): ThemeConfig => {
         itemMarginInline: 8,
         iconSize: 18,
         activeBarBorderWidth: 0,
-        itemSelectedColor: activeTokens?.colorPrimaryText,
-        subMenuItemSelectedColor: activeTokens?.colorPrimaryText,
-        darkItemBg: 'transparent',
-        darkItemSelectedBg: BRAND_COLORS.vibrantBlue.base,
-        darkItemColor: BRAND_COLORS.slate[300],
-        darkItemSelectedColor: '#ffffff',
-        darkItemHoverBg: 'rgba(255, 255, 255, 0.08)',
+        itemSelectedColor: lightTokens?.colorPrimaryText,
+        subMenuItemSelectedColor: lightTokens?.colorPrimaryText,
         borderRadius: 10,
       },
       Tag: {
@@ -89,9 +79,9 @@ export const getAntdTheme = (isDarkMode: boolean): ThemeConfig => {
         fontSize: 12,
       },
       Segmented: {
-        itemSelectedBg: isDarkMode ? BRAND_COLORS.vibrantBlue.base : '#ffffff',
-        itemSelectedColor: isDarkMode ? '#ffffff' : BRAND_COLORS.royalBlue.primary,
-        trackBg: isDarkMode ? BRAND_COLORS.slate[900] : BRAND_COLORS.slate[100],
+        itemSelectedBg: '#ffffff',
+        itemSelectedColor: BRAND_COLORS.royalBlue.primary,
+        trackBg: BRAND_COLORS.slate[100],
         borderRadius: 10,
       },
       Checkbox: {
@@ -100,19 +90,19 @@ export const getAntdTheme = (isDarkMode: boolean): ThemeConfig => {
         colorPrimaryHover: BRAND_COLORS.vibrantBlue.hover,
       },
       Tooltip: {
-        colorBgSpotlight: isDarkMode ? BRAND_COLORS.slate[800] : BRAND_COLORS.slate[900],
+        colorBgSpotlight: BRAND_COLORS.slate[900],
         colorTextLightSolid: BRAND_COLORS.slate[50],
         borderRadiusSM: 8,
       },
       Dropdown: {
-        colorBgElevated: isDarkMode ? BRAND_COLORS.slate[800] : '#ffffff',
+        colorBgElevated: '#ffffff',
         borderRadiusLG: 12,
       },
       Tabs: {
         colorPrimary: BRAND_COLORS.vibrantBlue.base,
         itemHoverColor: BRAND_COLORS.vibrantBlue.hover,
         itemActiveColor: BRAND_COLORS.vibrantBlue.active,
-        cardBg: isDarkMode ? BRAND_COLORS.slate[900] : BRAND_COLORS.slate[50],
+        cardBg: BRAND_COLORS.slate[50],
       },
     },
   };

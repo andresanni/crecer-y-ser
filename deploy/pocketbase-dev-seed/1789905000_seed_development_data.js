@@ -88,6 +88,7 @@ migrate((db) => {
   courseSubjects.forEach(([recordId, courseId, subjectId, order]) => {
     save("curso_materias", id(recordId), {
       curso_id: id(courseId),
+      ciclo_id: id(1),
       materia_id: id(subjectId),
       orden_visual: order
     })
