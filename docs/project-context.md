@@ -119,7 +119,7 @@ Apoyos e Integración Escolar se presenta como una tarjeta de evaluación con la
 
 La evolución de visado y malla anual está implementada y aplicada en PocketBase local y en el VPS. Se verificó en una base sintética aislada, sobre una copia de desarrollo local y sobre una copia consistente de la base del VPS. El despliegue remoto del 26 de septiembre de 2026 tiene el respaldo `/root/pb/deploy_backups/20260926-094932`. La generación dinámica del PDF sigue pendiente.
 
-El frontend productivo de `master` todavía usa escrituras directas del constructor curricular que la nueva migración rechaza. Hasta promover un frontend compatible después de las pruebas en `dev`, el constructor publicado en Vercel no debe usarse para configurar materias o criterios. El desarrollo local y el VPS tienen el backend actualizado; la publicación del frontend queda como paso de la release.
+El 27 de septiembre de 2026, el pull request #6 integró en `master` el frontend compatible con el gateway curricular y el visado. Vercel publicó el nuevo bundle con los endpoints de etapas y revisión y la URL HTTPS del VPS; las rutas públicas y profundas respondieron correctamente. Antes de la fusión se confirmó que los seis hooks y las dos migraciones de esta evolución coincidían con el VPS, considerando los finales de línea de Windows, y que ambas migraciones constaban en su historial. No fue necesario reinstalar PocketBase ni reemplazar `pb_data`.
 
 - `npm run lint`: sin errores ni advertencias al finalizar la modernización.
 - `npm run build`: correcto.
