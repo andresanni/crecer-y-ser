@@ -339,7 +339,7 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
 
 
   return (
-    <SectionLayout title="Carga de notas" icon={<TableOutlined />} actions={
+    <SectionLayout title="Bimestres" icon={<TableOutlined />} actions={
         <Space size="middle" wrap>
           <Button icon={<ArrowLeftOutlined />} onClick={onBackToPeriodSelection}>
             Cambiar bimestre

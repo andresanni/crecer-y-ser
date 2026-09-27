@@ -11,18 +11,19 @@ La modernización visual fue desarrollada originalmente en la rama `feature/ui-u
 
 ## Layouts
 
-- `MainLayout` es el shell privado: sidebar, navegación móvil, barra superior, breadcrumbs, sesión, tema y `Outlet`.
+- `MainLayout` es el shell privado: sidebar, navegación móvil, barra superior, breadcrumbs, sesión y `Outlet`.
 - `SectionLayout` es la raíz de cada pantalla operativa: compone el encabezado y el área funcional con separación uniforme.
 - `PageHeader` es una implementación interna de `SectionLayout`: icono, título y acciones opcionales, sin subtítulo.
-- El sidebar usa 240 px desplegado y 72 px contraído. El drawer móvil usa 264 px.
+- El sidebar usa 200 px desplegado y 64 px contraído. El drawer móvil usa 224 px. Las opciones de `Boletines` se alinean con las secciones principales y comparten un fondo sutil que indica pertenencia sin indentación.
 - La barra superior usa una altura mínima de 64 px y el contenido aprovecha todo el ancho disponible.
+- `Boletines` presenta sólo dos accesos navegables, `Bimestres` y `Constructor`. La selección de bimestre muestra los períodos directamente, sin bloque introductorio.
 
 ## Tipografía y densidad
 
 - Manrope para títulos y navegación.
 - Inter para cuerpo, tablas, formularios y controles.
-- Los encabezados de sección usan un rango fluido de 20 a 24 px.
-- El espaciado entre encabezado y zona operativa se define en `SectionLayout`.
+- Los encabezados operativos usan un rango fluido de 18 a 21 px y un icono compacto; ambos se definen en `PageHeader`.
+- El espaciado entre encabezado y zona operativa se define en `SectionLayout`. Los títulos de la landing conservan sus estilos propios y no se aplican a las pantallas operativas.
 - Los modales extensos limitan su altura al viewport, mantienen acciones accesibles y usan scroll interno solo cuando el contenido no puede entrar físicamente.
 
 ## Formularios modales
@@ -63,6 +64,6 @@ La modernización visual fue desarrollada originalmente en la rama `feature/ui-u
 
 ## Validación
 
-El tablero de carga de notas mantiene la tabla montada durante las actualizaciones de progreso. El botón de actualización muestra actividad durante la consulta y un punto discreto cuando hay cambios Realtime pendientes; sólo la primera carga reemplaza el contenido por un indicador de espera. Si falla una actualización, el último resumen válido permanece visible.
+El tablero de Bimestres mantiene la tabla montada durante las actualizaciones de progreso. El botón de actualización muestra actividad durante la consulta y un punto discreto cuando hay cambios Realtime pendientes; sólo la primera carga reemplaza el contenido por un indicador de espera. Si falla una actualización, el último resumen válido permanece visible.
 
-Cada cambio visual debe revisar tema claro y oscuro, estados con datos, carga, vacío y error. Ejecutar `npm run lint` y `npm run build`. Para flujos de escritura, usar datos descartables y verificar persistencia después de recargar.
+El tema claro es la única presentación. Cada cambio visual debe revisar estados con datos, carga, vacío y error. Ejecutar `npm run lint` y `npm run build`. Para flujos de escritura, usar datos descartables y verificar persistencia después de recargar.

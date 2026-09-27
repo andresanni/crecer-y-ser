@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Layout, Menu, Tag, Spin, Space, Dropdown, Avatar, Breadcrumb, Button, Tooltip, Drawer, Grid } from 'antd';
-import { TeamOutlined, LogoutOutlined, CalendarOutlined, SunOutlined, MoonOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, TableOutlined, SettingOutlined } from '@ant-design/icons';
+import { Layout, Menu, Tag, Spin, Space, Dropdown, Avatar, Breadcrumb, Button, Drawer, Grid } from 'antd';
+import { TeamOutlined, LogoutOutlined, CalendarOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, SettingOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
-import { useTheme } from '../../core/themeContext';
 import pb from '../../core/pocketbase';
 import styles from './MainLayout.module.css';
 
 const sections = [
   { key: '/app/alumnos', label: 'Alumnos', icon: <TeamOutlined /> },
   { key: '/app/boletines', label: 'Boletines', icon: <ScheduleOutlined /> },
-  { key: '/app/boletines/calificaciones', label: 'Carga de notas', icon: <TableOutlined /> },
-  { key: '/app/boletines/constructor', label: 'Constructor curricular', icon: <SettingOutlined /> },
+  { key: '/app/boletines/calificaciones', label: 'Bimestres', icon: <CalendarOutlined /> },
+  { key: '/app/boletines/constructor', label: 'Constructor', icon: <SettingOutlined /> },
 ];
 
 export const MainLayout = () => {
@@ -26,7 +25,6 @@ export const MainLayout = () => {
     ? menuState.openKeys
     : pathname.startsWith('/app/boletines') ? ['/app/boletines'] : menuState.openKeys;
   const { cicloActual, isCicloLoading, fetchCicloActual, currentUser } = useAppStore();
-  const { isDarkMode, toggleTheme } = useTheme();
   const userName = currentUser?.name || currentUser?.email || 'Usuario institucional';
   const currentSection = sections.find((section) => section.key === pathname);
   useEffect(() => { void fetchCicloActual(); }, [fetchCicloActual]);
@@ -38,7 +36,9 @@ export const MainLayout = () => {
       {!compact && <span className={styles.navLabel}>COMUNIDAD EDUCATIVA</span>}
       <Menu
         mode="inline"
+        inlineIndent={0}
         inlineCollapsed={compact}
+        className={compact ? undefined : styles.alignedMenu}
         openKeys={compact ? undefined : openKeys}
         onOpenChange={(keys) => setMenuState({ pathname, openKeys: keys })}
         selectedKeys={[currentSection?.key ?? '/app/alumnos']}
@@ -46,6 +46,7 @@ export const MainLayout = () => {
           sections[0],
           {
             ...sections[1],
+            className: compact ? undefined : styles.sectionGroup,
             onTitleClick: () => navigate('/app/boletines'),
             children: sections.slice(2),
           },
@@ -61,8 +62,8 @@ export const MainLayout = () => {
   return (
     <Layout className={`app-layout ${styles.shell}`}>
       <a className={styles.skipLink} href="#main-content">Saltar al contenido</a>
-      {isDesktop && <Layout.Sider className={styles.sider} theme="light" width={240} collapsedWidth={72} collapsed={collapsed}>{navigation(collapsed)}</Layout.Sider>}
-      <Drawer title="Crecer y Ser" placement="left" open={!isDesktop && mobileOpen} onClose={() => setMobileOpen(false)} size={264}>{navigation(false)}</Drawer>
+      {isDesktop && <Layout.Sider className={styles.sider} theme="light" width={200} collapsedWidth={64} collapsed={collapsed}>{navigation(collapsed)}</Layout.Sider>}
+      <Drawer title="Crecer y Ser" placement="left" open={!isDesktop && mobileOpen} onClose={() => setMobileOpen(false)} size={224}>{navigation(false)}</Drawer>
       <Layout className={styles.workspace}>
         <Layout.Header className={styles.header}>
           <Space>
@@ -75,9 +76,6 @@ export const MainLayout = () => {
           </Space>
           <Space size="small" wrap className={styles.headerActions}>
             {isCicloLoading ? <Spin size="small" /> : <Tag color={cicloActual ? 'green' : 'default'} icon={<CalendarOutlined />}>{cicloActual ? `Ciclo ${cicloActual.ano}` : 'Sin ciclo activo'}</Tag>}
-            <Tooltip title={isDarkMode ? 'Usar tema claro' : 'Usar tema oscuro'}>
-              <Button type="text" shape="circle" icon={isDarkMode ? <SunOutlined /> : <MoonOutlined />} onClick={toggleTheme} aria-label={isDarkMode ? 'Usar tema claro' : 'Usar tema oscuro'} />
-            </Tooltip>
             <Dropdown trigger={['click']} menu={{ items: [
               { key: 'user', label: userName, disabled: true },
               { key: 'website', label: 'Ver sitio web', icon: <GlobalOutlined />, onClick: () => navigate('/') },

@@ -30,7 +30,7 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   ReloadOutlined,
-  ScheduleOutlined,
+  SettingOutlined,
   SyncOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -316,7 +316,7 @@ export const BoletinConfigPage: React.FC = () => {
   ];
 
   return (
-    <SectionLayout title="Constructor de boletines" icon={<ScheduleOutlined />} actions={
+    <SectionLayout title="Constructor" icon={<SettingOutlined />} actions={
         <Space size="small" wrap>
           <Button
             icon={<CalendarOutlined />}

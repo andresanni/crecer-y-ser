@@ -6,10 +6,14 @@
 .navigation :global(.ant-menu-submenu-title) { font-weight: var(--font-weight-navigation); letter-spacing: var(--letter-spacing-navigation); }
 .navigation :global(.ant-menu-item-selected),
 .navigation :global(.ant-menu-submenu-selected > .ant-menu-submenu-title) { font-weight: var(--font-weight-navigation-active); }
-.brand { display: flex; align-items: center; justify-content: center; min-height: 54px; margin-inline: 12px; padding: 6px; border-radius: 12px; background: white; }
+.alignedMenu :global(.ant-menu-item),
+.alignedMenu :global(.ant-menu-submenu-title) { padding-inline-start: 16px !important; }
+.sectionGroup { background: var(--cys-color-fill-quaternary); border-radius: 12px; padding-block: 4px; }
+.sectionGroup :global(.ant-menu-sub) { background: transparent !important; }
+.brand { display: flex; align-items: center; justify-content: center; min-height: 54px; margin-inline: 8px; padding: 6px; border-radius: 12px; background: white; }
 .brand img { display: block; max-width: 100%; height: 40px; object-fit: contain; }
-.navLabel { padding-inline: 20px; color: var(--cys-color-text-secondary); font-family: var(--font-navigation); font-size: 10px; font-weight: var(--font-weight-navigation-active); letter-spacing: 1px; }
-.navFooter { display: grid; gap: 16px; margin-top: auto; padding-inline: 12px; text-align: center; color: var(--cys-color-text-secondary); font-size: 12px; }
+.navLabel { padding-inline: 16px; color: var(--cys-color-text-secondary); font-family: var(--font-navigation); font-size: 10px; font-weight: var(--font-weight-navigation-active); letter-spacing: 1px; }
+.navFooter { display: grid; gap: 16px; margin-top: auto; padding-inline: 8px; text-align: center; color: var(--cys-color-text-secondary); font-size: 12px; }
 .shell .workspace { min-width: 0; }
 .shell .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: auto; min-height: 64px; padding: 12px 28px; line-height: normal; background: var(--cys-color-bg-container); border-bottom: 1px solid var(--cys-color-border-secondary); }
 .headerActions { justify-content: flex-end; }

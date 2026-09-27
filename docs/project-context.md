@@ -16,7 +16,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 - Carga de calificaciones, asistencias, observaciones y apoyos por alumno.
 - Tablero unificado de carga, avance y revisión por curso.
 - Workflow de boletines con enlaces docentes descartables, guardado progresivo, envío completo y control institucional exclusivo.
-- Landing institucional y temas claro/oscuro.
+- Landing institucional y tema claro como única presentación en toda la aplicación.
 
 ## Stack vigente
 
@@ -37,13 +37,13 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 | `/login` | Acceso institucional |
 | `/carga` | Carga pública mediante token docente |
 | `/app/alumnos` | Directorio y gestión de alumnos |
-| `/app/boletines` | Portal de boletines |
-| `/app/boletines/calificaciones` | Tablero unificado de carga y revisión de notas |
-| `/app/boletines/constructor` | Constructor curricular |
+| `/app/boletines` | Accesos a Bimestres y Constructor |
+| `/app/boletines/calificaciones` | Bimestres: selección, tablero de carga y revisión |
+| `/app/boletines/constructor` | Constructor de la malla curricular |
 
 ## Arquitectura
 
-- `src/core`: cliente PocketBase y contexto transversal de tema.
+- `src/core`: cliente PocketBase y servicios transversales.
 - `src/store`: estado global de sesión y ciclo lectivo.
 - `src/modules`: dominios funcionales con componentes, modelos y servicios propios.
 - `src/shared`: composiciones, estilos y hooks reutilizables.
@@ -98,7 +98,7 @@ La tipografía de títulos y navegación es Manrope; Inter se reserva para lectu
 
 El producto es desktop first para equipos escolares, con validación prioritaria en 1366, 1440 y 1920 px. El soporte móvil sigue siendo obligatorio para navegación, modales y tareas compatibles.
 
-La sección institucional `Carga de notas` concentra el seguimiento y la operación por curso. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
+La sección institucional `Bimestres` concentra la selección del período, el seguimiento y la operación por curso. La portada `Boletines` sólo ofrece accesos a `Bimestres` y `Constructor`, sin estadísticas ni consultas propias. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
 
 El tablero distingue el avance académico del control operativo. Las etapas `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF` provienen del servidor. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
 

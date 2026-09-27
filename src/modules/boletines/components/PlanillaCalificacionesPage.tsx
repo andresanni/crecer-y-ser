@@ -376,7 +376,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   };
 
   return (
-    <SectionLayout title="Carga de notas de boletines" icon={<TableOutlined />} actions={
+    <SectionLayout title="Bimestres" icon={<TableOutlined />} actions={
         <Space size="middle" wrap>
           {(reviewInscripcionId || onBackToDashboard) && (
             <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
@@ -404,7 +404,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
         </Card>
       ) : cursoMaterias.length === 0 ? (
         <Card className={ui.emptyPanel}>
-          <Empty description="Este curso no tiene materias asignadas. Configure la malla curricular en el Constructor de Boletines." />
+          <Empty description="Este curso no tiene materias asignadas. Configurá la malla curricular en Constructor." />
         </Card>
       ) : !effectiveWorkflow ? (
         <Card>

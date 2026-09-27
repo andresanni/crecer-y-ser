@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../../core/themeContext';
 import { LandingHeader } from './components/LandingHeader';
 import { LandingHero } from './components/LandingHero';
 import { PropuestaSection } from './components/PropuestaSection';
@@ -11,14 +10,13 @@ import { LandingFooter } from './components/LandingFooter';
 
 export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { isDarkMode } = useTheme();
 
   const handleGoToApp = () => {
     navigate('/app');
   };
 
   return (
-    <div className={`landing-container ${isDarkMode ? 'dark-theme' : ''}`}>
+    <div className="landing-container">
       <LandingHeader onGoToApp={handleGoToApp} />
       <LandingHero onGoToApp={handleGoToApp} />
       <PropuestaSection />

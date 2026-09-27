@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Button, Drawer } from 'antd';
-import { LoginOutlined, MenuOutlined, MoonOutlined, SunOutlined } from '@ant-design/icons';
-import { useTheme } from '../../../core/themeContext';
+import { LoginOutlined, MenuOutlined } from '@ant-design/icons';
 import { landingData } from '../data/landingData';
 
 interface LandingHeaderProps {
@@ -9,7 +8,6 @@ interface LandingHeaderProps {
 }
 
 export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoToApp }) => {
-  const { isDarkMode, toggleTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -30,15 +28,6 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoToApp }) => {
           </nav>
 
           <div className="landing-header-actions">
-            <Button
-              type="text"
-              shape="circle"
-              icon={isDarkMode ? <SunOutlined style={{ color: '#fbbf24', fontSize: 18 }} /> : <MoonOutlined style={{ color: '#64748b', fontSize: 18 }} />}
-              onClick={toggleTheme}
-              aria-label="Cambiar tema visual"
-              style={{ marginRight: 8 }}
-            />
-
             <Button
               type="primary"
               icon={<LoginOutlined />}
@@ -63,7 +52,6 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoToApp }) => {
         placement="right"
         onClose={() => setMobileMenuOpen(false)}
         open={mobileMenuOpen}
-        className={isDarkMode ? 'dark-drawer' : ''}
       >
         <div className="landing-mobile-nav">
           <a href="#propuesta" onClick={() => setMobileMenuOpen(false)}>Propuesta Pedagógica</a>

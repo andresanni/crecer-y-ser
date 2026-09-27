@@ -19,7 +19,7 @@ Aplicación web de gestión escolar para alumnos, responsables, inscripciones, e
 - Carga y monitoreo de boletines con un editor compartido.
 - Una llave docente descartable por curso y período, guardado progresivo y envío atómico a control directivo.
 - Revisión y corrección institucional exclusiva después de la entrega docente.
-- Autenticación, actualización en tiempo real y temas claro/oscuro.
+- Autenticación, actualización en tiempo real y tema claro.
 
 ## Desarrollo
 

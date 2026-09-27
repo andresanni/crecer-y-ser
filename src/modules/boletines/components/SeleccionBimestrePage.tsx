@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRightOutlined, CalendarOutlined, FieldTimeOutlined } from '@ant-design/icons';
-import { Alert, Card, Col, Empty, Row, Spin, Tag, Typography } from 'antd';
+import { ArrowRightOutlined, CalendarOutlined } from '@ant-design/icons';
+import { Alert, Card, Col, Empty, Row, Spin, Typography } from 'antd';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
 import { useAppStore } from '../../../store/appStore';
 import { boletinService } from '../services/boletin.service';
@@ -46,22 +46,7 @@ export const SeleccionBimestrePage: React.FC<SeleccionBimestrePageProps> = ({
   }, [cycleId, isCicloLoading, requestKey]);
 
   return (
-    <SectionLayout title="Carga de notas" icon={<CalendarOutlined />}>
-      <Card className={styles.introduction}>
-        <div className={styles.introductionIcon}>
-          <FieldTimeOutlined />
-        </div>
-        <div>
-          <Typography.Title level={3} className={styles.title}>
-            Elegí el bimestre de trabajo
-          </Typography.Title>
-          <Typography.Paragraph type="secondary" className={styles.description}>
-            El tablero, los enlaces docentes y la revisión permanecerán dentro del período seleccionado.
-          </Typography.Paragraph>
-        </div>
-        {cicloActual && <Tag color="blue">Ciclo {cicloActual.ano}</Tag>}
-      </Card>
-
+    <SectionLayout title="Bimestres" icon={<CalendarOutlined />}>
       {failed ? (
         <Alert
           type="error"
@@ -87,14 +72,9 @@ export const SeleccionBimestrePage: React.FC<SeleccionBimestrePageProps> = ({
                 onClick={() => onSelectPeriod(periodo.id)}
               >
                 <span className={styles.periodNumber}>{periodo.numeroPeriodo}</span>
-                <span className={styles.periodInfo}>
-                  <Typography.Text strong className={styles.periodName}>
-                    {periodo.nombre}
-                  </Typography.Text>
-                  <Typography.Text type="secondary">
-                    Abrir tablero de cursos
-                  </Typography.Text>
-                </span>
+                <Typography.Text strong className={styles.periodName}>
+                  {periodo.nombre}
+                </Typography.Text>
                 <ArrowRightOutlined className={styles.arrow} />
               </button>
             </Col>

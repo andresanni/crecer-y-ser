@@ -1,12 +1,66 @@
-.summary { border-top: 3px solid var(--cys-color-warning); }
-.summary .summaryTitle { font-size: 20px; margin-top: 0; }
-.actionCard { display: flex; flex-direction: column; height: 100%; }
-.actionCard .cardBody { display: flex; flex-direction: column; flex: 1; gap: 16px; }
-.cardTop { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; font-size: 24px; }
-.calificaciones { color: var(--cys-color-primary-text); background: var(--cys-color-primary-bg); }
-.constructor { color: var(--cys-color-warning-text); background: var(--cys-color-warning-bg); }
-.actionCard .cardTitle { font-size: 20px; margin: 0; }
-.features { display: grid; gap: 10px; list-style: none; padding: 16px; margin: auto 0 0; border-radius: 12px; background: var(--cys-color-fill-quaternary); }
-.features li { display: flex; align-items: baseline; gap: 8px; color: var(--cys-color-text-secondary); font-size: 13px; }
-.features li > :first-child { color: var(--cys-color-success-text); }
+.accessCard {
+  align-items: center;
+  background: var(--cys-color-bg-container);
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: 14px;
+  color: inherit;
+  display: flex;
+  gap: 14px;
+  height: 100%;
+  min-height: 100px;
+  padding: 18px;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.accessCard:hover {
+  border-color: var(--cys-color-primary-border);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.1);
+  color: inherit;
+  transform: translateY(-2px);
+}
+
+.accessCard:focus-visible {
+  outline: 3px solid var(--cys-color-primary-border);
+  outline-offset: 2px;
+}
+
+.icon {
+  align-items: center;
+  background: var(--cys-color-primary-bg);
+  border-radius: 10px;
+  color: var(--cys-color-primary-text);
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 20px;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.title {
+  color: var(--cys-color-text-heading);
+  font-family: var(--font-heading);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.description {
+  color: var(--cys-color-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.arrow {
+  color: var(--cys-color-primary-text);
+  flex: 0 0 auto;
+  font-size: 15px;
+}
