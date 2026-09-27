@@ -623,11 +623,6 @@ export const boletinService = {
   ): Promise<MonitoreoInstitucionalData> => {
     if (!periodoId) {
       return {
-        cursosCompletosCount: 0,
-        cursosEnProgresoCount: 0,
-        cursosPausadosCount: 0,
-        cursosSinIniciarCount: 0,
-        cursosSinTokenCount: 0,
         cursos: [],
       };
     }
@@ -756,12 +751,6 @@ export const boletinService = {
       }
 
 
-      let cursosCompletosCount = 0;
-      let cursosEnProgresoCount = 0;
-      let cursosPausadosCount = 0;
-      let cursosSinIniciarCount = 0;
-      let cursosSinTokenCount = 0;
-
       const cursosResumen: CursoMonitoreoResumen[] = [];
 
       for (const cur of cursos) {
@@ -805,20 +794,12 @@ export const boletinService = {
         let estado: EstadoMonitoreoCurso = 'SIN_INICIAR';
         if (entregado) {
           estado = 'COMPLETO';
-          cursosCompletosCount++;
         } else if (stage.etapa === 'CARGA_PAUSADA') {
           estado = 'PAUSADO';
-          cursosPausadosCount++;
         } else if (stage.etapa === 'CARGA_DOCENTE') {
           estado = 'EN_PROGRESO';
-          cursosEnProgresoCount++;
         } else if (stage.etapa === 'PENDIENTE_EMISION') {
           estado = 'SIN_ENLACE';
-          cursosSinTokenCount++;
-          cursosSinIniciarCount++;
-        } else {
-          estado = 'SIN_INICIAR';
-          cursosSinIniciarCount++;
         }
 
         cursosResumen.push({
@@ -840,11 +821,6 @@ export const boletinService = {
       }
 
       return {
-        cursosCompletosCount,
-        cursosEnProgresoCount,
-        cursosPausadosCount,
-        cursosSinIniciarCount,
-        cursosSinTokenCount,
         cursos: cursosResumen,
       };
     } catch (err) {

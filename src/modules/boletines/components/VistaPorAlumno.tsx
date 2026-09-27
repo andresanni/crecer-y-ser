@@ -88,6 +88,9 @@ interface VistaPorAlumnoProps {
   onSaveSuccess?: (revision?: number) => void;
   onRevisionObserved?: (revision: number) => void;
   initialInscripcionId?: string;
+  onStudentChange?: (inscripcionId: string) => void;
+  studentNavigationDisabled?: boolean;
+  reviewControls?: React.ReactNode;
   onPendingChangesChange?: (hasChanges: boolean) => void;
 }
 
@@ -127,6 +130,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   onSaveSuccess,
   onRevisionObserved,
   initialInscripcionId,
+  onStudentChange,
+  studentNavigationDisabled = false,
+  reviewControls,
   onPendingChangesChange,
 }) => {
   const { message, modal } = App.useApp();
@@ -264,6 +270,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
 
   const [alumnoRevision, setAlumnoRevision] = useState(0);
+  const [loadedStudentId, setLoadedStudentId] = useState<string | null>(null);
   const loadAlumnoData = useCallback(() => setAlumnoRevision((value) => value + 1), []);
   const hasChanges = useMemo(() => {
     const matsModified = Object.values(materiasState).some((m) => m.isModified);
@@ -278,6 +285,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const alumnoRequestKey = [selectedInscripcionId, periodoId, alumnoRevision, refreshRevision].join(':');
   const [alumnoResult, setAlumnoResult] = useState({ key: '', failed: false });
   const alumnoDataReady = alumnoResult.key === alumnoRequestKey && !alumnoResult.failed && !loadingEvaluaciones;
+  const showingPreviousSnapshot = !alumnoDataReady && loadedStudentId === selectedInscripcionId;
   useEffect(() => {
     let active = true;
     const fetchAlumnoData = async () => {
@@ -343,6 +351,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         if (snapshot.revision !== undefined) onRevisionObserved?.(snapshot.revision);
         setRevisionConflict(false);
         setSaveOutcomeUnknown(false);
+        setLoadedStudentId(selectedInscripcionId);
         setAlumnoResult({ key: alumnoRequestKey, failed: false });
       } catch (err) {
         if (!active) return;
@@ -730,8 +739,18 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   const isLast = currentIndex >= alumnos.length - 1;
 
   const navigateToStudent = (newIndex: number) => {
-    if (newIndex < 0 || newIndex >= alumnos.length) return;
+    if (studentNavigationDisabled || newIndex < 0 || newIndex >= alumnos.length) return;
     const targetStudent = alumnos[newIndex];
+    const selectStudent = () => {
+      setEditingMateriaId(null);
+      setEditingSection(null);
+      setSaveOutcomeUnknown(false);
+      if (onStudentChange) {
+        onStudentChange(targetStudent.inscripcionId);
+      } else {
+        setSelectedInscripcionId(targetStudent.inscripcionId);
+      }
+    };
 
     if (hasChanges) {
       modal.confirm({
@@ -740,18 +759,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         okText: 'Cambiar sin guardar',
         okType: 'danger',
         cancelText: 'Permanecer aquí',
-        onOk: () => {
-          setEditingMateriaId(null);
-          setEditingSection(null);
-          setSaveOutcomeUnknown(false);
-          setSelectedInscripcionId(targetStudent.inscripcionId);
-        },
+        onOk: selectStudent,
       });
     } else {
-      setEditingMateriaId(null);
-      setEditingSection(null);
-      setSaveOutcomeUnknown(false);
-      setSelectedInscripcionId(targetStudent.inscripcionId);
+      selectStudent();
     }
   };
 
@@ -832,45 +843,21 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
   const studentIdentity = currentAlumno ? (
     <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        cursor: access.mode === 'magic-link' ? 'pointer' : 'default',
-        padding: '4px 10px',
-        borderRadius: 8,
-        transition: 'all 0.15s ease',
-        minWidth: 0,
-      }}
+      className={`${styles.studentIdentity} ${access.mode === 'magic-link' ? styles.studentIdentityInteractive : ''}`}
     >
-      <div
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 8,
-          background: '#2563eb',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: '#ffffff',
-          fontWeight: 700,
-          fontSize: 13,
-          flexShrink: 0,
-          boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-        }}
-      >
+      <div className={styles.studentNumber}>
         {currentAlumno.numeroOrden || <UserOutlined />}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+      <div className={styles.studentDetails}>
         <div className={ui.tightRow}>
-          <Typography.Text strong ellipsis style={{ fontSize: 15, color: 'var(--cys-color-text)' }}>
+          <Typography.Text strong ellipsis className={styles.studentName}>
             {currentAlumno.nombreCompleto}
           </Typography.Text>
           {access.mode === 'magic-link' && (
             <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', flexShrink: 0 }} />
           )}
         </div>
-        <div className={ui.inlineControls}>
+        {access.mode === 'magic-link' && <div className={ui.inlineControls}>
           <Tag
             color={stats.percent === 100 ? 'green' : 'blue'}
             style={{ fontWeight: 700, margin: 0, fontSize: 10.5, padding: '1px 6px' }}
@@ -884,7 +871,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             size="small"
             style={{ width: 110, margin: 0 }}
           />
-        </div>
+        </div>}
       </div>
     </div>
   ) : null;
@@ -905,7 +892,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return <Empty description="No hay alumnos inscriptos en este curso." />;
   }
 
-  if (!alumnoDataReady) {
+  if (!alumnoDataReady && !showingPreviousSnapshot) {
     const failed = alumnoResult.key === alumnoRequestKey && alumnoResult.failed;
     return (
       <Card>
@@ -928,7 +915,24 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   }
 
   return (
-    <div className={ui.page}>
+    <>
+    {showingPreviousSnapshot && (
+      <span role="status" className={styles.visuallyHidden}>
+        {alumnoResult.key === alumnoRequestKey && alumnoResult.failed
+          ? 'No se pudo actualizar la libreta. Reintentá la lectura.'
+          : 'Actualizando la libreta del alumno.'}
+      </span>
+    )}
+    {showingPreviousSnapshot && alumnoResult.key === alumnoRequestKey && alumnoResult.failed && (
+      <Alert
+        type="error"
+        showIcon
+        title="No se pudo actualizar la libreta"
+        description="Los datos anteriores siguen visibles. Reintentá la lectura antes de continuar."
+        action={<Button onClick={loadAlumnoData}>Reintentar</Button>}
+      />
+    )}
+    <div className={ui.page} aria-busy={showingPreviousSnapshot} inert={showingPreviousSnapshot}>
       {(hasRevisionConflict || saveOutcomeUnknown) && (
         <Alert
           type="warning"
@@ -955,31 +959,23 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       { }
       {currentAlumno && (
         <div
-          className={`${ui.operationalContent} cys-sticky-student-banner`}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            padding: '10px 16px',
-            borderRadius: 12,
-            background: 'var(--cys-color-bg-container)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            border: '1px solid rgba(37, 99, 235, 0.22)',
-            boxShadow: '0 4px 14px rgba(0, 0, 0, 0.04)',
-            transition: 'all 0.2s ease',
-            flexWrap: 'wrap',
-          }}
+          className={`${ui.operationalContent} ${styles.studentBanner}`}
         >
           { }
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+          <div className={styles.studentNavigation}>
+            {showingPreviousSnapshot && (
+              <Typography.Text type="secondary" className={styles.studentRefreshStatus}>
+                {alumnoResult.key === alumnoRequestKey && alumnoResult.failed
+                  ? 'Actualización pendiente'
+                  : 'Actualizando libreta…'}
+              </Typography.Text>
+            )}
             <Tooltip title="Alumno anterior">
               <Button
                 type="text"
                 icon={<LeftOutlined style={{ fontSize: 11 }} />}
                 onClick={handlePrevStudent}
-                disabled={isFirst}
+                disabled={isFirst || studentNavigationDisabled}
                 style={{ borderRadius: 8, fontSize: 11.5, fontWeight: 600, color: 'var(--cys-color-text-description)' }}
               >
                 Anterior
@@ -1116,7 +1112,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               <Button
                 type="text"
                 onClick={handleNextStudent}
-                disabled={isLast}
+                disabled={isLast || studentNavigationDisabled}
                 style={{ borderRadius: 8, fontSize: 11.5, fontWeight: 600, color: 'var(--cys-color-text-description)' }}
               >
                 Siguiente <RightOutlined style={{ fontSize: 11 }} />
@@ -1124,7 +1120,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </Tooltip>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div className={styles.studentActions}>
+            {reviewControls}
             {access.mode === 'magic-link' && (
               <Button
                 icon={<DashboardOutlined className={ui.primary} />}
@@ -1153,25 +1150,20 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       {access.canEditStudentSupport && (
         <div className={ui.operationalContent}>
           <Card
-            style={{
-              borderRadius: 12,
-              border: apoyoState.isModified ? '1px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
-              background: 'var(--cys-color-bg-container, #ffffff)',
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.01)',
-              transition: 'all 0.2s ease',
-            }}
-            styles={{ body: { padding: '12px 16px' } }}
+            className={`${styles.evaluationCard} ${apoyoState.isModified ? styles.evaluationCardModified : ''}`}
+            styles={{ body: { padding: '16px 20px' } }}
           >
-        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <Space size={6} align="center">
-            <SafetyCertificateOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 15 }} />
-            <Typography.Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
-              Apoyos e Integración Escolar (Trayectoria Anual)
+        <div className={styles.evaluationHeader}>
+          <div className={styles.evaluationHeading}>
+            <span className={styles.evaluationNumber}><SafetyCertificateOutlined /></span>
+            <Typography.Text strong className={styles.evaluationTitle}>
+              Apoyos e Integración Escolar
             </Typography.Text>
-          </Space>
+            <Tag className={styles.evaluationMetaTag}>Trayectoria anual</Tag>
+          </div>
           {readOnly && (isPrimerBimestre || isCuartoBimestre) && (
             editingSection === 'support' ? (
-              <Space size={6}>
+              <Space size={6} className={styles.evaluationActions}>
                 <Button
                   size="small"
                   icon={<CloseOutlined />}
@@ -1205,6 +1197,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             )
           )}
         </div>
+        <Divider className={styles.evaluationDivider} />
 
         <Row gutter={[16, 14]}>
           { }
@@ -1390,7 +1383,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       )}
 
       { }
-      {loadingEvaluaciones || loadingCriterios ? (
+      {(loadingEvaluaciones && !showingPreviousSnapshot) || loadingCriterios ? (
         <Card className={ui.loadingPanel}>
           <Spin description="Cargando materias del estudiante..." />
         </Card>
@@ -1422,89 +1415,37 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             return (
               <Card
                 key={cm.id}
-                style={{
-                  borderRadius: 14,
-                  border: mat.isModified ? '1.5px solid #3b82f6' : "1px solid var(--cys-color-border-secondary)",
-                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
-                  transition: 'all 0.2s ease',
-                }}
+                className={`${styles.evaluationCard} ${mat.isModified ? styles.evaluationCardModified : ''}`}
                 styles={{ body: { padding: '16px 20px' } }}
               >
                 { }
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: 12,
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, #1e40af, #2563eb)',
-                  border: '1px solid #1d4ed8',
-                }}
-                >
-                  <Space size={8} align="center" style={{ flexShrink: 0 }}>
-                    <div
-                      style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 6,
-                        background: 'rgba(255, 255, 255, 0.16)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        fontWeight: 700,
-                        fontSize: 12,
-                      }}
-                    >
-                      {matIdx + 1}
-                    </div>
-                    <div>
-                      <Typography.Text strong style={{ fontSize: 14.5, color: '#ffffff' }}>
-                        <BookOutlined style={{ marginRight: 6, color: '#ffffff' }} />
-                        {cm.materiaNombre}
-                      </Typography.Text>
-                    </div>
-                    {isMateriaComplete ? (
+                <div className={styles.evaluationHeader}>
+                  <div className={styles.evaluationHeading}>
+                    <span className={styles.evaluationNumber}>{matIdx + 1}</span>
+                    <Typography.Text strong className={styles.evaluationTitle}>
+                      <BookOutlined className={styles.evaluationTitleIcon} />
+                      {cm.materiaNombre}
+                    </Typography.Text>
+                    {!readOnly && (isMateriaComplete ? (
                       <Tag
                         icon={<CheckCircleOutlined />}
-                        style={{
-                          margin: 0,
-                          padding: '1px 7px',
-                          borderRadius: 6,
-                          border: '1px solid rgba(255, 255, 255, 0.34)',
-                          background: 'rgba(255, 255, 255, 0.18)',
-                          color: '#ffffff',
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                        }}
+                        className={styles.evaluationMetaTag}
                       >
                         Completa
                       </Tag>
                     ) : (
                       <Tag
                         icon={<ExclamationCircleOutlined />}
-                        style={{
-                          margin: 0,
-                          padding: '1px 7px',
-                          borderRadius: 6,
-                          border: '1px solid rgba(255, 255, 255, 0.25)',
-                          background: 'rgba(15, 23, 42, 0.16)',
-                          color: '#ffffff',
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                        }}
+                        className={styles.evaluationMetaTag}
                       >
                         Incompleta
                       </Tag>
-                    )}
-                  </Space>
+                    ))}
+                  </div>
 
                   { }
-                  <Space size={8} align="center" wrap style={{ flexShrink: 0 }}>
-                    {!esConducta && (!readOnly || isMateriaReadOnly) && (
+                  <Space size={8} align="center" wrap className={styles.evaluationHeaderTools}>
+                    {!esConducta && (
                       <Space size={6} align="center" style={{ flexShrink: 0 }}>
                         <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
                           <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
@@ -1530,12 +1471,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     {readOnly && (isEditingMateria ? (
                       <Space
                         size={6}
-                        style={{
-                          padding: 4,
-                          borderRadius: 9,
-                          background: 'rgba(255, 255, 255, 0.96)',
-                          boxShadow: '0 2px 8px rgba(15, 23, 42, 0.18)',
-                        }}
+                        className={styles.evaluationActions}
                       >
                         <Button
                           size="small"
@@ -1571,40 +1507,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   </Space>
                 </div>
 
-                <Divider style={{ margin: '8px 0 10px' }} />
-
-                {readOnly && isEditingMateria && !esConducta && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      flexWrap: 'wrap',
-                      padding: '9px 12px',
-                      marginBottom: 10,
-                      borderRadius: 9,
-                      background: 'rgba(124, 58, 237, 0.07)',
-                      border: '1px solid rgba(124, 58, 237, 0.2)',
-                    }}
-                  >
-                    <Space size={8}>
-                      <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
-                        <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
-                          PPI
-                        </Tag>
-                      </Tooltip>
-                      <Typography.Text strong>Proyecto Pedagógico Individual</Typography.Text>
-                    </Space>
-                    <Switch
-                      checked={mat.ppi}
-                      onChange={(checked) => handlePpiChange(cm.id, checked)}
-                      checkedChildren="SÍ"
-                      unCheckedChildren="NO"
-                      style={{ background: mat.ppi ? '#7c3aed' : undefined }}
-                    />
-                  </div>
-                )}
+                <Divider className={styles.evaluationDivider} />
 
                 { }
                 {crits.length === 0 ? (
@@ -1617,20 +1520,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       const num = crit.ordenVisual || cIdx + 1;
                       const valActual = mat.criteriosValores[crit.id] || undefined;
                       return (
-                        <Col xs={24} sm={12} lg={24} key={crit.id}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              background: "var(--cys-color-fill-quaternary)",
-                              padding: '7px 14px',
-                              borderRadius: 8,
-                              gap: 12,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <div style={{ flex: 1, minWidth: 240 }}>
+                        <Col span={24} key={crit.id}>
+                          <div className={styles.criterionRow}>
+                            <div className={styles.criterionDescription}>
                               <Typography.Text style={{ fontSize: 14, color: 'var(--cys-color-text)', fontWeight: 500, lineHeight: 1.4 }}>
                                 <span style={{ fontWeight: 700, color: 'var(--cys-color-primary-text)', marginRight: 8, fontSize: 14.5 }}>
                                   {num}.
@@ -1642,6 +1534,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               </Typography.Text>
                             </div>
 
+                            <div className={styles.criterionGrade}>
                             {isMateriaReadOnly ? (
                               <Typography.Text
                                 strong
@@ -1713,6 +1606,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                                 )}
                               </div>
                             )}
+                            </div>
                           </div>
                         </Col>
                       );
@@ -1720,7 +1614,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
                     { }
                     {!esConducta && (
-                      <Col xs={24} sm={12} lg={24}>
+                      <Col span={24}>
                         <div
                           style={{
                             display: 'flex',
@@ -2200,5 +2094,6 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         </div>
       </Drawer>
     </div>
+    </>
   );
 };

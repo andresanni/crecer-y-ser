@@ -1,4 +1,5 @@
 import ui from '../../../shared/styles/ui.module.css';
+import styles from './MonitoreoProgresoPage.module.css';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
@@ -9,7 +10,6 @@ import {
   Typography,
   Space,
   Button,
-  Segmented,
   Tooltip,
   Empty,
   Spin,
@@ -24,7 +24,6 @@ import {
   PauseCircleOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
-  MinusCircleOutlined,
   ArrowLeftOutlined,
   CalendarOutlined,
 } from '@ant-design/icons';
@@ -67,16 +66,10 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
   ));
 
   const [data, setData] = useState<MonitoreoInstitucionalData>({
-    cursosCompletosCount: 0,
-    cursosEnProgresoCount: 0,
-    cursosPausadosCount: 0,
-    cursosSinIniciarCount: 0,
-    cursosSinTokenCount: 0,
     cursos: [],
   });
 
   const [loading, setLoading] = useState<boolean>(false);
-  const [filtroEstado, setFiltroEstado] = useState<'TODOS' | 'COMPLETO' | 'INCOMPLETO'>('TODOS');
 
 
   const [gestorModalOpen, setGestorModalOpen] = useState<boolean>(false);
@@ -135,18 +128,13 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
     [periodoId, periodos],
   );
 
-  const cursosFiltrados = useMemo(() => {
-    if (filtroEstado === 'TODOS') return data.cursos;
-    if (filtroEstado === 'COMPLETO') return data.cursos.filter((c) => c.estado === 'COMPLETO');
-    return data.cursos.filter((c) => c.estado !== 'COMPLETO');
-  }, [data.cursos, filtroEstado]);
-
   const columns: ColumnsType<CursoMonitoreo> = [
     {
       title: 'GRADO',
       dataIndex: 'cursoNombre',
       key: 'grado',
-      width: 180,
+      width: '9%',
+      className: styles.gradeColumn,
       render: (cursoNombre: string) => {
         const gradeConfig = getGradeColorConfig(cursoNombre);
         return (
@@ -162,22 +150,22 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
               margin: 0,
             }}
           >
-            {gradeConfig.label}
+            {gradeConfig.shortLabel}
           </Tag>
         );
       },
     },
     {
-      title: 'AVANCE',
+      title: 'LLENADO',
       key: 'progreso',
-      width: 260,
+      width: '23%',
       render: (_, cur) => {
         const isCompleto = cur.estado === 'COMPLETO';
         const isEnProgreso = cur.estado === 'EN_PROGRESO';
         const isPausado = cur.estado === 'PAUSADO';
         return (
-          <div style={{ width: 210 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+          <div className={styles.progressCell}>
+            <div className={styles.progressMeta}>
               <Text strong style={{ fontSize: 12.5 }}>{cur.alumnosCompletos} de {cur.totalAlumnos} alumnos</Text>
               <Text strong style={{ fontSize: 12.5, color: isCompleto ? 'var(--cys-color-success-text)' : isEnProgreso || isPausado ? 'var(--cys-color-warning-text)' : 'var(--cys-color-text-description)' }}>
                 {cur.porcentaje}%
@@ -187,7 +175,34 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
               percent={cur.porcentaje}
               showInfo={false}
               strokeColor={isCompleto ? '#10b981' : isEnProgreso || isPausado ? '#f59e0b' : '#cbd5e1'}
-              size={[210, 7]}
+              size="small"
+            />
+          </div>
+        );
+      },
+    },
+    {
+      title: 'REVISIÓN',
+      key: 'revision',
+      width: '23%',
+      render: (_, cur) => {
+        if (!cur.entregado) {
+          return <Text type="secondary">No habilitada · espera la entrega</Text>;
+        }
+        const porcentaje = cur.totalBoletines > 0
+          ? Math.round((cur.visados / cur.totalBoletines) * 100)
+          : 0;
+        return (
+          <div className={styles.progressCell}>
+            <div className={styles.progressMeta}>
+              <Text strong style={{ fontSize: 12.5 }}>{cur.visados} de {cur.totalBoletines} visados</Text>
+              <Text strong style={{ fontSize: 12.5 }}>{porcentaje}%</Text>
+            </div>
+            <Progress
+              percent={porcentaje}
+              showInfo={false}
+              strokeColor={cur.etapa === 'LISTO_PARA_PDF' ? 'var(--cys-color-success-text)' : 'var(--cys-color-primary-text)'}
+              size="small"
             />
           </div>
         );
@@ -196,27 +211,24 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
     {
       title: 'ESTADO',
       key: 'estado',
-      width: 190,
+      width: '16%',
       render: (_, cur) => {
         if (cur.etapa === 'LISTO_PARA_PDF') {
           return <Tag color="success" icon={<CheckCircleOutlined />}>Listo para PDF</Tag>;
         }
         if (cur.etapa === 'REVISION_DIRECTIVA') {
-          return <Tag color="processing" icon={<EyeOutlined />}>En revisión · {cur.visados}/{cur.totalBoletines} visados</Tag>;
+          return <Tag color="processing" icon={<EyeOutlined />}>En revisión</Tag>;
         }
         if (cur.etapa === 'PENDIENTE_CONFIGURACION') {
           return <Tag color="default" icon={<ExclamationCircleOutlined />}>Configurar criterios</Tag>;
         }
-        if (cur.estado === 'COMPLETO') {
-          return <Tag color="success" icon={<CheckCircleOutlined />}>Entregado</Tag>;
+        if (cur.etapa === 'CARGA_DOCENTE') {
+          return <Tag color="warning" icon={<ClockCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>En carga</Tag>;
         }
-        if (cur.estado === 'EN_PROGRESO') {
-          return <Tag color="warning" icon={<ClockCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>{cur.porcentaje === 100 ? 'Lista para entregar' : 'En carga'}</Tag>;
-        }
-        if (cur.estado === 'PAUSADO') {
+        if (cur.etapa === 'CARGA_PAUSADA') {
           return <Tag color="warning" icon={<PauseCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>Pausada</Tag>;
         }
-        if (cur.estado === 'SIN_ENLACE') {
+        if (cur.etapa === 'PENDIENTE_EMISION') {
           return <Tag color="error" icon={<ExclamationCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>Sin enlace</Tag>;
         }
         return <Tag color="default" icon={<ClockCircleOutlined />} style={{ fontWeight: 700, fontSize: 12, padding: '2px 7px', borderRadius: 6, margin: 0 }}>Sin iniciar</Tag>;
@@ -225,7 +237,7 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
     {
       title: 'DOCENTE',
       key: 'docente',
-      width: 220,
+      width: '15%',
       render: (_, cur) => cur.tokenDocente ? (
         <Space size={6}>
           <LinkOutlined style={{ color: 'var(--cys-color-primary-text)' }} />
@@ -236,40 +248,33 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
     {
       title: 'ACCIONES',
       key: 'acciones',
-      width: 250,
+      width: '14%',
       render: (_, cur) => {
-        const isCompleto = cur.estado === 'COMPLETO';
         const isPausado = cur.estado === 'PAUSADO';
-        return (
-          <Space size={8} wrap>
-            {!isCompleto && (
-              <Button
-                size="small"
-                type={cur.tokenDocente ? 'default' : 'primary'}
-                icon={<LinkOutlined />}
-                onClick={() => {
-                  setSelectedCursoForModal(cur.cursoId);
-                  setGestorModalOpen(true);
-                }}
-                style={{ borderRadius: 6, fontSize: 11.5, fontWeight: 600, height: 28, padding: '0 10px' }}
-              >
-                {cur.tokenDocente ? 'Gestionar' : isPausado ? 'Reanudar' : 'Generar'}
-              </Button>
-            )}
+        if (cur.entregado) {
+          return (
             <Button
-              type={cur.entregado ? 'primary' : 'default'}
-              size="small"
-              icon={cur.entregado ? <EyeOutlined /> : <MinusCircleOutlined />}
-              disabled={!cur.entregado}
-              onClick={() => {
-                if (!cur.entregado) return;
-                navigate(`/app/boletines/calificaciones?curso=${cur.cursoId}&periodo=${encodeURIComponent(periodoId)}`);
-              }}
-              style={{ borderRadius: 6, fontWeight: 600, fontSize: 11.5, height: 28 }}
+              type="primary"
+              icon={<EyeOutlined />}
+              onClick={() => navigate(`/app/boletines/calificaciones?curso=${cur.cursoId}&periodo=${encodeURIComponent(periodoId)}`)}
+              className={styles.actionButton}
             >
-              {cur.entregado ? 'Abrir curso' : 'Sin entrega'}
+              Abrir curso
             </Button>
-          </Space>
+          );
+        }
+        return (
+          <Button
+            type={cur.tokenDocente ? 'default' : 'primary'}
+            icon={<LinkOutlined />}
+            onClick={() => {
+              setSelectedCursoForModal(cur.cursoId);
+              setGestorModalOpen(true);
+            }}
+            className={styles.actionButton}
+          >
+            {cur.tokenDocente ? 'Gestionar' : isPausado ? 'Reanudar' : 'Generar'}
+          </Button>
         );
       },
     },
@@ -308,47 +313,24 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         </Space>
       }>
 
-      { }
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-        <Segmented
-          value={filtroEstado}
-          onChange={(val) => setFiltroEstado(val as 'TODOS' | 'COMPLETO' | 'INCOMPLETO')}
-          options={[
-            { value: 'TODOS', label: `Todos (${data.cursos.length})` },
-            {
-              value: 'COMPLETO',
-                label: <span className={ui.tightRow}><CheckCircleOutlined /> Entregados ({data.cursosCompletosCount})</span>,
-            },
-            {
-              value: 'INCOMPLETO',
-                label: <span className={ui.tightRow}><MinusCircleOutlined /> Sin entregar ({data.cursos.length - data.cursosCompletosCount})</span>,
-            },
-          ]}
-        />
-
-        <Text type="secondary" className={ui.caption}>
-          Mostrando {cursosFiltrados.length} de {data.cursos.length} grados
-        </Text>
-      </div>
-
-      { }
       {loading ? (
         <Card style={{ textAlign: 'center', padding: 80, borderRadius: 16 }}>
           <Spin size="large" tip="Calculando estado de avance de la escuela..." />
         </Card>
-      ) : cursosFiltrados.length === 0 ? (
+      ) : data.cursos.length === 0 ? (
         <Card className={ui.loadingPanel}>
-          <Empty description="No hay grados en esta categoría de filtro." />
+          <Empty description="No hay grados para este bimestre." />
         </Card>
       ) : (
         <Card className="students-card">
           <Table
             className="students-table"
             columns={columns}
-            dataSource={cursosFiltrados}
+            dataSource={data.cursos}
             rowKey="cursoId"
             pagination={false}
-            scroll={{ x: 1050 }}
+            tableLayout="fixed"
+            scroll={{ x: 980 }}
           />
         </Card>
       )}

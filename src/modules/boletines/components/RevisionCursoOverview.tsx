@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowRightOutlined, CheckCircleOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
 import { Card, Col, Empty, Input, Row, Tag, Typography } from 'antd';
 import type { AlumnoInscriptoRow } from '../models/boletin.model';
 import type { StaffReviewBulletin } from '../services/gradebookDataSource.service';
@@ -28,16 +28,13 @@ export const RevisionCursoHeader: React.FC<RevisionCursoHeaderProps> = ({
         </div>
         <div>
           <Typography.Title level={4} className={styles.title}>
-            Revisión del curso
+            {cursoNombre}
           </Typography.Title>
           <Typography.Text strong className={styles.contextLabel}>
-            {cursoNombre} · {periodoNombre}
+            {periodoNombre}
           </Typography.Text>
         </div>
       </div>
-      <Tag color="success" icon={<CheckCircleOutlined />} className={styles.deliveryTag}>
-        Bimestre entregado
-      </Tag>
     </div>
   </Card>
 );

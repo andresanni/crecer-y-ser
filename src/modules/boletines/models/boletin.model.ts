@@ -447,11 +447,6 @@ export interface CursoMonitoreoResumen {
 }
 
 export interface MonitoreoInstitucionalData {
-  cursosCompletosCount: number;
-  cursosEnProgresoCount: number;
-  cursosPausadosCount: number;
-  cursosSinIniciarCount: number;
-  cursosSinTokenCount: number;
   cursos: CursoMonitoreoResumen[];
 }
 

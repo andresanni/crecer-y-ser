@@ -1,4 +1,5 @@
 import ui from '../../../shared/styles/ui.module.css';
+import styles from './PlanillaCalificacionesPage.module.css';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
@@ -11,11 +12,14 @@ import {
   Spin,
   Alert,
   Tag,
+  Typography,
 } from 'antd';
 import {
   ReloadOutlined,
   TableOutlined,
   ArrowLeftOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { ClientResponseError } from 'pocketbase';
@@ -226,6 +230,9 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     && reviewSnapshot.instancia.revision === effectiveWorkflow.revision
     ? reviewSnapshot
     : null;
+  const visibleReview = review || (
+    reviewSnapshot?.instancia.id === effectiveWorkflow?.id ? reviewSnapshot : null
+  );
 
   useEffect(() => {
     if (!selectedCursoId || !selectedPeriodoId || effectiveWorkflow?.estado !== 'CONTROL_DIRECTIVO') {
@@ -234,7 +241,6 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     let active = true;
     const fetchReview = async () => {
       setReviewLoading(true);
-      setReview(null);
       try {
         const data = await getStaffGradebookReview(selectedCursoId, selectedPeriodoId);
         if (active) setReview(data);
@@ -270,9 +276,13 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     [cursos, selectedCursoId],
   );
   const reviewStudents = useMemo(() => {
-    const included = new Set(review?.boletines.map((item) => item.inscripcionId) || []);
+    const included = new Set(visibleReview?.boletines.map((item) => item.inscripcionId) || []);
     return alumnos.filter((alumno) => alumno.estado !== 'Baja' || included.has(alumno.inscripcionId));
-  }, [alumnos, review]);
+  }, [alumnos, visibleReview]);
+  const reviewableStudents = useMemo(() => {
+    const included = new Set(visibleReview?.boletines.map((item) => item.inscripcionId) || []);
+    return reviewStudents.filter((alumno) => included.has(alumno.inscripcionId));
+  }, [reviewStudents, visibleReview]);
 
   const handleBack = () => {
     if (!reviewInscripcionId) {
@@ -329,7 +339,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     }
   };
 
-  const selectedBulletin = review?.boletines.find((item) => item.inscripcionId === reviewInscripcionId);
+  const selectedBulletin = visibleReview?.boletines.find((item) => item.inscripcionId === reviewInscripcionId);
   const handleApproval = (approve: boolean) => {
     if (!selectedBulletin || !selectedPeriodoId || !review || detailHasChanges) return;
     modal.confirm({
@@ -425,12 +435,14 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             cursoNombre={selectedCurso ? `${selectedCurso.nombre} · ${selectedCurso.turno}` : 'Curso'}
             periodoNombre={selectedPeriodo?.nombre || 'Período escolar'}
           />
-          <Space wrap>
-            <Tag color={review?.etapa === 'LISTO_PARA_PDF' ? 'success' : 'processing'}>
-              {review ? `${review.visados} de ${review.totalBoletines} boletines visados` : 'Consultando visados'}
-            </Tag>
-            {review?.etapa === 'LISTO_PARA_PDF' && <Tag color="success">Listo para generar PDFs</Tag>}
-          </Space>
+          {!reviewInscripcionId && (
+            <Space wrap>
+              <Tag color={review?.etapa === 'LISTO_PARA_PDF' ? 'success' : 'processing'}>
+                {review ? `${review.visados} de ${review.totalBoletines} boletines visados` : 'Consultando visados'}
+              </Tag>
+              {review?.etapa === 'LISTO_PARA_PDF' && <Tag color="success">Listo para generar PDFs</Tag>}
+            </Space>
+          )}
           {review && review.alumnosSinIncorporar > 0 && (
             <Alert
               type="warning"
@@ -440,25 +452,11 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
               action={<Button loading={approvalBusy} onClick={() => void handleSyncEnrollments()}>Actualizar matrícula</Button>}
             />
           )}
-          {reviewInscripcionId ? (
-            <>
-            <Space wrap>
-              <Tag color={selectedBulletin?.estado === 'VISADO' ? 'success' : 'warning'}>
-                {selectedBulletin?.estado === 'VISADO' ? 'Visado' : 'Pendiente de visado'}
-              </Tag>
-              <Button
-                type={selectedBulletin?.estado === 'VISADO' ? 'default' : 'primary'}
-                disabled={!selectedBulletin || detailHasChanges || reviewLoading}
-                loading={approvalBusy}
-                onClick={() => handleApproval(selectedBulletin?.estado !== 'VISADO')}
-              >
-                {selectedBulletin?.estado === 'VISADO' ? 'Retirar visado' : 'Visar boletín'}
-              </Button>
-            </Space>
+          {reviewInscripcionId && selectedBulletin ? (
             <VistaPorAlumno
               key={`${selectedCursoId}:${selectedPeriodoId}:${reviewInscripcionId}:${reloadCounter}`}
               periodoId={selectedPeriodoId || ''}
-              alumnos={alumnos}
+              alumnos={reviewableStudents}
               cursoMaterias={cursoMaterias}
               valoresEscala={valoresEscala}
               periodo={selectedPeriodo}
@@ -468,9 +466,45 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
               onSaveSuccess={handleSaveSuccess}
               onRevisionObserved={handleSaveSuccess}
               initialInscripcionId={reviewInscripcionId}
+              onStudentChange={handleSelectStudent}
+              studentNavigationDisabled={!review || reviewLoading}
+              reviewControls={(
+                <div className={styles.reviewControls}>
+                  <Tag
+                    color={review ? selectedBulletin.estado === 'VISADO' ? 'success' : 'warning' : 'default'}
+                    icon={review && selectedBulletin.estado === 'VISADO' ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
+                    className={styles.reviewStatus}
+                  >
+                    {review
+                      ? selectedBulletin.estado === 'VISADO' ? 'Visado' : 'Pendiente de visado'
+                      : reviewLoading ? 'Actualizando visado' : 'No se pudo actualizar el visado'}
+                  </Tag>
+                  <Typography.Text type="secondary" className={styles.reviewCount}>
+                    {review ? `${review.visados} de ${review.totalBoletines} visados` : 'Consultando progreso'}
+                  </Typography.Text>
+                  <Button
+                    type={selectedBulletin.estado === 'VISADO' ? 'default' : 'primary'}
+                    disabled={!review || detailHasChanges || reviewLoading}
+                    loading={approvalBusy}
+                    onClick={() => handleApproval(selectedBulletin.estado !== 'VISADO')}
+                  >
+                    {selectedBulletin.estado === 'VISADO' ? 'Retirar visado' : 'Visar boletín'}
+                  </Button>
+                </div>
+              )}
               onPendingChangesChange={setDetailHasChanges}
             />
-            </>
+          ) : reviewInscripcionId && reviewLoading ? (
+            <Card className={ui.loadingPanel}>
+              <Spin description="Consultando el visado del alumno..." />
+            </Card>
+          ) : reviewInscripcionId ? (
+            <Alert
+              type="error"
+              showIcon
+              title="Este boletín no está disponible en la revisión actual"
+              action={<Button onClick={() => setReviewInscripcionId(null)}>Volver al listado</Button>}
+            />
           ) : reviewLoading ? (
             <Card className={ui.loadingPanel}>
               <Spin description="Consultando boletines entregados..." />

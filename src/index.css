@@ -1300,21 +1300,3 @@ body.theme-dark .cys-grade-select.cys-grade-alcanzado .ant-select-selector {
   border-color: #0369a1 !important;
   color: #38bdf8 !important;
 }
-
-
-.cys-sticky-student-banner {
-  position: sticky !important;
-  top: 10px;
-  z-index: 95 !important;
-}
-
-.app-layout .cys-sticky-student-banner {
-  top: 72px !important;
-}
-
-.theme-dark .cys-sticky-student-banner,
-body.theme-dark .cys-sticky-student-banner {
-  background: rgba(15, 23, 42, 0.94) !important;
-  border-color: rgba(59, 130, 246, 0.3) !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
-}
