@@ -63,4 +63,6 @@ La modernización visual fue desarrollada originalmente en la rama `feature/ui-u
 
 ## Validación
 
+El tablero de carga de notas mantiene la tabla montada durante las actualizaciones de progreso. El botón de actualización muestra actividad durante la consulta y un punto discreto cuando hay cambios Realtime pendientes; sólo la primera carga reemplaza el contenido por un indicador de espera. Si falla una actualización, el último resumen válido permanece visible.
+
 Cada cambio visual debe revisar tema claro y oscuro, estados con datos, carga, vacío y error. Ejecutar `npm run lint` y `npm run build`. Para flujos de escritura, usar datos descartables y verificar persistencia después de recargar.

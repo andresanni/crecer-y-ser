@@ -1,7 +1,7 @@
 import ui from '../../../shared/styles/ui.module.css';
 import styles from './MonitoreoProgresoPage.module.css';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Card,
   Table,
@@ -14,6 +14,8 @@ import {
   Empty,
   Spin,
   App,
+  Alert,
+  Badge,
 } from 'antd';
 import {
   TableOutlined,
@@ -43,6 +45,8 @@ import { useGradebookConcurrencyStore } from '../store/gradebookConcurrencyStore
 
 const { Text } = Typography;
 type CursoMonitoreo = MonitoreoInstitucionalData['cursos'][number];
+const REALTIME_REFRESH_DELAY_MS = 1200;
+const REALTIME_REFRESH_MAX_WAIT_MS = 4000;
 
 interface CargaNotasDashboardPageProps {
   periodoId: string;
@@ -61,15 +65,13 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
 
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
-  const realtimePeriodSequence = useGradebookConcurrencyStore((state) => (
-    state.periodSequences[periodoId] || 0
-  ));
-
   const [data, setData] = useState<MonitoreoInstitucionalData>({
     cursos: [],
   });
-
-  const [loading, setLoading] = useState<boolean>(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'refreshing'>('refreshing');
+  const [loadError, setLoadError] = useState(false);
+  const refreshMonitoreo = useRef<(immediate?: boolean) => void>(() => undefined);
 
 
   const [gestorModalOpen, setGestorModalOpen] = useState<boolean>(false);
@@ -102,26 +104,81 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
   }, [cicloActual?.id, message]);
 
 
-  const [monitoreoRevision, setMonitoreoRevision] = useState(0);
-  const loadMonitoreo = () => setMonitoreoRevision((value) => value + 1);
   useEffect(() => {
     let active = true;
-    const fetchMonitoreo = async () => {
+    let inFlight = false;
+    let dirty = false;
+    let immediateAfterFlight = false;
+    let pendingSince = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const run = async () => {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      pendingSince = 0;
+      inFlight = true;
+      setSyncStatus('refreshing');
       try {
-        setLoading(true);
         const res = await boletinService.getMonitoreoInstitucional(periodoId);
-        if (active) setData(res);
+        if (!active) return;
+        setData(res);
+        setHasLoaded(true);
+        setLoadError(false);
       } catch (err) {
         if (!active) return;
         console.error(err);
+        setLoadError(true);
         message.error('Error al cargar el estado de los cursos');
       } finally {
-        if (active) setLoading(false);
+        inFlight = false;
+        if (active) {
+          if (dirty) {
+            const immediate = immediateAfterFlight;
+            dirty = false;
+            immediateAfterFlight = false;
+            schedule(immediate);
+          } else {
+            setSyncStatus('idle');
+          }
+        }
       }
     };
-    void fetchMonitoreo();
-    return () => { active = false; };
-  }, [periodoId, monitoreoRevision, realtimePeriodSequence, message]);
+
+    const schedule = (immediate = false) => {
+      if (!active) return;
+      if (inFlight) {
+        dirty = true;
+        immediateAfterFlight ||= immediate;
+        if (!pendingSince) pendingSince = Date.now();
+        return;
+      }
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      if (immediate) {
+        void run();
+        return;
+      }
+      if (!pendingSince) pendingSince = Date.now();
+      const remaining = REALTIME_REFRESH_MAX_WAIT_MS - (Date.now() - pendingSince);
+      setSyncStatus('pending');
+      timer = setTimeout(() => void run(), Math.min(REALTIME_REFRESH_DELAY_MS, Math.max(0, remaining)));
+    };
+
+    refreshMonitoreo.current = schedule;
+    const unsubscribe = useGradebookConcurrencyStore.subscribe((state, previous) => {
+      if (state.periodSequences[periodoId] !== previous.periodSequences[periodoId]) {
+        schedule();
+      }
+    });
+    void run();
+
+    return () => {
+      active = false;
+      unsubscribe();
+      if (timer) clearTimeout(timer);
+      refreshMonitoreo.current = () => undefined;
+    };
+  }, [periodoId, message]);
 
   const selectedPeriodo = useMemo(
     () => periodos.find((periodo) => periodo.id === periodoId),
@@ -303,20 +360,30 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
             Gestor de Enlaces Mágicos
           </Button>
 
-          <Tooltip title="Actualizar estado de los cursos">
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={() => void loadMonitoreo()}
-              loading={loading}
-            />
+          <Tooltip title={syncStatus === 'pending' ? 'Hay cambios pendientes · actualizar ahora' : 'Actualizar estado de los cursos'}>
+            <Badge dot={syncStatus === 'pending'}>
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={() => refreshMonitoreo.current(true)}
+                loading={syncStatus === 'refreshing'}
+                aria-label={syncStatus === 'pending' ? 'Actualizar ahora: hay cambios pendientes' : 'Actualizar estado de los cursos'}
+              />
+            </Badge>
           </Tooltip>
         </Space>
       }>
 
-      {loading ? (
+      {!hasLoaded && syncStatus === 'refreshing' ? (
         <Card style={{ textAlign: 'center', padding: 80, borderRadius: 16 }}>
           <Spin size="large" tip="Calculando estado de avance de la escuela..." />
         </Card>
+      ) : !hasLoaded && loadError ? (
+        <Alert
+          type="error"
+          showIcon
+          title="No se pudo cargar el estado de los cursos"
+          action={<Button onClick={() => refreshMonitoreo.current(true)}>Reintentar</Button>}
+        />
       ) : data.cursos.length === 0 ? (
         <Card className={ui.loadingPanel}>
           <Empty description="No hay grados para este bimestre." />
@@ -340,7 +407,7 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         open={gestorModalOpen}
         onClose={() => {
           setGestorModalOpen(false);
-          void loadMonitoreo();
+          refreshMonitoreo.current(true);
         }}
         cursos={cursos}
         periodos={periodos}

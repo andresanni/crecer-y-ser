@@ -43,6 +43,7 @@ No se permite construir una instantánea editable combinando consultas independi
 PocketBase Realtime publica cambios de `instancias_carga_boletin`. El store de concurrencia de Zustand conserva la última versión observada por curso y período y un contador de invalidación por período.
 
 - El tablero de cursos vuelve a consultar sus resúmenes cuando cambia una instancia del período visible.
+- El tablero agrupa los eventos cercanos del mismo período antes de releer los resúmenes, con una espera máxima acotada. Conserva la tabla visible durante la consulta, serializa las lecturas y vuelve a consultar si recibió otro cambio mientras una lectura estaba en curso. La actualización manual y el cierre del gestor de enlaces solicitan una lectura inmediata.
 - La planilla adopta la nueva revisión y recalcula el resumen de alumnos.
 - Si el alumno visible no tiene cambios locales, el detalle se vuelve a leer.
 - Si existe una materia en edición o cambios locales, se marca conflicto y se bloquea el guardado. La interfaz conserva el borrador local hasta que la persona decide cargar la versión actual.

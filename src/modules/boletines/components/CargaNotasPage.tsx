@@ -31,6 +31,7 @@ export const CargaNotasPage = () => {
 
   return (
     <CargaNotasDashboardPage
+      key={selectedPeriodoId}
       periodoId={selectedPeriodoId}
       onBackToPeriodSelection={() => navigate('/app/boletines/calificaciones')}
     />
