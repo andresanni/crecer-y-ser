@@ -1,6 +1,6 @@
 # Entornos y promoción de PocketBase
 
-Actualizado: 25 de septiembre de 2026.
+Actualizado: 27 de septiembre de 2026.
 
 ## Decisión arquitectónica
 
@@ -15,7 +15,7 @@ No existe replicación continua ni sincronización bidireccional. Git transporta
 
 La evolución de visado y configuración anual agrega `visados_boletin` y `curso_materias.ciclo_id`. La migración asigna las materias anteriores al ciclo marcado como actual, o al más reciente si no hay uno marcado, y crea visados pendientes para las entregas existentes. No presupone aprobación de boletines históricos. Las dos migraciones se ensayaron sobre una copia aislada del VPS y se desplegaron allí el 26 de septiembre de 2026 junto con los hooks, sin reemplazar `pb_data`. El respaldo previo es `/root/pb/deploy_backups/20260926-094932`.
 
-El backend del VPS quedó adelantado respecto del frontend de `master` mientras se prueba la feature en `dev`. El constructor publicado todavía escribe directamente en `curso_materias` y `criterios_evaluacion`, operaciones que ahora reciben rechazo. No usar esa pantalla productiva para configurar boletines hasta publicar la versión compatible tras las pruebas de desarrollo.
+El frontend compatible se promovió desde `dev` a `master` mediante el pull request #6 el 27 de septiembre de 2026. El backend ya coincidía con los hooks y las migraciones versionados, por lo que esta publicación no requirió otro despliegue de PocketBase. Vercel sirve el bundle con el gateway curricular y las etapas de revisión; la configuración curricular publicada atraviesa el gateway institucional.
 
 El repositorio continúa siendo la fuente canónica de:
 
