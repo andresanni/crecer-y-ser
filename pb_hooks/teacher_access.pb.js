@@ -72,3 +72,8 @@ routerAdd("POST", "/api/cys/enlaces-docentes/:tokenId/recuperar", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.recover(c)
 }, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
+
+routerAdd("GET", "/api/cys/directivo/boletines/:inscripcionId/instantanea", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.staffDocumentSnapshot(c)
+}, $apis.requireRecordAuth("users"))

@@ -24,6 +24,7 @@ test -f "$stage_dir/1789474000_added_recoverable_teacher_links.js"
 test -f "$stage_dir/1789477600_removed_teacher_link_state.js"
 test -f "$stage_dir/1790364300_added_gradebook_approvals.js"
 test -f "$stage_dir/1790364400_versioned_curriculum_by_cycle.js"
+test -f "$stage_dir/1790553600_versioned_approval_authorization.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -72,6 +73,9 @@ fi
 if test -f /root/pb/pb_migrations/1790364400_versioned_curriculum_by_cycle.js; then
   cp -a /root/pb/pb_migrations/1790364400_versioned_curriculum_by_cycle.js "$backup_dir/"
 fi
+if test -f /root/pb/pb_migrations/1790553600_versioned_approval_authorization.js; then
+  cp -a /root/pb/pb_migrations/1790553600_versioned_approval_authorization.js "$backup_dir/"
+fi
 cp -a /etc/systemd/system/pocketbase.service "$backup_dir/pocketbase.service"
 
 install -d -m 0755 /root/pb/pb_hooks/lib /root/pb/pb_migrations
@@ -91,6 +95,7 @@ install -m 0644 "$stage_dir/1789474000_added_recoverable_teacher_links.js" /root
 install -m 0644 "$stage_dir/1789477600_removed_teacher_link_state.js" /root/pb/pb_migrations/1789477600_removed_teacher_link_state.js
 install -m 0644 "$stage_dir/1790364300_added_gradebook_approvals.js" /root/pb/pb_migrations/1790364300_added_gradebook_approvals.js
 install -m 0644 "$stage_dir/1790364400_versioned_curriculum_by_cycle.js" /root/pb/pb_migrations/1790364400_versioned_curriculum_by_cycle.js
+install -m 0644 "$stage_dir/1790553600_versioned_approval_authorization.js" /root/pb/pb_migrations/1790553600_versioned_approval_authorization.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 

@@ -252,3 +252,7 @@ producción -> snapshot consistente -> copia temporal -> anonimización -> valid
 ```
 
 El refresco reemplaza por completo el estado local y puede eliminar datos de prueba. Debe acordarse antes de ejecutarlo. La dirección inversa está prohibida: nunca se reemplaza ni mezcla la base del VPS con `C:\pocketbase\pb_data`.
+
+## Diferencia local pendiente de promoción: elegibilidad PDF
+
+El 28 de septiembre de 2026 se aplicó exclusivamente en desarrollo `1790553600_versioned_approval_authorization.js` y el hook de elegibilidad acumulativa. Se ensayó previamente en una copia aislada. Respaldo de base previo: `C:/pocketbase/backups/pdf-eligibility-20260928/data.db`. El esquema versionado refleja desarrollo; el VPS todavía no tiene este campo ni la elegibilidad en su respuesta. Los scripts de despliegue incluyen la migración para una futura promoción coordinada, no ejecutada.

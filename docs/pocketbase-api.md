@@ -168,3 +168,23 @@ Cada operación revalida dentro de la transacción que ningún bimestre del curs
 - `422`: el bimestre todavía tiene alumnos, materias o cierres pendientes.
 
 Los mensajes públicos son deliberadamente genéricos. El frontend debe retirar la planilla cuando recibe `401` o `403` y no debe reintentar una escritura automáticamente.
+
+
+## Elegibilidad acumulativa para PDF (implementada en desarrollo local)
+
+`GET /api/cys/directivo/revision/:cursoId/:periodoId` incluye en cada boletín `generacionVisado` y `elegibilidadPdf`. Esta última contiene `elegiblePorVisados`, `motivos` y `dependencias` por bimestre: `bimestre`, `periodoId`, `visadoId`, `generacionVisado`, `revisionContenido`, `revisionVisada`, `vigente` y `motivo`. Se calcula en la misma transacción de lectura de la revisión, con autenticación institucional y `Cache-Control: no-store`. No es un permiso de emisión ni acredita que haya un archivo disponible.
+
+Se requieren períodos únicos 1..corte del mismo ciclo, instancia CONTROL_DIRECTIVO, alumno incorporado y visado vigente con revisión aprobada igual a contenido y generación positiva. Faltantes de históricos/altas tardías bloquean hasta resolver su política; no se omiten. Esta etapa comprueba exclusivamente visados, no la completitud futura del modelo documental ni su renderizado.
+
+`visados_boletin.generacion_visado` aumenta al visar, retirar o corregir. Repetir una operación ya satisfecha no aumenta el contador. La migración inicializa los visados existentes en 1 y pendientes en 0; no reconstruye eventos históricos. Las respuestas de visar/retirar incluyen la generación actual. La revisión de curso se conserva como control de concurrencia para escrituras.
+
+
+## Instantánea documental de preparación (desarrollo local)
+
+`GET /api/cys/directivo/boletines/:inscripcionId/instantanea?periodoId=...` requiere sesión institucional y devuelve `Cache-Control: no-store`. Lee en una sola transacción el alcance, elegibilidad, alumno, tutor, malla anual con criterios ordenados, escala, evaluaciones y cierres hasta el corte, apoyos, datos administrativos disponibles y dependencias de visado. No escribe ni almacena la instantánea.
+
+Respuesta 200: `{ datos, huella }`; `datos.versionContrato=1`, `inscripcionId`, `ciclo`, `curso`, `bimestreCorte`, `alumno`, `responsable`, `materias`, `escala`, `periodos`, `apoyos`, `administrativo`, `dependencias` y `pendientesDeIntegracion`. `huella` es SHA-256 del JSON de datos, sin fecha variable. No es una autorización de descarga, firma ni registro de emisión. Las notas todavía son referencias a valores de escala: no se inventa un número a partir de su peso.
+
+422 si falta un visado requerido (incluye `elegibilidadPdf`); 422 con `codigo=TUTOR_UNICO_REQUERIDO` si no hay exactamente un responsable distinto vinculado. Se deduplican vínculos al mismo responsable. La norma de tutor único está confirmada por el usuario; no se permite seleccionar automáticamente entre varios. Alcance fuera de curso/ciclo o entrega se rechaza; ruta sin sesión devuelve 401.
+
+Sólo se consultan evaluaciones y cierres 1..corte. La promoción con acompañamiento se devuelve como null antes de cuarto; los apoyos y datos administrativos se identifican como valores actuales de matrícula/alumno, sin atribuirles historial. La respuesta no incluye credenciales Acadeu, DNI ni contactos del tutor. Los campos anuales sin fuente no se inventan. Los pendientes de integración son MAPEO_ESCALA, CIERRE_ANUAL e HISTORIAL_ADMINISTRATIVO. El adaptador a `BoletinDocumentData` y la emisión se implementarán posteriormente.

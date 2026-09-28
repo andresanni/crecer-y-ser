@@ -1675,6 +1675,20 @@
           "maxSelect": 1,
           "displayFields": null
         }
+      },
+      {
+        "system": false,
+        "id": "approvalgen001",
+        "name": "generacion_visado",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
       }
     ],
     "indexes": [

@@ -1,0 +1,856 @@
+{
+  "origen": "PocketBase local, lectura SQLite en transacción de solo lectura",
+  "fecha": "2026-09-28",
+  "ano": 2026,
+  "grados": [
+    {
+      "grado": 1,
+      "materias": [
+        {
+          "nombre": "Trabajo en el Aula",
+          "orden": 1,
+          "conceptos": [
+            "Se organiza para realizar sus tareas ajustándose a las pautas de trabajo y demuestra una autonomía creciente.",
+            "Expresa sus ideas de manera clara y participa activamente en clase.",
+            "Asume de manera colaborativa las tareas dentro de un grupo y contribuye al logro de los objetivos comunes.",
+            "Manifiesta interés por aprender y pregunta cuando no comprende.",
+            "Reconoce sus logros e identifica sus dificultades como parte de su proceso de aprendizaje."
+          ]
+        },
+        {
+          "nombre": "Convivencia",
+          "orden": 2,
+          "conceptos": [
+            "Participa en la construcción de acuerdos escolares de convivencia y respeta las normas institucionales.",
+            "Utiliza estrategias comunicacionales asertivas para expresar sus emociones, experiencias y opiniones.",
+            "Resuelve conflictos a través de la escucha activa y el diálogo constructivo, apelando a la reflexión y a instancias de reparación.",
+            "Participa en tareas grupales y juegos de manera colaborativa, cooperativa e inclusiva.",
+            "Contribuye a la construcción de un clima escolar de bienestar social, estableciendo vínculos con pares y adultos de la escuela, promoviendo el cuidado de sí y de los otros, el resp"
+          ]
+        },
+        {
+          "nombre": "Lengua",
+          "orden": 3,
+          "conceptos": [
+            "Conoce la escritura y relaciona sonidos y letras.",
+            "Lee y escribe palabras con autonomía.",
+            "Participa durante la lectura de textos que hace el docente.",
+            "Escribe textos breves en colaboración con el docente y sus compañeros.",
+            "Comunica sus ideas en las conversaciones grupales."
+          ]
+        },
+        {
+          "nombre": "Matemática",
+          "orden": 4,
+          "conceptos": [
+            "Usa y comprende números de una y dos cifras, reconoce cómo se escriben, se dicen y se representan de distintas maneras, y observa algunas regularidades en la secuencia de números.",
+            "Cuenta, organiza y compara cantidades; utiliza diferentes formas de contar y distintos materiales para resolver situaciones sencillas",
+            "Resuelve problemas y realiza cálculos de suma y resta; utiliza distintas formas de pensar y calcular según cada situación.",
+            "Comprende y comunica relaciones espaciales y geométricas, ubica objetos, describe recorridos, y reconoce figuras y cuerpos geométricos del entorno.",
+            "Compara y mide longitudes y comprende situaciones relacionadas con el tiempo, como la duración de actividades y el orden de los acontecimientos."
+          ]
+        },
+        {
+          "nombre": "Conocimiento Del Mundo",
+          "orden": 5,
+          "conceptos": [
+            "Observa, describe y compara objetos, fenómenos y procesos en distintos tiempos y espacios.",
+            "Identifica diferentes modos en que las personas organizan y transforman los espacios.",
+            "Reconoce aspectos de la vida cotidiana familiar y social del presente y del pasado.",
+            "Reconoce la importancia del cuidado integral a través del conocimiento del cuerpo, prácticas saludables, instituciones y derechos.",
+            "Reconoce, describe y compara las características observables de plantas, animales y materiales."
+          ]
+        },
+        {
+          "nombre": "Tecnología, Diseño y Programación",
+          "orden": 6,
+          "conceptos": [
+            "Utiliza herramientas en forma adecuada.",
+            "Experimenta estructuras con bloques.",
+            "Comunica secuencias de operaciones.",
+            "Crea soluciones para problemas simples de programación y robótica.",
+            "Identifica y reflexiona sobre aplicaciones de IA."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Artes visuales",
+          "orden": 7,
+          "conceptos": [
+            "Representa ideas, sensaciones e imaginarios personales mediante producciones visuales.",
+            "Utiliza y reconoce los elementos del lenguaje visual, los diversos soportes y materialidades.",
+            "Manifiesta ideas y sensaciones al apreciar producciones o la visualidad del entorno.",
+            "Identifica características básicas de la/s disciplina/s que explora o aprecia (escultura, pintura, instalación, etc.).",
+            "Asume prácticas de convivencia, cuidado y valoración para con sus pares, y hacia el patrimonio cultural y material de los espacios educativos."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Música",
+          "orden": 8,
+          "conceptos": [
+            "Participa en producciones musicales grupales trabajando precisión rítmica y el acercamiento a la afinación.",
+            "Se expresa a través de la voz, el cuerpo, los instrumentos y la utilización de objetos sonoros.",
+            "Identifica auditivamente contrastes en parámetros del sonido.",
+            "Aprecia las producciones propias y de sus pares y expresa sus preferencias.",
+            "Respeta las pautas de convivencia, participando en las actividades individuales y grupales."
+          ]
+        },
+        {
+          "nombre": "Lenguas Adicionales - Inglés",
+          "orden": 9,
+          "conceptos": [
+            "Comprende la idea general y específica en textos orales breves y sencillos, con acompañamiento docente y apoyo visual.",
+            "Comprende la idea general y específica en textos escritos breves y sencillos, con acompañamiento docente y apoyo visual.",
+            "Expresa de forma oral información personal o necesidades concretas de su entorno cotidiano e interactúa de manera breve y sencilla, con diversos propósitos y aprendiendo a respetar",
+            "Expresa de forma escrita información personal o necesidades concretas de su entorno cotidiano.",
+            "Retransmite información en la lengua adicional, recurriendo ocasionalmente a la lengua de escolarización."
+          ]
+        },
+        {
+          "nombre": "Educación Física",
+          "orden": 10,
+          "conceptos": [
+            "Participa en juegos de diferentes características, comprendiendo y aceptando reglas.",
+            "Emplea y combina habilidades motoras de desplazamiento y manipulativas.",
+            "Enlaza acciones motrices gimnásticas simples.",
+            "Comunica con su cuerpo imágenes y/o emociones, y realiza secuencias motrices expresivas.",
+            "Cuida su cuerpo y el de los otros, respetando los acuerdos de convivencia."
+          ]
+        }
+      ]
+    },
+    {
+      "grado": 2,
+      "materias": [
+        {
+          "nombre": "Trabajo en el Aula",
+          "orden": 1,
+          "conceptos": [
+            "Se organiza para realizar sus tareas ajustándose a las pautas de trabajo y demuestra una autonomía creciente.",
+            "Expresa sus ideas de manera clara y participa activamente en clase.",
+            "Asume de manera colaborativa las tareas dentro de un grupo y contribuye al logro de los objetivos comunes.",
+            "Manifiesta interés por aprender y pregunta cuando no comprende.",
+            "Reconoce sus logros e identifica sus dificultades como parte de su proceso de aprendizaje."
+          ]
+        },
+        {
+          "nombre": "Convivencia",
+          "orden": 2,
+          "conceptos": [
+            "Participa en la construcción de acuerdos escolares de convivencia y respeta las normas institucionales.",
+            "Utiliza estrategias comunicacionales asertivas para expresar sus emociones, experiencias y opiniones.",
+            "Resuelve conflictos a través de la escucha activa y el diálogo constructivo, apelando a la reflexión y a instancias de reparación.",
+            "Participa en tareas grupales y juegos de manera colaborativa, cooperativa e inclusiva.",
+            "Contribuye a la construcción de un clima escolar de bienestar social, estableciendo vínculos con pares y adultos de la escuela, promoviendo el cuidado de sí y de los otros, el resp"
+          ]
+        },
+        {
+          "nombre": "Lengua",
+          "orden": 3,
+          "conceptos": [
+            "Lee y escribe palabras simples y complejas.",
+            "Escribe oraciones con autonomía.",
+            "Lee textos breves sin detenerse en cada palabra.",
+            "Comprende textos breves como cuentos, fábulas, descripciones, noticias.",
+            "Participa en la producción de textos y escribe de manera independiente textos breves con frases articuladas."
+          ]
+        },
+        {
+          "nombre": "Matemática",
+          "orden": 4,
+          "conceptos": [
+            "Usa y comprende números de dos y tres cifras; reconoce distintas formas de representarlos y algunas regularidades en la secuencia de números.",
+            "Resuelve sumas, restas y multiplicaciones sencillas; elige distintas formas de calcular según los números y la situación.",
+            "Resuelve problemas que incluyen sumas, restas y multiplicaciones en diferentes situaciones.",
+            "Comprende y comunica relaciones espaciales y geométricas; ubica objetos, describe recorridos y reconoce figuras y cuerpos geométricos.",
+            "Compara y mide longitudes y pesos y comprende situaciones relacionadas con el tiempo, como la duración de actividades y el orden de los acontecimientos."
+          ]
+        },
+        {
+          "nombre": "Conocimiento Del Mundo",
+          "orden": 5,
+          "conceptos": [
+            "Observa, describe y compara objetos, fenómenos y procesos naturales, sociedades y culturas en distintos tiempos y espacios.",
+            "Comprende las diferentes formas en que el trabajo de las personas transforma y organiza los espacios.",
+            "Reconoce cambios y continuidades en los distintos modos en que las personas se organizan socialmente en el pasado y en el presente.",
+            "Describe los cambios que se producen durante el crecimiento y reconoce a la salud como un derecho y un proceso.",
+            "Describe las características de animales y plantas y las relaciones con su ambiente."
+          ]
+        },
+        {
+          "nombre": "Tecnología, Diseño y Programación",
+          "orden": 6,
+          "conceptos": [
+            "Resuelve y documenta problemas mecánicos básicos.",
+            "Reconoce habilidades y distribución espacial de distintos trabajos.",
+            "Reflexiona sobre la seguridad de entornos digitales y la IA.",
+            "Resuelve problemas de robótica utilizando actuadores y sensores.",
+            "Diferencia soportes de servicios en las Tecnologías de la Información."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Artes visuales",
+          "orden": 7,
+          "conceptos": [
+            "Representa ideas, sensaciones e imaginarios personales mediante producciones visuales.",
+            "Utiliza y reconoce variaciones cromáticas, formales y espaciales en imágenes bidimensionales, tridimensionales y/o digitales.",
+            "Activa la percepción háptica y/o visual en las instancias apreciativas.",
+            "Construye definiciones simples acerca de los elementos que conforman las artes visuales.",
+            "Asume actitudes de cuidado hacia el patrimonio artístico-cultural."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Música",
+          "orden": 8,
+          "conceptos": [
+            "Interpreta grupalmente participando a través de la voz, instrumentos y otras fuentes sonoras.",
+            "Organiza sonidos y diseños rítmicos en ejecuciones vocales, instrumentales, con diversas fuentes sonoras y con percusión corporal.",
+            "Identifica contrastes y variaciones graduales de parámetros del sonido",
+            "Aprecia y valora producciones propias y de pares, enriqueciendo la propuesta.",
+            "Participa en las actividades individuales y grupales respetando las pautas de convivencia."
+          ]
+        },
+        {
+          "nombre": "Lenguas Adicionales - Inglés",
+          "orden": 9,
+          "conceptos": [
+            "Comprende la idea general y específica en textos orales breves y sencillos, con acompañamiento docente y apoyo visual.",
+            "Comprende la idea general y específica en textos escritos breves y sencillos, con acompañamiento docente y apoyo visual.",
+            "Expresa de forma oral información personal o necesidades concretas de su entorno cotidiano e interactúa de manera breve y sencilla, con diversos propósitos y aprendiendo a respetar",
+            "Expresa de forma escrita información personal o necesidades concretas de su entorno cotidiano.",
+            "Retransmite información en la lengua adicional, recurriendo ocasionalmente a la lengua de escolarización."
+          ]
+        },
+        {
+          "nombre": "Educación Física",
+          "orden": 10,
+          "conceptos": [
+            "Participa en juegos de diferentes características, aceptando las reglas.",
+            "Utiliza y combina habilidades motoras básicas  de desplazamiento y manipulativas.",
+            "Enlaza acciones motrices gimnásticas simples.",
+            "Comunica con su cuerpo imágenes y/o emociones y recrea secuencias motrices expresivas con ajuste rítmico.",
+            "Cuida su cuerpo y el de los otros respetando los acuerdos de convivencia."
+          ]
+        }
+      ]
+    },
+    {
+      "grado": 3,
+      "materias": [
+        {
+          "nombre": "Trabajo en el Aula",
+          "orden": 1,
+          "conceptos": [
+            "Se organiza para realizar sus tareas ajustándose a las pautas de trabajo y demuestra una autonomía creciente.",
+            "Expresa sus ideas de manera clara y participa activamente en clase.",
+            "Asume de manera colaborativa las tareas dentro de un grupo y contribuye al logro de los objetivos comunes.",
+            "Manifiesta interés por aprender y pregunta cuando no comprende.",
+            "Reconoce sus logros e identifica sus dificultades como parte de su proceso de aprendizaje."
+          ]
+        },
+        {
+          "nombre": "Convivencia",
+          "orden": 2,
+          "conceptos": [
+            "Participa en la construcción de acuerdos escolares de convivencia y respeta las normas institucionales.",
+            "Utiliza estrategias comunicacionales asertivas para expresar sus emociones, experiencias y opiniones.",
+            "Resuelve conflictos a través de la escucha activa y el diálogo constructivo, apelando a la reflexión y a instancias de reparación.",
+            "Participa en tareas grupales y juegos de manera colaborativa, cooperativa e inclusiva.",
+            "Contribuye a la construcción de un clima escolar de bienestar social, estableciendo vínculos con pares y adultos de la escuela, promoviendo el cuidado de sí y de los otros, el resp"
+          ]
+        },
+        {
+          "nombre": "Lengua",
+          "orden": 3,
+          "conceptos": [
+            "Lee textos breves.",
+            "Comprende cuentos, noticias e instrucciones.",
+            "Produce textos breves de manera organizada, con puntuación adecuada y vocabulario variado.",
+            "Reflexiona sobre las reglas de su lengua: cómo se combinan las palabras, cómo cambian según el uso.",
+            "Participa activamente en intercambios grupales sobre un tema."
+          ]
+        },
+        {
+          "nombre": "Matemática",
+          "orden": 4,
+          "conceptos": [
+            "Usa, compara y ordena números de hasta cuatro cifras; comprende el valor de cada cifra dentro del número y algunas regularidades de la serie numérica.",
+            "Resuelve sumas, restas, multiplicaciones y divisiones, eligiendo distintas formas de calcular según los números y la situación.",
+            "Resuelve y plantea problemas con sumas, restas, multiplicaciones y divisiones; comprende la información del problema y explica cómo llegó a la respuesta.",
+            "Comprende y representa posiciones, recorridos y formas en el espacio y en planos usando dibujos, referencias y herramientas digitales; reconoce figuras y cuerpos geométricos.",
+            "Mide y compara longitudes, pesos, capacidades y tiempos, utiliza unidades habituales y realiza estimaciones adecuadas según cada situación."
+          ]
+        },
+        {
+          "nombre": "Conocimiento Del Mundo",
+          "orden": 5,
+          "conceptos": [
+            "Observa, describe y compara objetos, fenómenos y procesos naturales, sociedades y culturas en distintos tiempos y espacios.",
+            "Analiza las formas de vida, de participación y de organización social de las sociedades del pasado y del presente.",
+            "Identifica y describe distintos factores que influyen sobre la salud integral de las personas.",
+            "Reconoce y describe las interacciones de las plantas y los animales con su ambiente y los cambios de los materiales.",
+            "Reconoce y describe las características de los cuerpos astronómicos observables."
+          ]
+        },
+        {
+          "nombre": "Tecnología, Diseño y Programación",
+          "orden": 6,
+          "conceptos": [
+            "Opera satisfactoriamente sobre la transformación de materiales.",
+            "Identifica las diferentes fuentes de energía y las demandas energéticas.",
+            "Reflexiona sobre la organización y las escalas de producción.",
+            "Reconoce los aspectos centrales de los servicios.",
+            "Resuelve problemas de circuitos básicos y de programación y robótica."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Artes visuales",
+          "orden": 7,
+          "conceptos": [
+            "Crea imágenes efímeras y permanentes sosteniendo hábitos de organización y uso del material, de las herramientas y de los soportes.",
+            "Diseña y desarrolla grupalmente intervenciones estético-lúdicas en pequeño, mediano o gran formato.",
+            "Identifica y usa variaciones de la forma, la textura, el espacio y el color en los entornos que habita y aprecia.",
+            "Formula y responde preguntas acerca de las cualidades simbólicas, visuales y procedimentales de las imágenes producidas y apreciadas.",
+            "Participa en la toma de decisiones grupales ligadas a la galería de arte escolar."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Música",
+          "orden": 8,
+          "conceptos": [
+            "Interpreta obras musicales de diferentes géneros y estilos.",
+            "Explora posibilidades a través de la voz cantada y diferentes fuentes sonoras de manera colectiva.",
+            "Identifica auditivamente, reconociendo y ordenando según parámetros del sonido.",
+            "Aprecia y relaciona a partir de producciones musicales propias y de pares.",
+            "Respeta y valora pautas de convivencia, integrándose en las actividades individuales y grupales"
+          ]
+        },
+        {
+          "nombre": "Lenguas Adicionales - Inglés",
+          "orden": 9,
+          "conceptos": [
+            "Comprende la idea general y específica en textos orales breves y sencillos, comenzando a mostrar autonomía.",
+            "Comprende la idea general y específica en textos escritos breves y sencillos, comenzando a mostrar autonomía.",
+            "Expresa de forma oral información personal o necesidades concretas e información sobre temas cotidianos y conocidos e interactúa de manera sencilla, con diversos propósitos y respe",
+            "Expresa de forma escrita información personal o necesidades concretas e información sobre temas cotidianos y conocidos.",
+            "Retransmite información en la lengua adicional para facilitar la comprensión y/o comunicación con otros."
+          ]
+        },
+        {
+          "nombre": "Educación Física",
+          "orden": 10,
+          "conceptos": [
+            "Participa en juegos de diferentes características  y los recrea.",
+            "Utiliza habilidades motoras básicas y combinadas en la resolución de situaciones problema.",
+            "Realiza secuencias motrices gimnásticas simples.",
+            "Comunica con su cuerpo imágenes y/o emociones y recrea secuencias motrices expresivas con ajuste rítmico.",
+            "Cuida su cuerpo y el de los otros respetando los acuerdos de convivencia según acuerdos grupales."
+          ]
+        }
+      ]
+    },
+    {
+      "grado": 4,
+      "materias": [
+        {
+          "nombre": "Trabajo en el Aula",
+          "orden": 1,
+          "conceptos": [
+            "Se organiza para realizar sus tareas ajustándose a las pautas de trabajo y demuestra una autonomía creciente.",
+            "Expresa sus ideas de manera clara y participa activamente en clase.",
+            "Asume de manera colaborativa las tareas dentro de un grupo y contribuye al logro de los objetivos comunes.",
+            "Manifiesta interés por aprender y pregunta cuando no comprende.",
+            "Reconoce sus logros e identifica sus dificultades como parte de su proceso de aprendizaje."
+          ]
+        },
+        {
+          "nombre": "Convivencia",
+          "orden": 2,
+          "conceptos": [
+            "Participa en la construcción de acuerdos escolares de convivencia y respeta las normas institucionales.",
+            "Utiliza estrategias comunicacionales asertivas para expresar sus emociones, experiencias y opiniones.",
+            "Resuelve conflictos a través de la escucha activa y el diálogo constructivo, apelando a la reflexión y a instancias de reparación.",
+            "Participa en tareas grupales y juegos de manera colaborativa, cooperativa e inclusiva.",
+            "Contribuye a la construcción de un clima escolar de bienestar social, estableciendo vínculos con pares y adultos de la escuela, promoviendo el cuidado de sí y de los otros, el resp"
+          ]
+        },
+        {
+          "nombre": "Lengua",
+          "orden": 3,
+          "conceptos": [
+            "Lee textos en voz alta.",
+            "Comprende los textos que lee el docente y los que lee de manera independiente, y puede responder preguntas sobre los textos.",
+            "Produce textos con distintos propósitos comunicativos a partir de un plan de escritura y revisa su producción a partir de criterios estudiados o pautados por el docente.",
+            "Reflexiona sobre su conocimiento de la lengua y logra establecer relaciones en categorías, así como identificar tiempos verbales.",
+            "Participa en intercambios grupales sobre obras leídas o sobre temas de estudio."
+          ]
+        },
+        {
+          "nombre": "Matemática",
+          "orden": 4,
+          "conceptos": [
+            "Usa, compara y representa números grandes y fracciones o decimales, comprende su valor y los utiliza en distintas situaciones.",
+            "Resuelve cálculos de suma, resta, multiplicación y división; elige distintas formas de calcular según los números y la situación.",
+            "Reconoce, construye y describe figuras y cuerpos geométricos, identificando sus partes y relaciones, mediante el uso de materiales y herramientas digitales.",
+            "Mide y compara longitudes, pesos y ángulos usando unidades habituales; establece equivalencias y utiliza instrumentos y herramientas digitales para medir.",
+            "Resuelve situaciones donde se comparan cantidades en proporción, organiza la información y utiliza cálculos adecuados para interpretar y comunicar resultados en distintos contextos"
+          ]
+        },
+        {
+          "nombre": "Ciencias Sociales",
+          "orden": 5,
+          "conceptos": [
+            "Identifica distintos aspectos de sociedades del pasado y del presente.",
+            "Reconoce cambios y continuidades entre el pasado y el presente analizando distintas características.",
+            "Reflexiona sobre la propia cultura y otras, y muestra respeto hacia modos de vida diferentes.",
+            "Analiza las características de espacios geográficos y sus interrelaciones.",
+            "Expresa sus ideas y opiniones con fundamentos basándose en fuentes de información."
+          ]
+        },
+        {
+          "nombre": "Ciencias Naturales",
+          "orden": 6,
+          "conceptos": [
+            "Describe los cambios e interacciones del ambiente y de la Tierra, así como el impacto de las acciones humanas.",
+            "Interpreta y explica el sostén y el movimiento del organismo humano y valora prácticas para el cuidado del sistema osteoartromuscular.",
+            "Describe y relaciona las propiedades de los materiales con sus usos y su interacción ante la electricidad y el magnetismo.",
+            "Describe los movimientos del Sol en el cielo, visto desde Buenos Aires, y los relaciona con fenómenos cotidianos.",
+            "Indaga, describe y explica fenómenos, objetos o procesos científicos escolares, aplicando habilidades del lenguaje científico."
+          ]
+        },
+        {
+          "nombre": "Tecnología, Diseño y Programación",
+          "orden": 7,
+          "conceptos": [
+            "Reflexiona acerca del uso de las tecnologías.",
+            "Resuelve problemas de diseño sencillos.",
+            "Descompone problemas y encuentra soluciones algorítmicas.",
+            "Utiliza efectivamente herramientas para la comunicación técnica.",
+            "Reconoce el origen y la transformación de la energía."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Artes visuales",
+          "orden": 8,
+          "conceptos": [
+            "Representa ideas y sensaciones vinculadas a la diversidad e identidad (personal, barrial, cultural) mediante retratos, paisajes y otras creaciones.",
+            "Utiliza en la creación de paisajes, retratos y otras imágenes la información visual obtenida mediante la apreciación del entorno.",
+            "Selecciona resoluciones procedimentales para sus producciones visuales en función de sus intenciones expresivas y de las posibilidades de la materialidad disponible en cada espacio",
+            "Manifiesta opiniones fundamentadas sobre las propias producciones, las de pares y las de otros creadores.",
+            "Participa en la toma de decisiones para la construcción y contextualización de la galería de arte escolar, a partir de memorias de procesos y/o de producciones culminadas."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Música",
+          "orden": 9,
+          "conceptos": [
+            "Interpreta vocal e instrumentalmente, con afinación, precisión rítmica, fraseo y expresividad.",
+            "Explora diferentes modos de producción del sonido a través del cuerpo, objetos sonoros e instrumentos.",
+            "Reconoce e identifica atributos del sonido.",
+            "Valora el patrimonio cultural en el ámbito musical.",
+            "Valora y participa del trabajo colaborativo e interviene en las actividades individuales y grupales."
+          ]
+        },
+        {
+          "nombre": "Lenguas Adicionales - Inglés",
+          "orden": 10,
+          "conceptos": [
+            "Comprende la idea general y específica en textos orales mostrando autonomía parcial.",
+            "Expresa de forma oral información sobre temas cotidianos y conocidos",
+            "Expresa de forma escrita información sobre temas cotidianos y conocidos.",
+            "Interactúa con diversos propósitos y respetando los turnos del habla",
+            "Transmite información en la lengua adicional para facilitar la comprensión y/o comunicación con otros"
+          ]
+        },
+        {
+          "nombre": "Educación Física",
+          "orden": 11,
+          "conceptos": [
+            "Experimenta juegos de diferentes estructuras de manera autónoma, respetando los acuerdos establecidos.",
+            "Combina habilidades motoras y destrezas gimnásticas.",
+            "Comunica emociones e imágenes y recrea secuencias rítmicas expresivas.",
+            "Resuelve situaciones en los juegos deportivos, utilizando habilidades motoras combinadas y específicas y conceptos tácticos básicos.",
+            "Respeta los acuerdos grupales en las prácticas corporales."
+          ]
+        }
+      ]
+    },
+    {
+      "grado": 5,
+      "materias": [
+        {
+          "nombre": "Trabajo en el Aula",
+          "orden": 1,
+          "conceptos": [
+            "Se organiza para realizar sus tareas ajustándose a las pautas de trabajo y demuestra una autonomía creciente.",
+            "Expresa sus ideas de manera clara y participa activamente en clase.",
+            "Asume de manera colaborativa las tareas dentro de un grupo y contribuye al logro de los objetivos comunes.",
+            "Manifiesta interés por aprender y pregunta cuando no comprende.",
+            "Reconoce sus logros e identifica sus dificultades como parte de su proceso de aprendizaje."
+          ]
+        },
+        {
+          "nombre": "Convivencia",
+          "orden": 2,
+          "conceptos": [
+            "Participa en la construcción de acuerdos escolares de convivencia y respeta las normas institucionales.",
+            "Utiliza estrategias comunicacionales asertivas para expresar sus emociones, experiencias y opiniones.",
+            "Resuelve conflictos a través de la escucha activa y el diálogo constructivo, apelando a la reflexión y a instancias de reparación.",
+            "Participa en tareas grupales y juegos de manera colaborativa, cooperativa e inclusiva.",
+            "Contribuye a la construcción de un clima escolar de bienestar social, estableciendo vínculos con pares y adultos de la escuela, promoviendo el cuidado de sí y de los otros, el resp"
+          ]
+        },
+        {
+          "nombre": "Lengua",
+          "orden": 3,
+          "conceptos": [
+            "Lee textos en voz alta y en silencio con autonomía.",
+            "Comprende las obras literarias y los textos que se abordan en el aula y puede organizar la información en cuadros, así como comparar ideas.",
+            "Produce textos coherentes con autonomía y puede revisar los borradores de sus producciones para adecuar los recursos utilizados.",
+            "Recurre a su conocimiento de la gramática para analizar oraciones y clases de palabras.",
+            "Participa de manera activa en intercambios y exposiciones orales sobre distintos temas."
+          ]
+        },
+        {
+          "nombre": "Matemática",
+          "orden": 4,
+          "conceptos": [
+            "Usa y representa números naturales, fracciones y decimales; establece relaciones entre ellos y los aplica para resolver distintos tipos de problemas.",
+            "Resuelve situaciones en las que dos cantidades se relacionan de manera proporcional; utiliza cálculos adecuados para interpretar y comunicar los resultados.",
+            "Construye y analiza figuras y cuerpos geométricos usando instrumentos y herramientas digitales, y explica sus características y relaciones.",
+            "Mide y calcula longitudes, pesos, capacidades y tiempos, establece equivalencias entre unidades y resuelve situaciones de perímetro y superficie.",
+            "Organiza e interpreta información en tablas y gráficos, analiza datos, reconoce regularidades y comunica conclusiones de forma clara, tanto oralmente como por escrito."
+          ]
+        },
+        {
+          "nombre": "Ciencias Sociales",
+          "orden": 5,
+          "conceptos": [
+            "Explica distintas características de sociedades del pasado y del presente.",
+            "Establece relaciones entre hechos y procesos del pasado a través del tiempo.",
+            "Reconoce las normas que regulan la convivencia entre las personas.",
+            "Describe y caracteriza distintos espacios geográficos.",
+            "Reflexiona con argumentos basándose en fuentes de información."
+          ]
+        },
+        {
+          "nombre": "Ciencias Naturales",
+          "orden": 6,
+          "conceptos": [
+            "Explica los cambios del agua en la Tierra, su importancia como componente de mezclas y las interacciones entre esta y los seres vivos.",
+            "Interpreta y explica la nutrición humana como un proceso integrado de funciones y valora prácticas para el cuidado de los sistemas involucrados.",
+            "Describe la propagación de la luz y el sonido y la relaciona con la interacción con diferentes materiales.",
+            "Describe el movimiento de los astros y de la Luna y los relaciona con fenómenos cotidianos.",
+            "Indaga, describe y explica fenómenos, objetos o procesos científicos escolares, aplicando habilidades del lenguaje científico."
+          ]
+        },
+        {
+          "nombre": "Tecnología, Diseño y Programación",
+          "orden": 7,
+          "conceptos": [
+            "Identifica fuentes de energía y su impacto ambiental.",
+            "Comprende la relación entre tecnología y productividad.",
+            "Diferencia entre funciones de ejecución y de control.",
+            "Emplea adecuadamente conceptos de programación.",
+            "Reflexiona sobre la ética de la IA y de las plataformas digitales."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Artes visuales",
+          "orden": 8,
+          "conceptos": [
+            "Crea imágenes fijas y en movimiento, seleccionando materialidades y variaciones del lenguaje visual según intenciones estéticas-narrativas personales o grupales.",
+            "Reconoce características, funciones sociales y estéticas del arte textil, en creaciones del pasado y del presente.",
+            "Establece relaciones entre las producciones visuales apreciadas, el contexto en el que han sido creadas y el contexto desde el cual se aprecian.",
+            "Utiliza buscadores y medios de comunicación para conocer la oferta artística de la Ciudad de Buenos Aires.",
+            "Utiliza vocabulario específico (términos del lenguaje visual y datos sobre el patrimonio artístico) durante las actividades de coevaluación y exhibición."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Música",
+          "orden": 9,
+          "conceptos": [
+            "Interpreta vocalmente con afinación, precisión rítmica y fraseo.",
+            "Participa en producciones musicales individuales y grupales asumiendo diferentes roles.",
+            "Reconoce e identifica auditivamente atributos del sonido en diferentes contextos sonoros.",
+            "Relaciona aspectos del contexto del repertorio trabajado, apreciando el patrimonio cultural.",
+            "Valora y participa del trabajo colaborativo."
+          ]
+        },
+        {
+          "nombre": "Lenguas Adicionales - Inglés",
+          "orden": 10,
+          "conceptos": [
+            "Comprende la idea general y específica en textos orales, mostrando creciente autonomía.",
+            "Expresa de forma oral opiniones e información sobre temas cotidianos y conocidos e interactúa con diversos propósitos y respetando los turnos del habla.",
+            "Expresa de forma escrita opiniones e información sobre temas cotidianos y conocidos.",
+            "Interactúa con diversos propósitos y respetando los turnos del habla",
+            "Transmite información relevante de un texto oral o escrito para facilitar la comprensión y/o la comunicación con otros."
+          ]
+        },
+        {
+          "nombre": "Educación Física",
+          "orden": 11,
+          "conceptos": [
+            "Participa en juegos de diferentes estructuras respetando acuerdos.",
+            "Combina habilidades motoras  y destrezas gimnásticas.",
+            "Comunica emociones e imágenes y experimenta diversas manifestaciones del movimiento expresivo.",
+            "Resuelve situaciones en los juegos deportivos, utilizando habilidades motoras combinadas y específicas, y conceptos tácticos básicos.",
+            "Respeta los acuerdos sobre las actitudes individuales y grupales relacionadas con las prácticas corporales."
+          ]
+        }
+      ]
+    },
+    {
+      "grado": 6,
+      "materias": [
+        {
+          "nombre": "Trabajo en el Aula",
+          "orden": 1,
+          "conceptos": [
+            "Se organiza para realizar sus tareas ajustándose a las pautas de trabajo y demuestra una autonomía creciente.",
+            "Expresa sus ideas de manera clara y participa activamente en clase.",
+            "Asume de manera colaborativa las tareas dentro de un grupo y contribuye al logro de los objetivos comunes.",
+            "Manifiesta interés por aprender y pregunta cuando no comprende.",
+            "Reconoce sus logros e identifica sus dificultades como parte de su proceso de aprendizaje."
+          ]
+        },
+        {
+          "nombre": "Convivencia",
+          "orden": 2,
+          "conceptos": [
+            "Participa en la construcción de acuerdos escolares de convivencia y respeta las normas institucionales.",
+            "Utiliza estrategias comunicacionales asertivas para expresar sus emociones, experiencias y opiniones.",
+            "Resuelve conflictos a través de la escucha activa y el diálogo constructivo, apelando a la reflexión y a instancias de reparación.",
+            "Participa en tareas grupales y juegos de manera colaborativa, cooperativa e inclusiva.",
+            "Contribuye a la construcción de un clima escolar de bienestar social, estableciendo vínculos con pares y adultos de la escuela, promoviendo el cuidado de sí y de los otros, el respeto y la inclusión de la diversidad."
+          ]
+        },
+        {
+          "nombre": "Lengua",
+          "orden": 3,
+          "conceptos": [
+            "Lee textos con autonomía y con diferentes objetivos.",
+            "Comprende los textos que lee, identifica dificultades y puede organizar la información para recuperarla oralmente o por escrito en otras tareas.",
+            "Produce, revisa sus borradores y edita textos con autonomía para responder a un propósito comunicativo con adecuación.",
+            "Analiza oraciones, clasifica palabras y usa este conocimiento en sus producciones.",
+            "Participa de manera activa en intercambios y exposiciones orales sobre distintos temas: propone ejemplos para argumentar, y hace referencia a información conocida sobre autores o fuentes."
+          ]
+        },
+        {
+          "nombre": "Matemática",
+          "orden": 4,
+          "conceptos": [
+            "Usa y representa números naturales, fracciones y decimales, establece relaciones entre ellos y los aplica para resolver problemas que combinan distintas operaciones.",
+            "Resuelve y plantea situaciones de proporcionalidad directa; utiliza tablas, gráficos y cálculos adecuados para interpretar resultados y tomar decisiones.",
+            "Construye y analiza figuras y cuerpos geométricos, utilizando instrumentos y herramientas digitales, y explica sus características, relaciones y condiciones de construcción.",
+            "Mide y calcula distintas magnitudes, establece equivalencias entre unidades y resuelve situaciones de perímetro y superficie utilizando diferentes procedimientos.",
+            "Recolecta, organiza e interpreta datos en tablas y gráficos, analiza situaciones de probabilidad y comunica conclusiones para tomar decisiones fundamentadas."
+          ]
+        },
+        {
+          "nombre": "Ciencias Sociales",
+          "orden": 5,
+          "conceptos": [
+            "Reconoce e interpreta distintos aspectos de sociedades del pasado y del presente.",
+            "Explica procesos históricos estableciendo relaciones.",
+            "Reflexiona sobre diferentes culturas en el marco de una convivencia respetuosa.",
+            "Analiza y compara distintos espacios geográficos.",
+            "Construye argumentos, extrae conclusiones y sostiene sus ideas, valiéndose de fuentes de información."
+          ]
+        },
+        {
+          "nombre": "Ciencias Naturales",
+          "orden": 6,
+          "conceptos": [
+            "Explica los componentes y las interacciones de los ecosistemas estudiados y su relación con los modos de nutrición de los seres vivos. Valora las acciones humanas para la conservación.",
+            "Interpreta y explica la reproducción humana y valora prácticas para su cuidado.",
+            "Describe los estados de agregación y los cambios de estado de los materiales, a partir del modelo de partículas, y relaciona las propiedades térmicas de los materiales con sus usos.",
+            "Describe las características del sistema solar y de la atmósfera y explica el movimiento de los planetas en torno al Sol y los cambios en la atmósfera.",
+            "Indaga, describe y explica fenómenos, objetos o procesos científicos escolares, aplicando habilidades del lenguaje científico."
+          ]
+        },
+        {
+          "nombre": "Tecnología, Diseño y Programación",
+          "orden": 7,
+          "conceptos": [
+            "Mide magnitudes adecuadamente.",
+            "Comunica información técnica adaptada a distintos actores.",
+            "Propone algoritmos trabajando colaborativamente.",
+            "Resuelve satisfactoriamente problemas de diseño.",
+            "Reflexiona sobre las plataformas utilizadas."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Artes visuales",
+          "orden": 8,
+          "conceptos": [
+            "Crea producciones visuales con imágenes seriadas y secuenciadas (cartelismo, historieta, fanzine u otras), integrando múltiples recursos.",
+            "Explora reflexivamente los recursos narrativos editoriales (viñetas, encuadres, tipografías, series, encuadernaciones, etc.).",
+            "Define con ideas propias los elementos del lenguaje visual, las funciones estético-comunicativas de la creación visual y los circuitos artísticos.",
+            "Reconoce responsabilidades y oportunidades que ofrecen el ciberespacio y los espacios expositivos físicos respecto a la inclusión de todas las personas como espectadoras de artes visuales.",
+            "Participa en la construcción conjunta de los aprendizajes y las muestras, intercambiando ideas y valorando los distintos modos de participar de sus pares."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Música",
+          "orden": 9,
+          "conceptos": [
+            "Interpreta vocal e instrumentalmente, con dominio técnico y expresivo a dos o más voces.",
+            "Explora y participa creando con diferentes recursos sonoros de manera individual y grupal.",
+            "Identifica, clasifica y ordena teniendo en cuenta atributos del sonido.",
+            "Comprende el contexto social y cultural de diferentes producciones musicales.",
+            "Valora el trabajo colaborativo y las producciones propias y de sus pares."
+          ]
+        },
+        {
+          "nombre": "Lenguas Adicionales - Inglés",
+          "orden": 10,
+          "conceptos": [
+            "Comprende la idea general y específica en textos orales y escritos, mostrando creciente autonomía.",
+            "Expresa de forma oral opiniones e información sobre las temáticas trabajadas en los géneros textuales abordados",
+            "Expresa de forma escrita opiniones e información sobre las temáticas trabajadas en los géneros textuales abordados",
+            "Interactúa con diversos propósitos y respetando los turnos del habla",
+            "Transmite información específica y relevante de un texto oral o escrito para facilitar la comprensión y/o la comunicación con otros."
+          ]
+        },
+        {
+          "nombre": "Educación Física",
+          "orden": 11,
+          "conceptos": [
+            "Participa y recrea juegos de diferentes organizaciones y estructuras, respetando acuerdos.",
+            "Combina habilidades motoras y realiza destrezas gimnásticas empleando las capacidades condicionales y coordinativas.",
+            "Crea secuencias rítmicas individuales y grupales con soporte musical y experimenta diversas manifestaciones de movimiento expresivo.",
+            "Resuelve las situaciones en los juegos deportivos y minideportes empleando habilidades motoras específicas y conceptos tácticos básicos.",
+            "Asume actitudes respetuosas que favorecen la participación en las prácticas corporales."
+          ]
+        }
+      ]
+    },
+    {
+      "grado": 7,
+      "materias": [
+        {
+          "nombre": "Trabajo en el Aula",
+          "orden": 1,
+          "conceptos": [
+            "Se organiza para realizar sus tareas ajustándose a las pautas de trabajo y demuestra una autonomía creciente.",
+            "Expresa sus ideas de manera clara y participa activamente en clase.",
+            "Asume de manera colaborativa las tareas dentro de un grupo y contribuye al logro de los objetivos comunes.",
+            "Manifiesta interés por aprender y pregunta cuando no comprende.",
+            "Reconoce sus logros e identifica sus dificultades como parte de su proceso de aprendizaje."
+          ]
+        },
+        {
+          "nombre": "Convivencia",
+          "orden": 2,
+          "conceptos": [
+            "Participa en la construcción de acuerdos escolares de convivencia y respeta las normas institucionales.",
+            "Utiliza estrategias comunicacionales asertivas para expresar sus emociones, experiencias y opiniones.",
+            "Resuelve conflictos a través de la escucha activa y el diálogo constructivo, apelando a la reflexión y a instancias de reparación.",
+            "Participa en tareas grupales y juegos de manera colaborativa, cooperativa e inclusiva.",
+            "Contribuye a la construcción de un clima escolar de bienestar social, estableciendo vínculos con pares y adultos de la escuela, promoviendo el cuidado de sí y de los otros, el respeto y la inclusión de la diversidad."
+          ]
+        },
+        {
+          "nombre": "Lengua",
+          "orden": 3,
+          "conceptos": [
+            "Lee dos o más textos sobre un tema para responder a distintos objetivos, identifica las dificultades y aplica estrategias para resolverlas.",
+            "Comprende los textos que se leen en el aula, analiza obras literarias y responde a distintos objetivos, como la producción de un nuevo texto o el reconocimiento de las características de un género.",
+            "Escribe, revisa borradores y edita textos con distintos propósitos comunicativos, agrega ejemplos, datos, y utiliza un vocabulario variado en formatos digitales o en papel.",
+            "Utiliza sus conocimientos sobre la lengua para revisar y comprender textos.",
+            "Participa de manera activa en intercambios orales y planifica exposiciones orales sobre distintos temas para presentar las ideas de manera organizada e incorporar recursos que faciliten la comprensión de la audiencia a la que se dirige."
+          ]
+        },
+        {
+          "nombre": "Matemática",
+          "orden": 4,
+          "conceptos": [
+            "Usa, compara y representa números naturales, fracciones y decimales, los ubica en la recta numérica y comprende cómo funcionan el sistema decimal y el sistema sexagesimal (horas, minutos, grados).",
+            "Resuelve y plantea situaciones donde las cantidades se relacionan de manera proporcional directa o inversa, utilizando cálculos, tablas y gráficos para interpretar resultados y tomar decisiones.",
+            "Construye y analiza figuras y cuerpos geométricos, utilizando instrumentos y herramientas digitales, y explica sus propiedades, relaciones y condiciones de construcción.",
+            "Mide y calcula distintas magnitudes, establece equivalencias entre unidades y resuelve situaciones de perímetro, superficie y volumen utilizando diferentes procedimientos.",
+            "Recolecta, organiza e interpreta datos, utiliza medidas como promedio, valor más frecuente y valor central, y analiza situaciones de probabilidad para tomar decisiones fundamentadas."
+          ]
+        },
+        {
+          "nombre": "Ciencias Sociales",
+          "orden": 5,
+          "conceptos": [
+            "Analiza e interpreta la complejidad de los procesos del pasado y del presente.",
+            "Contextualiza y establece relaciones entre distintos períodos históricos.",
+            "Reflexiona sobre el ejercicio pleno y responsable de los derechos.",
+            "Comprende la organización y la interrelación de los espacios geográficos.",
+            "Analiza hechos, conceptos y procesos y comunica sus ideas con argumentos, valiéndose de fuentes."
+          ]
+        },
+        {
+          "nombre": "Ciencias Naturales",
+          "orden": 6,
+          "conceptos": [
+            "Analiza y explica el ciclo de los materiales, el flujo de la energía y los cambios producidos en los ecosistemas estudiados.",
+            "Interpreta y explica la coordinación, el control y la defensa del organismo humano y valora prácticas para el cuidado de los sistemas involucrados.",
+            "Describe las manifestaciones y transformaciones de la energía y explica las transformaciones químicas y las diferencia de las físicas.",
+            "Explica el modelo actual del universo, los fenómenos cotidianos a partir de los movimientos del Sol y de la Luna en el espacio y los relaciona con sus movimientos vistos desde la superficie terrestre. Describe el ciclo de vida de los materiales y uti",
+            "Indaga, describe y explica fenómenos, objetos o procesos científicos escolares, aplicando habilidades del lenguaje científico."
+          ]
+        },
+        {
+          "nombre": "Tecnología, Diseño y Programación",
+          "orden": 7,
+          "conceptos": [
+            "Comprende los elementos básicos de la generación, renovación, almacenamiento, distribución y consumo de energía.",
+            "Comprende e integra las características de las redes de información y comunicación.",
+            "Se desempeña satisfactoriamente en el desarrollo de proyectos de programación y robótica.",
+            "Integra todas las etapas de una solución.",
+            "Utiliza críticamente la IA como asistente en proyectos."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Artes visuales",
+          "orden": 8,
+          "conceptos": [
+            "Crea producciones performáticas, audiovisuales o multidisciplinares, combinando recursos expresivos de la imagen en movimiento, el espacio, los objetos, el cuerpo y la interacción con otros lenguajes artísticos.",
+            "Realiza producciones grupales en espacios públicos, y reconoce los derechos y responsabilidades relacionados con el patrimonio artístico en espacios abiertos, museos y en el ciberespacio.",
+            "Diseña imágenes o intervenciones visuales que ofrezcan representaciones alternativas respecto de los estereotipos que circulan en publicidades u otros medios.",
+            "Toma decisiones comunicativas y estéticas en la galería de arte escolar, incluyendo relatos de procesos, reflexiones, propuestas de interacción para los espectadores y/o producciones culminadas.",
+            "Reconoce reservorios visuales físicos o digitales y fuentes de información legítimas relacionadas a un tema o práctica artística investigada."
+          ]
+        },
+        {
+          "nombre": "Educación Artística - Música",
+          "orden": 9,
+          "conceptos": [
+            "Interpreta vocal e instrumentalmente, con dominio técnico y expresivo a dos o más voces.",
+            "Participa en proyectos musicales colaborativos.",
+            "Identifica, clasifica y ordena atributos del sonido con mínimo grado de contraste con dos o más variables.",
+            "Comprende el contexto social y cultural de diferentes producciones musicales.",
+            "Valora el trabajo colaborativo, participando en proyectos musicales concertados."
+          ]
+        },
+        {
+          "nombre": "Lenguas Adicionales - Inglés",
+          "orden": 10,
+          "conceptos": [
+            "Comprende la idea general y específica en textos orales y escritos, mostrando autonomía.",
+            "Expresa de forma oral información sobre las temáticas trabajadas en los géneros textuales abordados.",
+            "Expresa de forma escrita información sobre las temáticas trabajadas en los géneros textuales abordados.",
+            "Interactua con diversos propósitos y respetando los turnos del habla.",
+            "Transmite información específica y relevante para facilitar la comprensión y/o la comunicación con otros."
+          ]
+        },
+        {
+          "nombre": "Educación Física",
+          "orden": 11,
+          "conceptos": [
+            "Participa y recrea juegos de diferentes organizaciones y estructuras de manera autónoma.",
+            "Combina habilidades motoras específicas y gimnásticas poniendo en juego las capacidades condicionales y coordinativas.",
+            "Crea secuencias rítmicas individuales y grupales con soporte musical y experimenta diversas manifestaciones del movimiento expresivo.",
+            "Resuelve las situaciones en los juegos deportivos y minideportes empleando habilidades motoras específicas y conceptos tácticos básicos.",
+            "Resuelve las situaciones en los juegos deportivos y minideportes empleando habilidades motoras específicas y conceptos tácticos básicos."
+          ]
+        }
+      ]
+    }
+  ]
+}

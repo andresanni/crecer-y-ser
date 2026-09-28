@@ -1,0 +1,163 @@
+# Estrategia de emisión de boletines PDF
+
+28 de septiembre de 2026. Propuesta para acordar antes de implementar. La plantilla v1 está aprobada; no hay motor, persistencia ni interfaz de emisión implementados.
+
+## Reglas solicitadas
+
+- El PDF representa el contenido visado en un momento determinado.
+- Retirar el visado o corregir el contenido invalida el PDF y requiere una nueva generación tras el nuevo visado.
+- Generación individual y masiva por grado y bimestre.
+- Nombre de descarga: `APELLIDO, NOMBRE - BOLETIN X BIMESTRE.pdf`.
+
+## Conservación recomendada
+
+Guardar una instantánea documental y el archivo PDF emitido, junto con fecha, emisor, matrícula, curso, ciclo lectivo, bimestre de corte, versiones de plantilla/assets y hash. Descargar devuelve los mismos bytes, no vuelve a interpretar los datos actuales. El archivo se alojaría en almacenamiento protegido de PocketBase; su registro conserva referencia y metadatos, no un PDF codificado en una columna de texto. Referencia técnica: https://pocketbase.io/docs/files-handling/ . Verificar APIs concretas contra PocketBase 0.22.17 al implementar.
+
+La regla actual del usuario sustituye la propuesta anterior de conservar PDFs históricos descargables: al invalidar, bloquear inmediatamente el acceso, cancelar operaciones pendientes y eliminar el archivo administrado. Conservar solamente trazabilidad de la emisión invalidada (identificador, fechas, motivo, hash, revisiones y versión), sin ofrecer descargarla ni reconstruirla desde una instantánea invalidada. Limpiar también esa instantánea según la política de conservación que se acuerde. Las copias ya descargadas por dirección no pueden retirarse de sus dispositivos; los backups tienen su ciclo de retención independiente.
+
+La invalidación del registro debe ser transaccional con el retiro/corrección; la eliminación física debe ser reintentable fuera de la transacción. Un fallo de borrado no rehabilita el acceso. No prometer atomicidad entre SQLite y almacenamiento de archivos. Las descargas pasan por autorización y revalidación de vigencia; evitar URLs públicas o ZIP persistentes que permitan recuperar versiones retiradas.
+
+## Vínculo con visado y dependencias
+
+El backend actual expone revision_contenido y revision_visada. Una corrección incrementa la primera y retira el visado. Retirar y volver a visar sin editar puede conservar la misma revision_contenido: agregar una generación monotónica de autorización por alumno/período o identificador de evento de visado. El trabajo debe conservar y revalidar este identificador, no sólo el booleano VISADO ni la fecha.
+
+La unidad documental es matrícula + ciclo lectivo + bimestre de corte. Sólo incluir datos académicos hasta el corte; posteriores permanecen futuros aunque ya tengan cargas. Propuesta: exigir visados vigentes de cada período académico incluido. Resolver explícitamente históricos previos a la app o altas tardías; jamás completar desde borradores docentes ni usar guiones para ocultar faltantes obligatorios.
+
+Una emisión del segundo bimestre depende de primero y segundo. Retirar/corregir primero invalida todas las emisiones de ese alumno que lo incluyan, sin afectar archivos de compañeros. Invalidar un PDF acumulativo no significa retirar automáticamente todos los visados posteriores: la UI debe explicar qué dependencia requiere revisión.
+
+La instantánea incluye datos personales, responsable elegido, apoyos, malla, escalas y datos anuales además de notas. Los cambios externos a la planilla también pueden cambiar lo impreso: vincular dependencias y revalidar una huella documental al finalizar y descargar. Si cambia el contenido documental aprobado, exigir revisión antes de regenerar. No usar la revisión global del curso como identidad única del PDF, ya que una corrección de otro alumno no debería invalidar todos los archivos.
+
+## Generación
+
+1. Servidor valida rol, alcance, visados y versiones esperadas; obtiene instantánea coherente en una transacción breve.
+2. Registra solicitud con clave de idempotencia basada en alcance, visados, huella y versión de plantilla. Repetir una solicitud igual reutiliza el trabajo o archivo vigente.
+3. Un worker privado renderiza React/HTML con Chromium fuera de la transacción. Usa plantilla y assets versionados, sin credenciales administrativas en el navegador ni datos leídos directamente por la plantilla.
+4. Espera fuentes, imágenes y ajuste tipográfico. Rechaza desbordes pendientes, páginas adicionales o recursos faltantes; no publica PDFs parciales.
+5. Revalida dependencias y autorización en transacción antes de publicar. Si cambió algo durante el render, descarta el resultado.
+6. Guarda archivo protegido y hash; marca DISPONIBLE sólo tras completar y verificar almacenamiento. Limpia temporales o archivos huérfanos tras fallos.
+
+Estados técnicos propuestos: EN_COLA, GENERANDO, DISPONIBLE, ERROR e INVALIDADO. No reemplazan CONTROL_DIRECTIVO, VISADO ni LISTO_PARA_PDF. El diseño/hardware del worker y su alojamiento requieren una prueba antes de decidir despliegue; no se incorpora un servidor al frontend estático por suposición.
+
+## Individual y por grado
+
+Confirmado por el usuario: emisión individual habilitada por el visado vigente y las dependencias del alumno, sin exigir que terminen sus compañeros. Lote completo habilitado con LISTO_PARA_PDF y dependencias completas; el servidor vuelve a comprobarlo. Un lote es una lista de operaciones individuales con concurrencia acotada, estado por alumno y reintentos sólo de fallidos o invalidados. Archivos vigentes se reutilizan.
+
+Descarga masiva como ZIP: `GRADO - BOLETINES X BIMESTRE - AÑO.zip`, con PDFs individuales nombrados como pidió el usuario. Normalizar caracteres inválidos de sistemas de archivos y resolver homónimos con un sufijo estable sin DNI. Año y matrícula forman parte del identificador interno aunque no aparezcan en el nombre pedido. El ZIP se arma con un manifiesto de versiones vigentes y se revalida antes de entregarlo; no reutilizar un ZIP que contiene un archivo invalidado. Un fallo parcial se muestra como tal, con lista de faltantes y reintento, nunca como lote completo.
+
+## Incorporación gradual
+
+1. Cerrar reglas pendientes: elegibilidad individual/acumulada, responsable de portada, ausencias de históricos, captura anual y política de borrado. Usuario ya pidió eliminar el PDF invalidado; no volver a asumir archivo histórico descargable.
+2. Mapear cada campo a su fuente y construir gateway/adaptador de instantánea sólo lectura. Probar con alumno local sintético por ciclo, sin botones de emisión aún.
+3. Ensayar un PDF real desde la plantilla y validar paginación, fuentes, ajuste de consignas y observaciones extensas. Elegir alojamiento del worker con mediciones.
+4. Implementar persistencia, invalidación y descarga protegida con migraciones/gateway; probar corrección y retiro antes, durante y después del render, incluido re-visado sin editar.
+5. Añadir generación individual en revisión directiva: Generar PDF, estado/progreso, Descargar y Reintentar. Mantener la acción de visado independiente.
+6. Añadir generación por grado en Bimestres: progreso, faltantes, reintentos y ZIP. Usar las mismas operaciones individuales.
+7. Probar doble clic, dos directivos, desconexión, caída de worker, fallos de borrado, corrección de bimestres anteriores y cambios administrativos. Preparar promoción según documentos de entornos, hardening y despliegue.
+
+Ninguna generación equivale a envío a familias. No se implementa correo, publicación familiar ni firma digital en este alcance.
+
+
+## Vigencia acumulativa: definición para la siguiente implementación
+
+El usuario confirmó la generación individual y busca una garantía del sistema sobre la actualidad del PDF respecto de todos los visados incluidos. Se recomienda implementar esta garantía; no depender de la memoria operativa de dirección. No representa firma digital ni certificación legal: el término de interfaz recomendado es «PDF vigente».
+
+Cada emisión registra una lista explícita de dependencias por alumno y período: ID de visado, generación monotónica de visado y revisión de contenido aprobada. El snapshot del segundo bimestre guarda las dependencias de primero y segundo; tercero guarda primero, segundo y tercero. El cuarto guarda las cuatro. La cantidad es pequeña y acotada: no requiere reconstruir el PDF para comprobarla. Además se conserva la huella de otros datos documentales, según las reglas anteriores.
+
+La descarga sólo se habilita si todos esos visados siguen vigentes, sus generaciones coinciden y las revisiones aprobadas coinciden con el contenido actual. Se comprueba en servidor al solicitar, al publicar el resultado y al autorizar una descarga. Realtime actualiza la interfaz, pero no es la garantía de vigencia. Retirar y volver a visar sin modificar notas genera una nueva autorización: una emisión invalidada nunca vuelve a ser válida por coincidencia de valores.
+
+Para un alumno con PDFs emitidos hasta tercero: retirar el visado de segundo invalida las emisiones de segundo y tercero; primero permanece vigente. No se retiran automáticamente los visados de tercero ni se afectan compañeros. Corregir primero invalida todas las emisiones que lo incluyen. El servidor revoca su descarga en la misma transacción que retira/corrige el visado; cancela trabajos pendientes y programa borrado físico reintentable.
+
+Al volver a visar el período corregido, las emisiones afectadas quedan pendientes de regeneración cuando todas sus dependencias vuelven a cumplir las condiciones. Para v1, la regeneración será una acción explícita individual o de lote, no un proceso automático silencioso. El ZIP se arma sólo con versiones vigentes y revalida su manifiesto antes de entregarse.
+
+La garantía corresponde al instante de autorización de descarga. Un cambio concurrente posterior no permite retirar bytes ya entregados. La app informa cuál archivo sigue vigente; no puede certificar permanentemente una copia guardada fuera del sistema. Un QR/verificador público o una firma digital no están incluidos en esta fase.
+
+Pendiente antes de implementar: distinguir período futuro, período anterior obligatorio con visado faltante y período previo no aplicable a la cursada por alta tardía o historia fuera de la app. «Si los hubiese» no debe implementarse como saltar silenciosamente registros ausentes. El servidor determina el conjunto esperado y bloquea los faltantes obligatorios con un motivo comprensible.
+
+Pruebas de aceptación específicas: retirar segundo invalida sólo segundo y posteriores del mismo alumno; re-visado sin editar no resucita PDFs; corrección durante render impide publicación; URL previa y ZIP previo no permiten nuevas descargas inválidas; error de borrado mantiene revocado el acceso; un visado faltante en período requerido bloquea la generación y señala el período.
+
+
+## Primera entrega local: preparación y elegibilidad
+
+28 de septiembre de 2026: inspección inicial de desarrollo completada. PocketBase local responde health 200; dispone de los cuatro períodos y cinco registros de visado (uno VISADO y cuatro PENDIENTE_REVISION). El esquema local de visados coincide con el snapshot versionado y aún no tiene generación monotónica de autorización ni colecciones de emisión. No se modificaron datos, reglas, esquema o producción en esta inspección.
+
+Orden para comenzar:
+
+1. Respaldar el entorno local y ensayar cambios sobre una copia de desarrollo aislada. Preservar los datos de prueba existentes.
+2. Añadir por migración la generación monotónica de autorización del visado y actualizarla en los gateways de visado, retiro y corrección. Inicializar coherentemente registros existentes y comprobar que retirar/revisar sin editar cambia la identidad de autorización.
+3. Crear una consulta institucional de elegibilidad por alumno, ciclo y bimestre. Responder períodos requeridos, estado de sus visados y motivos de bloqueo; no generar ni almacenar archivos en este paso. Para casos normales exigir períodos 1..corte. Ante historia/alta tardía ambigua, devolver un motivo explícito pendiente de política, sin omitir períodos automáticamente.
+4. Probar casos de primero habilitado, segundo bloqueado por primero, segundo habilitado por ambos, corrección de primero y nuevo visado sin editar. Usar datos sintéticos aislados y validar acceso autenticado.
+5. Incorporar esta información a revisión directiva sin ofrecer todavía un botón de generación que no funcione.
+
+Después: consulta de instantánea documental, prueba de motor, colecciones de emisión/dependencias y archivos protegidos, generación individual, lotes. No es necesario crear ahora todo el esquema definitivo de archivos para comprobar las reglas de elegibilidad. El alcance de esta primera entrega permite probar integridad antes de introducir Chromium, almacenamiento y descargas.
+
+
+## Primera entrega implementada y verificada localmente
+
+Migración `1790553600_versioned_approval_authorization.js` aplicada a desarrollo. Respaldo previo consistente, con PocketBase detenido, en `C:/pocketbase/backups/pdf-eligibility-20260928/data.db`; preserva la base anterior y no modifica archivos de almacenamiento. Ensayo en copia aislada `C:/pocketbase/pdf-eligibility-test`, puerto 8092. La instancia habitual 8090 conserva los cinco visados originales y su contenido; únicamente se inicializó la nueva generación.
+
+Implementación: contador de autorización en visado/retiro/corrección y cálculo de elegibilidad incorporado a la lectura transaccional existente de revisión. No se agregó un endpoint redundante. Interfaz con resultado por alumno, sin botón de emisión; los eventos de otros períodos del mismo curso también provocan actualización y ocultan el resultado anterior mientras está desactualizado. Esquema snapshot actualizado desde la colección local. Listas de despliegue incluyen la nueva migración, sin ejecutar despliegue.
+
+Pruebas HTTP en copia aislada: primero elegible; segundo elegible con ambas autorizaciones; retiro de primero bloquea segundo sin retirar su visado; versión obsoleta devuelve 409; nuevo visado sin editar incrementa generación sin incrementar contenido; repetir visado no incrementa; corrección incrementa ambas revisiones y bloquea la dependencia; revisión sin sesión devuelve 401. Los cambios de prueba no se trasladaron a la instancia habitual.
+
+Pruebas reproducibles de reglas: `node --test deploy/test-pdf-eligibility.cjs` (cinco casos, incluyendo corte, dependencia, generación, faltantes, duplicados y ciclo incorrecto). Verificación del entorno habitual con `deploy/verify-pocketbase-dev.ps1`: todos los controles correctos. No se generó ni invalidó un PDF real: almacenamiento y motor siguen pendientes.
+
+Próximo paso: mapa campo/fuente, decisiones de responsable e históricos y gateway de instantánea documental. Después prueba real de renderizado y persistencia de emisiones. La validación visual completa del nuevo mensaje en la pantalla operativa sigue pendiente de revisión conjunta.
+
+
+## Lectura de instantánea implementada
+
+El usuario confirma que cada alumno tiene un único tutor vinculado por norma del colegio. La lectura requiere exactamente un responsable distinto; cero o varios bloquean con un motivo explícito, sin selector ni prioridad arbitraria. Esta validación no modifica el modelo de vínculos existente ni borra duplicados.
+
+Se implementó en desarrollo el GET de instantánea documentado en `pocketbase-api.md`, reutilizando la lectura académica y dentro de una sola transacción. No se conecta todavía la plantilla a una respuesta incompleta ni se ofrece Generar PDF. Mapa de fuentes:
+
+| Bloque | Fuente | Tratamiento |
+| --- | --- | --- |
+| Alumno y tutor | alumnos, alumno_responable, responsables | Identidad mínima, un tutor único |
+| Año y curso | ciclos_lectivos, cursos, inscripción | Alcance validado; grado numérico a resolver en adaptador |
+| Materias y consignas | curso_materias del año, materias, criterios_evaluacion | Orden curricular y cinco criterios existentes, sin fixtures |
+| Notas y PPI | evaluaciones_materia, evaluaciones_criterios | Sólo períodos incluidos, referencias explícitas a escala |
+| Escala | valores_escala del curso | Etiqueta y peso sin equiparar peso a nota impresa |
+| Asistencia y observaciones | cierres_periodo_alumno | Números explícitos, conserva cero; ausencia no equivale a cero |
+| Apoyos | inscripciones | Valores actuales, promoción con acompañamiento reservada a cuarto |
+| Contacto y fechas | alumnos e inscripciones | Datos actuales; no representan historial de cambios |
+| Síntesis/promoción/historial | Sin fuente confirmada | Pendientes explícitos; no inferidos |
+
+Pruebas HTTP locales de sólo lectura: un alumno con visado obtiene 200, 10 materias y un período; dos lecturas conservan huella; cuatro alumnos pendientes obtienen 422; anónimo obtiene 401. Se verificó exclusión de credenciales y separación de los períodos posteriores. No se modificaron calificaciones ni vínculos. La huella describe la lectura actual, no garantiza vigencia después de un cambio ni reemplaza la revalidación que deberá hacer el emisor.
+
+Siguiente paso: adaptador de escala y contrato documental, con tratamiento explícito de ausencias y bloques anuales. Después vista previa institucional sobre esta instantánea y prueba del motor. La política de campos anuales y de históricos no aplicables sigue pendiente.
+
+## Adaptador documental de primer ciclo
+
+Se agregó el contrato TypeScript de la instantánea, su servicio de lectura y `adaptarInstantaneaDocumental`, separado de los componentes visuales. Transforma las referencias de la escala existente en conceptos de presentación, conserva ceros y observaciones vacías y deja los bimestres posteriores como futuros. Los pesos de escala representan orden: nunca se convierten en notas numéricas impresas. Datos académicos obligatorios ausentes, duplicados o fuera del corte bloquean la adaptación.
+
+El usuario confirmó que aún no está cargado el catálogo de segundo ciclo. Los grados 4 a 7 quedan bloqueados explícitamente en este adaptador hasta incorporar y validar concepto y número. No se modificó la base ni se creó una equivalencia artificial. Las muestras de diseño de los siete grados siguen disponibles como muestras, separadas de esta lectura operativa.
+
+Síntesis, promoción y registro administrativo permanecen futuros antes del cuarto bimestre y sin dato al llegar al cuarto, con un pendiente explícito de integración. No se deduce historial a partir de contactos actuales. Obtener un documento adaptable permite preparar la vista previa; no declara habilitada la emisión.
+
+Validación: ocho pruebas automatizadas entre `deploy/test-document-adapter.cjs` y `deploy/test-pdf-eligibility.cjs`, lint y build correctos, con el warning conocido de tamaño del bundle. Una lectura autenticada del alumno visado de desarrollo se adaptó sin bloqueos a dos materias formativas y ocho académicas. La comprobación fue de sólo lectura y no guardó datos personales en el repositorio.
+
+Próximo paso: conectar la vista previa institucional individual con esta instantánea, mostrar pendientes y bloqueos, y verificar el renderizado antes de incorporar motor y almacenamiento. El adaptador y servicio todavía no están conectados a la interfaz operativa. No hay PDFs emitidos ni cambios en producción.
+
+## Vista previa institucional individual
+
+La revisión directiva incluye «Vista previa del boletín» para el alumno seleccionado cuando los visados acumulados están completos, la revisión está actualizada y no hay cambios pendientes. Cada apertura consulta nuevamente el gateway y adapta su respuesta; no usa las muestras del diseño. El modal reutiliza la plantilla centralizada y permite navegar sus 13 páginas de primer ciclo. La carga del módulo visual es diferida.
+
+El servidor vuelve a validar las condiciones al leer. Los errores se muestran sin documento y permiten reintentar; los bloqueos del adaptador (incluida la escala de segundo ciclo ausente) se explican en el modal. Los campos anuales pendientes se muestran como aviso. Cambiar alumno, período, revisión local o recibir una nueva versión del workflow del curso desmonta la vista previa. Las respuestas tardías de solicitudes desmontadas se descartan. Realtime no reemplaza la revalidación de una futura emisión.
+
+La vista es de revisión: no guarda instantáneas, no ofrece descarga ni declara emitido el PDF. No se persisten datos documentales en almacenamiento del navegador. Los datos institucionales se centralizaron para compartirlos con la muestra de diseño.
+
+Verificación en Edge con sesión de desarrollo: apertura desde un alumno visado, 13 páginas, cero consignas con desborde y cero errores JavaScript; respuesta 422 simulada sin páginas residuales y reintento exitoso contra el gateway local. Se revisó la portada y se aisló su tipografía de los títulos globales de la app. Lint, build y ocho pruebas automáticas correctos; continúa el warning conocido de bundle. No se modificaron notas ni producción.
+
+Para revisar: Bimestres → curso entregado → alumno visado → Vista previa del boletín. Próxima etapa: prueba de generación PDF real y definición de persistencia y vigencia, conservando los pendientes anuales y de escala de segundo ciclo.
+
+## Prueba local del motor PDF y ajustes de revisión
+
+Por indicación del usuario, el aviso de campos anuales se omite en los bimestres 1 a 3. Esos campos siguen futuros y no son faltantes de la carga directiva. En cuarto se conserva el pendiente hasta implementar su fuente. No se ajusta la celda de calificación general para «No corresponde a la planificación del bimestre»: esa opción no forma parte de la calificación general operativa; su presencia en mocks no justifica cambiar el diseño.
+
+Se agregó `deploy/probe-document-pdf.cjs`, una prueba local de impresión Chromium/Edge. Reutiliza el HTML y CSS de la plantilla ya renderizada, espera fuentes e imágenes y rechaza consignas marcadas con desborde. Imprime en una página aislada del mismo origen, sin interfaz ni scripts de la aplicación. Se corrigió la sustitución silenciosa de fuentes causada por imprimir desde un origen vacío. No es un worker productivo ni autoriza emisiones; no persiste archivos en PocketBase ni declara vigencia.
+
+Uso: definir `PLAYWRIGHT_MODULE` con la ubicación de Playwright disponible en el equipo y ejecutar `node deploy/probe-document-pdf.cjs "http://127.0.0.1:5173/plantilla-boletin.html?grado=1" "C:/pocketbase/pdf-probe/primer-ciclo.pdf"`. Requiere Vite local y Microsoft Edge. No agrega dependencias de producción ni contiene credenciales. Para una instantánea autenticada, el helper exportado recibe la página ya abierta en un contexto de navegador independiente.
+
+Resultados finales con muestras ficticias de grados 1 y 7: 13 y 14 páginas A4, aproximadamente 670 y 680 kB; impresión de unos 0,95 segundos por archivo después de cargar recursos (no es tiempo total ni medición del VPS). Se rasterizaron todas las páginas con Poppler y se revisó su distribución. Los archivos de prueba permanecen fuera del repositorio, en `C:/pocketbase/pdf-probe`. La primera prueba con lectura operativa se realizó antes del ajuste de fuentes; al repetir ya no había un alumno VISADO local, por lo que la validación final del motor utilizó muestras y no modificó visados para habilitarla.
+
+Lint, build y las ocho pruebas existentes pasan. La prueba verifica paginación y carga de recursos; aún falta un control completo de desbordes por bloque y la validación final en el futuro worker. Próximo paso: definir y construir la persistencia de emisiones y su invalidación transaccional, antes de habilitar Generar/Descargar en la interfaz. Segundo ciclo real sigue bloqueado por catálogo pendiente.

@@ -1,0 +1,188 @@
+@font-face {
+  font-family: 'Merriweather Boletin';
+  src: url('/boletines/fonts/Merriweather.ttf') format('truetype');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Merriweather Boletin';
+  src: url('/boletines/fonts/Merriweather-Italic.ttf') format('truetype');
+  font-weight: 300 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Lato Boletin';
+  src: url('/boletines/fonts/lato/Lato-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.documento {
+  --documento-azul: #003399;
+  --documento-celeste: #bbe0e3;
+  --documento-gris: #eaeaea;
+  --documento-rojo: #b34b4b;
+  --documento-amarillo: #fff2cc;
+  --documento-fondo-criterio: #eee;
+  --documento-serif: Georgia, 'Times New Roman', serif;
+  --documento-merriweather: 'Merriweather Boletin', Georgia, serif;
+  --documento-borde-datos: 0.6mm;
+  --documento-borde-escala: calc(0.4mm + 1px);
+  --documento-borde-pie: calc(0.3mm + 1px);
+  --documento-borde-evaluacion: 0.25mm;
+  --documento-evaluacion-fuente: 'Lato Boletin', Arial, sans-serif;
+  --evaluacion-alto-fila: 15mm;
+  color: var(--documento-azul);
+  font-family: var(--documento-serif);
+}
+
+.documento * { box-sizing: border-box; }
+.pagina {
+  width: 210mm;
+  height: 297mm;
+  padding: 7mm 5mm;
+  background: white;
+  margin: 0 auto 24px;
+  display: flex;
+  flex-direction: column;
+  break-after: page;
+  scroll-margin-top: 100px;
+}
+.pagina:last-child { break-after: auto; }
+.paginaConPie { padding-bottom: 5mm; }
+.paginaEvaluativa { padding-top: 5mm; }
+.portada { height: 100%; display: flex; flex-direction: column; align-items: center; padding: 0 10mm; font-family: var(--documento-merriweather); }
+.escudoCiudad { width: 18mm; height: 22mm; object-fit: contain; }
+.gobierno { color: black; text-align: center; font-family: var(--documento-serif); font-size: 11pt; line-height: 1.25; margin: 6mm 0 0; }
+.titulos { text-align: center; margin-top: 10mm; }
+.titulos h1 { font-size: 37pt; font-weight: 700; margin: 0 0 4mm; }
+.titulos p { font-size: 18pt; margin: 0 0 1mm; }
+.titulos small { font-size: 10pt; font-style: italic; }
+.titulos h2 { font-size: 22pt; font-weight: normal; margin: 1mm 0 0; }
+.logoPortada { width: 120mm; height: 37mm; object-fit: contain; margin-top: 7mm; }
+.denominacion { font-size: 13pt; text-align: center; margin: 5mm 0; }
+.portada table { border-collapse: collapse; table-layout: fixed; text-align: center; font-size: 12pt; }
+.portada th, .portada td { border: var(--documento-borde-datos) solid var(--documento-azul); padding: 1.5mm 2mm; overflow-wrap: anywhere; }
+.portada th { background: var(--documento-celeste); font-weight: normal; }
+.identidad { width: 170mm; }
+.identidad th { width: 55mm; }
+.curso { width: 153mm; margin-top: 6mm; }
+.responsable { width: 176mm; margin-top: 10mm; }
+.responsable th { font-size: 11pt; }
+.firmasPortada { width: 100%; margin-top: 16mm; display: flex; align-items: center; justify-content: space-between; }
+.firmasPortada p { border-top: 0.3mm solid var(--documento-azul); padding-top: 2mm; font-size: 10pt; }
+.firmasPortada img { width: 20mm; height: 26mm; object-fit: contain; }
+.anoPortada { font-size: 22pt; margin: auto 0 0; padding-top: 4mm; }
+.encabezado { display: flex; justify-content: space-between; align-items: center; background: var(--documento-gris); padding: 1mm 2mm; border-bottom: var(--documento-borde-pie) solid var(--documento-azul); font-family: var(--documento-merriweather); font-weight: 700; font-size: 14pt; }
+.encabezado span { display: flex; align-items: center; }
+.encabezado img { width: 10mm; height: 10mm; object-fit: contain; }
+.pendiente { margin: auto; text-align: center; padding: 15mm; border: 0.3mm dashed var(--documento-azul); font-family: Arial, sans-serif; }
+.pendiente h2 { font-size: 18pt; }
+.pendiente p { font-size: 11pt; }
+.pie { display: grid; grid-template-columns: 18mm 58mm 64mm 1fr; gap: 3mm; align-items: center; justify-items: center; flex-shrink: 0; background: var(--documento-gris); border-bottom: var(--documento-borde-pie) solid var(--documento-azul); padding: 2mm 3mm; font-size: 12pt; }
+.placaPie { width: 13mm; height: 17mm; object-fit: contain; }
+.logoPie { width: 52mm; height: 17mm; object-fit: contain; }
+.republica { display: flex; align-items: center; font-size: 10pt; gap: 0.5mm; }
+.republica img { width: 8mm; height: 12.5mm; object-fit: contain; }
+.anoPie { font-family: var(--documento-merriweather); font-size: 14pt; }
+.institucional { padding: 0 9mm; flex: 1; font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; }
+.cita { color: black; font-size: 10pt; line-height: 1.4; text-align: center; margin: 7mm 0 8mm; }
+.objetivos { width: 100%; padding: 0 3mm; }
+.objetivos h2 { font-family: var(--documento-merriweather); font-size: 20pt; font-weight: 400; margin: 0 0 2mm; }
+.objetivos p { font-size: 12pt; margin: 0; }
+.objetivos ol { font-size: 12pt; line-height: 1.3; padding-left: 17mm; margin: 5mm 0 0; }
+.objetivos li { padding-left: 3mm; }
+.lema { font-family: var(--documento-merriweather); font-size: 16pt; margin: 5mm 0 8mm; }
+.escala { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.escala th, .escala td { border: var(--documento-borde-escala) solid var(--documento-azul); padding: 2mm; }
+.escala thead th { font-family: var(--documento-merriweather); font-weight: 400; font-size: 13pt; background: var(--documento-celeste); }
+.escala tbody th { font-size: 12pt; background: var(--documento-celeste); }
+.escala tbody td { font-size: 10pt; line-height: 1.25; }
+.escala .aprobado, .escala .desaprobado { background: var(--documento-celeste); text-align: center; font-size: 14pt; font-weight: bold; }
+.escala .desaprobado { color: var(--documento-rojo); }
+.colEtiqueta { width: 19%; }
+.colResultado { width: 25%; }
+.formativa { flex: 1; display: flex; flex-direction: column; padding-top: 8mm; padding-bottom: 6mm; font-family: Arial, sans-serif; }
+.integracion h2 { font-family: var(--documento-merriweather); font-size: 11pt; margin: 0 2mm 5mm; }
+.integracion table { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: var(--documento-evaluacion-fuente); font-size: 10pt; font-weight: 700; }
+.integracion th, .integracion td { border: var(--documento-borde-evaluacion) solid var(--documento-azul); padding: 2mm; overflow-wrap: anywhere; }
+.integracion th { background: var(--documento-celeste); text-align: left; }
+.integracion td { text-align: center; }
+.integracion .celdaSinCampo { border: 0; }
+.colApoyoPregunta { width: 37%; }
+.colApoyoRespuesta { width: 23%; }
+.colApoyoCuales { width: 18%; }
+.materiasFormativas { display: flex; flex-direction: column; gap: 10mm; margin-top: 10mm; }
+.tablaFormativa { width: 100%; border-collapse: collapse; table-layout: fixed; font-family: var(--documento-evaluacion-fuente); font-weight: 700; }
+.colCriterio { width: 59%; }
+.tablaFormativa th, .tablaFormativa td { border: var(--documento-borde-evaluacion) solid var(--documento-azul); padding: 2mm 1.2mm; }
+.tablaFormativa thead th { background: var(--documento-celeste); font-size: 9pt; line-height: 1.2; }
+.tablaFormativa thead th:first-child { font-size: 14pt; }
+.tablaFormativa tbody th { background: var(--documento-fondo-criterio); text-align: left; font-size: 10pt; line-height: 1.2; }
+.tablaFormativa tbody th, .tablaFormativa tbody td { padding: 0; height: var(--evaluacion-alto-fila); }
+.textoCriterio { display: flex; align-items: center; height: calc(var(--evaluacion-alto-fila) - 1px); padding: 1mm 1.5mm; }
+.tablaFormativa tbody td { text-align: center; font-weight: 700; }
+.primerCiclo { --calificacion-tamano: 8.5pt; }
+.segundoCiclo { --calificacion-tamano: 8.5pt; }
+.calificacion { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.7mm; height: calc(var(--evaluacion-alto-fila) - 1px); padding: 0.7mm; font-size: var(--calificacion-tamano); line-height: 1.15; overflow-wrap: normal; }
+.etiquetaCalificacion { max-width: 100%; }
+.numeroCalificacion { display: block; font-size: 10pt; white-space: nowrap; }
+.calificacion[data-concepto='noAlcanzoObjetivos'] .etiquetaCalificacion { font-size: 7pt; line-height: 1.15; }
+.calificacion[data-concepto='noCorresponde'] .etiquetaCalificacion { font-size: 6.5pt; line-height: 1.2; }
+.leyendaEscala { margin: auto 0 0; padding: 2mm; border: 0.2mm solid var(--documento-celeste); background: var(--documento-amarillo); font-family: var(--documento-evaluacion-fuente); font-size: 9.5pt; font-weight: 700; text-align: center; }
+.academica { flex: 1; display: flex; flex-direction: column; gap: 4mm; padding: 5mm 0; }
+.materiasAcademicas { display: flex; flex-direction: column; gap: 8mm; }
+.tablaFormativa thead .cuatrimestres th { font-size: 9pt; background: var(--documento-fondo-criterio); padding: 1mm; }
+.tablaFormativa .filaPpi { --evaluacion-alto-fila: 6mm; }
+.tablaFormativa .filaPpi th, .tablaFormativa .filaPpi td { font-size: 10pt; text-align: center; }
+.tablaFormativa .filaGeneral { --evaluacion-alto-fila: 10mm; }
+.tablaFormativa .filaGeneral th, .tablaFormativa .filaGeneral td { background: var(--documento-amarillo); }
+.tablaFormativa .filaGeneral th { text-align: center; font-size: 12pt; }
+
+@page { size: A4 portrait; margin: 0; }
+@media print {
+  .documento { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .pagina { margin: 0; }
+}
+
+.cierreBimestral { flex: 1; display: flex; flex-direction: column; padding: 14mm 1mm 5mm; font-family: var(--documento-evaluacion-fuente); font-weight: 700; }
+.tablaCierre { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 13pt; }
+.colAsistencia { width: 69%; }
+.tablaCierre th, .tablaCierre td { border: var(--documento-borde-evaluacion) solid var(--documento-azul); padding: 1.5mm; height: 9mm; }
+.tablaCierre th { background: var(--documento-celeste); }
+.tablaCierre thead th { height: 10mm; font-size: 14pt; }
+.tablaCierre tbody th { text-align: left; }
+.tablaCierre td { text-align: center; }
+.tablaCierre .tituloObservaciones { text-align: center; font-size: 14pt; height: 10mm; }
+.observacionesCierre { height: 43mm; padding: 3mm; font-size: 11pt; line-height: 1.45; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; font-weight: 700; }
+.firmasCierre { display: grid; grid-template-columns: 1fr 1fr; column-gap: 1mm; row-gap: 5mm; margin-top: 16mm; }
+.espacioFirma { height: 28mm; background: var(--documento-gris); }
+.firmasCierre p { text-align: center; font-size: 11pt; margin: 5mm 0 0; }
+
+.resumenAnual, .registroAnual { flex: 1; display: flex; flex-direction: column; font-family: var(--documento-evaluacion-fuente); font-weight: 700; padding: 14mm 1mm 5mm; gap: 12mm; }
+.tablaAnual { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.tablaAnual th, .tablaAnual td { border: var(--documento-borde-evaluacion) solid var(--documento-azul); padding: 2mm; height: 10mm; overflow-wrap: anywhere; }
+.tablaAnual th { font-size: 14pt; background: var(--documento-celeste); text-align: center; }
+.tablaAnual td { font-size: 11pt; text-align: center; white-space: pre-wrap; }
+.valorAnual { min-height: 6mm; }
+.sintesisAnual { height: 43mm; padding: 2mm; text-align: left; line-height: 1.45; }
+.firmaAnual { width: 62%; align-self: center; margin-top: 3mm; border: var(--documento-borde-evaluacion) solid var(--documento-azul); }
+.firmaAnual > div { height: 35mm; }
+.firmaAnual p { margin: 0; padding: 2mm; text-align: center; background: var(--documento-celeste); border-top: var(--documento-borde-evaluacion) solid var(--documento-azul); font-size: 13pt; }
+.encabezadoAdministrativo { background: var(--documento-gris); font-family: var(--documento-merriweather); text-align: center; border-bottom: var(--documento-borde-pie) solid var(--documento-azul); }
+.encabezadoAdministrativo span { display: flex; justify-content: center; align-items: center; font-size: 20pt; font-weight: 700; padding: 1mm; }
+.encabezadoAdministrativo img { height: 11mm; width: 8mm; object-fit: contain; }
+.encabezadoAdministrativo strong { display: block; font-size: 14pt; padding: 1mm; border-top: var(--documento-borde-pie) solid var(--documento-azul); }
+.registroAnual { padding-top: 18mm; gap: 12mm; }
+.registroAnual > table:first-child th, .registroAnual > table:nth-child(2) th { font-size: 11pt; }
+.contactoAnual { display: flex; flex-direction: column; }
+.contactoAnual .tablaAnual + .tablaAnual { margin-top: -1px; }
+
+.textoCriterio { font-size: 10pt; }
+.textoCriterio[data-fit="compacto"] { font-size: 9pt; line-height: 1.1; padding-top: 0.3mm; padding-bottom: 0.3mm; }
+.contenidoCriterio { display: block; width: 100%; overflow-wrap: anywhere; }

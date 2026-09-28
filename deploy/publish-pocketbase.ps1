@@ -44,6 +44,7 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789477600_removed_teacher_link_state.js"; Target = "1789477600_removed_teacher_link_state.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1790364300_added_gradebook_approvals.js"; Target = "1790364300_added_gradebook_approvals.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1790364400_versioned_curriculum_by_cycle.js"; Target = "1790364400_versioned_curriculum_by_cycle.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1790553600_versioned_approval_authorization.js"; Target = "1790553600_versioned_approval_authorization.js" },
   @{ Source = Join-Path $PSScriptRoot "pocketbase.service"; Target = "pocketbase.service" },
   @{ Source = Join-Path $PSScriptRoot "apply-pocketbase-workflow.sh"; Target = "apply-pocketbase-workflow.sh" }
 )
