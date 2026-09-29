@@ -207,3 +207,8 @@ La colección `emisiones_boletin` no admite acceso directo de clientes. La insta
 POST `/__cys/pdf-lote` recibe `{ cursoId, periodoId, emisiones: [{ inscripcionId, huella, emisionId }] }`, con sesión institucional en Authorization. Admite de 1 a 100 entradas, sin inscripciones repetidas. Comparte restricciones de loopback y origen del generador individual; requiere la clave privada del worker configurada. No es una ruta de PocketBase ni está desplegada en producción.
 
 Consulta los gateways existentes de instantánea, búsqueda de emisión por versión y descarga protegida. Verifica el curso, la huella y el ID de emisión antes de agregar cada archivo y vuelve a verificar todas las entradas al finalizar. Entrega `application/zip`, `Content-Disposition` UTF-8 y `Cache-Control: no-store`. Un cambio invalida la respuesta completa; no entrega silenciosamente un subconjunto. La selección explícita de los PDFs preparados ocurre en el modal antes de solicitar el ZIP. Límite de 100 MB y exclusión mutua con el generador individual. No persiste el ZIP ni crea un registro de lote.
+
+
+## Rutas PDF publicadas en produccion
+
+Caddy deriva POST/OPTIONS `/api/cys/pdf/generar` y `/api/cys/pdf/lote` al servicio Node interno. Conservan respectivamente los contratos de `/__cys/pdf-prueba` y `/__cys/pdf-lote`, con Authorization institucional, CORS limitado al origen productivo, revalidacion de visados y respuestas no-store. El frontend usa estas rutas en produccion y las de Vite en desarrollo. El worker requiere siempre clave privada configurada para publicar; no expone un modo de prueba sin persistencia. Las rutas de almacenamiento y descarga protegida siguen perteneciendo a PocketBase.

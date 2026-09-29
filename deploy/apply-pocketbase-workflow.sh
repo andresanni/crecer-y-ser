@@ -27,6 +27,7 @@ test -f "$stage_dir/1790364300_added_gradebook_approvals.js"
 test -f "$stage_dir/1790364400_versioned_curriculum_by_cycle.js"
 test -f "$stage_dir/1790553600_versioned_approval_authorization.js"
 test -f "$stage_dir/1790625600_document_emissions.js"
+test -f "$stage_dir/1790630000_second_cycle_grading_catalog.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -39,6 +40,8 @@ systemctl stop pocketbase
 trap 'systemctl start pocketbase' EXIT
 
 cp -a /root/pb/pb_data/data.db "$backup_dir/data.db"
+cp -a /root/pb/pb_migrations "$backup_dir/pb_migrations"
+if test -d /root/pb/pb_data/storage; then cp -a /root/pb/pb_data/storage "$backup_dir/storage"; fi
 if test -f /root/pb/pb_data/auxiliary.db; then
   cp -a /root/pb/pb_data/auxiliary.db "$backup_dir/auxiliary.db"
 fi
@@ -102,6 +105,7 @@ install -m 0644 "$stage_dir/1790364400_versioned_curriculum_by_cycle.js" /root/p
 if test -f /root/pb/pb_migrations/1790625600_document_emissions.js; then cp -a /root/pb/pb_migrations/1790625600_document_emissions.js "$backup_dir/"; fi
 install -m 0644 "$stage_dir/1790625600_document_emissions.js" /root/pb/pb_migrations/1790625600_document_emissions.js
 install -m 0644 "$stage_dir/1790553600_versioned_approval_authorization.js" /root/pb/pb_migrations/1790553600_versioned_approval_authorization.js
+install -m 0644 "$stage_dir/1790630000_second_cycle_grading_catalog.js" /root/pb/pb_migrations/1790630000_second_cycle_grading_catalog.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 

@@ -452,7 +452,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
                 {review ? `${review.visados} de ${review.totalBoletines} boletines visados` : 'Consultando visados'}
               </Tag>
               {review?.etapa === 'LISTO_PARA_PDF' && <Tag color="success">Listo para generar PDFs</Tag>}
-              {import.meta.env.DEV && <Button disabled={!review || reviewLoading || approvalBusy} onClick={() => setBatchScope(currentBatchScope)}>Generar PDFs / ZIP del curso</Button>}
+              <Button disabled={!review || reviewLoading || approvalBusy} onClick={() => setBatchScope(currentBatchScope)}>Generar PDFs / ZIP del curso</Button>
             </Space>
           )}
           {review && review.alumnosSinIncorporar > 0 && (
@@ -550,7 +550,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
           )}
         </>
       )}
-      {import.meta.env.DEV && batchScope === currentBatchScope && selectedCursoId && selectedPeriodoId && (
+      {batchScope === currentBatchScope && selectedCursoId && selectedPeriodoId && (
         <React.Suspense fallback={<Spin />}>
           <BatchDocumentModal cursoId={selectedCursoId} periodoId={selectedPeriodoId} cursoNombre={selectedCurso?.nombre || 'Curso'} onClose={() => setBatchScope(null)} />
         </React.Suspense>

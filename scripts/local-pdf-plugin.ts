@@ -3,6 +3,7 @@ import type { Plugin } from 'vite';
 import { chromium } from 'playwright-core';
 import { PDFDocument } from 'pdf-lib';
 import type { AddressInfo } from 'node:net';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,25 +14,38 @@ class PdfError extends Error {
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
 
-export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
+interface PdfRuntime {
+  root: string;
+  port: () => number | undefined;
+  allowedOrigins?: string[];
+  renderOrigin?: string;
+  chromium?: boolean;
+}
+
+export function createPdfMiddleware(pocketBaseUrl: string, workerKey: string, runtime: PdfRuntime) {
   let busy = false;
-  return {
-    name: 'cys-local-pdf',
-    apply: 'serve',
-    configureServer(server) {
-      server.middlewares.use(async (request, response, next) => {
-        if (!['/__cys/pdf-prueba', '/__cys/pdf-lote'].includes(request.url || '')) return next();
-        const batch = request.url === '/__cys/pdf-lote';
+  return async (request: IncomingMessage, response: ServerResponse, next: () => void) => {
+        if (!['/__cys/pdf-prueba', '/__cys/pdf-lote', '/api/cys/pdf/generar', '/api/cys/pdf/lote'].includes(request.url || '')) return next();
+        const batch = request.url === '/__cys/pdf-lote' || request.url === '/api/cys/pdf/lote';
         response.setHeader('Cache-Control', 'no-store');
         response.setHeader('X-Content-Type-Options', 'nosniff');
         let acquired = false;
         try {
-          if (request.method !== 'POST') throw new PdfError('Método no admitido.', 405);
-          const address = server.httpServer?.address() as AddressInfo | null;
-          if (!address || !['127.0.0.1', '::1'].includes(request.socket.remoteAddress || '')) throw new PdfError('Disponible sólo en desarrollo local.', 403);
+          const port = runtime.port();
+          if (!port || !['127.0.0.1', '::1'].includes(request.socket.remoteAddress || '')) throw new PdfError('Disponible sólo en desarrollo local.', 403);
           const origin = request.headers.origin;
-          const allowed = [`http://127.0.0.1:${address.port}`, `http://localhost:${address.port}`, `http://[::1]:${address.port}`];
+          const allowed = runtime.allowedOrigins || [`http://127.0.0.1:${port}`, `http://localhost:${port}`, `http://[::1]:${port}`];
           if (!origin || !allowed.includes(origin)) throw new PdfError('Origen no admitido.', 403);
+          if (runtime.allowedOrigins) {
+            response.setHeader('Access-Control-Allow-Origin', origin);
+            response.setHeader('Vary', 'Origin');
+            response.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+            response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+            response.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, X-CYS-Emission-Id');
+          }
+          if (request.method === 'OPTIONS') { response.statusCode = 204; response.end(); return; }
+          if (request.method !== 'POST') throw new PdfError('Método no admitido.', 405);
+          const renderOrigin = runtime.renderOrigin || origin;
           const pb = new URL(pocketBaseUrl);
           if (pb.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(pb.hostname)) throw new PdfError('La prueba requiere PocketBase local.', 503);
           const authorization = request.headers.authorization;
@@ -52,8 +66,8 @@ export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
                 else { hash.update(file); hash.update(readFileSync(file)); }
               }
             };
-            scan(join(server.config.root, 'src/modules/boletines/documentos'));
-            scan(join(server.config.root, 'public/boletines'));
+            scan(join(runtime.root, 'src/modules/boletines/documentos'));
+            scan(join(runtime.root, 'public/boletines'));
             return hash.digest('hex');
           };
           if (batch) {
@@ -137,19 +151,19 @@ export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
             const value = await prior.json() as { emision: { id: string; huella: string } | null };
             if (value.emision?.huella === snapshot.huella) { await deliver(value.emision.id); return; }
           }
-          const browser = await chromium.launch({ channel: 'msedge', headless: true, timeout: 20000 });
+          const browser = await chromium.launch({ ...(runtime.chromium ? { chromiumSandbox: true } : { channel: 'msedge' }), headless: true, timeout: 20000 });
           let pdf: Buffer;
           try {
             const context = await browser.newContext();
             const page = await context.newPage();
             await page.route('**/*', async route => {
               const url = new URL(route.request().url());
-              if (url.origin !== origin) return route.abort();
+              if (url.origin !== renderOrigin) return route.abort();
               if (url.pathname === '/__cys/render-input') return route.fulfill({ json: snapshot });
               return route.continue();
             });
             await page.emulateMedia({ media: 'print' });
-            await page.goto(`${origin}/boletin-render.html`, { timeout: 30000 });
+            await page.goto(`${renderOrigin}/boletin-render.html`, { timeout: 30000 });
             await page.locator('body[data-render-state]').waitFor({ state: 'attached', timeout: 30000 });
             const failure = await page.locator('body').getAttribute('data-render-error');
             if (failure) throw new PdfError(failure, 422);
@@ -182,9 +196,20 @@ export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
         } catch (error) {
           response.statusCode = error instanceof PdfError ? error.status : 503;
           response.setHeader('Content-Type', 'application/json');
-          response.end(JSON.stringify({ message: error instanceof PdfError ? error.message : 'No se pudo generar el PDF local. Verificá que Microsoft Edge esté instalado y volvé a intentarlo.' }));
+          response.end(JSON.stringify({ message: error instanceof PdfError ? error.message : 'No se pudo generar el PDF. El servicio de impresión no está disponible; volvé a intentarlo.' }));
         } finally { if (acquired) busy = false; }
-      });
+  };
+}
+
+export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
+  return {
+    name: 'cys-local-pdf',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use(createPdfMiddleware(pocketBaseUrl, workerKey, {
+        root: server.config.root,
+        port: () => (server.httpServer?.address() as AddressInfo | null)?.port,
+      }));
     },
   };
 }

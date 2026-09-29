@@ -17,7 +17,7 @@ export interface BatchEmission {
 }
 
 export async function downloadDocumentBatch(cursoId: string, periodoId: string, emisiones: BatchEmission[], signal: AbortSignal) {
-  const response = await fetch('/__cys/pdf-lote', {
+  const response = await fetch(import.meta.env.DEV ? '/__cys/pdf-lote' : `${pb.baseURL}/api/cys/pdf/lote`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
     body: JSON.stringify({ cursoId, periodoId, emisiones }),
@@ -35,7 +35,7 @@ export async function downloadDocumentBatch(cursoId: string, periodoId: string, 
 }
 
 export async function downloadDocumentProof(inscripcionId: string, periodoId: string, huella: string, signal: AbortSignal): Promise<{ blob: Blob; filename: string; emissionId: string | null }> {
-  const response = await fetch('/__cys/pdf-prueba', {
+  const response = await fetch(import.meta.env.DEV ? '/__cys/pdf-prueba' : `${pb.baseURL}/api/cys/pdf/generar`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: pb.authStore.token },
     body: JSON.stringify({ inscripcionId, periodoId, huella }),

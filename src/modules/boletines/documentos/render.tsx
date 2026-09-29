@@ -24,7 +24,7 @@ export function RenderDocument({ data }: { data: BoletinDocumentData }) {
   return <BoletinDocument data={data} />;
 }
 
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV || import.meta.env.VITE_DOCUMENT_RENDER === 'true') {
   void fetch('/__cys/render-input').then(async response => {
     if (!response.ok) throw new Error('No hay una instantánea para renderizar.');
     const snapshot = await response.json() as DocumentSnapshot;

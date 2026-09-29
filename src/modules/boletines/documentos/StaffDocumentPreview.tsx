@@ -61,11 +61,11 @@ export default function StaffDocumentPreview({ inscripcionId, periodoId, onClose
   return <Modal open title="Vista previa del boletín" width="min(1100px, 96vw)" onCancel={onClose}
     style={{ top: 20 }} styles={{ body: { maxHeight: 'calc(100dvh - 150px)', overflow: 'auto' } }}
     footer={<Space>
-      {import.meta.env.DEV && <Button type="primary" loading={generating} disabled={!documento || !!error || !!result?.pendientes.length} onClick={() => void generate()}>{emissionId ? 'Descargar PDF' : 'Generar / descargar PDF'}</Button>}
+      <Button type="primary" loading={generating} disabled={!documento || !!error || !!result?.pendientes.length} onClick={() => void generate()}>{emissionId ? 'Descargar PDF' : 'Generar / descargar PDF'}</Button>
       <Button onClick={onClose}>Cerrar</Button>
     </Space>}>
     <Space orientation="vertical" size="middle" className={styles.content}>
-      <Alert type={emissionId ? 'success' : 'info'} showIcon title={emissionId ? 'PDF guardado en desarrollo · vigencia comprobada al descargar' : 'Vista previa de revisión · se verificará si existe un PDF vigente al descargar'} />
+      <Alert type={emissionId ? 'success' : 'info'} showIcon title={emissionId ? 'PDF guardado · vigencia comprobada al descargar' : 'Vista previa de revisión · se verificará si existe un PDF vigente al descargar'} />
       {generationError && <Alert type="error" showIcon title="No se pudo generar el PDF" description={generationError} />}
       {error ? <Alert type="error" showIcon title="No se pudo abrir el boletín" description={error}
         action={<Button onClick={() => { setError(''); setResult(null); setAttempt(value => value + 1); }}>Reintentar</Button>} />
