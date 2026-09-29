@@ -168,3 +168,47 @@ Cada operación revalida dentro de la transacción que ningún bimestre del curs
 - `422`: el bimestre todavía tiene alumnos, materias o cierres pendientes.
 
 Los mensajes públicos son deliberadamente genéricos. El frontend debe retirar la planilla cuando recibe `401` o `403` y no debe reintentar una escritura automáticamente.
+
+
+## Elegibilidad acumulativa para PDF (implementada en desarrollo local)
+
+`GET /api/cys/directivo/revision/:cursoId/:periodoId` incluye en cada boletín `generacionVisado` y `elegibilidadPdf`. Esta última contiene `elegiblePorVisados`, `motivos` y `dependencias` por bimestre: `bimestre`, `periodoId`, `visadoId`, `generacionVisado`, `revisionContenido`, `revisionVisada`, `vigente` y `motivo`. Se calcula en la misma transacción de lectura de la revisión, con autenticación institucional y `Cache-Control: no-store`. No es un permiso de emisión ni acredita que haya un archivo disponible.
+
+Se requieren períodos únicos 1..corte del mismo ciclo, instancia CONTROL_DIRECTIVO, alumno incorporado y visado vigente con revisión aprobada igual a contenido y generación positiva. Faltantes de históricos/altas tardías bloquean hasta resolver su política; no se omiten. Esta etapa comprueba exclusivamente visados, no la completitud futura del modelo documental ni su renderizado.
+
+`visados_boletin.generacion_visado` aumenta al visar, retirar o corregir. Repetir una operación ya satisfecha no aumenta el contador. La migración inicializa los visados existentes en 1 y pendientes en 0; no reconstruye eventos históricos. Las respuestas de visar/retirar incluyen la generación actual. La revisión de curso se conserva como control de concurrencia para escrituras.
+
+
+## Instantánea documental de preparación (desarrollo local)
+
+`GET /api/cys/directivo/boletines/:inscripcionId/instantanea?periodoId=...` requiere sesión institucional y devuelve `Cache-Control: no-store`. Lee en una sola transacción el alcance, elegibilidad, alumno, tutor, malla anual con criterios ordenados, escala, evaluaciones y cierres hasta el corte, apoyos, datos administrativos disponibles y dependencias de visado. No escribe ni almacena la instantánea.
+
+Respuesta 200: `{ datos, huella }`; `datos.versionContrato=1`, `inscripcionId`, `ciclo`, `curso`, `bimestreCorte`, `alumno`, `responsable`, `materias`, `escala`, `periodos`, `apoyos`, `administrativo`, `dependencias` y `pendientesDeIntegracion`. `huella` es SHA-256 del JSON de datos, sin fecha variable. No es una autorización de descarga, firma ni registro de emisión. Las notas todavía son referencias a valores de escala: no se inventa un número a partir de su peso.
+
+422 si falta un visado requerido (incluye `elegibilidadPdf`); 422 con `codigo=TUTOR_UNICO_REQUERIDO` si no hay exactamente un responsable distinto vinculado. Se deduplican vínculos al mismo responsable. La norma de tutor único está confirmada por el usuario; no se permite seleccionar automáticamente entre varios. Alcance fuera de curso/ciclo o entrega se rechaza; ruta sin sesión devuelve 401.
+
+Sólo se consultan evaluaciones y cierres 1..corte. La promoción con acompañamiento se devuelve como null antes de cuarto; los apoyos y datos administrativos se identifican como valores actuales de matrícula/alumno, sin atribuirles historial. La respuesta no incluye credenciales Acadeu, DNI ni contactos del tutor. Los campos anuales sin fuente no se inventan. Los pendientes de integración son MAPEO_ESCALA, CIERRE_ANUAL e HISTORIAL_ADMINISTRATIVO. El adaptador a `BoletinDocumentData` y la emisión se implementarán posteriormente.
+
+## Servicio local de prueba PDF (fuera de PocketBase)
+
+POST `/__cys/pdf-prueba` pertenece al middleware Vite de desarrollo; no es un endpoint desplegado de PocketBase. Recibe `{ inscripcionId, periodoId, huella }` y Authorization de la sesión institucional; consulta dos veces el GET de instantánea local y devuelve PDF adjunto sólo si la huella permanece igual. Rechaza origen ajeno, solicitudes sin sesión, cambios de datos, faltantes de visado y bloqueos documentales. No almacena archivos ni autoriza descargas posteriores. Ver `gradebook-pdf-emission.md` para alcance y límites.
+
+## Emisiones persistidas (desarrollo local)
+
+- POST `/api/cys/directivo/boletines/:inscripcionId/emisiones`: sesión `users` y header privado `X-CYS-PDF-Worker`; multipart `periodoId`, `huella`, `version`, `archivoSha256`, `archivo`. Revalida la instantánea dentro de transacción; 409 si cambió, 200 `{id}` si guardó o reutilizó una emisión. Sólo el generador validado debe utilizarlo.
+- GET `/api/cys/directivo/boletines/:inscripcionId/emisiones?periodoId=...&version=...`: sesión institucional; devuelve `{emision: {id,huella} | null}` y detecta emisiones desactualizadas por datos.
+- GET `/api/cys/directivo/emisiones/:emisionId/archivo?download=1`: sesión institucional; revalida visados y huella, sirve archivo protegido o 409 si fue invalidado. Respuestas no-store.
+
+La colección `emisiones_boletin` no admite acceso directo de clientes. La instantánea se elimina al invalidar; las dependencias se conservan como auditoría. La retirada/corrección de un visado invalida ese corte y posteriores del mismo alumno dentro de su transacción; limpieza física reintentable cada minuto. El motor Vite local usa estos endpoints cuando está configurada la clave privada. Producción permanece sin esta evolución.
+
+
+## ZIP de emisiones por curso (servidor Vite local)
+
+POST `/__cys/pdf-lote` recibe `{ cursoId, periodoId, emisiones: [{ inscripcionId, huella, emisionId }] }`, con sesión institucional en Authorization. Admite de 1 a 100 entradas, sin inscripciones repetidas. Comparte restricciones de loopback y origen del generador individual; requiere la clave privada del worker configurada. No es una ruta de PocketBase ni está desplegada en producción.
+
+Consulta los gateways existentes de instantánea, búsqueda de emisión por versión y descarga protegida. Verifica el curso, la huella y el ID de emisión antes de agregar cada archivo y vuelve a verificar todas las entradas al finalizar. Entrega `application/zip`, `Content-Disposition` UTF-8 y `Cache-Control: no-store`. Un cambio invalida la respuesta completa; no entrega silenciosamente un subconjunto. La selección explícita de los PDFs preparados ocurre en el modal antes de solicitar el ZIP. Límite de 100 MB y exclusión mutua con el generador individual. No persiste el ZIP ni crea un registro de lote.
+
+
+## Rutas PDF publicadas en produccion
+
+Caddy deriva POST/OPTIONS `/api/cys/pdf/generar` y `/api/cys/pdf/lote` al servicio Node interno. Conservan respectivamente los contratos de `/__cys/pdf-prueba` y `/__cys/pdf-lote`, con Authorization institucional, CORS limitado al origen productivo, revalidacion de visados y respuestas no-store. El frontend usa estas rutas en produccion y las de Vite en desarrollo. El worker requiere siempre clave privada configurada para publicar; no expone un modo de prueba sin persistencia. Las rutas de almacenamiento y descarga protegida siguen perteneciendo a PocketBase.

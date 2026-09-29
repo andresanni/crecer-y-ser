@@ -23,6 +23,8 @@ import {
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { ClientResponseError } from 'pocketbase';
+const StaffDocumentPreview = React.lazy(() => import('../documentos/StaffDocumentPreview'));
+const BatchDocumentModal = React.lazy(() => import('./BatchDocumentModal'));
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
 import { RevisionCursoHeader, RevisionCursoOverview } from './RevisionCursoOverview';
@@ -87,12 +89,21 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const [reviewSnapshot, setReview] = useState<StaffReviewDto | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [approvalBusy, setApprovalBusy] = useState(false);
+  const [previewScope, setPreviewScope] = useState<string | null>(null);
+  const [batchScope, setBatchScope] = useState<string | null>(null);
+  const currentBatchScope = `${selectedCursoId}:${selectedPeriodoId}`;
   const realtimeWorkflow = useGradebookConcurrencyStore((state) => (
     selectedCursoId && selectedPeriodoId
       ? state.workflows[gradebookScopeKey(selectedCursoId, selectedPeriodoId)]
       : undefined
   ));
   const receiveWorkflow = useGradebookConcurrencyStore((state) => state.receiveWorkflow);
+  const courseWorkflowKey = useGradebookConcurrencyStore((state) => Object.values(state.workflows)
+    .filter(item => item.cursoId === selectedCursoId)
+    .map(item => `${item.id}:${item.revision}:${item.estado}`).sort().join('|'));
+  const [reviewWorkflowKey, setReviewWorkflowKey] = useState('');
+  const documentScope = `${selectedCursoId}:${selectedPeriodoId}:${reviewInscripcionId}:${courseWorkflowKey}:${reloadCounter}`;
+
 
 
   useEffect(() => {
@@ -243,7 +254,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       setReviewLoading(true);
       try {
         const data = await getStaffGradebookReview(selectedCursoId, selectedPeriodoId);
-        if (active) setReview(data);
+        if (active) { setReview(data); setReviewWorkflowKey(courseWorkflowKey); }
       } catch (error) {
         if (active) {
           console.error(error);
@@ -255,7 +266,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     };
     void fetchReview();
     return () => { active = false; };
-  }, [selectedCursoId, selectedPeriodoId, effectiveWorkflow?.estado, effectiveWorkflow?.revision, reloadCounter, message]);
+  }, [selectedCursoId, selectedPeriodoId, effectiveWorkflow?.estado, effectiveWorkflow?.revision, courseWorkflowKey, reloadCounter, message]);
 
   const handleSaveSuccess = useCallback((revision?: number) => {
     if (revision === undefined) return;
@@ -441,6 +452,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
                 {review ? `${review.visados} de ${review.totalBoletines} boletines visados` : 'Consultando visados'}
               </Tag>
               {review?.etapa === 'LISTO_PARA_PDF' && <Tag color="success">Listo para generar PDFs</Tag>}
+              <Button disabled={!review || reviewLoading || approvalBusy} onClick={() => setBatchScope(currentBatchScope)}>Generar PDFs / ZIP del curso</Button>
             </Space>
           )}
           {review && review.alumnosSinIncorporar > 0 && (
@@ -482,6 +494,19 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
                   <Typography.Text type="secondary" className={styles.reviewCount}>
                     {review ? `${review.visados} de ${review.totalBoletines} visados` : 'Consultando progreso'}
                   </Typography.Text>
+                  {review && reviewWorkflowKey === courseWorkflowKey && !reviewLoading && !detailHasChanges && selectedBulletin.elegibilidadPdf && (
+                    <Typography.Text type={selectedBulletin.elegibilidadPdf.elegiblePorVisados ? 'success' : 'warning'}>
+                      {selectedBulletin.elegibilidadPdf.elegiblePorVisados
+                        ? 'Visados completos para PDF'
+                        : selectedBulletin.elegibilidadPdf.motivos.join(' ')}
+                    </Typography.Text>
+                  )}
+                  <Button
+                    disabled={!review || reviewLoading || detailHasChanges || approvalBusy || reviewWorkflowKey !== courseWorkflowKey || !selectedBulletin.elegibilidadPdf?.elegiblePorVisados}
+                    onClick={() => setPreviewScope(documentScope)}
+                  >
+                    Vista previa del boletín
+                  </Button>
                   <Button
                     type={selectedBulletin.estado === 'VISADO' ? 'default' : 'primary'}
                     disabled={!review || detailHasChanges || reviewLoading}
@@ -524,6 +549,16 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             />
           )}
         </>
+      )}
+      {batchScope === currentBatchScope && selectedCursoId && selectedPeriodoId && (
+        <React.Suspense fallback={<Spin />}>
+          <BatchDocumentModal cursoId={selectedCursoId} periodoId={selectedPeriodoId} cursoNombre={selectedCurso?.nombre || 'Curso'} onClose={() => setBatchScope(null)} />
+        </React.Suspense>
+      )}
+      {previewScope === documentScope && reviewInscripcionId && selectedPeriodoId && (
+        <React.Suspense fallback={<Spin />}>
+          <StaffDocumentPreview inscripcionId={reviewInscripcionId} periodoId={selectedPeriodoId} onClose={() => setPreviewScope(null)} />
+        </React.Suspense>
       )}
     </SectionLayout>
   );

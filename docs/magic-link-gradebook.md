@@ -110,3 +110,14 @@ La migración se validó sobre una copia aislada con una instancia histórica `C
 La matriz reproducible y las pruebas de concurrencia pendientes de automatización están en `docs/gradebook-workflow-test-plan.md`.
 
 Después de la entrega, las sesiones institucionales comparten el control pero no escriben a ciegas. Cada libreta se lee mediante un gateway que devuelve materias, PPI, integración, cierre y revisión desde una misma transacción. Cada corrección lleva esa revisión, el gateway la compara dentro de la transacción y rechaza versiones vencidas sin modificar datos. Realtime invalida el tablero, el resumen y el detalle; Zustand nunca acepta una revisión menor. Si existe una edición local, la interfaz la conserva y exige cargar la versión actual. Un resultado de red incierto también bloquea nuevos guardados hasta reconciliar la instantánea confirmada. El protocolo general está en `docs/concurrency-model.md`.
+
+
+## Preparación de emisión PDF en desarrollo local
+
+Los visados incorporan una generación monotónica de autorización, independiente de la revisión académica: retirar y volver a visar sin editar produce una autorización diferente. La revisión institucional incluye la elegibilidad acumulativa por alumno desde primero hasta el período seleccionado. La interfaz muestra visados completos o motivos de bloqueo y vuelve a consultar ante cambios Realtime del curso, incluidos otros períodos; no muestra todavía un botón de generación. Esta evolución se aplicó sólo a PocketBase local; el VPS sigue con el contrato anterior.
+
+## Descarga PDF experimental en desarrollo
+
+La vista previa de un alumno elegible ofrece «Generar PDF de prueba» únicamente en desarrollo local. Revalida instantánea y autorizaciones antes y después del render y descarga un archivo, sin persistencia ni registro de emisión vigente. No está disponible en producción. El almacenamiento y la invalidación transaccional continúan pendientes; detalle en `docs/gradebook-pdf-emission.md`.
+
+La preparación de PDF local ya incluye emisiones persistidas: retirar o corregir un visado revoca los PDFs de ese corte y posteriores del alumno en la misma transacción. La descarga revalida la instantánea; la eliminación física se reintenta después. La UI local permite generar o reutilizar el archivo guardado. Se mantiene la distinción entre visado académico y estado de emisión. Alcance y pendientes de producción en `docs/gradebook-pdf-emission.md`.

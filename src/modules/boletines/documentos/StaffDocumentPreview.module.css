@@ -1,0 +1,8 @@
+.content { width: 100%; }
+.loading { min-height: 100px; }
+.pageSelect { width: 100%; }
+.viewport { height: max(240px, calc(100dvh - 420px)); overflow: auto; background: var(--cys-color-bg-layout); padding: 16px; font-size: 16px; line-height: normal; }
+.viewport h1, .viewport h2, .viewport h3 { font-family: inherit !important; }
+.viewport > main { width: max-content; min-width: 100%; }
+.viewport section { scroll-margin-top: 0; }
+.viewport [data-text-overflow="true"] { outline: 2px solid var(--cys-color-error); }

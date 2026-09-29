@@ -1,3 +1,11 @@
 alumnos-api.duckdns.org {
-    reverse_proxy 127.0.0.1:8090
+    handle /api/cys/pdf/* {
+        request_body {
+            max_size 32KB
+        }
+        reverse_proxy 127.0.0.1:8093
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8090
+    }
 }

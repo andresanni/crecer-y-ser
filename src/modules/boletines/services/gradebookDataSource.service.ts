@@ -25,6 +25,21 @@ export interface StaffReviewBulletin {
   nombreCompleto: string;
   numeroOrden: number | null;
   estado: 'PENDIENTE_REVISION' | 'VISADO';
+  generacionVisado: number;
+  elegibilidadPdf?: {
+    elegiblePorVisados: boolean;
+    motivos: string[];
+    dependencias: Array<{
+      bimestre: number;
+      periodoId: string | null;
+      visadoId: string | null;
+      generacionVisado: number | null;
+      revisionContenido: number | null;
+      revisionVisada: number | null;
+      vigente: boolean;
+      motivo: string | null;
+    }>;
+  };
   revisionContenido: number;
   revisionVisada: number | null;
   visadoAt: string | null;

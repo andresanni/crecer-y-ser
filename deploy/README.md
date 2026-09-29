@@ -100,3 +100,10 @@ La protección optimista puede verificarse sin escribir en producción ejecutand
 ## Recuperación
 
 Si falla el arranque, revisar primero el journal y conservar intacto el backup previo. `pocketbase migrate down 1` sólo debe usarse mientras el servicio está detenido y después de confirmar que la migración que se desea revertir es efectivamente la última aplicada. El rollback no recupera secretos en texto plano: los enlaces continúan autenticándose contra su hash. Restaurar un backup completo sólo cuando la reversión de migración no sea suficiente.
+
+
+## Generador PDF en el VPS
+
+Despues de publicar PocketBase, ejecutar `./deploy/publish-pdf-worker.ps1`. Construye el bundle de impresion, crea un archivo temporal fuera del repositorio, instala dependencias fijadas por lockfile y Chromium, configura `cys-pdf.service`, prueba PDF/ZIP sinteticos y publica las rutas del worker mediante Caddy. Requiere SSH root por el mismo puerto y clave que PocketBase. `/etc/cys-pdf.env` conserva el secreto privado y los origenes admitidos; no se rota en sucesivos despliegues. El primer instalador obtiene Node LTS 24 y verifica el checksum oficial; despliegues posteriores reutilizan `/opt/cys-node` (actualmente 24.21.0).
+
+El worker escucha solo en 127.0.0.1:8093, tiene sandbox Chromium y corre como cys-pdf. Sus archivos internos no pasan por el proxy. `deploy/test-production-worker.mjs` prueba el middleware desplegado con datos y backend sinteticos, sin mutar PocketBase productivo. `deploy/test-pocketbase-release.sh` ensaya migraciones contra una copia consistente y saneada del VPS antes de promoverlas. El historial detallado y rollback estan en `docs/gradebook-pdf-emission.md`. Respaldar `/etc/cys-pdf.env` por el canal privado de operaciones, nunca en Git.

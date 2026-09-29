@@ -1,0 +1,49 @@
+[
+  {
+    "archivo": "/boletines/logo-historico.png",
+    "origen": "PPTX de referencia institucional, ppt/media/image1.png",
+    "anchoPx": 581,
+    "altoPx": 179,
+    "sha256": "c8493247907c5a556ea9a9cea30eb84664611644e8284ac78e88018b6c4a8e84",
+    "estado": "extraido-sin-modificaciones"
+  },
+  {
+    "archivo": "/boletines/isotipo-historico.png",
+    "origen": "PPTX de referencia institucional, ppt/media/image2.png",
+    "anchoPx": 70,
+    "altoPx": 71,
+    "sha256": "49e2a9416ea9738842851c7cb516477311bf3f0f82dc3bc83f2b16be0ad93254",
+    "estado": "extraido-sin-modificaciones"
+  },
+  {
+    "archivo": "/boletines/escudo-argentina.png",
+    "origen": "PPTX de referencia institucional, ppt/media/image4.png",
+    "anchoPx": 39,
+    "altoPx": 59,
+    "sha256": "67c2f9296fd749707598726d6c209820c06492d588c37dcb45d476fdbe512066",
+    "estado": "extraido-sin-modificaciones"
+  },
+  {
+    "archivo": "/boletines/escudo-ciudad.png",
+    "origen": "PPTX de referencia institucional, ppt/media/image6.png",
+    "anchoPx": 97,
+    "altoPx": 118,
+    "sha256": "5b0003eb439342e0892f63278d37876e08ae3b2b6973f925fc46a12c63c759cb",
+    "estado": "extraido-sin-modificaciones"
+  },
+  {
+    "archivo": "/boletines/escudo-colegio.png",
+    "origen": "Imagen suministrada por el usuario durante la revision de portada del 27 de septiembre de 2026",
+    "anchoPx": 289,
+    "altoPx": 378,
+    "sha256": "7f2d7acf3cfe305da86cd4898c40946ed4d4f0bd3d747d1bcdb569da69315c26",
+    "estado": "copiado-sin-modificaciones"
+  },
+  {
+    "archivo": "/boletines/fonts/lato/Lato-Bold.ttf",
+    "origen": "https://github.com/google/fonts/blob/main/ofl/lato/Lato-Bold.ttf",
+    "sha256": "8a0aace75d33794eece4b28187bfc1df0bbd2888b5d8a56e01788c8d65d16be1",
+    "licencia": "public/boletines/fonts/lato/OFL.txt",
+    "estado": "descargado-sin-modificaciones"
+  }
+]

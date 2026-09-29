@@ -72,3 +72,24 @@ routerAdd("POST", "/api/cys/enlaces-docentes/:tokenId/recuperar", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.recover(c)
 }, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
+
+routerAdd("GET", "/api/cys/directivo/boletines/:inscripcionId/instantanea", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.staffDocumentSnapshot(c)
+}, $apis.requireRecordAuth("users"))
+
+routerAdd("POST", "/api/cys/directivo/boletines/:inscripcionId/emisiones", (c) => {
+  return require(`${__hooks}/lib/pdfEmissions.js`).publish(c)
+}, $apis.requireRecordAuth("users"), $apis.bodyLimit(11000000))
+
+routerAdd("GET", "/api/cys/directivo/emisiones/:emisionId/archivo", (c) => {
+  return require(`${__hooks}/lib/pdfEmissions.js`).download(c)
+}, $apis.requireRecordAuth("users"))
+
+routerAdd("GET", "/api/cys/directivo/boletines/:inscripcionId/emisiones", (c) => {
+  return require(`${__hooks}/lib/pdfEmissions.js`).lookup(c)
+}, $apis.requireRecordAuth("users"))
+
+cronAdd("remove_invalidated_pdfs", "* * * * *", () => {
+  require(`${__hooks}/lib/pdfEmissions.js`).cleanup()
+})

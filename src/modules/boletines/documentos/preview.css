@@ -1,0 +1,18 @@
+body { margin: 0; background: #dce0e5; }
+.preview-toolbar { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; margin-bottom: 24px; color: #172b46; background: white; border-bottom: 1px solid #aab5c2; font: 14px Arial, sans-serif; }
+.preview-toolbar small { display: block; margin-top: 5px; }
+.preview-toolbar select, .preview-toolbar button { font: inherit; padding: 8px; max-width: 100%; }
+.preview-toolbar label { max-width: 100%; }
+.preview-toolbar :focus-visible { outline: 3px solid #003399; outline-offset: 2px; }
+@media screen {
+  .preview-dynamic [data-dynamic-field] { background: #fff2cc; outline: 2px dashed #805000; outline-offset: -3px; }
+  .preview-dynamic [data-derived-field] { background: #e5f3ff; outline: 2px dotted #003399; outline-offset: 2px; }
+}
+@media print {
+  body { background: white; }
+  .preview-toolbar { display: none; }
+}
+
+@media screen {
+  [data-text-overflow="true"] { outline: 2px solid #b34b4b !important; outline-offset: -2px; background: #fff0f0 !important; }
+}

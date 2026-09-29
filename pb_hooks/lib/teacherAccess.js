@@ -1,3 +1,46 @@
+function evaluatePdfEligibility(dao, enrollment, cutoff) {
+  const number = cutoff.getInt("numero_periodo")
+  if (number < 1 || number > 4 || enrollment.getString("ciclo_id") !== cutoff.getString("ciclo_id")) {
+    throw new BadRequestError("El período no corresponde a esta matrícula.")
+  }
+  const periods = dao.findRecordsByFilter("periodos", "ciclo_id = {:cycle}", "numero_periodo", 0, 0, { cycle: cutoff.getString("ciclo_id") })
+  const dependencies = []
+  const reasons = []
+  for (let n = 1; n <= number; n++) {
+    const matching = periods.filter((period) => period.getInt("numero_periodo") === n)
+    let reason = ""
+    let approval = null
+    const period = matching.length === 1 ? matching[0] : null
+    if (!period) {
+      reason = "El bimestre " + n + " no tiene una configuración única."
+    } else {
+      const workflows = dao.findRecordsByFilter("instancias_carga_boletin", "curso_id = {:course} && periodo_id = {:period}", "", 0, 0, { course: enrollment.getString("curso_id"), period: period.getId() })
+      if (workflows.length !== 1 || workflows[0].getString("estado") !== "CONTROL_DIRECTIVO") {
+        reason = "Falta entregar a dirección el bimestre " + n + "."
+      } else {
+        const approvals = dao.findRecordsByFilter("visados_boletin", "instancia_id = {:workflow} && inscripcion_id = {:enrollment}", "", 0, 0, { workflow: workflows[0].getId(), enrollment: enrollment.getId() })
+        approval = approvals.length === 1 ? approvals[0] : null
+        if (!approval) reason = "Falta incorporar o resolver el historial del alumno en el bimestre " + n + "."
+        else if (approval.getString("estado") !== "VISADO") reason = "Falta visar el bimestre " + n + "."
+        else if (approval.getInt("revision_contenido") !== approval.getInt("revision_visada") || approval.getInt("generacion_visado") < 1) reason = "Debe revisarse nuevamente el visado del bimestre " + n + "."
+      }
+    }
+    if (reason) reasons.push(reason)
+    dependencies.push({
+      bimestre: n,
+      periodoId: period ? period.getId() : null,
+      visadoId: approval ? approval.getId() : null,
+      generacionVisado: approval ? approval.getInt("generacion_visado") : null,
+      revisionContenido: approval ? approval.getInt("revision_contenido") : null,
+      revisionVisada: approval && approval.getString("estado") === "VISADO" ? approval.getInt("revision_visada") : null,
+      vigente: !reason,
+      motivo: reason || null
+    })
+  }
+  return { elegiblePorVisados: reasons.length === 0, motivos: reasons, dependencias: dependencies }
+}
+
+
 function findFirst(dao, collection, field, value) {
   try {
     return dao.findFirstRecordByData(collection, field, value)
@@ -115,6 +158,7 @@ function approvalDto(approval) {
   return {
     inscripcionId: approval.getString("inscripcion_id"),
     estado: approval.getString("estado"),
+    generacionVisado: approval.getInt("generacion_visado"),
     revisionContenido: approval.getInt("revision_contenido"),
     revisionVisada: approval.getString("estado") === "VISADO" ? approval.getInt("revision_visada") : null,
     visadoAt: approval.getString("visado_at") || null,
@@ -144,7 +188,8 @@ function staffReview(c) {
       var student = requireRecord(txDao, "alumnos", enrollment.getString("alumno_id"))
       return Object.assign(approvalDto(approval), {
         nombreCompleto: (student.getString("apellidos") + ", " + student.getString("nombres")).trim(),
-        numeroOrden: enrollment.getInt("numero_orden") || null
+        numeroOrden: enrollment.getInt("numero_orden") || null,
+        elegibilidadPdf: evaluatePdfEligibility(txDao, enrollment, period)
       })
     })
     response = {
@@ -237,6 +282,8 @@ function changeApproval(c, approve) {
       response = { instancia: workflowDto(workflow), boletin: approvalDto(approval) }
       return
     }
+    require("./pdfEmissions.js").invalidate(txDao, enrollment.getId(), period.getInt("numero_periodo"), "Cambió la autorización del bimestre.")
+    approval.set("generacion_visado", approval.getInt("generacion_visado") + 1)
     if (approve) {
       if (!studentReadyForApproval(txDao, workflow, enrollment)) {
         throw new BadRequestError("El boletín del alumno todavía está incompleto.")
@@ -964,6 +1011,77 @@ function staffWorkflow(c) {
   return c.json(200, { instancia: workflow ? workflowDto(workflow) : null })
 }
 
+function buildDocumentSnapshot(dao, enrollmentId, periodId) {
+  var response
+  var eligible = true
+    var enrollment = requireRecord(dao, "inscripciones", enrollmentId)
+    var period = requireRecord(dao, "periodos", periodId)
+    var workflow = requireStaffWorkflow(dao, enrollment.getString("curso_id"), period.getId())
+    requireApproval(dao, workflow, enrollment.getId())
+    var eligibility = evaluatePdfEligibility(dao, enrollment, period)
+    if (!eligibility.elegiblePorVisados) {
+      eligible = false
+      response = { message: "Los visados requeridos no están completos.", elegibilidadPdf: eligibility }
+      return { status: 422, body: response }
+    }
+    var student = requireRecord(dao, "alumnos", enrollment.getString("alumno_id"))
+    var course = requireRecord(dao, "cursos", enrollment.getString("curso_id"))
+    var cycle = requireRecord(dao, "ciclos_lectivos", enrollment.getString("ciclo_id"))
+    var materials = courseMaterials(dao, workflow).map((material) => {
+      var result = materialDto(dao, material)
+      result.formativa = isConductSubject(dao, material)
+      result.criterios = findByFilter(dao, "criterios_evaluacion", "curso_materia_id = {:id}", "orden_visual,id", { id: material.getId() }).map((criterion) => ({ id: criterion.getId(), texto: criterion.getString("nombre"), orden: criterion.getInt("orden_visual") }))
+      return result
+    })
+    var values = findByFilter(dao, "valores_escala", "escala_id = {:id}", "orden_visual,id", { id: course.getString("escala_id") }).map((value) => ({ id: value.getId(), etiqueta: value.getString("etiqueta"), pesoNumerico: value.getFloat("peso_numerico"), orden: value.getInt("orden_visual") }))
+    var guardians = findByFilter(dao, "alumno_responable", "alumno_id = {:id}", "id", { id: student.getId() }).map((link) => {
+      var guardian = requireRecord(dao, "responsables", link.getString("responsable_id"))
+      return { id: guardian.getId(), apellidos: guardian.getString("apellidos"), nombres: guardian.getString("nombres"), vinculo: link.getString("vinculo") }
+    })
+    var uniqueGuardians = guardians.filter((guardian, index) => guardians.findIndex((candidate) => candidate.id === guardian.id) === index)
+    if (uniqueGuardians.length !== 1) {
+      eligible = false
+      response = { message: "El alumno debe tener exactamente un tutor vinculado.", codigo: "TUTOR_UNICO_REQUERIDO" }
+      return { status: 422, body: response }
+    }
+    var periods = eligibility.dependencias.map((dependency) => {
+      var sourceWorkflow = findWorkflow(dao, course.getId(), dependency.periodoId)
+      var snapshot = studentSnapshot(dao, sourceWorkflow, enrollment)
+      snapshot.evaluaciones.sort((a, b) => a.cursoMateriaId.localeCompare(b.cursoMateriaId))
+      snapshot.evaluaciones.forEach((evaluation) => evaluation.criterios.sort((a, b) => a.criterioId.localeCompare(b.criterioId)))
+      return { bimestre: dependency.bimestre, periodoId: dependency.periodoId, evaluaciones: snapshot.evaluaciones, cierre: snapshot.cierre }
+    })
+    var data = {
+      versionContrato: 1,
+      inscripcionId: enrollment.getId(),
+      ciclo: { id: cycle.getId(), ano: cycle.getInt("ano") },
+      curso: { id: course.getId(), nombre: course.getString("nombre") },
+      bimestreCorte: period.getInt("numero_periodo"),
+      alumno: { apellidos: student.getString("apellidos"), nombres: student.getString("nombres"), dni: student.getString("dni") },
+      responsable: uniqueGuardians[0],
+      materias: materials,
+      escala: values,
+      periodos: periods,
+      apoyos: {
+        poseeApoyos: enrollment.getString("posee_apoyos"),
+        cualesApoyos: enrollment.getString("cuales_apoyos"),
+        promocionoConAcompanamiento: period.getInt("numero_periodo") === 4 ? enrollment.getString("promociono_con_acompanamiento") : null
+      },
+      administrativo: { domicilio: student.getString("domicilio"), telefono: student.getString("telefono"), fechaIngreso: enrollment.getString("fecha_ingreso"), fechaEgreso: enrollment.getString("fecha_egreso") },
+      dependencias: eligibility.dependencias,
+      pendientesDeIntegracion: ["MAPEO_ESCALA", "CIERRE_ANUAL", "HISTORIAL_ADMINISTRATIVO"]
+    }
+    response = { datos: data, huella: $security.sha256(JSON.stringify(data)) }
+  return { status: eligible ? 200 : 422, body: response }
+}
+
+function staffDocumentSnapshot(c) {
+  noStore(c)
+  var result
+  $app.dao().runInTransaction((dao) => { result = buildDocumentSnapshot(dao, c.pathParam("inscripcionId"), c.queryParam("periodoId")) })
+  return c.json(result.status, result.body)
+}
+
 function staffStudent(c) {
   noStore(c)
   var enrollmentId = c.pathParam("inscripcionId")
@@ -1027,6 +1145,8 @@ function saveStaffStudent(c) {
     if (data.apoyos && Object.keys(data.apoyos).length > 0) {
       saveSupport(txDao, workflow, enrollment, data.apoyos)
     }
+    require("./pdfEmissions.js").invalidate(txDao, enrollment.getId(), period.getInt("numero_periodo"), "Cambió la autorización del bimestre.")
+    approval.set("generacion_visado", approval.getInt("generacion_visado") + 1)
     approval.set("revision_contenido", approval.getInt("revision_contenido") + 1)
     approval.set("estado", "PENDIENTE_REVISION")
     approval.set("revision_visada", null)
@@ -1207,6 +1327,8 @@ module.exports = {
   saveStudent: saveStudent,
   staffWorkflow: staffWorkflow,
   staffStudent: staffStudent,
+  staffDocumentSnapshot: staffDocumentSnapshot,
+  buildDocumentSnapshot: buildDocumentSnapshot,
   saveStaffStudent: saveStaffStudent,
   staffReview: staffReview,
   synchronizeReviewEnrollments: synchronizeReviewEnrollments,

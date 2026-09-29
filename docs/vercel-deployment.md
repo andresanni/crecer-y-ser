@@ -72,3 +72,8 @@ La comprobación de `/carga` debe usar una llave descartable de prueba creada de
 ## Rollback
 
 Si el frontend falla pero el contrato del backend sigue siendo compatible, promover nuevamente en Vercel el deployment productivo anterior. Si la release incluyó backend, seguir además el procedimiento de rollback de `docs/pocketbase-environments.md` y restaurar siempre una combinación compatible de frontend, hooks y esquema.
+
+
+## PDF institucional
+
+Antes de publicar el frontend de boletines, desplegar PocketBase y `deploy/publish-pdf-worker.ps1` en el VPS. El frontend estatico consume `/api/cys/pdf/generar` y `/api/cys/pdf/lote` del mismo origen configurado para PocketBase. Vercel no ejecuta Chromium ni recibe la clave privada. El worker acepta `https://crecer-y-ser-ten.vercel.app`; agregar un nuevo dominio productivo a `CYS_PDF_ORIGINS` en el VPS y reiniciar el servicio antes de cambiar el dominio de la app. Los dominios de Preview no se autorizan automaticamente.

@@ -29,6 +29,7 @@ if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el staging remoto." }
 
 $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\teacherAccess.js"; Target = "teacherAccess.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\pdfEmissions.js"; Target = "pdfEmissions.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\teacher_access.pb.js"; Target = "teacher_access.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\curriculum.js"; Target = "curriculum.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\curriculum.pb.js"; Target = "curriculum.pb.js" },
@@ -44,6 +45,9 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789477600_removed_teacher_link_state.js"; Target = "1789477600_removed_teacher_link_state.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1790364300_added_gradebook_approvals.js"; Target = "1790364300_added_gradebook_approvals.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1790364400_versioned_curriculum_by_cycle.js"; Target = "1790364400_versioned_curriculum_by_cycle.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1790553600_versioned_approval_authorization.js"; Target = "1790553600_versioned_approval_authorization.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1790625600_document_emissions.js"; Target = "1790625600_document_emissions.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1790630000_second_cycle_grading_catalog.js"; Target = "1790630000_second_cycle_grading_catalog.js" },
   @{ Source = Join-Path $PSScriptRoot "pocketbase.service"; Target = "pocketbase.service" },
   @{ Source = Join-Path $PSScriptRoot "apply-pocketbase-workflow.sh"; Target = "apply-pocketbase-workflow.sh" }
 )
