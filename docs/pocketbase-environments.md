@@ -256,3 +256,7 @@ El refresco reemplaza por completo el estado local y puede eliminar datos de pru
 ## Diferencia local pendiente de promoción: elegibilidad PDF
 
 El 28 de septiembre de 2026 se aplicó exclusivamente en desarrollo `1790553600_versioned_approval_authorization.js` y el hook de elegibilidad acumulativa. Se ensayó previamente en una copia aislada. Respaldo de base previo: `C:/pocketbase/backups/pdf-eligibility-20260928/data.db`. El esquema versionado refleja desarrollo; el VPS todavía no tiene este campo ni la elegibilidad en su respuesta. Los scripts de despliegue incluyen la migración para una futura promoción coordinada, no ejecutada.
+
+## Diferencia local pendiente de promoción: almacenamiento PDF
+
+Migración `1790625600_document_emissions.js` ensayada en copia aislada y aplicada a 8090. Respaldo previo con servicio detenido: `C:/pocketbase/backups/pdf-emissions-20260928/data.db`. Se conservan archivos en storage de PocketBase y metadatos en `emisiones_boletin`; el esquema nuevo se exportó desde la API local. La clave de worker vive fuera de Git y del código del navegador. `start-pocketbase-dev.ps1` carga `pdf-worker-dev.key` cuando existe. La promoción exige un worker desplegable y secreto propio del VPS; no basta con subir los hooks. No se ejecutó despliegue.

@@ -89,6 +89,16 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     return { bimestre, asistencias: cantidad(source?.asistencias), inasistencias: cantidad(source?.inasistencias), llegadasTarde: cantidad(source?.llegadasTarde), observaciones: bimestre > data.bimestreCorte ? futuro : source ? { estado: 'confirmado', texto: source.observaciones } as const : sinDato };
   };
   const anual = data.bimestreCorte < 4 ? futuro : sinDato;
+  const respuestaBinaria = (value: string | null): ValorDocumental => value === 'SI'
+    ? { estado: 'confirmado', texto: 'SÍ' }
+    : value === 'NO' ? { estado: 'confirmado', texto: 'NO' } : sinDato;
+  const integracion: BoletinDocumentData['integracion'] = {
+    poseeApoyos: respuestaBinaria(data.apoyos.poseeApoyos),
+    cualesApoyos: data.apoyos.poseeApoyos === 'NO'
+      ? { estado: 'confirmado', texto: '---' }
+      : data.apoyos.poseeApoyos === 'SI' ? texto(data.apoyos.cualesApoyos) : sinDato,
+    promocionoConAcompanamiento: data.bimestreCorte < 4 ? futuro : respuestaBinaria(data.apoyos.promocionoConAcompanamiento),
+  };
   const cambio = () => ({ fecha: anual, causa: anual, escuelaDestino: anual });
   const documento: BoletinDocumentData = {
     institucion,
@@ -99,7 +109,7 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     materiasFormativas: academic.filter((_, index) => materias[index].formativa),
     materiasAcademicas: academic.filter((_, index) => !materias[index].formativa),
     cierres: [cierre(1), cierre(2), cierre(3), cierre(4)],
-    integracion: { poseeApoyos: texto(data.apoyos.poseeApoyos), cualesApoyos: texto(data.apoyos.cualesApoyos), promocionoConAcompanamiento: data.bimestreCorte < 4 ? futuro : texto(data.apoyos.promocionoConAcompanamiento) },
+    integracion,
     cierreAnual: { sintesis: anual, permaneceEn: anual, promovidoA: anual },
     registroAdministrativo: { escuelaInicial: anual, fechaIngreso: anual, fechaEgreso: anual, cambiosEscuela: [cambio(), cambio(), cambio(), cambio()], domicilio: anual, telefono: anual, cambioDomicilio: anual },
   };

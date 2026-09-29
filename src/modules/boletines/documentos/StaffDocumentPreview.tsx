@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Modal, Select, Space, Spin } from 'antd';
 import { ClientResponseError } from 'pocketbase';
-import { getDocumentSnapshot } from '../services/documentSnapshot.service';
+import { downloadDocumentProof, getDocumentSnapshot } from '../services/documentSnapshot.service';
 import { adaptarInstantaneaDocumental } from './documentSnapshot.adapter';
 import { institucionBoletin } from './boletinInstitutionalContent';
 import { paginasBoletinDelGrado } from './boletinDocument.model';
@@ -16,25 +16,57 @@ export default function StaffDocumentPreview({ inscripcionId, periodoId, onClose
   const [result, setResult] = useState<ReturnType<typeof adaptarInstantaneaDocumental> | null>(null);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [huella, setHuella] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState('');
+  const [emissionId, setEmissionId] = useState<string | null>(null);
+  const downloadController = useRef<AbortController | null>(null);
   const container = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let active = true;
     getDocumentSnapshot(inscripcionId, periodoId).then(snapshot => {
-      if (active) setResult(adaptarInstantaneaDocumental(snapshot, institucionBoletin));
+      if (active) {
+        setResult(adaptarInstantaneaDocumental(snapshot, institucionBoletin));
+        setHuella(snapshot.huella);
+      }
     }).catch((cause: unknown) => {
       if (!active) return;
       setError(cause instanceof ClientResponseError
         ? cause.response.message || 'No se pudo consultar la instantánea del boletín.'
         : 'No se pudo preparar la vista previa. Volvé a intentarlo.');
     });
-    return () => { active = false; };
+    return () => { active = false; downloadController.current?.abort(); };
   }, [inscripcionId, periodoId, attempt]);
   const documento = result?.documento;
+  const generate = async () => {
+    if (generating || !huella) return;
+    const controller = new AbortController();
+    downloadController.current = controller;
+    setGenerating(true);
+    setGenerationError('');
+    try {
+      const { blob, filename, emissionId: savedId } = await downloadDocumentProof(inscripcionId, periodoId, huella, controller.signal);
+      if (controller.signal.aborted) return;
+      setEmissionId(savedId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (cause) {
+      if (!controller.signal.aborted) setGenerationError(cause instanceof Error ? cause.message : 'No se pudo generar el PDF.');
+    } finally { if (!controller.signal.aborted) setGenerating(false); }
+  };
   return <Modal open title="Vista previa del boletín" width="min(1100px, 96vw)" onCancel={onClose}
     style={{ top: 20 }} styles={{ body: { maxHeight: 'calc(100dvh - 150px)', overflow: 'auto' } }}
-    footer={<Button onClick={onClose}>Cerrar</Button>}>
+    footer={<Space>
+      {import.meta.env.DEV && <Button type="primary" loading={generating} disabled={!documento || !!error || !!result?.pendientes.length} onClick={() => void generate()}>{emissionId ? 'Descargar PDF' : 'Generar / descargar PDF'}</Button>}
+      <Button onClick={onClose}>Cerrar</Button>
+    </Space>}>
     <Space orientation="vertical" size="middle" className={styles.content}>
-      <Alert type="info" showIcon title="Vista previa de revisión · PDF todavía no emitido" />
+      <Alert type={emissionId ? 'success' : 'info'} showIcon title={emissionId ? 'PDF guardado en desarrollo · vigencia comprobada al descargar' : 'Vista previa de revisión · se verificará si existe un PDF vigente al descargar'} />
+      {generationError && <Alert type="error" showIcon title="No se pudo generar el PDF" description={generationError} />}
       {error ? <Alert type="error" showIcon title="No se pudo abrir el boletín" description={error}
         action={<Button onClick={() => { setError(''); setResult(null); setAttempt(value => value + 1); }}>Reintentar</Button>} />
         : !result ? <Spin description="Consultando datos y visados…"><div className={styles.loading} /></Spin> : <>

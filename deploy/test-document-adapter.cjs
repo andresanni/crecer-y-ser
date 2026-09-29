@@ -39,6 +39,38 @@ test('Segundo ciclo bloquea sin inventar notas numéricas', () => {
   assert.equal(adapt(f, institution).documento, null);
 });
 
+test('Apoyos de inscripción se conservan desde primero; promoción sólo se muestra en cuarto', () => {
+  for (const bimestre of [1, 2, 3, 4]) {
+    const f = fixture();
+    f.datos.bimestreCorte = bimestre;
+    const primero = f.datos.periodos[0];
+    f.datos.periodos = Array.from({ length: bimestre }, (_, index) => ({ ...primero, bimestre: index + 1 }));
+    f.datos.dependencias = Array.from({ length: bimestre }, (_, index) => ({ bimestre: index + 1, vigente: true }));
+    f.datos.apoyos = { poseeApoyos: 'SI', cualesApoyos: 'Apoyo de prueba', promocionoConAcompanamiento: 'SI' };
+    const result = adapt(f, institution);
+    assert.equal(result.bloqueos.length, 0);
+    assert.equal(result.documento.integracion.poseeApoyos.texto, 'SÍ');
+    assert.equal(result.documento.integracion.cualesApoyos.texto, 'Apoyo de prueba');
+    assert.equal(result.documento.integracion.promocionoConAcompanamiento.estado, bimestre === 4 ? 'confirmado' : 'futuro');
+    if (bimestre === 4) assert.equal(result.documento.integracion.promocionoConAcompanamiento.texto, 'SÍ');
+  }
+});
+
+test('Sin apoyos no exige detalle; un valor ausente no se convierte en NO', () => {
+  const f = fixture();
+  f.datos.apoyos.cualesApoyos = 'Detalle residual';
+  let result = adapt(f, institution);
+  assert.equal(result.documento.integracion.poseeApoyos.texto, 'NO');
+  assert.equal(result.documento.integracion.cualesApoyos.texto, '---');
+  f.datos.apoyos.poseeApoyos = '-';
+  result = adapt(f, institution);
+  assert.equal(result.documento.integracion.poseeApoyos.estado, 'sinDato');
+  assert.equal(result.documento.integracion.cualesApoyos.estado, 'sinDato');
+  f.datos.apoyos.poseeApoyos = 'SI';
+  f.datos.apoyos.cualesApoyos = '';
+  assert.equal(adapt(f, institution).documento.integracion.cualesApoyos.estado, 'sinDato');
+});
+
 test('Nota ausente, etiqueta desconocida y período futuro cargado bloquean', () => {
   const f = fixture(); f.datos.escala[0].etiqueta = 'Desconocida';
   assert.equal(adapt(f, institution).documento, null);

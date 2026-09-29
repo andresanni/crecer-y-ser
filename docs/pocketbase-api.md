@@ -188,3 +188,15 @@ Respuesta 200: `{ datos, huella }`; `datos.versionContrato=1`, `inscripcionId`, 
 422 si falta un visado requerido (incluye `elegibilidadPdf`); 422 con `codigo=TUTOR_UNICO_REQUERIDO` si no hay exactamente un responsable distinto vinculado. Se deduplican vínculos al mismo responsable. La norma de tutor único está confirmada por el usuario; no se permite seleccionar automáticamente entre varios. Alcance fuera de curso/ciclo o entrega se rechaza; ruta sin sesión devuelve 401.
 
 Sólo se consultan evaluaciones y cierres 1..corte. La promoción con acompañamiento se devuelve como null antes de cuarto; los apoyos y datos administrativos se identifican como valores actuales de matrícula/alumno, sin atribuirles historial. La respuesta no incluye credenciales Acadeu, DNI ni contactos del tutor. Los campos anuales sin fuente no se inventan. Los pendientes de integración son MAPEO_ESCALA, CIERRE_ANUAL e HISTORIAL_ADMINISTRATIVO. El adaptador a `BoletinDocumentData` y la emisión se implementarán posteriormente.
+
+## Servicio local de prueba PDF (fuera de PocketBase)
+
+POST `/__cys/pdf-prueba` pertenece al middleware Vite de desarrollo; no es un endpoint desplegado de PocketBase. Recibe `{ inscripcionId, periodoId, huella }` y Authorization de la sesión institucional; consulta dos veces el GET de instantánea local y devuelve PDF adjunto sólo si la huella permanece igual. Rechaza origen ajeno, solicitudes sin sesión, cambios de datos, faltantes de visado y bloqueos documentales. No almacena archivos ni autoriza descargas posteriores. Ver `gradebook-pdf-emission.md` para alcance y límites.
+
+## Emisiones persistidas (desarrollo local)
+
+- POST `/api/cys/directivo/boletines/:inscripcionId/emisiones`: sesión `users` y header privado `X-CYS-PDF-Worker`; multipart `periodoId`, `huella`, `version`, `archivoSha256`, `archivo`. Revalida la instantánea dentro de transacción; 409 si cambió, 200 `{id}` si guardó o reutilizó una emisión. Sólo el generador validado debe utilizarlo.
+- GET `/api/cys/directivo/boletines/:inscripcionId/emisiones?periodoId=...&version=...`: sesión institucional; devuelve `{emision: {id,huella} | null}` y detecta emisiones desactualizadas por datos.
+- GET `/api/cys/directivo/emisiones/:emisionId/archivo?download=1`: sesión institucional; revalida visados y huella, sirve archivo protegido o 409 si fue invalidado. Respuestas no-store.
+
+La colección `emisiones_boletin` no admite acceso directo de clientes. La instantánea se elimina al invalidar; las dependencias se conservan como auditoría. La retirada/corrección de un visado invalida ese corte y posteriores del mismo alumno dentro de su transacción; limpieza física reintentable cada minuto. El motor Vite local usa estos endpoints cuando está configurada la clave privada. Producción permanece sin esta evolución.

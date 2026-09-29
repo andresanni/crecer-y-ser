@@ -54,6 +54,10 @@ if ($teacherLinkKey.Length -ne 32) {
 }
 
 $env:CYS_TEACHER_LINK_KEY = $teacherLinkKey
+$pdfWorkerKeyPath = Join-Path $PocketBaseRoot "pdf-worker-dev.key"
+if (Test-Path -LiteralPath $pdfWorkerKeyPath) {
+  $env:CYS_PDF_WORKER_KEY = (Get-Content -Raw -LiteralPath $pdfWorkerKeyPath).Trim()
+}
 
 & $executable serve `
   --http="127.0.0.1:8090" `

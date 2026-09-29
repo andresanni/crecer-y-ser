@@ -282,6 +282,7 @@ function changeApproval(c, approve) {
       response = { instancia: workflowDto(workflow), boletin: approvalDto(approval) }
       return
     }
+    require("./pdfEmissions.js").invalidate(txDao, enrollment.getId(), period.getInt("numero_periodo"), "Cambió la autorización del bimestre.")
     approval.set("generacion_visado", approval.getInt("generacion_visado") + 1)
     if (approve) {
       if (!studentReadyForApproval(txDao, workflow, enrollment)) {
@@ -1010,20 +1011,18 @@ function staffWorkflow(c) {
   return c.json(200, { instancia: workflow ? workflowDto(workflow) : null })
 }
 
-function staffDocumentSnapshot(c) {
-  noStore(c)
+function buildDocumentSnapshot(dao, enrollmentId, periodId) {
   var response
   var eligible = true
-  $app.dao().runInTransaction((dao) => {
-    var enrollment = requireRecord(dao, "inscripciones", c.pathParam("inscripcionId"))
-    var period = requireRecord(dao, "periodos", c.queryParam("periodoId"))
+    var enrollment = requireRecord(dao, "inscripciones", enrollmentId)
+    var period = requireRecord(dao, "periodos", periodId)
     var workflow = requireStaffWorkflow(dao, enrollment.getString("curso_id"), period.getId())
     requireApproval(dao, workflow, enrollment.getId())
     var eligibility = evaluatePdfEligibility(dao, enrollment, period)
     if (!eligibility.elegiblePorVisados) {
       eligible = false
       response = { message: "Los visados requeridos no están completos.", elegibilidadPdf: eligibility }
-      return
+      return { status: 422, body: response }
     }
     var student = requireRecord(dao, "alumnos", enrollment.getString("alumno_id"))
     var course = requireRecord(dao, "cursos", enrollment.getString("curso_id"))
@@ -1043,7 +1042,7 @@ function staffDocumentSnapshot(c) {
     if (uniqueGuardians.length !== 1) {
       eligible = false
       response = { message: "El alumno debe tener exactamente un tutor vinculado.", codigo: "TUTOR_UNICO_REQUERIDO" }
-      return
+      return { status: 422, body: response }
     }
     var periods = eligibility.dependencias.map((dependency) => {
       var sourceWorkflow = findWorkflow(dao, course.getId(), dependency.periodoId)
@@ -1073,8 +1072,14 @@ function staffDocumentSnapshot(c) {
       pendientesDeIntegracion: ["MAPEO_ESCALA", "CIERRE_ANUAL", "HISTORIAL_ADMINISTRATIVO"]
     }
     response = { datos: data, huella: $security.sha256(JSON.stringify(data)) }
-  })
-  return c.json(eligible ? 200 : 422, response)
+  return { status: eligible ? 200 : 422, body: response }
+}
+
+function staffDocumentSnapshot(c) {
+  noStore(c)
+  var result
+  $app.dao().runInTransaction((dao) => { result = buildDocumentSnapshot(dao, c.pathParam("inscripcionId"), c.queryParam("periodoId")) })
+  return c.json(result.status, result.body)
 }
 
 function staffStudent(c) {
@@ -1140,6 +1145,7 @@ function saveStaffStudent(c) {
     if (data.apoyos && Object.keys(data.apoyos).length > 0) {
       saveSupport(txDao, workflow, enrollment, data.apoyos)
     }
+    require("./pdfEmissions.js").invalidate(txDao, enrollment.getId(), period.getInt("numero_periodo"), "Cambió la autorización del bimestre.")
     approval.set("generacion_visado", approval.getInt("generacion_visado") + 1)
     approval.set("revision_contenido", approval.getInt("revision_contenido") + 1)
     approval.set("estado", "PENDIENTE_REVISION")
@@ -1322,6 +1328,7 @@ module.exports = {
   staffWorkflow: staffWorkflow,
   staffStudent: staffStudent,
   staffDocumentSnapshot: staffDocumentSnapshot,
+  buildDocumentSnapshot: buildDocumentSnapshot,
   saveStaffStudent: saveStaffStudent,
   staffReview: staffReview,
   synchronizeReviewEnrollments: synchronizeReviewEnrollments,
