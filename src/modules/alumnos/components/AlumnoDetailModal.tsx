@@ -173,13 +173,13 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
               <Tag color="success" className={ui.strongTag}>
                 DNI: {alumno.dni || 'Cargado'}
               </Tag>
-              {alumno.telefono ? (
+              {alumno.localidad ? (
                 <Tag color="success" className={ui.compactTag}>
-                  Teléfono: {alumno.telefono}
+                  Localidad: {alumno.localidad}
                 </Tag>
               ) : (
                 <Tag color="warning" className={ui.compactTag}>
-                  ⚠️ Sin Teléfono
+                  ⚠️ Sin Localidad
                 </Tag>
               )}
               {alumno.domicilio ? (
@@ -338,23 +338,11 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             <Row gutter={[16, 10]}>
               <Col xs={24} sm={12}>
                 <div className="detail-data-tile">
-                  <span className="detail-tile-label">TELÉFONO DEL ALUMNO</span>
-                  <div>
-                    {alumno.telefono ? (
-                      <a
-                        href={`tel:${alumno.telefono}`}
-                        style={{
-                          color: "var(--cys-color-success-text)",
-                          fontWeight: 600,
-                          fontSize: 14,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <PhoneOutlined />
-                        {alumno.telefono}
-                      </a>
+                  <span className="detail-tile-label">LOCALIDAD</span>
+                  <div className={ui.tightRow}>
+                    <GlobalOutlined className={ui.success} />
+                    {alumno.localidad ? (
+                      <span className="detail-tile-value">{alumno.localidad}</span>
                     ) : (
                       <Space size={4}>
                         <Text type="secondary" className={ui.note}>Sin registrar</Text>
@@ -717,7 +705,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                       Datos del Responsable:
                     </Text>
                     <Tag color="success" className={ui.strongTag}>
-                      DNI: {primaryResponsable.responsable.dni || 'Cargado'}
+                      {primaryResponsable.responsable.dniTipo || 'DNI'}: {primaryResponsable.responsable.dniNumero || primaryResponsable.responsable.dni || 'Cargado'}
                     </Tag>
                     {primaryResponsable.responsable.telefono ? (
                       <Tag color="success" className={ui.compactTag}>
@@ -781,10 +769,10 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                           </Text>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                             <Text type="secondary" className={ui.caption}>
-                              DNI: {item.responsable.dni || '-'}
+                              {item.responsable.dniTipo || 'DNI'}: {item.responsable.dniNumero || item.responsable.dni || '-'}
                             </Text>
-                            {item.responsable.dni && (
-                              <Text copyable={{ text: item.responsable.dni, tooltips: ['Copiar DNI', '¡Copiado!'] }} />
+                            {(item.responsable.dniNumero || item.responsable.dni) && (
+                              <Text copyable={{ text: item.responsable.dniNumero || item.responsable.dni, tooltips: ['Copiar', '¡Copiado!'] }} />
                             )}
                           </div>
                         </div>

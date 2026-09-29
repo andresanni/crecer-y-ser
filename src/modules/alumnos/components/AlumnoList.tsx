@@ -202,16 +202,19 @@ export const AlumnoList: React.FC = () => {
         fecha_nacimiento: values.fechaNacimiento ? values.fechaNacimiento.format('YYYY-MM-DD') : '',
         nacionalidad: values.nacionalidad || '',
         sexo: values.sexo || '',
-        telefono: values.telefono || '',
         domicilio: values.domicilio || '',
+        localidad: values.localidad || '',
         usuario_acadeu: values.usuarioAcadeu || '',
         clave_acadeu: values.claveAcadeu || '',
       };
 
-      const responsableData = values.responsableDni
+      const respNum = values.responsableDniNumero || values.responsableDni;
+      const responsableData = respNum
         ? {
             id: values.responsableId,
-            dni: values.responsableDni || '',
+            dni_tipo: values.responsableDniTipo || 'DNI',
+            dni_numero: respNum,
+            dni: respNum,
             apellidos: values.responsableApellidos || '',
             nombres: values.responsableNombres || '',
             nacionalidad: values.responsableNacionalidad || '',
@@ -221,7 +224,7 @@ export const AlumnoList: React.FC = () => {
           }
         : undefined;
 
-      const vinculo = values.vinculo || 'Tutor/a';
+      const vinculo = values.vinculo || 'Padre';
 
       if (editingAlumno) {
         if (!originalUpdatedDate) throw new Error('Falta la fecha de actualización original');
@@ -267,7 +270,7 @@ export const AlumnoList: React.FC = () => {
               }
             : undefined;
 
-        const vinculo = values.vinculo || 'Tutor/a';
+        const vinculo = values.vinculo || 'Padre';
 
         await alumnoService.createIntegral({
           alumno: alumnoData,

@@ -28,6 +28,7 @@ test -f "$stage_dir/1790364400_versioned_curriculum_by_cycle.js"
 test -f "$stage_dir/1790553600_versioned_approval_authorization.js"
 test -f "$stage_dir/1790625600_document_emissions.js"
 test -f "$stage_dir/1790630000_second_cycle_grading_catalog.js"
+test -f "$stage_dir/1790640000_update_student_and_guardian_fields.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -106,6 +107,7 @@ if test -f /root/pb/pb_migrations/1790625600_document_emissions.js; then cp -a /
 install -m 0644 "$stage_dir/1790625600_document_emissions.js" /root/pb/pb_migrations/1790625600_document_emissions.js
 install -m 0644 "$stage_dir/1790553600_versioned_approval_authorization.js" /root/pb/pb_migrations/1790553600_versioned_approval_authorization.js
 install -m 0644 "$stage_dir/1790630000_second_cycle_grading_catalog.js" /root/pb/pb_migrations/1790630000_second_cycle_grading_catalog.js
+install -m 0644 "$stage_dir/1790640000_update_student_and_guardian_fields.js" /root/pb/pb_migrations/1790640000_update_student_and_guardian_fields.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 

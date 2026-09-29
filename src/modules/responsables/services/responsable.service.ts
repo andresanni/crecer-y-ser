@@ -24,7 +24,7 @@ export const responsableService = {
     try {
       const record = await pb
         .collection(COLLECTION_RESPONSABLES)
-        .getFirstListItem<ResponsableRecord>(`dni = "${sanitizedDni}"`);
+        .getFirstListItem<ResponsableRecord>(`dni_numero = "${sanitizedDni}" || dni = "${sanitizedDni}"`);
       return responsableAdapter(record);
     } catch (error) {
       if (error instanceof ClientResponseError && error.status === 404) {
@@ -92,6 +92,8 @@ export const responsableService = {
         ? responsableAdapter(r.expand.responsable_id)
         : {
             id: r.responsable_id,
+            dniTipo: 'DNI',
+            dniNumero: '',
             dni: '',
             apellidos: '',
             nombres: '',

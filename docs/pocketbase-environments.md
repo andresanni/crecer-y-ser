@@ -273,3 +273,11 @@ Caddy publica unicamente POST/OPTIONS `/api/cys/pdf/generar` y `/api/cys/pdf/lot
 Operacion reproducible: `deploy/publish-pocketbase.ps1` actualiza esquema/hooks, y `deploy/publish-pdf-worker.ps1` construye, empaqueta, instala una release, ejecuta impresion y ZIP sinteticos bajo el usuario del servicio y valida/re carga Caddy. Las releases viven en `/opt/cys-pdf/releases`, con symlink `/opt/cys-pdf/current`; el staging conserva el destino anterior y la configuracion anterior de Caddy. Para rollback del worker, restaurar ese symlink, reiniciar `cys-pdf` y restaurar el proxy si cambio; para PocketBase, usar el respaldo compatible y no revertir el catalogo borrando notas referenciadas. No publicar solo el frontend si el servicio PDF no supera sus pruebas.
 
 Verificaciones: health PocketBase local/productivo, migraciones registradas, permisos de endpoints sin sesion, preflight CORS 204, generacion con Chromium/Linux de 13 y 14 paginas, y prueba del middleware productivo con backend sintetico que obtiene un PDF de 14 paginas y comprueba bytes identicos dentro del ZIP. Las pruebas de persistencia/invalidation contra PocketBase habian sido verificadas en una copia aislada local. No se generaron notas ni visados ficticios en produccion. Queda la aceptacion con una sesion institucional y los datos operativos del colegio, ademas de las fuentes de cierre anual pendientes. Lint, build y las 15 pruebas automatizadas pasan; sigue el warning conocido de bundle.
+
+## Evolución de campos de alumno y responsable — 29 de septiembre de 2026
+
+Migración `1790640000_update_student_and_guardian_fields.js`:
+- Incorpora `localidad` a la colección `alumnos` y retira `telefono` (centralizado exclusivamente en los datos de contacto familiar del responsable).
+- Bifurca el documento de `responsables` en `dni_tipo` (con default `'DNI'`) y `dni_numero`, preservando la búsqueda unívoca por número de documento y evitando colisiones.
+- Mantiene la columna `vinculo` en la relación M:N de `alumno_responable`, simplificando la carga con valor predeterminado `'Padre'`.
+- Los artefactos de despliegue `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh` incluyen la migración para su promoción determinista al VPS.

@@ -53,8 +53,8 @@
 *   **`criterios_evaluacion`**: Los 5 conceptos pedagógicos configurados por materia (`curso_materia_id`, `nombre`, `orden_visual`).
 
 ### 👨‍👩‍👧 Alumnos, Familias e Inscripciones
-*   **`alumnos`**: Estudiantes (`numero_legajo`, `dni`, `apellidos`, `nombres`, `fecha_nacimiento`, `nacionalidad`, `sexo`, `telefono`, `domicilio`, `usuario_acadeu`, `clave_acadeu`).
-*   **`responsables`**: Padres/tutores (`dni`, `apellidos`, `nombres`, `nacionalidad`, `profesion`, `telefono`, `email`).
+*   **`alumnos`**: Estudiantes (`numero_legajo`, `dni`, `apellidos`, `nombres`, `fecha_nacimiento`, `nacionalidad`, `sexo`, `domicilio`, `localidad`, `usuario_acadeu`, `clave_acadeu`).
+*   **`responsables`**: Padres/tutores (`dni_tipo`, `dni_numero`, `apellidos`, `nombres`, `nacionalidad`, `profesion`, `telefono`, `email`).
 *   **`alumno_responable`**: Vínculo M:N entre estudiante y tutor (`alumno_id`, `responsable_id`, `vinculo`).
 *   **`inscripciones`**: Matrícula anual (`alumno_id`, `curso_id`, `ciclo_id`, `numero_orden`, `numero_inscripcion`, `fecha_inscripcion`, `fecha_ingreso`, `fecha_egreso`, `estado`: *Regular* | *Libre* | *Baja*, `promociono_con_acompanamiento`: *SI* | *NO* | *-*, `posee_apoyos`: *SI* | *NO* | *-*, `cuales_apoyos`: *text*).
 

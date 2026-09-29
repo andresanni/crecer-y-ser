@@ -126,11 +126,13 @@ migrate((db) => {
       apellidos: `Prueba ${(`00${index}`).slice(-3)}`,
       nombres: `Alumno ${(`00${index}`).slice(-3)}`,
       nacionalidad: "Datos de prueba",
-      domicilio: `Domicilio de prueba ${index}`
+      domicilio: `Domicilio de prueba ${index}`,
+      localidad: "Localidad de prueba"
     })
 
     save("responsables", id(guardianId), {
-      dni: `8${(`0000000${index}`).slice(-7)}`,
+      dni_tipo: "DNI",
+      dni_numero: `8${(`0000000${index}`).slice(-7)}`,
       apellidos: `Prueba ${(`00${index}`).slice(-3)}`,
       nombres: `Responsable ${(`00${index}`).slice(-3)}`,
       nacionalidad: "Datos de prueba",

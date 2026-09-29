@@ -2,7 +2,9 @@ export interface ResponsableRecord {
   id: string;
   created: string;
   updated: string;
-  dni: string;
+  dni_tipo?: string;
+  dni_numero?: string;
+  dni?: string;
   apellidos: string;
   nombres: string;
   nacionalidad: string;
@@ -13,6 +15,8 @@ export interface ResponsableRecord {
 
 export interface Responsable {
   id: string;
+  dniTipo: string;
+  dniNumero: string;
   dni: string;
   apellidos: string;
   nombres: string;
@@ -25,9 +29,13 @@ export interface Responsable {
 }
 
 export const responsableAdapter = (record: ResponsableRecord): Responsable => {
+  const dniNumero = record.dni_numero || record.dni || '';
+  const dniTipo = record.dni_tipo || 'DNI';
   return {
     id: record.id,
-    dni: record.dni || '',
+    dniTipo,
+    dniNumero,
+    dni: dniNumero,
     apellidos: record.apellidos || '',
     nombres: record.nombres || '',
     nacionalidad: record.nacionalidad || '',
