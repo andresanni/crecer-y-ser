@@ -24,6 +24,7 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import { ClientResponseError } from 'pocketbase';
 const StaffDocumentPreview = React.lazy(() => import('../documentos/StaffDocumentPreview'));
+const BatchDocumentModal = React.lazy(() => import('./BatchDocumentModal'));
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
 import { RevisionCursoHeader, RevisionCursoOverview } from './RevisionCursoOverview';
@@ -89,6 +90,8 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const [reviewLoading, setReviewLoading] = useState(false);
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [previewScope, setPreviewScope] = useState<string | null>(null);
+  const [batchScope, setBatchScope] = useState<string | null>(null);
+  const currentBatchScope = `${selectedCursoId}:${selectedPeriodoId}`;
   const realtimeWorkflow = useGradebookConcurrencyStore((state) => (
     selectedCursoId && selectedPeriodoId
       ? state.workflows[gradebookScopeKey(selectedCursoId, selectedPeriodoId)]
@@ -449,6 +452,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
                 {review ? `${review.visados} de ${review.totalBoletines} boletines visados` : 'Consultando visados'}
               </Tag>
               {review?.etapa === 'LISTO_PARA_PDF' && <Tag color="success">Listo para generar PDFs</Tag>}
+              {import.meta.env.DEV && <Button disabled={!review || reviewLoading || approvalBusy} onClick={() => setBatchScope(currentBatchScope)}>Generar PDFs / ZIP del curso</Button>}
             </Space>
           )}
           {review && review.alumnosSinIncorporar > 0 && (
@@ -493,7 +497,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
                   {review && reviewWorkflowKey === courseWorkflowKey && !reviewLoading && !detailHasChanges && selectedBulletin.elegibilidadPdf && (
                     <Typography.Text type={selectedBulletin.elegibilidadPdf.elegiblePorVisados ? 'success' : 'warning'}>
                       {selectedBulletin.elegibilidadPdf.elegiblePorVisados
-                        ? 'Visados completos para PDF · generación pendiente de habilitar'
+                        ? 'Visados completos para PDF'
                         : selectedBulletin.elegibilidadPdf.motivos.join(' ')}
                     </Typography.Text>
                   )}
@@ -545,6 +549,11 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             />
           )}
         </>
+      )}
+      {import.meta.env.DEV && batchScope === currentBatchScope && selectedCursoId && selectedPeriodoId && (
+        <React.Suspense fallback={<Spin />}>
+          <BatchDocumentModal cursoId={selectedCursoId} periodoId={selectedPeriodoId} cursoNombre={selectedCurso?.nombre || 'Curso'} onClose={() => setBatchScope(null)} />
+        </React.Suspense>
       )}
       {previewScope === documentScope && reviewInscripcionId && selectedPeriodoId && (
         <React.Suspense fallback={<Spin />}>

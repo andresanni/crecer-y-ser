@@ -1,3 +1,4 @@
+import { zipSync } from 'fflate';
 import type { Plugin } from 'vite';
 import { chromium } from 'playwright-core';
 import { PDFDocument } from 'pdf-lib';
@@ -19,7 +20,8 @@ export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
     apply: 'serve',
     configureServer(server) {
       server.middlewares.use(async (request, response, next) => {
-        if (request.url !== '/__cys/pdf-prueba') return next();
+        if (!['/__cys/pdf-prueba', '/__cys/pdf-lote'].includes(request.url || '')) return next();
+        const batch = request.url === '/__cys/pdf-lote';
         response.setHeader('Cache-Control', 'no-store');
         response.setHeader('X-Content-Type-Options', 'nosniff');
         let acquired = false;
@@ -37,10 +39,73 @@ export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
           let body = '';
           for await (const chunk of request) {
             body += chunk.toString();
-            if (body.length > 4096) throw new PdfError('Solicitud demasiado grande.', 413);
+            if (body.length > (batch ? 32000 : 4096)) throw new PdfError('Solicitud demasiado grande.', 413);
           }
-          let input: { inscripcionId?: string; periodoId?: string; huella?: string };
+          let input: { inscripcionId?: string; periodoId?: string; huella?: string; cursoId?: string; emisiones?: Array<{ inscripcionId: string; huella: string; emisionId: string }> };
           try { input = JSON.parse(body); } catch { throw new PdfError('Solicitud inválida.', 400); }
+          const templateVersion = () => {
+            const hash = createHash('sha256');
+            const scan = (directory: string) => {
+              for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+                const file = join(directory, entry.name);
+                if (entry.isDirectory()) scan(file);
+                else { hash.update(file); hash.update(readFileSync(file)); }
+              }
+            };
+            scan(join(server.config.root, 'src/modules/boletines/documentos'));
+            scan(join(server.config.root, 'public/boletines'));
+            return hash.digest('hex');
+          };
+          if (batch) {
+            const validId = (value: unknown) => typeof value === 'string' && /^[a-z0-9]{15}$/.test(value);
+            if (!input || !validId(input.cursoId) || !validId(input.periodoId) || !Array.isArray(input.emisiones) || !input.emisiones.length || input.emisiones.length > 100 || input.emisiones.some(item => !item || !validId(item.inscripcionId) || !validId(item.emisionId) || !/^[a-f0-9]{64}$/.test(item.huella)) || new Set(input.emisiones.map(item => item.inscripcionId)).size !== input.emisiones.length) throw new PdfError('Lote inválido (máximo 100 boletines).', 400);
+            if (!workerKey) throw new PdfError('Configurá el almacenamiento de emisiones antes de descargar lotes.', 503);
+            if (busy) throw new PdfError('Hay otro PDF o ZIP en preparación. Volvé a intentarlo.', 429);
+            busy = true;
+            acquired = true;
+            const version = templateVersion();
+            const headers = { Authorization: authorization };
+            const read = async (path: string) => {
+              if (response.destroyed) throw new PdfError('Descarga cancelada.', 409);
+              const result = await fetch(new URL(path, pb), { headers, signal: AbortSignal.timeout(15000) });
+              if (!result.ok) throw new PdfError('Un boletín del lote cambió o dejó de estar disponible. Volvé a preparar el lote.', result.status);
+              return result;
+            };
+            const validate = async (item: typeof input.emisiones[number]) => {
+              const snapshot = await (await read(`/api/cys/directivo/boletines/${item.inscripcionId}/instantanea?periodoId=${input.periodoId}`)).json() as DocumentSnapshot;
+              if (snapshot.huella !== item.huella || snapshot.datos.curso.id !== input.cursoId) throw new PdfError('Cambió un boletín o no pertenece al curso seleccionado.', 409);
+              const lookup = await (await read(`/api/cys/directivo/boletines/${item.inscripcionId}/emisiones?periodoId=${input.periodoId}&version=${version}`)).json() as { emision: { id: string; huella: string } | null };
+              if (lookup.emision?.id !== item.emisionId || lookup.emision.huella !== item.huella) throw new PdfError('Una emisión ya no corresponde a la versión vigente.', 409);
+              return snapshot;
+            };
+            const files: Record<string, Uint8Array> = Object.create(null);
+            const names = new Set<string>();
+            let size = 0;
+            let zipName = 'BOLETINES.zip';
+            const safe = (name: string) => [...name].map(char => char.charCodeAt(0) < 32 || '<>:"/\\|?*'.includes(char) ? '_' : char).join('').slice(0, 180);
+            for (const item of input.emisiones) {
+              const { datos } = await validate(item);
+              const pdf = await read(`/api/cys/directivo/emisiones/${item.emisionId}/archivo?download=1`);
+              if (!pdf.headers.get('content-type')?.includes('application/pdf')) throw new PdfError('Una emisión no devolvió un PDF.', 502);
+              const bytes = new Uint8Array(await pdf.arrayBuffer());
+              size += bytes.byteLength;
+              if (size > 100 * 1024 * 1024) throw new PdfError('El lote supera el límite de 100 MB.', 413);
+              const base = safe(`${datos.alumno.apellidos}, ${datos.alumno.nombres} - BOLETIN ${datos.bimestreCorte} BIMESTRE`);
+              let name = `${base}.pdf`;
+              let duplicate = 2;
+              while (names.has(name.normalize('NFC').toLocaleLowerCase('es'))) name = `${base} (${duplicate++}).pdf`;
+              names.add(name.normalize('NFC').toLocaleLowerCase('es'));
+              files[name] = bytes;
+              zipName = `${safe(`${datos.curso.nombre} - BOLETINES ${datos.bimestreCorte} BIMESTRE - ${datos.ciclo.ano}`)}.zip`;
+            }
+            for (const item of input.emisiones) await validate(item);
+            if (templateVersion() !== version) throw new PdfError('Cambió la plantilla. Volvé a preparar el lote.', 409);
+            const zip = zipSync(files, { level: 0 });
+            response.setHeader('Content-Type', 'application/zip');
+            response.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(zipName)}`);
+            response.end(Buffer.from(zip));
+            return;
+          }
           if (!input || !/^[a-z0-9]{15}$/.test(input.inscripcionId || '') || !/^[a-z0-9]{15}$/.test(input.periodoId || '') || !/^[a-f0-9]{64}$/.test(input.huella || '')) throw new PdfError('Solicitud inválida.', 400);
           if (busy) throw new PdfError('Hay otro PDF en preparación. Volvé a intentarlo en unos segundos.', 429);
           busy = true;
@@ -55,19 +120,6 @@ export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
           };
           const snapshot = await readSnapshot();
           if (snapshot.huella !== input.huella) throw new PdfError('El boletín cambió. Cerrá y volvé a abrir la vista previa.', 409);
-          const templateVersion = () => {
-            const hash = createHash('sha256');
-            const scan = (directory: string) => {
-              for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-                const file = join(directory, entry.name);
-                if (entry.isDirectory()) scan(file);
-                else { hash.update(file); hash.update(readFileSync(file)); }
-              }
-            };
-            scan(join(server.config.root, 'src/modules/boletines/documentos'));
-            scan(join(server.config.root, 'public/boletines'));
-            return hash.digest('hex');
-          };
           const version = templateVersion();
           const deliver = async (id: string) => {
             const stored = await fetch(new URL(`/api/cys/directivo/emisiones/${id}/archivo?download=1`, pb), { headers: { Authorization: authorization }, signal: AbortSignal.timeout(15000) });
@@ -104,7 +156,8 @@ export function localPdfPlugin(pocketBaseUrl: string, workerKey = ''): Plugin {
             pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true, displayHeaderFooter: false });
           } finally { await browser.close(); }
           const parsed = await PDFDocument.load(pdf);
-          if (parsed.getPageCount() !== 13 || parsed.getPages().some(page => Math.abs(page.getWidth() - 595) > 2 || Math.abs(page.getHeight() - 842) > 2)) throw new PdfError('La paginación del PDF requiere revisión.', 422);
+          const expectedPages = Number(snapshot.datos.curso.nombre.trim()[0]) >= 4 ? 14 : 13;
+          if (parsed.getPageCount() !== expectedPages || parsed.getPages().some(page => Math.abs(page.getWidth() - 595) > 2 || Math.abs(page.getHeight() - 842) > 2)) throw new PdfError('La paginación del PDF requiere revisión.', 422);
           const current = await readSnapshot();
           if (current.huella !== snapshot.huella) throw new PdfError('Los datos o visados cambiaron durante la generación. Volvé a abrir la vista previa.', 409);
           if (templateVersion() !== version) throw new PdfError('Cambió la plantilla durante la generación. Volvé a intentarlo.', 409);

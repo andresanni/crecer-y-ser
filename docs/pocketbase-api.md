@@ -200,3 +200,10 @@ POST `/__cys/pdf-prueba` pertenece al middleware Vite de desarrollo; no es un en
 - GET `/api/cys/directivo/emisiones/:emisionId/archivo?download=1`: sesión institucional; revalida visados y huella, sirve archivo protegido o 409 si fue invalidado. Respuestas no-store.
 
 La colección `emisiones_boletin` no admite acceso directo de clientes. La instantánea se elimina al invalidar; las dependencias se conservan como auditoría. La retirada/corrección de un visado invalida ese corte y posteriores del mismo alumno dentro de su transacción; limpieza física reintentable cada minuto. El motor Vite local usa estos endpoints cuando está configurada la clave privada. Producción permanece sin esta evolución.
+
+
+## ZIP de emisiones por curso (servidor Vite local)
+
+POST `/__cys/pdf-lote` recibe `{ cursoId, periodoId, emisiones: [{ inscripcionId, huella, emisionId }] }`, con sesión institucional en Authorization. Admite de 1 a 100 entradas, sin inscripciones repetidas. Comparte restricciones de loopback y origen del generador individual; requiere la clave privada del worker configurada. No es una ruta de PocketBase ni está desplegada en producción.
+
+Consulta los gateways existentes de instantánea, búsqueda de emisión por versión y descarga protegida. Verifica el curso, la huella y el ID de emisión antes de agregar cada archivo y vuelve a verificar todas las entradas al finalizar. Entrega `application/zip`, `Content-Disposition` UTF-8 y `Cache-Control: no-store`. Un cambio invalida la respuesta completa; no entrega silenciosamente un subconjunto. La selección explícita de los PDFs preparados ocurre en el modal antes de solicitar el ZIP. Límite de 100 MB y exclusión mutua con el generador individual. No persiste el ZIP ni crea un registro de lote.

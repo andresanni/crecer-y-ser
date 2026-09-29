@@ -54,6 +54,14 @@ test('Generación local: autenticación, origen, huella y cambio durante render'
     changeDuringRender = false;
     snapshot.datos.curso.nombre = '4°';
     assert.equal((await call()).status, 422);
+    snapshot.datos.materias.push({ ...materias[9], id: 'extra' });
+    snapshot.datos.periodos[0].evaluaciones.push({ ...snapshot.datos.periodos[0].evaluaciones[9], cursoMateriaId: 'extra' });
+    snapshot.datos.escala[0].etiqueta = 'Destacado 10';
+    reads = 0;
+    const secondCycle = await call();
+    assert.equal(secondCycle.status, 200, await secondCycle.clone().text());
+    assert.equal((await PDFDocument.load(await secondCycle.arrayBuffer())).getPageCount(), 14);
+    assert.equal(reads, 2);
   } finally {
     await vite.close();
     await new Promise(resolve => backend.close(resolve));

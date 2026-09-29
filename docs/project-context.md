@@ -162,3 +162,15 @@ La vista previa local incorpora «Generar PDF de prueba»: el servidor de desarr
 Los tres campos de apoyos/integración de la página 3 ya tienen fuente en `inscripciones`: apoyos y detalle desde primer bimestre, promoción con acompañamiento sólo en cuarto. No deben confundirse con las fuentes pendientes de la hoja anual de síntesis/promoción. El adaptador conserva la semántica anual y omite el detalle no aplicable cuando apoyos es NO; los valores realmente no especificados permanecen sin dato.
 
 Emisión individual persistida en desarrollo: `emisiones_boletin` almacena PDF protegido, instantánea y dependencias. El generador local publica con sesión institucional más secreto de worker; el gateway revalida antes de publicar y descargar. Retiro/corrección revoca emisiones acumulativas transaccionalmente y borra la instantánea; una tarea reintenta el borrado físico. Descargas repetidas reutilizan bytes. Migración local `1790625600_document_emissions.js`; VPS sin cambios. Worker desplegable, cola, lotes y pruebas de recuperación de almacenamiento siguen pendientes. Contrato operativo en `docs/gradebook-pdf-emission.md`.
+
+
+## Emisión por curso y ZIP implementados en desarrollo
+
+La revisión institucional incorpora «Generar PDFs / ZIP del curso». Consulta los visados actuales, prepara secuencialmente los PDFs individuales y expone las exclusiones por alumno; permite descargar juntos los preparados aunque el grado tenga revisiones pendientes. El ZIP se arma en memoria a partir de emisiones persistidas y protegidas, revalidando huella, curso y versión antes de entregar. Los nombres coincidentes reciben sufijos para no sobrescribirse al extraer. Cerrar interrumpe la preparación del cliente; reintentar reutiliza las emisiones vigentes. No hay cola durable de lotes.
+
+El contrato completo y el procedimiento de prueba están en `gradebook-pdf-emission.md`. No se agregaron colecciones ni hooks y no se modificó producción. Generación individual y masiva siguen dependiendo del motor local Vite; el despliegue productivo, segundo ciclo real y fuentes de cierre anual continúan pendientes. Validación: lint, build, 13 pruebas automatizadas y descarga real de un ZIP de dos boletines de 13 páginas, con exclusiones explícitas de tres alumnos sin visado.
+
+
+## Segundo ciclo documental habilitado
+
+El adaptador admite las etiquetas de segundo ciclo con número explícito 1–10 y concepto, independientemente del peso de orden. La malla utiliza 11 materias y genera 14 páginas A4; conserva el diseño de número en línea separada. Los cuatro cursos 4.º–7.º quedaron vinculados a la escala nueva en desarrollo con autorización del usuario. Las notas previas no se convirtieron: el usuario las recargará para realizar la prueba operativa con visados reales. «No corresponde» sin número está soportado cuando se agregue al catálogo. Pasan 15 pruebas automatizadas, incluida generación Edge de segundo ciclo; continúan pendientes las fuentes anuales y el motor en producción. Detalles en `gradebook-pdf-emission.md`.

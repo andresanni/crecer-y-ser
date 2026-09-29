@@ -23,9 +23,6 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     return { documento: null, bloqueos: ['El grado, corte o versión del contrato no está admitido.'], pendientes };
   }
   const grado = Number(match[1]) as GradoPrimario;
-  if (grado >= 4) {
-    return { documento: null, bloqueos: ['Falta configurar y validar la escala de segundo ciclo (concepto y número).'], pendientes };
-  }
   const futuro = { estado: 'futuro' } as const;
   const sinDato = { estado: 'sinDato' } as const;
   const texto = (value: string | null): ValorDocumental => value?.trim() && value !== '-' ? { estado: 'confirmado', texto: value } : sinDato;
@@ -36,21 +33,24 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     const dependencies = data.dependencias.filter(d => d.bimestre === n);
     if (!periodos.has(n) || dependencies.length !== 1 || !dependencies[0].vigente) bloqueos.push(`Faltan datos o visado vigente del bimestre ${n}.`);
   }
-  const escala = new Map<string, ConceptoCalificacion>();
+  const escala = new Map<string, { concepto: ConceptoCalificacion; numero?: number }>();
   data.escala.forEach(value => {
     const key = value.etiqueta.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/\s+/g, ' ');
-    const concepto = conceptos[key];
-    if (!concepto || escala.has(value.id)) bloqueos.push(`Valor de escala no reconocido o duplicado: ${value.etiqueta}.`);
-    else escala.set(value.id, concepto);
+    const numeric = /^(.*?)\s+(?:-\s*)?(10|[1-9])$/.exec(key);
+    const concepto = conceptos[grado >= 4 && numeric ? numeric[1] : key];
+    const numero = grado >= 4 && numeric ? Number(numeric[2]) : undefined;
+    if (!concepto || escala.has(value.id) || (grado >= 4 && (concepto === 'noCorresponde' ? numero !== undefined : numero === undefined))) {
+      bloqueos.push(`Valor de escala no reconocido, duplicado o sin número de segundo ciclo: ${value.etiqueta}.`);
+    } else escala.set(value.id, { concepto, ...(numero === undefined ? {} : { numero }) });
   });
   const nota = (id: string | null | undefined, n: number, campo: string): CalificacionDocumental => {
     if (n > data.bimestreCorte) return futuro;
-    const concepto = id ? escala.get(id) : undefined;
-    if (!concepto) { bloqueos.push(`Falta una calificación válida: ${campo}, bimestre ${n}.`); return sinDato; }
-    return { estado: 'confirmado', concepto };
+    const calificacion = id ? escala.get(id) : undefined;
+    if (!calificacion) { bloqueos.push(`Falta una calificación válida: ${campo}, bimestre ${n}.`); return sinDato; }
+    return { estado: 'confirmado', ...calificacion };
   };
   const materias = [...data.materias].sort((a, b) => a.ordenVisual - b.ordenVisual);
-  if (materias.length !== 10 || materias.filter(m => m.formativa).length !== 2) bloqueos.push('La malla no coincide con la composición de primer ciclo.');
+  if (materias.length !== (grado <= 3 ? 10 : 11) || materias.filter(m => m.formativa).length !== 2) bloqueos.push(`La malla no coincide con la composición de ${grado <= 3 ? 'primer' : 'segundo'} ciclo.`);
   const academic = materias.map(materia => {
     if (materia.criterios.length !== 5) bloqueos.push(`${materia.materiaNombre} requiere cinco conceptos.`);
     const evaluacion = (n: number) => {

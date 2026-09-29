@@ -79,3 +79,30 @@ test('Nota ausente, etiqueta desconocida y período futuro cargado bloquean', ()
   const h = fixture(); h.datos.periodos.push({ bimestre: 2, evaluaciones: [] });
   assert.equal(adapt(h, institution).documento, null);
 });
+
+test('Segundo ciclo separa todas las notas explícitas y admite No corresponde sin número', () => {
+  const labels = ['No Alcanzó Los Objetivos 1', 'No Alcanzó Los Objetivos 2', 'No Alcanzó Los Objetivos 3', 'En Proceso 4', 'En Proceso 5', 'Alcanzado 6', 'Alcanzado 7', 'Avanzado 8', 'Avanzado 9', 'Destacado 10', 'No corresponde'];
+  for (const grado of [4, 5, 6, 7]) {
+    for (const [index, etiqueta] of labels.entries()) {
+      const f = fixture();
+      f.datos.curso.nombre = `${grado}°`;
+      f.datos.materias.push({ ...f.datos.materias[9], id: 'extra' });
+      f.datos.periodos[0].evaluaciones.push({ ...f.datos.periodos[0].evaluaciones[9], cursoMateriaId: 'extra' });
+      f.datos.escala[0] = { id: 'nota', etiqueta, pesoNumerico: 99 };
+      const result = adapt(f, institution);
+      assert.equal(result.bloqueos.length, 0, result.bloqueos.join(' '));
+      assert.equal(result.documento.materiasAcademicas.length, 9);
+      assert.equal(result.documento.materiasAcademicas[0].criterios[0].bimestres[0].numero, index < 10 ? index + 1 : undefined);
+      if (index === 10) assert.equal(result.documento.materiasAcademicas[0].criterios[0].bimestres[0].concepto, 'noCorresponde');
+    }
+  }
+});
+
+test('Segundo ciclo rechaza números inválidos y referencias a la escala anterior', () => {
+  for (const etiqueta of ['Alcanzado', 'Alcanzado 0', 'Alcanzado 11', 'Alcanzado 7.5', 'No corresponde 2', 'Otra nota 7']) {
+    const f = fixture();
+    f.datos.curso.nombre = '7°';
+    f.datos.escala[0].etiqueta = etiqueta;
+    assert.equal(adapt(f, institution).documento, null);
+  }
+});
