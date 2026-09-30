@@ -433,9 +433,13 @@ export const AlumnoList: React.FC = () => {
       key: 'dni',
       width: 150,
       render: (dni) => (
-        <Text copyable={{ text: dni, tooltips: ['Copiar DNI', 'Copiaste el DNI'] }} className="student-dni" style={{ fontWeight: 500 }}>
-          {dni}
-        </Text>
+        dni ? (
+          <Text copyable={{ text: dni, tooltips: ['Copiar DNI', 'Copiaste el DNI'] }} className="student-dni" style={{ fontWeight: 500 }}>
+            {dni}
+          </Text>
+        ) : (
+          <Text type="secondary" style={{ fontStyle: 'italic' }}>Sin DNI</Text>
+        )
       ),
     },
     {
@@ -712,7 +716,7 @@ export const AlumnoList: React.FC = () => {
 
                       <Space orientation="vertical" size={4} style={{ width: '100%', marginBottom: 16 }}>
                         <Text type="secondary" className={ui.caption}>
-                          DNI: <strong className="student-dni">{alumno.dni}</strong>
+                          DNI: <strong className="student-dni">{alumno.dni || 'Sin DNI'}</strong>
                         </Text>
                         <Text type="secondary" className={ui.caption}>
                           {alumno.nacionalidad || 'Estudiante'} {alumno.sexo ? `• ${alumno.sexo}` : ''}
