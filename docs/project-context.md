@@ -184,3 +184,11 @@ La elegibilidad acumulativa, instantaneas y almacenamiento protegido estan despl
 
 Se adaptó el modelo de datos para centralizar el contacto familiar en `responsables` (desdoblando `dni_tipo` y `dni_numero`, eliminando `alumnos.telefono` e incorporando `alumnos.localidad`). El vínculo en `alumno_responable` prioriza 'Padre' como valor por defecto. La ingesta masiva desde Google Sheets consolida los registros históricos y mid-cycle de 2026 mediante un pipeline determinístico con modo dry-run y execute (`scripts/ingest-students.mjs`). El procedimiento operativo, reglas de sanitización y trazabilidad relacional están documentados canónicamente en `docs/student-dataset-ingestion.md`.
 
+## Paginación y filtrado server-side en Directorio de Alumnos (30 de septiembre de 2026)
+
+El Directorio de Alumnos (`/app/alumnos`) implementa paginación server-side de 50 registros por página, resolviendo la desconexión previa donde los filtros de grado y estado se aplicaban en memoria sobre el primer segmento devuelto:
+- `alumnoService.getList` compone consultas de filtrado sobre PocketBase combinando búsqueda textual multi-término, relación inversa de curso (`inscripciones_via_alumno_id.curso_id.nombre ~ "${grade}°"`) y condición de cursada (`inscripciones_via_alumno_id.estado`).
+- Las métricas de cabecera (`regulares`, `bajas`, `total`) se computan en paralelo en el servidor mediante `alumnoService.getCounts` con proyección mínima (`fields: 'id'`), reflejando la totalidad escolar o el subconjunto acotado por grado y búsqueda activa.
+- La navegación por páginas se reinicia a 1 ante cualquier cambio en los filtros de búsqueda, grado o estado.
+- La paginación y el resumen de registros totales aplican de forma consistente tanto en la vista de Tabla como en la vista de Tarjetas (Grid).
+

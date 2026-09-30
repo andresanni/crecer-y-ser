@@ -1,7 +1,7 @@
 import { AlumnoFilters } from './AlumnoFilters';
 import ui from '../../../shared/styles/ui.module.css';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   Table,
   Typography,
@@ -18,6 +18,7 @@ import {
   Empty,
   Tooltip,
   Badge,
+  Pagination,
 } from 'antd';
 import {
   EditOutlined,
@@ -32,7 +33,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { alumnoService } from '../services/alumno.service';
+import { alumnoService, type AlumnoCounts } from '../services/alumno.service';
 import type { Alumno } from '../models/alumno.model';
 import { AlumnoFormModal, type AlumnoFormValues } from './AlumnoFormModal';
 import { AlumnoDetailModal } from './AlumnoDetailModal';
@@ -40,9 +41,7 @@ import { DarDeBajaModal } from './DarDeBajaModal';
 import {
   getGradeColorConfig,
   compareGrados,
-  extractGradeNumber,
   GRADE_PALETTE,
-  ALL_GRADES,
   type GradeNumber,
 } from '../utils/gradeColors';
 import { getAvatarGradient } from '../../../theme';
@@ -55,23 +54,20 @@ export const AlumnoList: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [counts, setCounts] = useState<AlumnoCounts>({ regulares: 0, bajas: 0, total: 0 });
   const [searchTerm, setSearchTerm] = useState('');
   const [inputValue, setInputValue] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-
   const [selectedGradeFilter, setSelectedGradeFilter] = useState<GradeNumber | 'all'>('all');
   const [estadoFilter, setEstadoFilter] = useState<'REGULARES' | 'BAJAS' | 'TODOS'>('REGULARES');
-
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingAlumno, setEditingAlumno] = useState<Alumno | null>(null);
 
-
   const [selectedDetailAlumno, setSelectedDetailAlumno] = useState<Alumno | null>(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
-
 
   const [bajaModalAlumno, setBajaModalAlumno] = useState<Alumno | null>(null);
   const [isBajaModalVisible, setIsBajaModalVisible] = useState(false);
@@ -87,30 +83,50 @@ export const AlumnoList: React.FC = () => {
     };
   }, [inputValue]);
 
+  const handleGradeChange = (val: GradeNumber | 'all') => {
+    setSelectedGradeFilter(val);
+    setCurrentPage(1);
+  };
+
+  const handleStatusChange = (val: 'REGULARES' | 'BAJAS' | 'TODOS') => {
+    setEstadoFilter(val);
+    setCurrentPage(1);
+  };
+
   const fetchAlumnos = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await alumnoService.getList(currentPage, 50, searchTerm);
+      const data = await alumnoService.getList(currentPage, 50, {
+        searchTerm,
+        grade: selectedGradeFilter,
+        status: estadoFilter,
+      });
       setAlumnos(data.items);
       setTotalItems(data.totalItems);
+      setCounts(data.counts);
     } catch (error) {
       console.error('Error al cargar alumnos:', error);
       message.error('Error al cargar la lista de alumnos');
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, message]);
+  }, [currentPage, searchTerm, selectedGradeFilter, estadoFilter, message]);
 
   useEffect(() => {
     let isMounted = true;
 
-    const init = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
-        const data = await alumnoService.getList(currentPage, 50, searchTerm);
+        const data = await alumnoService.getList(currentPage, 50, {
+          searchTerm,
+          grade: selectedGradeFilter,
+          status: estadoFilter,
+        });
         if (!isMounted) return;
         setAlumnos(data.items);
         setTotalItems(data.totalItems);
+        setCounts(data.counts);
       } catch (error) {
         if (!isMounted) return;
         console.error('Error al cargar alumnos:', error);
@@ -118,56 +134,22 @@ export const AlumnoList: React.FC = () => {
       } finally {
         if (isMounted) setLoading(false);
       }
-
-      await alumnoService.subscribeToRealtime((action, alumno) => {
-        if (!isMounted) return;
-        setAlumnos((prev) => {
-          if (action === 'create') {
-            if (prev.some((a) => a.id === alumno.id)) return prev;
-            return [alumno, ...prev];
-          }
-          if (action === 'update') {
-            return prev.map((a) => (a.id === alumno.id ? alumno : a));
-          }
-          if (action === 'delete') {
-            return prev.filter((a) => a.id !== alumno.id);
-          }
-          return prev;
-        });
-      });
     };
 
-    void init();
+    void loadData();
+
+    void alumnoService.subscribeToRealtime(() => {
+      if (!isMounted) return;
+      void loadData();
+    });
 
     return () => {
       isMounted = false;
-      alumnoService.unsubscribeRealtime();
+      void alumnoService.unsubscribeRealtime();
     };
-  }, [currentPage, searchTerm, message]);
+  }, [currentPage, searchTerm, selectedGradeFilter, estadoFilter, message]);
 
-
-
-
-  const counts = useMemo(() => {
-    const bajas = alumnos.filter((a) => a.estadoInscripcion === 'Baja').length;
-    const regulares = alumnos.length - bajas;
-    return { regulares, bajas, total: alumnos.length };
-  }, [alumnos]);
-
-
-  const displayedAlumnos = useMemo(() => {
-    return alumnos.filter((a) => {
-
-      if (selectedGradeFilter !== 'all') {
-        if (extractGradeNumber(a.cursoNombre) !== selectedGradeFilter) return false;
-      }
-
-      const isBaja = a.estadoInscripcion === 'Baja';
-      if (estadoFilter === 'REGULARES') return !isBaja;
-      if (estadoFilter === 'BAJAS') return isBaja;
-      return true;
-    });
-  }, [alumnos, selectedGradeFilter, estadoFilter]);
+  const displayedAlumnos = alumnos;
 
   const [editingInitialTab, setEditingInitialTab] = useState<string>('alumno');
 
@@ -353,11 +335,6 @@ export const AlumnoList: React.FC = () => {
       key: 'grado',
       width: 155,
       sorter: (a, b) => compareGrados(a.cursoNombre, b.cursoNombre),
-      filters: ALL_GRADES.map((num) => ({
-        text: GRADE_PALETTE[num].label,
-        value: num,
-      })),
-      onFilter: (value, record) => extractGradeNumber(record.cursoNombre) === value,
       render: (_, record) => {
         const config = getGradeColorConfig(record.cursoNombre);
         if (!record.cursoNombre) {
@@ -534,12 +511,12 @@ export const AlumnoList: React.FC = () => {
       <AlumnoFilters
         counts={counts}
         status={estadoFilter}
-        onStatusChange={setEstadoFilter}
+        onStatusChange={handleStatusChange}
         query={inputValue}
         appliedQuery={searchTerm}
         onQueryChange={setInputValue}
         grade={selectedGradeFilter}
-        onGradeChange={setSelectedGradeFilter}
+        onGradeChange={handleGradeChange}
         loading={loading}
         onRefresh={fetchAlumnos}
       />
@@ -602,7 +579,7 @@ export const AlumnoList: React.FC = () => {
             pagination={{
               current: currentPage,
               pageSize: 50,
-              total: selectedGradeFilter === 'all' && estadoFilter === 'TODOS' ? totalItems : displayedAlumnos.length,
+              total: totalItems,
               onChange: (page) => setCurrentPage(page),
               showSizeChanger: false,
               showTotal: (total) => (
@@ -753,6 +730,22 @@ export const AlumnoList: React.FC = () => {
                 );
               })}
             </Row>
+          )}
+          {totalItems > 50 && (
+            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+              <Pagination
+                current={currentPage}
+                pageSize={50}
+                total={totalItems}
+                onChange={(page) => setCurrentPage(page)}
+                showSizeChanger={false}
+                showTotal={(total) => (
+                  <Text type="secondary" style={{ fontSize: 13 }}>
+                    Total: <strong>{total}</strong> registros
+                  </Text>
+                )}
+              />
+            </div>
           )}
         </div>
       )}
