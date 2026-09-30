@@ -15,6 +15,7 @@ Antes de modificar código, consultar:
 7. `docs/pocketbase-environments.md` antes de crear, probar, promover, revertir o sincronizar cambios entre PocketBase local y el VPS.
 8. `docs/landing-production-readiness.md` cuando el trabajo afecte contenido, diseño, recursos o formulario de la landing pública.
 9. `docs/branching-strategy.md` antes de crear ramas, integrar cambios, preparar releases o aplicar hotfixes.
+10. `docs/student-dataset-ingestion.md` antes de preparar, validar o ingestar datasets masivos de estudiantes y cursada.
 
 ## Reglas de trabajo
 

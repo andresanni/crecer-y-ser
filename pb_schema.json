@@ -226,8 +226,8 @@
       },
       {
         "system": false,
-        "id": "alu_telefono",
-        "name": "telefono",
+        "id": "alu_localidad",
+        "name": "localidad",
         "type": "text",
         "required": false,
         "presentable": false,
@@ -1146,8 +1146,22 @@
     "schema": [
       {
         "system": false,
-        "id": "j2xgm2gg",
-        "name": "dni",
+        "id": "resp_dni_tipo",
+        "name": "dni_tipo",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "resp_dni_num",
+        "name": "dni_numero",
         "type": "text",
         "required": false,
         "presentable": false,

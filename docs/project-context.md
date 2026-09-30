@@ -179,3 +179,8 @@ El adaptador admite las etiquetas de segundo ciclo con número explícito 1–10
 ## Estado de publicacion PDF (29 de septiembre de 2026)
 
 La elegibilidad acumulativa, instantaneas y almacenamiento protegido estan desplegados en PocketBase productivo. El generador Node/Chromium corre como servicio independiente `cys-pdf` en el VPS; Caddy publica las rutas PDF con sesion y origen permitido. Los botones individual y ZIP se habilitan tambien en el build productivo. Desarrollo y produccion comparten plantilla, adaptador y middleware. La migracion de catalogo de segundo ciclo se aplico en ambos entornos sin copiar datos operativos. Las fuentes anuales siguen pendientes. El procedimiento, respaldo y verificaciones quedan en `gradebook-pdf-emission.md`; la publicacion del frontend se realiza mediante PR dev -> master.
+
+## Ingesta y consolidación del dataset de estudiantes (29 de septiembre de 2026)
+
+Se adaptó el modelo de datos para centralizar el contacto familiar en `responsables` (desdoblando `dni_tipo` y `dni_numero`, eliminando `alumnos.telefono` e incorporando `alumnos.localidad`). El vínculo en `alumno_responable` prioriza 'Padre' como valor por defecto. La ingesta masiva desde Google Sheets consolida los registros históricos y mid-cycle de 2026 mediante un pipeline determinístico con modo dry-run y execute (`scripts/ingest-students.mjs`). El procedimiento operativo, reglas de sanitización y trazabilidad relacional están documentados canónicamente en `docs/student-dataset-ingestion.md`.
+

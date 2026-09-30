@@ -16,8 +16,8 @@ export interface CreateAlumnoIntegralParams {
     fecha_nacimiento: string;
     nacionalidad?: string;
     sexo?: string;
-    telefono?: string;
     domicilio?: string;
+    localidad?: string;
     usuario_acadeu?: string;
     clave_acadeu?: string;
   };
@@ -33,7 +33,9 @@ export interface CreateAlumnoIntegralParams {
   };
   responsable?: {
     id?: string;
-    dni: string;
+    dni_tipo?: string;
+    dni_numero?: string;
+    dni?: string;
     apellidos: string;
     nombres: string;
     nacionalidad?: string;
@@ -186,8 +188,8 @@ export const alumnoService = {
         fecha_nacimiento: params.alumno.fecha_nacimiento,
         nacionalidad: (params.alumno.nacionalidad || '').trim(),
         sexo: (params.alumno.sexo || '').trim(),
-        telefono: (params.alumno.telefono || '').trim(),
         domicilio: (params.alumno.domicilio || '').trim(),
+        localidad: (params.alumno.localidad || '').trim(),
         usuario_acadeu: (params.alumno.usuario_acadeu || '').trim(),
         clave_acadeu: (params.alumno.clave_acadeu || '').trim(),
       });
@@ -200,20 +202,21 @@ export const alumnoService = {
       );
     }
 
-
-    if (params.responsable && params.responsable.dni?.trim()) {
+    const respDniNum = (params.responsable?.dni_numero || params.responsable?.dni || '').trim();
+    if (params.responsable && respDniNum) {
       try {
         if (!responsableId) {
-          const sanitizedDni = params.responsable.dni.trim().replace(/"/g, '\\"');
+          const sanitizedDni = respDniNum.replace(/"/g, '\\"');
           try {
             const existing = await pb
               .collection(COLLECTION_RESPONSABLES)
-              .getFirstListItem(`dni = "${sanitizedDni}"`);
+              .getFirstListItem(`dni_numero = "${sanitizedDni}" || dni = "${sanitizedDni}"`);
             responsableId = existing.id;
           } catch {
 
             const newResp = await pb.collection(COLLECTION_RESPONSABLES).create({
-              dni: params.responsable.dni.trim(),
+              dni_tipo: (params.responsable.dni_tipo || 'DNI').trim(),
+              dni_numero: respDniNum,
               apellidos: params.responsable.apellidos.trim(),
               nombres: params.responsable.nombres.trim(),
               nacionalidad: (params.responsable.nacionalidad || '').trim(),
@@ -235,13 +238,12 @@ export const alumnoService = {
         );
       }
 
-
       if (responsableId && createdAlumnoRecord) {
         try {
           const relRecord = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).create({
             alumno_id: createdAlumnoRecord.id,
             responsable_id: responsableId,
-            vinculo: (params.vinculo || 'Tutor/a').trim(),
+            vinculo: (params.vinculo || 'Padre').trim(),
           });
           newlyCreatedAlumnoResponsableId = relRecord.id;
         } catch (error) {
@@ -324,7 +326,9 @@ export const alumnoService = {
       };
       responsable?: {
         id?: string;
-        dni: string;
+        dni_tipo?: string;
+        dni_numero?: string;
+        dni?: string;
         apellidos: string;
         nombres: string;
         nacionalidad?: string;
@@ -387,20 +391,22 @@ export const alumnoService = {
     }
 
 
-    if (params.responsable && params.responsable.dni?.trim()) {
+    const updateDniNum = (params.responsable?.dni_numero || params.responsable?.dni || '').trim();
+    if (params.responsable && updateDniNum) {
       let responsableId = params.responsable.id;
-      const sanitizedDni = params.responsable.dni.trim().replace(/"/g, '\\"');
+      const sanitizedDni = updateDniNum.replace(/"/g, '\\"');
 
       if (!responsableId) {
         try {
           const existing = await pb
             .collection(COLLECTION_RESPONSABLES)
-            .getFirstListItem(`dni = "${sanitizedDni}"`);
+            .getFirstListItem(`dni_numero = "${sanitizedDni}" || dni = "${sanitizedDni}"`);
           responsableId = existing.id;
         } catch {
 
           const newResp = await pb.collection(COLLECTION_RESPONSABLES).create({
-            dni: params.responsable.dni.trim(),
+            dni_tipo: (params.responsable.dni_tipo || 'DNI').trim(),
+            dni_numero: updateDniNum,
             apellidos: (params.responsable.apellidos || '').trim(),
             nombres: (params.responsable.nombres || '').trim(),
             nacionalidad: (params.responsable.nacionalidad || '').trim(),
@@ -414,6 +420,8 @@ export const alumnoService = {
 
         try {
           await pb.collection(COLLECTION_RESPONSABLES).update(responsableId, {
+            ...(params.responsable.dni_tipo ? { dni_tipo: params.responsable.dni_tipo.trim() } : {}),
+            dni_numero: updateDniNum,
             apellidos: (params.responsable.apellidos || '').trim(),
             nombres: (params.responsable.nombres || '').trim(),
             nacionalidad: (params.responsable.nacionalidad || '').trim(),
@@ -426,7 +434,6 @@ export const alumnoService = {
         }
       }
 
-
       if (responsableId) {
         try {
           const existingRels = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).getFullList({
@@ -436,13 +443,13 @@ export const alumnoService = {
           if (matchRel) {
             await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).update(matchRel.id, {
               responsable_id: responsableId,
-              vinculo: (params.vinculo || 'Tutor/a').trim(),
+              vinculo: (params.vinculo || 'Padre').trim(),
             });
           } else {
             await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).create({
               alumno_id: id,
               responsable_id: responsableId,
-              vinculo: (params.vinculo || 'Tutor/a').trim(),
+              vinculo: (params.vinculo || 'Padre').trim(),
             });
           }
         } catch (e) {

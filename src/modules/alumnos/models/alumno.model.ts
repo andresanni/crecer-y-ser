@@ -9,8 +9,8 @@ export interface AlumnoRecord {
   fecha_nacimiento: string;
   nacionalidad: string;
   sexo: string;
-  telefono: string;
   domicilio: string;
+  localidad?: string;
   usuario_acadeu: string;
   clave_acadeu: string;
   expand?: {
@@ -49,8 +49,8 @@ export interface Alumno {
   fechaNacimiento: string;
   nacionalidad: string;
   sexo: string;
-  telefono: string;
   domicilio: string;
+  localidad?: string;
   usuarioAcadeu: string;
   claveAcadeu: string;
   cursoId?: string;
@@ -85,8 +85,8 @@ export const alumnoAdapter = (record: AlumnoRecord): Alumno => {
     fechaNacimiento: record.fecha_nacimiento || '',
     nacionalidad: record.nacionalidad || '',
     sexo: record.sexo || '',
-    telefono: record.telefono || '',
     domicilio: record.domicilio || '',
+    localidad: record.localidad || '',
     usuarioAcadeu: record.usuario_acadeu || '',
     claveAcadeu: record.clave_acadeu || '',
     cursoId: cursoRecord?.id || activeInsc?.curso_id || undefined,

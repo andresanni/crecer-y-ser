@@ -202,16 +202,19 @@ export const AlumnoList: React.FC = () => {
         fecha_nacimiento: values.fechaNacimiento ? values.fechaNacimiento.format('YYYY-MM-DD') : '',
         nacionalidad: values.nacionalidad || '',
         sexo: values.sexo || '',
-        telefono: values.telefono || '',
         domicilio: values.domicilio || '',
+        localidad: values.localidad || '',
         usuario_acadeu: values.usuarioAcadeu || '',
         clave_acadeu: values.claveAcadeu || '',
       };
 
-      const responsableData = values.responsableDni
+      const respNum = values.responsableDniNumero || values.responsableDni;
+      const responsableData = respNum
         ? {
             id: values.responsableId,
-            dni: values.responsableDni || '',
+            dni_tipo: values.responsableDniTipo || 'DNI',
+            dni_numero: respNum,
+            dni: respNum,
             apellidos: values.responsableApellidos || '',
             nombres: values.responsableNombres || '',
             nacionalidad: values.responsableNacionalidad || '',
@@ -221,7 +224,7 @@ export const AlumnoList: React.FC = () => {
           }
         : undefined;
 
-      const vinculo = values.vinculo || 'Tutor/a';
+      const vinculo = values.vinculo || 'Padre';
 
       if (editingAlumno) {
         if (!originalUpdatedDate) throw new Error('Falta la fecha de actualización original');
@@ -267,7 +270,7 @@ export const AlumnoList: React.FC = () => {
               }
             : undefined;
 
-        const vinculo = values.vinculo || 'Tutor/a';
+        const vinculo = values.vinculo || 'Padre';
 
         await alumnoService.createIntegral({
           alumno: alumnoData,
@@ -430,9 +433,13 @@ export const AlumnoList: React.FC = () => {
       key: 'dni',
       width: 150,
       render: (dni) => (
-        <Text copyable={{ text: dni, tooltips: ['Copiar DNI', 'Copiaste el DNI'] }} className="student-dni" style={{ fontWeight: 500 }}>
-          {dni}
-        </Text>
+        dni ? (
+          <Text copyable={{ text: dni, tooltips: ['Copiar DNI', 'Copiaste el DNI'] }} className="student-dni" style={{ fontWeight: 500 }}>
+            {dni}
+          </Text>
+        ) : (
+          <Text type="secondary" style={{ fontStyle: 'italic' }}>Sin DNI</Text>
+        )
       ),
     },
     {
@@ -709,7 +716,7 @@ export const AlumnoList: React.FC = () => {
 
                       <Space orientation="vertical" size={4} style={{ width: '100%', marginBottom: 16 }}>
                         <Text type="secondary" className={ui.caption}>
-                          DNI: <strong className="student-dni">{alumno.dni}</strong>
+                          DNI: <strong className="student-dni">{alumno.dni || 'Sin DNI'}</strong>
                         </Text>
                         <Text type="secondary" className={ui.caption}>
                           {alumno.nacionalidad || 'Estudiante'} {alumno.sexo ? `• ${alumno.sexo}` : ''}

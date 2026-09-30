@@ -50,7 +50,6 @@ import type { Curso, CicloLectivo, EstadoInscripcion } from '../../inscripciones
 const { Text } = Typography;
 
 export interface AlumnoFormValues {
-
   numeroLegajo?: string;
   dni: string;
   apellidos: string;
@@ -58,11 +57,10 @@ export interface AlumnoFormValues {
   fechaNacimiento: dayjs.Dayjs | null;
   nacionalidad?: string;
   sexo?: string;
-  telefono?: string;
   domicilio?: string;
+  localidad?: string;
   usuarioAcadeu?: string;
   claveAcadeu?: string;
-
 
   cursoId?: string;
   cicloId?: string;
@@ -73,8 +71,9 @@ export interface AlumnoFormValues {
   fechaEgreso?: dayjs.Dayjs | null;
   estadoInscripcion?: EstadoInscripcion;
 
-
   responsableId?: string;
+  responsableDniTipo?: string;
+  responsableDniNumero?: string;
   responsableDni?: string;
   responsableApellidos?: string;
   responsableNombres?: string;
@@ -94,13 +93,22 @@ interface AlumnoFormModalProps {
 }
 
 const VINCULO_OPTIONS = [
-  { label: 'Madre', value: 'Madre' },
   { label: 'Padre', value: 'Padre' },
+  { label: 'Madre', value: 'Madre' },
   { label: 'Tutor / Tutora Legal', value: 'Tutor/a' },
   { label: 'Abuelo / Abuela', value: 'Abuelo/a' },
   { label: 'Tío / Tía', value: 'Tío/a' },
   { label: 'Hermano / Hermana', value: 'Hermano/a' },
   { label: 'Otro', value: 'Otro' },
+];
+
+const DNI_TIPO_OPTIONS = [
+  { label: 'DNI', value: 'DNI' },
+  { label: 'Pasaporte', value: 'Pasaporte' },
+  { label: 'LC', value: 'LC' },
+  { label: 'LE', value: 'LE' },
+  { label: 'CI', value: 'CI' },
+  { label: 'Extranjero', value: 'Extranjero' },
 ];
 
 const SEXO_OPTIONS = [
@@ -190,7 +198,8 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             estadoInscripcion: 'Regular',
             nacionalidad: 'Argentina',
             responsableNacionalidad: 'Argentina',
-            vinculo: 'Madre',
+            responsableDniTipo: 'DNI',
+            vinculo: 'Padre',
           });
         }
       } catch (error) {
@@ -220,8 +229,8 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         fechaNacimiento: birthDate,
         nacionalidad: initialValues.nacionalidad || 'Argentina',
         sexo: initialValues.sexo || 'Femenino',
-        telefono: initialValues.telefono,
         domicilio: initialValues.domicilio,
+        localidad: initialValues.localidad,
         usuarioAcadeu: initialValues.usuarioAcadeu,
         claveAcadeu: initialValues.claveAcadeu,
         cursoId: initialValues.cursoId,
@@ -238,19 +247,22 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
           if (!active) return;
           if (responsables && responsables.length > 0) {
             const primary = responsables[0];
+            const primaryDni = primary.responsable.dniNumero || primary.responsable.dni;
             setExistingResponsable(primary.responsable);
             setDniSearched(true);
-            setLastSearchedDni(primary.responsable.dni);
+            setLastSearchedDni(primaryDni);
             form.setFieldsValue({
               responsableId: primary.responsable.id,
-              responsableDni: primary.responsable.dni,
+              responsableDniTipo: primary.responsable.dniTipo || 'DNI',
+              responsableDniNumero: primaryDni,
+              responsableDni: primaryDni,
               responsableApellidos: primary.responsable.apellidos,
               responsableNombres: primary.responsable.nombres,
               responsableNacionalidad: primary.responsable.nacionalidad || 'Argentina',
               responsableProfesion: primary.responsable.profesion || '',
               responsableTelefono: primary.responsable.telefono || '',
               responsableEmail: primary.responsable.email || '',
-              vinculo: primary.vinculo || 'Madre',
+              vinculo: primary.vinculo || 'Padre',
             });
           } else {
             setExistingResponsable(null);
@@ -258,6 +270,8 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             setLastSearchedDni('');
             form.setFieldsValue({
               responsableId: undefined,
+              responsableDniTipo: 'DNI',
+              responsableDniNumero: '',
               responsableDni: '',
               responsableApellidos: '',
               responsableNombres: '',
@@ -265,7 +279,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               responsableProfesion: '',
               responsableTelefono: '',
               responsableEmail: '',
-              vinculo: 'Madre',
+              vinculo: 'Padre',
             });
           }
         })
@@ -294,7 +308,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
 
   const handleSearchResponsable = useCallback(
     async (dniToSearch?: string) => {
-      const dni = (dniToSearch ?? form.getFieldValue('responsableDni') ?? '').toString().trim();
+      const dni = (dniToSearch ?? form.getFieldValue('responsableDniNumero') ?? form.getFieldValue('responsableDni') ?? '').toString().trim();
       if (!dni || dni.length < 5) return;
       if (dni === lastSearchedDni && dniSearched) return;
 
@@ -305,10 +319,13 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         setDniSearched(true);
 
         if (resp) {
+          const respDni = resp.dniNumero || resp.dni;
           setExistingResponsable(resp);
           form.setFieldsValue({
             responsableId: resp.id,
-            responsableDni: resp.dni,
+            responsableDniTipo: resp.dniTipo || 'DNI',
+            responsableDniNumero: respDni,
+            responsableDni: respDni,
             responsableApellidos: resp.apellidos,
             responsableNombres: resp.nombres,
             responsableNacionalidad: resp.nacionalidad || 'Argentina',
@@ -427,7 +444,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         const errorFields = info.errorFields || [];
         const alumnoFieldNames = ['dni', 'apellidos', 'nombres', 'fechaNacimiento'];
         const inscripcionFieldNames = ['cursoId', 'cicloId', 'fechaEgreso'];
-        const responsableFieldNames = ['responsableDni', 'responsableApellidos', 'responsableNombres', 'vinculo'];
+        const responsableFieldNames = ['responsableDni', 'responsableDniNumero', 'responsableDniTipo', 'responsableApellidos', 'responsableNombres', 'vinculo'];
 
         if (isEditing) {
           if (errorFields.some((f: { name: string[] }) => alumnoFieldNames.includes(f.name[0]))) {
@@ -474,13 +491,13 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             <Tag color="success" className={ui.strongTag}>
               DNI: {initialValues?.dni || 'Cargado'}
             </Tag>
-            {initialValues?.telefono ? (
+            {initialValues?.localidad ? (
               <Tag color="success" className={ui.compactTag}>
-                Teléfono: {initialValues.telefono}
+                Localidad: {initialValues.localidad}
               </Tag>
             ) : (
               <Tag color="warning" className={ui.compactTag}>
-                ⚠️ Sin Teléfono
+                ⚠️ Sin Localidad
               </Tag>
             )}
             {initialValues?.domicilio ? (
@@ -582,35 +599,35 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12} md={5}>
+        <Col xs={24} sm={12} md={8}>
           <Form.Item name="sexo" label="Sexo">
             <Select placeholder="Seleccione sexo" options={SEXO_OPTIONS} />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={9}>
           <Form.Item name="nacionalidad" label="Nacionalidad">
             <Input prefix={<GlobalOutlined className={ui.success} />} placeholder="Ej. Argentina" />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Form.Item name="telefono" label="Teléfono">
-            <Input prefix={<PhoneOutlined className={ui.success} />} placeholder="Ej. +54 9 11 1234-5678" />
           </Form.Item>
         </Col>
       </Row>
 
       <Row gutter={14}>
-        <Col xs={24} md={12}>
+        <Col xs={24} md={8}>
           <Form.Item name="domicilio" label="Domicilio">
-            <Input prefix={<HomeOutlined className={ui.success} />} placeholder="Ej. Av. San Martín 1234, CABA" />
+            <Input prefix={<HomeOutlined className={ui.success} />} placeholder="Ej. Av. San Martín 1234" />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} md={6}>
+          <Form.Item name="localidad" label="Localidad">
+            <Input placeholder="Ej. CABA, Vicente López" />
+          </Form.Item>
+        </Col>
+        <Col xs={24} sm={12} md={5}>
           <Form.Item name="usuarioAcadeu" label="Usuario Acadeu">
             <Input prefix={<UserOutlined className={ui.primary} />} placeholder="Ej. alumno.perez" />
           </Form.Item>
         </Col>
-        <Col xs={24} sm={12} md={6}>
+        <Col xs={24} sm={12} md={5}>
           <Form.Item name="claveAcadeu" label="Clave Acadeu">
             <Input.Password prefix={<LockOutlined className={ui.primary} />} placeholder="Contraseña de acceso" />
           </Form.Item>
@@ -813,13 +830,13 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             <Text strong className={ui.sectionLabel}>
               Datos del Responsable:
             </Text>
-            {form.getFieldValue('responsableDni') || existingResponsable?.dni ? (
+            {form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni') || existingResponsable?.dniNumero || existingResponsable?.dni ? (
               <Tag color="success" className={ui.strongTag}>
-                DNI: {form.getFieldValue('responsableDni') || existingResponsable?.dni}
+                {form.getFieldValue('responsableDniTipo') || existingResponsable?.dniTipo || 'DNI'}: {form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni') || existingResponsable?.dniNumero || existingResponsable?.dni}
               </Tag>
             ) : (
               <Tag color="warning" className={ui.compactTag}>
-                ⚠️ Sin DNI
+                ⚠️ Sin Documento
               </Tag>
             )}
             {form.getFieldValue('responsableTelefono') || existingResponsable?.telefono ? (
@@ -860,7 +877,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
                 <strong>
                   {existingResponsable.apellidos}, {existingResponsable.nombres}
                 </strong>{' '}
-                (DNI: {existingResponsable.dni}) ya está registrado en el sistema.
+                ({existingResponsable.dniTipo || 'DNI'}: {existingResponsable.dniNumero || existingResponsable.dni}) ya está registrado en el sistema.
               </span>
               <Button size="small" icon={<ReloadOutlined />} onClick={handleClearResponsable}>
                 Buscar otro DNI
@@ -882,12 +899,22 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       )}
 
       <Row gutter={14}>
-        <Col xs={24} sm={12} md={isEditing ? 7 : 9}>
+        <Col xs={24} sm={8} md={isEditing ? 4 : 4}>
           <Form.Item
-            name="responsableDni"
-            label="DNI del Responsable"
+            name="responsableDniTipo"
+            label="Tipo Doc."
+            initialValue="DNI"
+          >
+            <Select options={DNI_TIPO_OPTIONS} />
+          </Form.Item>
+        </Col>
+
+        <Col xs={24} sm={16} md={isEditing ? 8 : 8}>
+          <Form.Item
+            name="responsableDniNumero"
+            label="Número de Doc."
             rules={[
-              { required: !isEditing, message: 'Por favor ingrese el DNI del responsable' },
+              { required: !isEditing, message: 'Por favor ingrese el número de documento' },
               { pattern: /^[0-9]+$/, message: 'Solo números sin puntos' },
             ]}
           >
@@ -919,17 +946,18 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
           </Form.Item>
         </Col>
 
-        <Col xs={24} sm={12} md={isEditing ? 8 : 7}>
+        <Col xs={24} sm={12} md={isEditing ? 6 : 6}>
           <Form.Item
             name="vinculo"
             label="Vínculo / Parentesco"
+            initialValue="Padre"
             rules={[{ required: !isEditing, message: 'Seleccione o ingrese el vínculo' }]}
           >
-            <Select placeholder="Ej. Madre, Padre, Tutor" options={VINCULO_OPTIONS} allowClear showSearch />
+            <Select placeholder="Ej. Padre, Madre, Tutor" options={VINCULO_OPTIONS} allowClear showSearch />
           </Form.Item>
         </Col>
 
-        <Col xs={24} sm={12} md={isEditing ? 9 : 8}>
+        <Col xs={24} sm={12} md={isEditing ? 6 : 6}>
           <Form.Item name="responsableTelefono" label="Teléfono de Contacto">
             <Input
               prefix={<PhoneOutlined className={ui.primary} />}
@@ -1053,10 +1081,10 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               fontWeight: 600,
               marginTop: 2,
               paddingLeft: 19,
-              color: existingResponsable || form.getFieldValue('responsableDni') ? "var(--cys-color-success-text)" : "var(--cys-color-warning-text)",
+              color: existingResponsable || form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni') ? "var(--cys-color-success-text)" : "var(--cys-color-warning-text)",
             }}
           >
-            {existingResponsable || form.getFieldValue('responsableDni') ? '✓ Tutor Vinculado' : '⚠️ Sin Responsable'}
+            {existingResponsable || form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni') ? '✓ Tutor Vinculado' : '⚠️ Sin Responsable'}
           </span>
         </div>
       ),
