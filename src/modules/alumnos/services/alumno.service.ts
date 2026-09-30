@@ -1,11 +1,58 @@
 import pb from '../../../core/pocketbase';
 import { alumnoAdapter, type Alumno, type AlumnoRecord } from '../models/alumno.model';
 import type { EstadoInscripcion } from '../../inscripciones/models/inscripcion.model';
+import type { GradeNumber } from '../utils/gradeColors';
 
 const COLLECTION_NAME = 'alumnos';
 const COLLECTION_RESPONSABLES = 'responsables';
 const COLLECTION_ALUMNO_RESPONSABLE = 'alumno_responable';
 const COLLECTION_INSCRIPCIONES = 'inscripciones';
+
+export interface AlumnoListFilters {
+  searchTerm?: string;
+  grade?: GradeNumber | 'all';
+  status?: 'REGULARES' | 'BAJAS' | 'TODOS';
+}
+
+export interface AlumnoCounts {
+  regulares: number;
+  bajas: number;
+  total: number;
+}
+
+export interface AlumnoListResult {
+  items: Alumno[];
+  totalItems: number;
+  totalPages: number;
+  counts: AlumnoCounts;
+}
+
+function buildAlumnoFilter(filters?: AlumnoListFilters): string {
+  if (!filters) return '';
+  const parts: string[] = [];
+
+  const trimmed = (filters.searchTerm || '').trim();
+  if (trimmed) {
+    const words = trimmed.split(/\s+/).filter(Boolean);
+    const searchConditions = words.map((w) => {
+      const sanitized = w.replace(/"/g, '\\"');
+      return `(nombres ~ "${sanitized}" || apellidos ~ "${sanitized}" || dni ~ "${sanitized}" || numero_legajo ~ "${sanitized}" || usuario_acadeu ~ "${sanitized}")`;
+    });
+    parts.push(searchConditions.join(' && '));
+  }
+
+  if (filters.grade && filters.grade !== 'all') {
+    parts.push(`inscripciones_via_alumno_id.curso_id.nombre ~ "${filters.grade}°"`);
+  }
+
+  if (filters.status === 'BAJAS') {
+    parts.push('inscripciones_via_alumno_id.estado = "Baja"');
+  } else if (filters.status === 'REGULARES') {
+    parts.push('(inscripciones_via_alumno_id.id = "" || inscripciones_via_alumno_id.estado != "Baja")');
+  }
+
+  return parts.join(' && ');
+}
 
 export interface CreateAlumnoIntegralParams {
   alumno: {
@@ -47,37 +94,51 @@ export interface CreateAlumnoIntegralParams {
 }
 
 export const alumnoService = {
+  getCounts: async (filters?: Pick<AlumnoListFilters, 'searchTerm' | 'grade'>): Promise<AlumnoCounts> => {
+    const baseFilter = buildAlumnoFilter({
+      searchTerm: filters?.searchTerm,
+      grade: filters?.grade,
+      status: 'TODOS',
+    });
+
+    const filterWith = (extra: string) => (baseFilter ? `(${baseFilter}) && (${extra})` : extra);
+
+    const bajasFilter = filterWith('inscripciones_via_alumno_id.estado = "Baja"');
+    const regularesFilter = filterWith('(inscripciones_via_alumno_id.id = "" || inscripciones_via_alumno_id.estado != "Baja")');
+
+    const [regularesRes, bajasRes, totalRes] = await Promise.all([
+      pb.collection(COLLECTION_NAME).getList(1, 1, { filter: regularesFilter, fields: 'id' }),
+      pb.collection(COLLECTION_NAME).getList(1, 1, { filter: bajasFilter, fields: 'id' }),
+      pb.collection(COLLECTION_NAME).getList(1, 1, { filter: baseFilter, fields: 'id' }),
+    ]);
+
+    return {
+      regulares: regularesRes.totalItems,
+      bajas: bajasRes.totalItems,
+      total: totalRes.totalItems,
+    };
+  },
+
   getList: async (
     page: number = 1,
     perPage: number = 50,
-    searchTerm: string = ''
-  ): Promise<{ items: Alumno[]; totalItems: number; totalPages: number }> => {
-    const trimmed = searchTerm.trim();
-    let filter = '';
+    filters?: string | AlumnoListFilters
+  ): Promise<AlumnoListResult> => {
+    const filterOptions: AlumnoListFilters =
+      typeof filters === 'string' ? { searchTerm: filters } : (filters || {});
 
-    if (trimmed) {
-      const words = trimmed.split(/\s+/).filter(Boolean);
-      if (words.length === 1) {
-        const sanitized = words[0].replace(/"/g, '\\"');
-        filter = `nombres ~ "${sanitized}" || apellidos ~ "${sanitized}" || dni ~ "${sanitized}" || numero_legajo ~ "${sanitized}" || usuario_acadeu ~ "${sanitized}"`;
-      } else if (words.length > 1) {
-        filter = words
-          .map((w) => {
-            const sanitized = w.replace(/"/g, '\\"');
-            return `(nombres ~ "${sanitized}" || apellidos ~ "${sanitized}" || dni ~ "${sanitized}" || numero_legajo ~ "${sanitized}" || usuario_acadeu ~ "${sanitized}")`;
-          })
-          .join(' && ');
-      }
-    }
+    const filter = buildAlumnoFilter(filterOptions);
 
-    const result = await pb.collection(COLLECTION_NAME).getList<AlumnoRecord>(page, perPage, {
-      filter,
-      sort: 'apellidos',
-      expand: 'inscripciones_via_alumno_id.curso_id.nivel_id',
-    });
+    const [result, counts] = await Promise.all([
+      pb.collection(COLLECTION_NAME).getList<AlumnoRecord>(page, perPage, {
+        filter,
+        sort: 'apellidos,nombres',
+        expand: 'inscripciones_via_alumno_id.curso_id.nivel_id',
+      }),
+      alumnoService.getCounts(filterOptions),
+    ]);
 
     const items = result.items.map(alumnoAdapter);
-
 
     const unlinkedIds = items.filter((a) => !a.cursoNombre).map((a) => a.id);
     if (unlinkedIds.length > 0) {
@@ -125,6 +186,7 @@ export const alumnoService = {
       items,
       totalItems: result.totalItems,
       totalPages: result.totalPages,
+      counts,
     };
   },
 
