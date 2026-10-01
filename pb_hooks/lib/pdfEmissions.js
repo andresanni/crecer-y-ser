@@ -28,6 +28,7 @@ function publish(c) {
   if (!/^[a-f0-9]{64}$/.test(version) || !/^[a-f0-9]{64}$/.test(hash) || !/^[a-f0-9]{64}$/.test(c.formValue("archivoSha256"))) throw new BadRequestError("Versión no válida.")
   var upload = $filesystem.fileFromMultipart(c.formFile("archivo"))
   var result
+  var created = false
   var failure = false
   $app.dao().runInTransaction((dao) => {
     var snapshot = currentSnapshot(dao, c.pathParam("inscripcionId"), c.formValue("periodoId"))
@@ -53,9 +54,10 @@ function publish(c) {
     form.setDao(dao)
     form.addFiles("archivo", upload)
     form.submit()
+    created = true
     result = record.getId()
   })
-  return failure ? c.json(409, { message: "Los datos o visados cambiaron durante la generación." }) : c.json(200, { id: result })
+  return failure ? c.json(409, { message: "Los datos o visados cambiaron durante la generación." }) : c.json(200, { id: result, created: created })
 }
 
 function download(c) {

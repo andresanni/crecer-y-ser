@@ -281,3 +281,8 @@ Migración `1790640000_update_student_and_guardian_fields.js`:
 - Bifurca el documento de `responsables` en `dni_tipo` (con default `'DNI'`) y `dni_numero`, preservando la búsqueda unívoca por número de documento y evitando colisiones.
 - Mantiene la columna `vinculo` en la relación M:N de `alumno_responable`, simplificando la carga con valor predeterminado `'Padre'`.
 - Los artefactos de despliegue `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh` incluyen la migración para su promoción determinista al VPS.
+
+
+## Autorización del generador PDF local
+
+PocketBase carga `CYS_PDF_WORKER_KEY` desde `C:/pocketbase/pdf-worker-dev.key` mediante `deploy/start-pocketbase-dev.ps1`. Vite carga la misma clave privada desde `.env.development.local`, sin prefijo `VITE_`. Si se agrega o cambia esa configuración, reiniciar ambos procesos: editar el archivo no modifica el entorno de PocketBase ya iniciado. Un 403 «Generador no autorizado» en la publicación corresponde a esta autorización privada y no acredita un problema de visados. Comparar las claves sin imprimirlas ni guardarlas en logs. No deshabilitar el control para recuperar la descarga.

@@ -1,6 +1,12 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 27 de septiembre de 2026.
+Actualizado: 1 de octubre de 2026.
+
+## Release de pulido de boletines PDF
+
+Los cambios del 1 de octubre simplifican la revisión y descarga: listado alfabético sin buscador ni textos introductorios, progreso junto al listado, botón Visar / Quitar visado, descarga individual sin vista previa y obtención automática al abrir PDFs del curso. Dirección ve PDF listo o Falta visar; los fallos reales permanecen diferenciados. Las observaciones confirmadas vacías se imprimen como --- centrado.
+
+El servidor mantiene un PDF vigente por matrícula y período, invalidación acumulativa, limpieza periódica y reutilización de emisiones. La regeneración se resuelve durante la siguiente obtención, sin decisiones técnicas para dirección. La release no agrega migraciones ni cambia el esquema: requiere actualizar pdfEmissions.js, el worker/plantilla y el frontend. El estado histórico de las etapas anteriores se conserva más abajo.
 
 ## Propósito
 
@@ -105,10 +111,10 @@ El tablero distingue el avance académico del control operativo. Las etapas `PEN
 La tabla de grados muestra por separado el progreso de llenado docente y el de revisión directiva. La revisión se presenta como no habilitada hasta que el curso se entrega; luego muestra el conteo de boletines visados sobre el total de la entrega. El estado indica sólo la instancia del workflow, sin repetir ese conteo. Los grados se identifican por su número y el tablero no filtra por condición de entrega.
 Cada curso muestra una única acción según la etapa: acceso al gestor de enlaces antes de la entrega o apertura de la revisión después. La tabla distribuye sus columnas según el ancho disponible y conserva desplazamiento horizontal sólo para pantallas estrechas.
 
-En la libreta directiva, Anterior y Siguiente recorren únicamente los boletines incorporados a la revisión. La selección del alumno pertenece a la pantalla de revisión para mantener sincronizados la libreta, el estado de visado y la acción correspondiente; los extremos de la lista no permiten avanzar fuera del curso.
+El listado de revisión presenta alumnos en orden alfabético por apellido y nombre, sin buscador ni textos introductorios. Su barra superior contiene el botón de PDFs a la izquierda y el progreso de visados a la derecha, sin un contador adicional de estudiantes. En la libreta directiva, Anterior y Siguiente comparten ese orden y recorren únicamente los boletines incorporados a la revisión. La selección del alumno pertenece a la pantalla de revisión para mantener sincronizados la libreta, el estado de visado y la acción correspondiente; los extremos de la lista no permiten avanzar fuera del curso.
 Después de una corrección confirmada, la libreta conserva su contenido y posición de scroll mientras consulta la nueva instantánea. Durante esa lectura los controles quedan temporalmente inactivos; una falla mantiene los datos anteriores visibles y ofrece reintentar, sin habilitar escrituras con una revisión vencida.
 
-La cabecera de revisión destaca el curso, turno y bimestre sin repetir la entrega. En el detalle, el estado individual de visado, su acción y el conteo del curso permanecen en la barra sticky del alumno. El porcentaje de materias en esa barra se reserva para la carga docente; la revisión parte de boletines ya entregados. Los estilos de esta composición viven junto a los componentes y usan los tokens del tema.
+La cabecera de revisión destaca el curso, turno y bimestre sin repetir la entrega. En el detalle, la barra sticky del alumno muestra sólo VISADO o SIN VISAR y las acciones Visar / Quitar visado y Descargar PDF. El mismo botón cambia entre Visar y Quitar visado según el estado del alumno, con confirmación y control de concurrencia; una corrección sigue retirando automáticamente el visado. La descarga directa exige los visados acumulativos vigentes del corte y no abre una vista previa. El conteo se conserva en el listado del curso. El porcentaje de materias en esa barra se reserva para la carga docente; la revisión parte de boletines ya entregados. Los estilos de esta composición viven junto a los componentes y usan los tokens del tema.
 La barra sticky se adhiere al borde superior del viewport al desplazarse; el encabezado del shell participa del flujo normal y no requiere reservar un espacio superior.
 En las tarjetas de materias de la revisión directiva se omite el indicador de completitud, ya implícita en la entrega. El valor de PPI se muestra en el encabezado y su interruptor ocupa ese mismo lugar durante la edición, junto a las acciones de guardar o descartar. La carga docente conserva sus indicadores de completitud.
 Los conceptos pedagógicos de cada materia usan una medida máxima de lectura y reservan una zona propia para la calificación. Cuando la tarjeta se estrecha, la calificación pasa debajo del texto para evitar superposiciones; esta composición se comparte entre revisión directiva y carga docente.
@@ -192,3 +198,6 @@ El Directorio de Alumnos (`/app/alumnos`) implementa paginación server-side de 
 - La navegación por páginas se reinicia a 1 ante cualquier cambio en los filtros de búsqueda, grado o estado.
 - La paginación y el resumen de registros totales aplican de forma consistente tanto en la vista de Tabla como en la vista de Tarjetas (Grid).
 
+
+
+La UX de PDFs muestra la disponibilidad para descargar: el modal del curso inicia la obtención automáticamente al abrirse y permite Actualizar PDFs, informa PDF listo o Falta visar, sin columna Detalle ni distinción entre archivos nuevos y reutilizados. El resumen cuenta los PDFs listos; Descargar PDFs tiene actividad independiente y entrega un archivo ZIP. La descarga individual informa sólo el inicio de descarga. El worker obtiene el resultado real del publicador y lo transmite en X-CYS-PDF-Result, sin inferencias por duración. Los endpoints y controles de vigencia permanecen iguales.
