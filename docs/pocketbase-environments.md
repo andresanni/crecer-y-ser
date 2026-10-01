@@ -286,3 +286,8 @@ Migración `1790640000_update_student_and_guardian_fields.js`:
 ## Autorización del generador PDF local
 
 PocketBase carga `CYS_PDF_WORKER_KEY` desde `C:/pocketbase/pdf-worker-dev.key` mediante `deploy/start-pocketbase-dev.ps1`. Vite carga la misma clave privada desde `.env.development.local`, sin prefijo `VITE_`. Si se agrega o cambia esa configuración, reiniciar ambos procesos: editar el archivo no modifica el entorno de PocketBase ya iniciado. Un 403 «Generador no autorizado» en la publicación corresponde a esta autorización privada y no acredita un problema de visados. Comparar las claves sin imprimirlas ni guardarlas en logs. No deshabilitar el control para recuperar la descarga.
+
+
+## Promoción del pulido PDF — 1 de octubre de 2026
+
+Sin nuevas migraciones. Respaldo consistente /root/pb/deploy_backups/20261001-091649 y worker /opt/cys-pdf/releases/20261001-091744. Ensayo de hooks en copia aislada saneada del VPS y comparación posterior de 13 tablas de dominio/autorización, esquema e historial de migraciones sin diferencias. Se preservaron datos productivos. La publicación del frontend se realiza mediante PR #11 de dev a master. El detalle de validaciones y rollback está en gradebook-pdf-emission.md.

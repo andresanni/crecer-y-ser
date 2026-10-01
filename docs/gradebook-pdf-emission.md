@@ -287,3 +287,12 @@ Al quitar un visado se invalidan sus emisiones. Volver a visar no resucita el ar
 ## Preparación de release — 1 de octubre de 2026
 
 La release reúne los pulidos aprobados de PDF y revisión directiva, sin nuevas migraciones ni cambios de datos. Se validaron 17 pruebas automatizadas (interfaz en StrictMode, cancelación y reapertura, adapter, elegibilidad acumulativa, persistencia, reutilización y ZIP), lint, build y auditoría de dependencias productivas sin vulnerabilidades. La promoción usa los publicadores versionados de PocketBase y worker, respaldo consistente del VPS y publicación del frontend mediante PR dev → master. Se conserva el warning conocido del bundle.
+
+
+## Publicación del pulido de boletines — 1 de octubre de 2026
+
+PocketBase actualizado mediante publish-pocketbase.ps1, con respaldo consistente /root/pb/deploy_backups/20261001-091649. El ensayo previo sobre una copia reciente aislada y saneada del VPS confirmó cero migraciones pendientes y respuestas 401 sin sesión, 403 con worker incorrecto y 400 para un payload inválido con worker autorizado. Se actualizó el publicador conservando compatibilidad con el frontend anterior. La comparación posterior contra el respaldo verificó igualdad de las 13 tablas de dominio/autorización revisadas, del esquema y del historial de migraciones. No se copiaron datos locales ni se modificaron notas o visados productivos.
+
+Worker publicado mediante publish-pdf-worker.ps1 en /opt/cys-pdf/releases/20261001-091744. Las pruebas bajo cys-pdf con Chromium/Linux confirmaron PDF de 14 páginas, respuesta generated, reutilización con respuesta reused, exposición del resultado por CORS y ZIP con bytes idénticos. La release anterior del worker permanece en /opt/cys-pdf/releases/20260929-063535; el staging /root/cys-pdf-20261001-091744 conserva previous-release y Caddyfile.previous para rollback. Ante una falla del frontend, restaurar el deployment anterior de Vercel; no restaurar la base ni retirar migraciones para revertir sólo estos pulidos.
+
+Aviso operativo observado: apt conserva una advertencia de firma vencida en el repositorio Cloudsmith de Caddy. No impidió instalar/verificar las dependencias ya existentes ni validar y recargar Caddy; se deja registrado para mantenimiento independiente. El warning de tamaño del bundle permanece como deuda conocida.

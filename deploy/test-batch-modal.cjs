@@ -51,7 +51,7 @@ export async function downloadDocumentBatch() { throw Error('No debe descargarse
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== '/batch-test.html') return next();
         res.setHeader('Content-Type', 'text/html');
-        res.end(await server.transformIndexHtml('/batch-test.html', '<div id="root"></div><script type="module" src="/__batch-test"></script>')); 
+        res.end(await server.transformIndexHtml('/batch-test.html', '<div id="root"></div><script type="module" src="/__batch-test"></script>'));
       });
     },
   };
