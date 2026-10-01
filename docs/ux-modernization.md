@@ -67,3 +67,22 @@ La modernización visual fue desarrollada originalmente en la rama `feature/ui-u
 El tablero de Bimestres mantiene la tabla montada durante las actualizaciones de progreso. El botón de actualización muestra actividad durante la consulta y un punto discreto cuando hay cambios Realtime pendientes; sólo la primera carga reemplaza el contenido por un indicador de espera. Si falla una actualización, el último resumen válido permanece visible.
 
 El tema claro es la única presentación. Cada cambio visual debe revisar estados con datos, carga, vacío y error. Ejecutar `npm run lint` y `npm run build`. Para flujos de escritura, usar datos descartables y verificar persistencia después de recargar.
+
+
+## Revisión individual y descarga PDF
+
+La barra del alumno conserva su navegación y muestra únicamente el estado VISADO o SIN VISAR junto a Visar / Quitar visado y Descargar PDF. El conteo de visados pertenece al listado del curso. Se elimina la instancia de vista previa institucional; la descarga se realiza directamente con los controles de elegibilidad y vigencia existentes. El modal de PDFs del curso omite el aviso introductorio de reglas, conservando las alertas operativas de errores y exclusiones.
+
+
+El listado de revisión del curso omite buscador, indicaciones iniciales, subtítulo y contador separado de estudiantes. Su barra superior ubica Generar PDFs del curso a la izquierda y el conteo de boletines visados a la derecha, con ajuste a pantallas estrechas. Los alumnos se ordenan alfabéticamente por apellido y nombre usando comparación española, sin distinguir mayúsculas o acentos; conservan su número de orden. La navegación Anterior/Siguiente de revisión comparte ese orden.
+
+
+La obtención de PDFs muestra actividad durante la comprobación y, en los casos habituales, PDF listo o Falta visar. No expone diferencias entre generación y reutilización. Abrir Generar PDFs del curso inicia la comprobación y generación necesaria. Actualizar PDFs del curso permite repetirla; Descargar PDFs es una acción separada, con su propio estado de actividad. El resumen cuenta PDFs listos para descargar. Descargar PDF individual confirma sólo el inicio de descarga sin abrir modales.
+
+
+En el lote PDF, los boletines sin visados o con bloqueos documentales muestran una advertencia y su motivo; una comprobación terminada con esos bloqueos no usa una barra roja. Los fallos de servicio se informan por separado y muestran mensajes operativos, sin instrucciones de infraestructura dentro de la tabla de alumnos.
+
+
+## Abstracción de PDFs para dirección
+
+El modal del curso muestra únicamente Alumno/a y Estado. Los estados habituales son PDF listo y Falta visar. El resumen indica cuántos PDFs están listos para descargar, sin distinguir generación nueva, regeneración o reutilización. El motivo concreto de un visado faltante puede consultarse sobre su etiqueta, sin una columna adicional. Durante el proceso se conservan los indicadores de actividad. Los casos excepcionales muestran Revisar datos para bloqueos documentales o Reintentar para fallos del servicio, evitando atribuirlos falsamente al visado. La descarga individual confirma solamente Descarga iniciada.

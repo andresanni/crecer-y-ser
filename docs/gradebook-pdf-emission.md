@@ -1,6 +1,6 @@
 # Estrategia de emisión de boletines PDF
 
-28 de septiembre de 2026. Propuesta para acordar antes de implementar. La plantilla v1 está aprobada; no hay motor, persistencia ni interfaz de emisión implementados.
+Documento iniciado el 28 de septiembre de 2026. Conserva la propuesta y el historial de implementación. El generador, la persistencia y las descargas ya están implementados y publicados; las secciones finales registran los pulidos vigentes.
 
 ## Reglas solicitadas
 
@@ -240,3 +240,59 @@ Caddy publica unicamente POST/OPTIONS `/api/cys/pdf/generar` y `/api/cys/pdf/lot
 Operacion reproducible: `deploy/publish-pocketbase.ps1` actualiza esquema/hooks, y `deploy/publish-pdf-worker.ps1` construye, empaqueta, instala una release, ejecuta impresion y ZIP sinteticos bajo el usuario del servicio y valida/re carga Caddy. Las releases viven en `/opt/cys-pdf/releases`, con symlink `/opt/cys-pdf/current`; el staging conserva el destino anterior y la configuracion anterior de Caddy. Para rollback del worker, restaurar ese symlink, reiniciar `cys-pdf` y restaurar el proxy si cambio; para PocketBase, usar el respaldo compatible y no revertir el catalogo borrando notas referenciadas. No publicar solo el frontend si el servicio PDF no supera sus pruebas.
 
 Verificaciones: health PocketBase local/productivo, migraciones registradas, permisos de endpoints sin sesion, preflight CORS 204, generacion con Chromium/Linux de 13 y 14 paginas, y prueba del middleware productivo con backend sintetico que obtiene un PDF de 14 paginas y comprueba bytes identicos dentro del ZIP. Las pruebas de persistencia/invalidation contra PocketBase habian sido verificadas en una copia aislada local. No se generaron notas ni visados ficticios en produccion. Queda la aceptacion con una sesion institucional y los datos operativos del colegio, ademas de las fuentes de cierre anual pendientes. Lint, build y las 15 pruebas automatizadas pasan; sigue el warning conocido de bundle.
+
+
+## Pulido del flujo de descarga — 30 de septiembre de 2026
+
+La revisión individual elimina la vista previa institucional y su modal, navegación de páginas y estilos. La barra del alumno muestra VISADO o SIN VISAR, Visar / Quitar visado y Descargar PDF. El mismo botón cambia entre Visar y Quitar visado según el estado del alumno. Quitar visado requiere confirmación e invalida los PDFs que incluyan ese bimestre; las correcciones siguen invalidándolo automáticamente. Descargar PDF exige la elegibilidad acumulativa vigente, sin cambios locales pendientes ni actualizaciones en curso. Consulta una instantánea nueva y llama al generador existente, que reutiliza la emisión disponible o genera y guarda una nueva; el servidor conserva sus comprobaciones documentales y de vigencia. Cambiar alumno, curso, período o revisión cancela la solicitud del cliente, al igual que perder la habilitación. Una emisión que ya esté procesándose puede terminar guardándose en el servidor. Las plantillas técnicas de desarrollo y el render interno del motor siguen siendo necesarios.
+
+El modal masivo omite el aviso introductorio de reglas y conserva resultados, exclusiones, errores y progreso. En el PDF, las observaciones confirmadas vacías o compuestas sólo por espacios se imprimen como --- centrado horizontal y verticalmente. El dato persistido permanece vacío; los períodos futuros y datos faltantes conservan su tratamiento documental. Este cambio de plantilla modifica su versión calculada y permite regenerar las emisiones anteriores.
+
+
+### Recuperación de autorización local del generador
+
+El 30 de septiembre se reprodujo un 403 al publicar: PocketBase respondía «Generador no autorizado» aunque la clave de `.env.development.local` coincidía con `C:/pocketbase/pdf-worker-dev.key`. Reiniciar la instancia local mediante `deploy/start-pocketbase-dev.ps1` restableció la autorización. Se comprobó una descarga operativa 200 con emisión persistida y 13 páginas A4, sin modificar notas ni visados. El middleware ahora distingue el rechazo 403 del publicador y pide revisar la clave privada y reiniciar los servicios; los mensajes de cambio documental indican actualizar y volver a descargar, sin referencias residuales al modal eliminado.
+
+
+## Resultado explícito de generación y UX de descarga
+
+El publicador devuelve `{ id, created }`: created es true sólo si almacenó una emisión nueva dentro de esa transacción; false si reutilizó una emisión coincidente. El worker entrega `X-CYS-PDF-Result: generated | reused | unknown` y lo expone por CORS. Una descarga de una emisión ya encontrada usa reused; tras render y publicación utiliza created para distinguir una nueva emisión de una reutilización concurrente. Si un backend anterior no informa created, devuelve unknown sin atribuir una generación. No cambia permisos, persistencia ni vigencia. La primera generación y la regeneración tras cambios se presentan juntas como «Generado ahora».
+
+El modal usa Obtener PDFs del curso y Actualizar PDFs del curso. Sus estados son Por comprobar, Procesando PDF…, PDF disponible y No disponible. Detalle muestra Ya estaba generado o Generado ahora según el resultado del servidor; los bloqueos muestran su motivo. Al terminar informa cuántos PDFs están disponibles, existentes y generados ahora. Ante versiones anteriores sin metadatos, informa sólo la disponibilidad. Descargar ZIP mantiene su contador y muestra Descargando ZIP… durante el empaquetado y validación, sin señalar actividad de generación. La descarga individual muestra Procesando PDF… y confirma Descarga iniciada · PDF existente o PDF generado ahora, sin afirmar que el navegador haya terminado de guardar el archivo.
+
+
+## Bloqueos de visado y fallos de servicio en lotes — 1 de octubre de 2026
+
+La falta de visado es una exclusión esperada, no un fallo del proceso: el alumno permanece No disponible con el motivo de elegibilidad y no fuerza una barra roja. Los rechazos documentales 422 recibidos al consultar la instantánea o solicitar el PDF se tratan igual, incluyendo un visado retirado entre consultas. Los errores del servicio se cuentan por separado, permiten reintentar con Actualizar PDFs del curso y no se confunden con alumnos sin visar. El rechazo de autorización privada del publicador conserva el 403, pero muestra un mensaje funcional de indisponibilidad sin instrucciones sobre claves, PocketBase o reinicios en la interfaz.
+
+El diagnóstico local encontró al alumno 15 ya visado y elegible y reprodujo el rechazo de la clave del worker. Reiniciar PocketBase con el lanzador versionado recuperó la autorización; la generación de ese alumno devolvió 200, generated y una emisión almacenada, sin modificar notas ni visados. Un cambio de visado invalida emisiones, pero no cambia la clave privada del proceso. Si se inicia PocketBase fuera del lanzador con un entorno incompleto, los PDFs existentes pueden seguir descargándose mientras las nuevas publicaciones se rechazan.
+
+
+## Inicio automático del lote — 1 de octubre de 2026
+
+Generar PDFs del curso abre el modal e inicia la obtención sin un segundo clic. La consulta inicial muestra Consultando boletines… y cancela su solicitud al cerrar. El arranque se programa para el siguiente turno del navegador y se cancela al desmontar, evitando duplicar consultas y renders durante la comprobación adicional de efectos de StrictMode. Cada apertura nueva relee el curso y reutiliza sus PDFs vigentes. La acción manual restante es Actualizar PDFs del curso.
+
+Descargar PDFs (N) inicia la descarga manual del ZIP; el formato, validaciones y límite del archivo permanecen iguales. Abrir no inicia una descarga al equipo. Cerrar detiene los siguientes alumnos y aborta las solicitudes del cliente; un render ya iniciado puede terminar en el servidor. Reabrir durante ese intervalo puede recibir 429: la interfaz informa que el servicio está terminando otro PDF y permite actualizar después, sin reintentos automáticos. El componente se identifica por curso y período para aislar aperturas de distintos alcances.
+
+Prueba de interfaz con datos sintéticos y Edge: ejecución única bajo StrictMode, consulta inicial, cierre durante lectura y aborto, reapertura con servicio ocupado, curso vacío y fallo de consulta. No modifica PocketBase ni datos académicos.
+
+
+## Abstracción de generación en la interfaz — 1 de octubre de 2026
+
+Dirección ve PDF listo o Falta visar en los casos habituales. Se elimina la columna Detalle y los conteos de generación/reutilización. El resumen muestra únicamente PDFs listos para descargar; el origen técnico del archivo sigue disponible en el contrato del servicio y las pruebas, pero no interviene en la presentación. Un bloqueo documental distinto del visado usa Revisar datos; un fallo del servicio usa Reintentar. Los motivos pueden consultarse sobre la etiqueta de estado y las alertas siguen separando visados pendientes de fallos reales.
+
+Al quitar un visado se invalidan sus emisiones. Volver a visar no resucita el archivo anterior: la próxima apertura automática del modal, actualización o descarga individual genera y almacena el PDF nuevo cuando corresponde, sin una acción de regeneración explícita para dirección. No se agrega una cola en segundo plano ni una generación al confirmar el visado: el procesamiento continúa ocurriendo durante la obtención/descarga, con revalidación de datos y autorizaciones. La interfaz individual sólo confirma Descarga iniciada.
+
+
+## Preparación de release — 1 de octubre de 2026
+
+La release reúne los pulidos aprobados de PDF y revisión directiva, sin nuevas migraciones ni cambios de datos. Se validaron 17 pruebas automatizadas (interfaz en StrictMode, cancelación y reapertura, adapter, elegibilidad acumulativa, persistencia, reutilización y ZIP), lint, build y auditoría de dependencias productivas sin vulnerabilidades. La promoción usa los publicadores versionados de PocketBase y worker, respaldo consistente del VPS y publicación del frontend mediante PR dev → master. Se conserva el warning conocido del bundle.
+
+
+## Publicación del pulido de boletines — 1 de octubre de 2026
+
+PocketBase actualizado mediante publish-pocketbase.ps1, con respaldo consistente /root/pb/deploy_backups/20261001-091649. El ensayo previo sobre una copia reciente aislada y saneada del VPS confirmó cero migraciones pendientes y respuestas 401 sin sesión, 403 con worker incorrecto y 400 para un payload inválido con worker autorizado. Se actualizó el publicador conservando compatibilidad con el frontend anterior. La comparación posterior contra el respaldo verificó igualdad de las 13 tablas de dominio/autorización revisadas, del esquema y del historial de migraciones. No se copiaron datos locales ni se modificaron notas o visados productivos.
+
+Worker publicado mediante publish-pdf-worker.ps1 en /opt/cys-pdf/releases/20261001-091744. Las pruebas bajo cys-pdf con Chromium/Linux confirmaron PDF de 14 páginas, respuesta generated, reutilización con respuesta reused, exposición del resultado por CORS y ZIP con bytes idénticos. La release anterior del worker permanece en /opt/cys-pdf/releases/20260929-063535; el staging /root/cys-pdf-20261001-091744 conserva previous-release y Caddyfile.previous para rollback. Ante una falla del frontend, restaurar el deployment anterior de Vercel; no restaurar la base ni retirar migraciones para revertir sólo estos pulidos.
+
+Aviso operativo observado: apt conserva una advertencia de firma vencida en el repositorio Cloudsmith de Caddy. No impidió instalar/verificar las dependencias ya existentes ni validar y recargar Caddy; se deja registrado para mantenimiento independiente. El warning de tamaño del bundle permanece como deuda conocida.

@@ -212,3 +212,10 @@ Consulta los gateways existentes de instantánea, búsqueda de emisión por vers
 ## Rutas PDF publicadas en produccion
 
 Caddy deriva POST/OPTIONS `/api/cys/pdf/generar` y `/api/cys/pdf/lote` al servicio Node interno. Conservan respectivamente los contratos de `/__cys/pdf-prueba` y `/__cys/pdf-lote`, con Authorization institucional, CORS limitado al origen productivo, revalidacion de visados y respuestas no-store. El frontend usa estas rutas en produccion y las de Vite en desarrollo. El worker requiere siempre clave privada configurada para publicar; no expone un modo de prueba sin persistencia. Las rutas de almacenamiento y descarga protegida siguen perteneciendo a PocketBase.
+
+
+## Resultado de publicación y descarga PDF
+
+POST `/api/cys/directivo/boletines/:inscripcionId/emisiones` amplía su respuesta exitosa a `{ id, created }`. created es true cuando se guardó una nueva emisión y false cuando la transacción reutilizó una coincidente.
+
+El worker individual (`/__cys/pdf-prueba` en desarrollo y `/api/cys/pdf/generar` en producción) devuelve `X-CYS-PDF-Result`: generated para una emisión nueva, reused para una existente y unknown cuando el publicador anterior no informa el resultado. Conserva `X-CYS-Emission-Id` y expone ambos headers mediante CORS. La UI no deduce generación a partir del tiempo de respuesta. El ZIP reúne emisiones disponibles y no genera PDFs.

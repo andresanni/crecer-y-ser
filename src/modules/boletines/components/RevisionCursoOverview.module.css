@@ -42,43 +42,22 @@
   color: var(--cys-color-primary-text);
 }
 
-.introduction {
+.toolbar {
   align-items: center;
   border-bottom: 1px solid var(--cys-color-border-secondary);
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
   justify-content: space-between;
   padding: 18px 24px;
 }
 
-.description {
-  margin: 4px 0 0 !important;
-}
-
-.studentCount {
-  align-items: baseline;
-  background: var(--cys-color-fill-quaternary);
-  border: 1px solid var(--cys-color-border);
-  border-radius: 9px;
-  display: flex;
-  flex: 0 0 auto;
-  gap: 6px;
-  padding: 8px 12px;
-}
-
-.studentCount span {
-  color: var(--cys-color-primary-text);
-  font-size: 18px;
-  font-weight: 800;
+.reviewProgress:global(.ant-tag) {
+  margin: 0;
 }
 
 .content {
   padding: 20px 24px 24px;
-}
-
-.search {
-  margin-bottom: 16px;
-  max-width: 420px;
 }
 
 .studentCard {
@@ -135,15 +114,6 @@
   min-width: 0;
 }
 
-.readyIcon {
-  color: var(--cys-color-success);
-  font-size: 12px;
-}
-
-.readyText {
-  font-size: 12px;
-}
-
 .arrow {
   color: var(--cys-color-primary-text);
   flex: 0 0 auto;
@@ -152,7 +122,7 @@
 
 @media (max-width: 575px) {
   .header,
-  .introduction {
+  .toolbar {
     align-items: flex-start;
     flex-direction: column;
     padding: 16px;
@@ -160,9 +130,5 @@
 
   .content {
     padding: 16px;
-  }
-
-  .search {
-    max-width: none;
   }
 }

@@ -12,7 +12,6 @@ import {
   Spin,
   Alert,
   Tag,
-  Typography,
 } from 'antd';
 import {
   ReloadOutlined,
@@ -23,7 +22,7 @@ import {
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { ClientResponseError } from 'pocketbase';
-const StaffDocumentPreview = React.lazy(() => import('../documentos/StaffDocumentPreview'));
+import { DownloadBulletinButton } from './DownloadBulletinButton';
 const BatchDocumentModal = React.lazy(() => import('./BatchDocumentModal'));
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
@@ -89,7 +88,6 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const [reviewSnapshot, setReview] = useState<StaffReviewDto | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [approvalBusy, setApprovalBusy] = useState(false);
-  const [previewScope, setPreviewScope] = useState<string | null>(null);
   const [batchScope, setBatchScope] = useState<string | null>(null);
   const currentBatchScope = `${selectedCursoId}:${selectedPeriodoId}`;
   const realtimeWorkflow = useGradebookConcurrencyStore((state) => (
@@ -288,7 +286,11 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   );
   const reviewStudents = useMemo(() => {
     const included = new Set(visibleReview?.boletines.map((item) => item.inscripcionId) || []);
-    return alumnos.filter((alumno) => alumno.estado !== 'Baja' || included.has(alumno.inscripcionId));
+    return alumnos
+      .filter((alumno) => alumno.estado !== 'Baja' || included.has(alumno.inscripcionId))
+      .sort((left, right) => left.nombreCompleto.localeCompare(right.nombreCompleto, 'es', { sensitivity: 'base', numeric: true })
+        || (left.numeroOrden ?? Number.MAX_SAFE_INTEGER) - (right.numeroOrden ?? Number.MAX_SAFE_INTEGER)
+        || left.inscripcionId.localeCompare(right.inscripcionId));
   }, [alumnos, visibleReview]);
   const reviewableStudents = useMemo(() => {
     const included = new Set(visibleReview?.boletines.map((item) => item.inscripcionId) || []);
@@ -351,14 +353,15 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   };
 
   const selectedBulletin = visibleReview?.boletines.find((item) => item.inscripcionId === reviewInscripcionId);
-  const handleApproval = (approve: boolean) => {
-    if (!selectedBulletin || !selectedPeriodoId || !review || detailHasChanges) return;
+  const handleApproval = () => {
+    if (!selectedBulletin || !selectedPeriodoId || !review || detailHasChanges || reviewLoading || approvalBusy) return;
+    const approve = selectedBulletin.estado !== 'VISADO';
     modal.confirm({
-      title: approve ? '¿Visar este boletín?' : '¿Retirar el visado?',
+      title: approve ? '¿Visar este boletín?' : '¿Quitar el visado?',
       content: approve
         ? 'Confirmás que revisaste el boletín completo. Una corrección posterior retirará automáticamente el visado.'
-        : 'El boletín volverá a quedar pendiente de revisión.',
-      okText: approve ? 'Visar' : 'Retirar visado',
+        : 'El boletín volverá a quedar sin visar. Los PDFs de este alumno que incluyan este bimestre dejarán de estar disponibles.',
+      okText: approve ? 'Visar' : 'Quitar visado',
       onOk: async () => {
         setApprovalBusy(true);
         try {
@@ -370,7 +373,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             approve,
           );
           handleSaveSuccess(result.instancia.revision);
-          message.success(approve ? 'Boletín visado' : 'Visado retirado');
+          message.success(approve ? 'Boletín visado' : 'Visado quitado');
         } catch (error) {
           if (error instanceof ClientResponseError && error.status === 409) {
             message.warning('El curso cambió en otra sesión. Se actualizará el estado antes de continuar.');
@@ -446,15 +449,6 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             cursoNombre={selectedCurso ? `${selectedCurso.nombre} · ${selectedCurso.turno}` : 'Curso'}
             periodoNombre={selectedPeriodo?.nombre || 'Período escolar'}
           />
-          {!reviewInscripcionId && (
-            <Space wrap>
-              <Tag color={review?.etapa === 'LISTO_PARA_PDF' ? 'success' : 'processing'}>
-                {review ? `${review.visados} de ${review.totalBoletines} boletines visados` : 'Consultando visados'}
-              </Tag>
-              {review?.etapa === 'LISTO_PARA_PDF' && <Tag color="success">Listo para generar PDFs</Tag>}
-              <Button disabled={!review || reviewLoading || approvalBusy} onClick={() => setBatchScope(currentBatchScope)}>Generar PDFs / ZIP del curso</Button>
-            </Space>
-          )}
           {review && review.alumnosSinIncorporar > 0 && (
             <Alert
               type="warning"
@@ -488,33 +482,23 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
                     className={styles.reviewStatus}
                   >
                     {review
-                      ? selectedBulletin.estado === 'VISADO' ? 'Visado' : 'Pendiente de visado'
+                      ? selectedBulletin.estado === 'VISADO' ? 'VISADO' : 'SIN VISAR'
                       : reviewLoading ? 'Actualizando visado' : 'No se pudo actualizar el visado'}
                   </Tag>
-                  <Typography.Text type="secondary" className={styles.reviewCount}>
-                    {review ? `${review.visados} de ${review.totalBoletines} visados` : 'Consultando progreso'}
-                  </Typography.Text>
-                  {review && reviewWorkflowKey === courseWorkflowKey && !reviewLoading && !detailHasChanges && selectedBulletin.elegibilidadPdf && (
-                    <Typography.Text type={selectedBulletin.elegibilidadPdf.elegiblePorVisados ? 'success' : 'warning'}>
-                      {selectedBulletin.elegibilidadPdf.elegiblePorVisados
-                        ? 'Visados completos para PDF'
-                        : selectedBulletin.elegibilidadPdf.motivos.join(' ')}
-                    </Typography.Text>
-                  )}
-                  <Button
-                    disabled={!review || reviewLoading || detailHasChanges || approvalBusy || reviewWorkflowKey !== courseWorkflowKey || !selectedBulletin.elegibilidadPdf?.elegiblePorVisados}
-                    onClick={() => setPreviewScope(documentScope)}
-                  >
-                    Vista previa del boletín
-                  </Button>
                   <Button
                     type={selectedBulletin.estado === 'VISADO' ? 'default' : 'primary'}
                     disabled={!review || detailHasChanges || reviewLoading}
                     loading={approvalBusy}
-                    onClick={() => handleApproval(selectedBulletin.estado !== 'VISADO')}
+                    onClick={() => handleApproval()}
                   >
-                    {selectedBulletin.estado === 'VISADO' ? 'Retirar visado' : 'Visar boletín'}
+                    {selectedBulletin.estado === 'VISADO' ? 'Quitar visado' : 'Visar'}
                   </Button>
+                  <DownloadBulletinButton
+                    key={documentScope}
+                    inscripcionId={reviewInscripcionId}
+                    periodoId={selectedPeriodoId}
+                    disabled={!review || reviewLoading || detailHasChanges || approvalBusy || reviewWorkflowKey !== courseWorkflowKey || !selectedBulletin.elegibilidadPdf?.elegiblePorVisados}
+                  />
                 </div>
               )}
               onPendingChangesChange={setDetailHasChanges}
@@ -545,6 +529,9 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             <RevisionCursoOverview
               alumnos={reviewStudents}
               boletines={review.boletines}
+              visados={review.visados}
+              totalBoletines={review.totalBoletines}
+              actions={<Button disabled={reviewLoading || approvalBusy} onClick={() => setBatchScope(currentBatchScope)}>Generar PDFs del curso</Button>}
               onSelectStudent={handleSelectStudent}
             />
           )}
@@ -552,12 +539,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       )}
       {batchScope === currentBatchScope && selectedCursoId && selectedPeriodoId && (
         <React.Suspense fallback={<Spin />}>
-          <BatchDocumentModal cursoId={selectedCursoId} periodoId={selectedPeriodoId} cursoNombre={selectedCurso?.nombre || 'Curso'} onClose={() => setBatchScope(null)} />
-        </React.Suspense>
-      )}
-      {previewScope === documentScope && reviewInscripcionId && selectedPeriodoId && (
-        <React.Suspense fallback={<Spin />}>
-          <StaffDocumentPreview inscripcionId={reviewInscripcionId} periodoId={selectedPeriodoId} onClose={() => setPreviewScope(null)} />
+          <BatchDocumentModal key={currentBatchScope} cursoId={selectedCursoId} periodoId={selectedPeriodoId} cursoNombre={selectedCurso?.nombre || 'Curso'} onClose={() => setBatchScope(null)} />
         </React.Suspense>
       )}
     </SectionLayout>

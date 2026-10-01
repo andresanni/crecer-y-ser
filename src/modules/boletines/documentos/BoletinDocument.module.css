@@ -186,3 +186,5 @@
 .textoCriterio { font-size: 10pt; }
 .textoCriterio[data-fit="compacto"] { font-size: 9pt; line-height: 1.1; padding-top: 0.3mm; padding-bottom: 0.3mm; }
 .contenidoCriterio { display: block; width: 100%; overflow-wrap: anywhere; }
+
+.observacionesVacias { display: flex; align-items: center; justify-content: center; text-align: center; }

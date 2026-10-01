@@ -186,9 +186,10 @@ export const getStaffGradebookWorkflow = async (
 export const getStaffGradebookReview = async (
   cursoId: string,
   periodoId: string,
+  signal?: AbortSignal,
 ): Promise<StaffReviewDto> => pb.send<StaffReviewDto>(
   `/api/cys/directivo/revision/${cursoId}/${periodoId}`,
-  { requestKey: null },
+  { requestKey: null, signal },
 );
 
 export const synchronizeStaffReviewEnrollments = async (

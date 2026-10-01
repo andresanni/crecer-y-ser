@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowRightOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
-import { Card, Col, Empty, Input, Row, Tag, Typography } from 'antd';
+import React, { useMemo } from 'react';
+import { ArrowRightOutlined, TeamOutlined } from '@ant-design/icons';
+import { Card, Col, Empty, Row, Tag, Typography } from 'antd';
 import type { AlumnoInscriptoRow } from '../models/boletin.model';
 import type { StaffReviewBulletin } from '../services/gradebookDataSource.service';
 import styles from './RevisionCursoOverview.module.css';
@@ -8,6 +8,9 @@ import styles from './RevisionCursoOverview.module.css';
 interface RevisionCursoOverviewProps {
   alumnos: AlumnoInscriptoRow[];
   boletines: StaffReviewBulletin[];
+  visados: number;
+  totalBoletines: number;
+  actions: React.ReactNode;
   onSelectStudent: (inscripcionId: string) => void;
 }
 
@@ -42,17 +45,11 @@ export const RevisionCursoHeader: React.FC<RevisionCursoHeaderProps> = ({
 export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
   alumnos,
   boletines,
+  visados,
+  totalBoletines,
+  actions,
   onSelectStudent,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const filteredStudents = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLocaleLowerCase('es');
-    if (!normalizedQuery) return alumnos;
-    return alumnos.filter((alumno) => (
-      alumno.nombreCompleto.toLocaleLowerCase('es').includes(normalizedQuery)
-      || String(alumno.numeroOrden || '').includes(normalizedQuery)
-    ));
-  }, [alumnos, searchQuery]);
   const bulletinByEnrollment = useMemo(
     () => new Map(boletines.map((boletin) => [boletin.inscripcionId, boletin])),
     [boletines],
@@ -60,34 +57,18 @@ export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
 
   return (
     <Card className={styles.container} styles={{ body: { padding: 0 } }}>
-      <div className={styles.introduction}>
-        <div>
-          <Typography.Text strong>Seleccioná un alumno para comenzar la revisión</Typography.Text>
-          <Typography.Paragraph type="secondary" className={styles.description}>
-            La carga docente está completa. Podés recorrer las libretas en el orden que prefieras.
-          </Typography.Paragraph>
-        </div>
-        <div className={styles.studentCount}>
-          <span>{alumnos.length}</span>
-          <Typography.Text type="secondary">estudiantes</Typography.Text>
-        </div>
+      <div className={styles.toolbar}>
+        {actions}
+        <Tag color={visados === totalBoletines && totalBoletines > 0 ? 'success' : 'processing'} className={styles.reviewProgress}>
+          {visados} de {totalBoletines} boletines visados
+        </Tag>
       </div>
-
       <div className={styles.content}>
-        <Input
-          allowClear
-          prefix={<SearchOutlined />}
-          placeholder="Buscar por nombre o número de orden"
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          className={styles.search}
-        />
-
-        {filteredStudents.length === 0 ? (
-          <Empty description="No se encontraron alumnos" />
+        {alumnos.length === 0 ? (
+          <Empty description="No hay alumnos en este curso" />
         ) : (
           <Row gutter={[12, 12]}>
-            {filteredStudents.map((alumno) => (
+            {alumnos.map((alumno) => (
               <Col xs={24} md={12} key={alumno.inscripcionId}>
                 <button
                   type="button"
