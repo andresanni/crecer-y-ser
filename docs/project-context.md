@@ -201,3 +201,8 @@ El Directorio de Alumnos (`/app/alumnos`) implementa paginación server-side de 
 
 
 La UX de PDFs muestra la disponibilidad para descargar: el modal del curso inicia la obtención automáticamente al abrirse y permite Actualizar PDFs, informa PDF listo o Falta visar, sin columna Detalle ni distinción entre archivos nuevos y reutilizados. El resumen cuenta los PDFs listos; Descargar PDFs tiene actividad independiente y entrega un archivo ZIP. La descarga individual informa sólo el inicio de descarga. El worker obtiene el resultado real del publicador y lo transmite en X-CYS-PDF-Result, sin inferencias por duración. Los endpoints y controles de vigencia permanecen iguales.
+
+
+## Dominio institucional vigente
+
+El frontend principal es https://www.creceryser.edu.ar; el dominio raíz redirige mediante 308 y el alias anterior de Vercel continúa accesible. PocketBase conserva su origen alumnos-api.duckdns.org. El worker PDF autoriza ambos dominios institucionales y el alias de Vercel; deploy/configure-pdf-origins.py permite actualizar la lista con respaldo y rollback sin modificar claves ni datos académicos. Los enlaces docentes se construyen con el origen actual y las sesiones institucionales son independientes por dominio. El procedimiento y la auditoría de correo se documentan en docs/vercel-deployment.md.

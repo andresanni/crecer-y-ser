@@ -25,11 +25,20 @@ const backend=createServer(async(req,res)=>{
  res.setHeader('Content-Type','application/json');res.end(JSON.stringify({emision:stored?{id:'e'.repeat(15),huella:snapshot.huella}:null}));
 });
 await new Promise(r=>backend.listen(18095,'127.0.0.1',r));
-const handler=createPdfMiddleware('http://127.0.0.1:18095','synthetic-worker',{root:'/opt/cys-pdf/current',port:()=>18094,allowedOrigins:['https://crecer-y-ser-ten.vercel.app'],renderOrigin:'http://127.0.0.1:8093',chromium:true});
+const origins=['https://www.creceryser.edu.ar','https://creceryser.edu.ar','https://crecer-y-ser-ten.vercel.app'];
+const handler=createPdfMiddleware('http://127.0.0.1:18095','synthetic-worker',{root:'/opt/cys-pdf/current',port:()=>18094,allowedOrigins:origins,renderOrigin:'http://127.0.0.1:8093',chromium:true});
 const server=createServer((req,res)=>handler(req,res,()=>res.writeHead(404).end()));
 await new Promise(r=>server.listen(18094,'127.0.0.1',r));
 try{
- const headers={Origin:'https://crecer-y-ser-ten.vercel.app',Authorization:'synthetic-session','Content-Type':'application/json'};
+ for(const origin of origins){
+  for(const path of ['/api/cys/pdf/generar','/api/cys/pdf/lote']){
+   const preflight=await fetch('http://127.0.0.1:18094'+path,{method:'OPTIONS',headers:{Origin:origin,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'authorization,content-type'}});
+   if(preflight.status!==204||preflight.headers.get('Access-Control-Allow-Origin')!==origin)throw new Error('Production origin preflight');
+  }
+ }
+ const foreign=await fetch('http://127.0.0.1:18094/api/cys/pdf/generar',{method:'OPTIONS',headers:{Origin:'https://foreign.example'}});
+ if(foreign.status!==403||foreign.headers.has('Access-Control-Allow-Origin'))throw new Error('Foreign origin accepted');
+ const headers={Origin:origins[0],Authorization:'synthetic-session','Content-Type':'application/json'};
  const result=await fetch('http://127.0.0.1:18094/api/cys/pdf/generar',{method:'POST',headers,body:JSON.stringify({inscripcionId:'a'.repeat(15),periodoId:'p'.repeat(15),huella:snapshot.huella})});
  if(!result.ok)throw new Error(await result.text());
  if(result.headers.get('X-CYS-PDF-Result')!=='generated')throw new Error('Generation result');
