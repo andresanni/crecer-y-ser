@@ -25,7 +25,7 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/cys-pdf/browsers node node_modules/playwright-core
 chmod -R a+rX /opt/cys-pdf/browsers
 if ! test -f /etc/cys-pdf.env; then
   umask 077
-  python3 -c 'import secrets; print("CYS_PDF_WORKER_KEY="+secrets.token_hex(32)); print("CYS_PDF_ORIGINS=https://crecer-y-ser-ten.vercel.app")' > /etc/cys-pdf.env
+  python3 -c 'import secrets; print("CYS_PDF_WORKER_KEY="+secrets.token_hex(32)); print("CYS_PDF_ORIGINS=https://www.creceryser.edu.ar,https://creceryser.edu.ar,https://crecer-y-ser-ten.vercel.app")' > /etc/cys-pdf.env
 fi
 chmod 0600 /etc/cys-pdf.env
 install -m 0644 "$stage/pdf-worker.service" /etc/systemd/system/cys-pdf.service

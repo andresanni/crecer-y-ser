@@ -6,7 +6,7 @@ Actualizado: 23 de septiembre de 2026.
 
 El trabajo iniciado en `codex/landing-production-ready` fue aprobado, fusionado en `master` mediante el commit de merge `dc865ee` y desplegado en producción. La rama temporal fue eliminada después de comprobar que todo su historial quedó contenido en `master`.
 
-La landing productiva está disponible en `https://crecer-y-ser-ten.vercel.app/`. Este documento conserva el alcance aprobado y las condiciones que deben mantenerse en cambios futuros; ya no describe una rama activa ni una entrega pendiente.
+La landing productiva está disponible en `https://www.creceryser.edu.ar/`. Este documento conserva el alcance aprobado y las condiciones que deben mantenerse en cambios futuros; ya no describe una rama activa ni una entrega pendiente.
 
 ## Resultado consolidado
 

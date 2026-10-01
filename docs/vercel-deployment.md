@@ -1,6 +1,6 @@
 # Despliegue del frontend en Vercel
 
-Actualizado: 26 de septiembre de 2026.
+Actualizado: 1 de octubre de 2026.
 
 ## Topología
 
@@ -76,4 +76,17 @@ Si el frontend falla pero el contrato del backend sigue siendo compatible, promo
 
 ## PDF institucional
 
-Antes de publicar el frontend de boletines, desplegar PocketBase y `deploy/publish-pdf-worker.ps1` en el VPS. El frontend estatico consume `/api/cys/pdf/generar` y `/api/cys/pdf/lote` del mismo origen configurado para PocketBase. Vercel no ejecuta Chromium ni recibe la clave privada. El worker acepta `https://crecer-y-ser-ten.vercel.app`; agregar un nuevo dominio productivo a `CYS_PDF_ORIGINS` en el VPS y reiniciar el servicio antes de cambiar el dominio de la app. Los dominios de Preview no se autorizan automaticamente.
+Antes de publicar el frontend de boletines, desplegar PocketBase y `deploy/publish-pdf-worker.ps1` en el VPS. El frontend estatico consume `/api/cys/pdf/generar` y `/api/cys/pdf/lote` del mismo origen configurado para PocketBase. Vercel no ejecuta Chromium ni recibe la clave privada. El worker acepta `https://www.creceryser.edu.ar`, `https://creceryser.edu.ar` y `https://crecer-y-ser-ten.vercel.app`; agregar un nuevo dominio productivo a `CYS_PDF_ORIGINS` en el VPS y reiniciar el servicio antes de cambiar el dominio de la app. Los dominios de Preview no se autorizan automaticamente.
+
+
+## Dominio institucional
+
+Desde el 1 de octubre de 2026, el origen principal es https://www.creceryser.edu.ar. Vercel redirige creceryser.edu.ar hacia www mediante 308, conservando la ruta; crecer-y-ser-ten.vercel.app continúa operativo para enlaces anteriores. El backend conserva https://alumnos-api.duckdns.org y VITE_POCKETBASE_URL no cambia.
+
+El generador PDF autoriza explícitamente los tres orígenes HTTPS. Para actualizar una instalación existente, ejecutar en el VPS como root: python3 configure-pdf-origins.py https://www.creceryser.edu.ar https://creceryser.edu.ar https://crecer-y-ser-ten.vercel.app. El script versionado en deploy/ respalda /etc/cys-pdf.env bajo /root/pb/deploy_backups, conserva la clave privada, reemplaza sólo CYS_PDF_ORIGINS, reinicia cys-pdf y comprueba health; ante un fallo restaura el archivo anterior. La instalación nueva incorpora los mismos orígenes sin sobrescribir configuraciones existentes. No se requieren cambios de esquema, migraciones, proxy ni datos académicos. Los previews y orígenes ajenos continúan rechazados por el worker.
+
+El cambio se aplicó con respaldo /root/pb/deploy_backups/pdf-origins-20261001-123228-272107. Se comprobaron los preflights 204 de generar/lote para los tres orígenes, las respuestas 401 con CORS sin sesión y el rechazo 403 de un origen ajeno. En navegador sin sesión desde www se verificaron login, gateways docente y contacto, Realtime, rutas privadas y redirección desde el dominio raíz, sin errores JavaScript ni bloqueos CORS. Las pruebas sintéticas no enviaron correos ni alteraron boletines.
+
+GestorEnlacesModal construye /carga#token con window.location.origin, por lo que copiar desde el nuevo dominio lo utiliza automáticamente. Los enlaces anteriores conservan su validez y no requieren rotación. PocketBase SDK almacena la sesión por origen: al entrar por primera vez en www se debe iniciar sesión nuevamente; no se trasladan credenciales entre dominios.
+
+La auditoría encontró meta.appUrl con http://localhost:8090. Las plantillas actuales de verificación, recuperación y cambio de correo resuelven {APP_URL}/_/#/auth/... mediante el panel de PocketBase. Se corrigió meta.appUrl a https://alumnos-api.duckdns.org, cuyo /_/ sirve ese panel; no debe apuntarse al frontend mientras no implemente esos flujos. Se respaldó data.db con PocketBase detenido en /root/pb/deploy_backups/mail-url-20261001-123514 y se verificó que todas las demás tablas y propiedades de ajustes quedaron idénticas antes de reiniciar y comprobar health. SMTP, remitentes y claves permanecen intactos.
