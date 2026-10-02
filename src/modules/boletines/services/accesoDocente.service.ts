@@ -40,6 +40,7 @@ interface TeacherAccessDto {
 }
 
 interface TeacherContextDto {
+  cursadasPendientes: Array<{ inscripcionId: string; nombreCompleto: string }>;
   acceso: TeacherAccessDto;
   instancia: {
     id: string;
@@ -123,6 +124,7 @@ interface TeacherSubmissionDto {
 }
 
 export interface TeacherGradebookContext {
+  cursadasPendientes: Array<{ inscripcionId: string; nombreCompleto: string }>;
   acceso: TokenAccesoDocente;
   instancia: InstanciaCargaBoletin;
   curso: Curso;
@@ -351,6 +353,7 @@ export const accesoDocenteService = {
     };
     return {
       acceso,
+      cursadasPendientes: dto.cursadasPendientes || [],
       instancia: {
         id: dto.instancia.id,
         cursoId: dto.acceso.cursoId,

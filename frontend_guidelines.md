@@ -81,3 +81,8 @@
 *   **Dominios activos:** `Alumnos`, `Responsables`, `Inscripciones`, `Boletines` y `Auth`.
 *   **UX/UI:** Modernización aprobada y fusionada en `master`; conservar la arquitectura centralizada documentada en `docs/ux-modernization.md`.
 *   **Calidad:** `npm run lint` y `npm run build` son obligatorios antes de integrar cambios.
+
+
+## Cursada evaluable (etapa 2)
+
+Inscripciones incorpora bimestre_desde, bimestre_hasta, cursada_estado y revision_cursada. Dirección confirma rangos inclusivos mediante GET/PUT del gateway de cursada, con revisión y updated esperados. No escribir esos campos ni registrar Baja directamente en colecciones. El estado administrativo no determina por sí solo la participación: consumir inscripcionesEvaluables del servidor. Mantener pendientes visibles y exigir confirmación antes de nuevas entregas. La identidad alumno/curso/ciclo de una matrícula existente no se modifica mediante el formulario general. El detalle de contrato y límites de altas tardías está en docs/gradebook-pdf-emission.md.

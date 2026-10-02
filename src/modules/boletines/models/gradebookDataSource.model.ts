@@ -68,6 +68,7 @@ export interface GradebookSubmissionPendingStudent {
 }
 
 export interface GradebookSubmissionIncomplete {
+  cursadasPendientes?: Array<{ inscripcionId: string; nombreCompleto: string }>;
   totalAlumnos: number;
   totalMaterias: number;
   alumnosCompletos: number;

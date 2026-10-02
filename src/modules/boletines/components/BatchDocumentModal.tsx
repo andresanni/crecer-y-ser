@@ -15,11 +15,12 @@ const describe = (cause: unknown) => cause instanceof ClientResponseError
   ? String(cause.response.message || 'No se pudo consultar el boletín.')
   : cause instanceof Error ? cause.message : 'No se pudo preparar el boletín.';
 
-export default function BatchDocumentModal({ cursoId, periodoId, cursoNombre, onClose }: {
+export default function BatchDocumentModal({ cursoId, periodoId, cursoNombre, onClose, onReview }: {
   cursoId: string;
   periodoId: string;
   cursoNombre: string;
   onClose: () => void;
+  onReview?: (inscripcionId: string) => void;
 }) {
   const [rows, setRows] = useState<BatchRow[]>([]);
   const [emissions, setEmissions] = useState<BatchEmission[]>([]);
@@ -49,6 +50,10 @@ export default function BatchDocumentModal({ cursoId, periodoId, cursoNombre, on
       for (const item of review.boletines) {
         current.signal.throwIfAborted();
         const update = (estado: BatchRow['estado'], motivo?: string) => setRows(previous => previous.map(row => row.id === item.inscripcionId ? { ...row, estado, motivo } : row));
+        if (item.preparacionDocumental?.completa === false) {
+          update('Revisar datos', item.preparacionDocumental.faltantes.map(issue => issue.mensaje).join(' '));
+          continue;
+        }
         if (!item.elegibilidadPdf?.elegiblePorVisados) {
           update(item.elegibilidadPdf ? 'Falta visar' : 'Revisar datos', item.elegibilidadPdf?.motivos.join(' ') || 'Actualizá el curso para comprobar el visado.');
           continue;
@@ -129,9 +134,9 @@ export default function BatchDocumentModal({ cursoId, periodoId, cursoNombre, on
       </Typography.Text>}
       <Table<BatchRow> loading={reviewLoading} locale={{ emptyText: reviewLoading ? 'Consultando boletines…' : error ? 'No se pudo consultar el curso.' : 'No hay boletines en este curso.' }} size="small" rowKey="id" dataSource={rows} pagination={false} scroll={{ y: 320 }} columns={[
         { title: 'Alumno/a', dataIndex: 'nombre' },
-        { title: 'Estado', dataIndex: 'estado', render: (estado: BatchRow['estado'], row) => <Tooltip title={row.motivo}>
+        { title: 'Estado', dataIndex: 'estado', render: (estado: BatchRow['estado'], row) => <Space wrap><Tooltip title={row.motivo}>
           <Tag color={estado === 'PDF listo' ? 'success' : estado === 'Reintentar' ? 'error' : estado === 'Falta visar' || estado === 'Revisar datos' ? 'warning' : 'processing'}>{estado}</Tag>
-        </Tooltip> },
+        </Tooltip>{estado === 'Revisar datos' && onReview && <Button size="small" onClick={() => { onClose(); onReview(row.id); }}>Completar datos</Button>}</Space> },
       ]} />
     </Space>
   </Modal>;

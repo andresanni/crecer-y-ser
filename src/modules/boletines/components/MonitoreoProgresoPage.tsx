@@ -1,3 +1,4 @@
+import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 import ui from '../../../shared/styles/ui.module.css';
 import styles from './MonitoreoProgresoPage.module.css';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
@@ -16,6 +17,7 @@ import {
   App,
   Alert,
   Badge,
+  Modal,
 } from 'antd';
 import {
   TableOutlined,
@@ -74,6 +76,8 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
   const refreshMonitoreo = useRef<(immediate?: boolean) => void>(() => undefined);
 
 
+  const [pendingCourse, setPendingCourse] = useState<string | null>(null);
+  const [scopeId, setScopeId] = useState<string | null>(null);
   const [gestorModalOpen, setGestorModalOpen] = useState<boolean>(false);
   const [selectedCursoForModal, setSelectedCursoForModal] = useState<string | null>(null);
 
@@ -222,6 +226,7 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         const isPausado = cur.estado === 'PAUSADO';
         return (
           <div className={styles.progressCell}>
+            {!!cur.cursadasPendientes?.length && <Button size="small" onClick={() => setPendingCourse(cur.cursoId)}>{cur.cursadasPendientes.length} cursadas por confirmar</Button>}
             <div className={styles.progressMeta}>
               <Text strong style={{ fontSize: 12.5 }}>{cur.alumnosCompletos} de {cur.totalAlumnos} alumnos</Text>
               <Text strong style={{ fontSize: 12.5, color: isCompleto ? 'var(--cys-color-success-text)' : isEnProgreso || isPausado ? 'var(--cys-color-warning-text)' : 'var(--cys-color-text-description)' }}>
@@ -414,6 +419,12 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         activeCursoId={selectedCursoForModal}
         activePeriodoId={periodoId}
       />
+      <Modal open={Boolean(pendingCourse) && !scopeId} title="Cursadas por confirmar" onCancel={() => setPendingCourse(null)} footer={null}>
+        <Alert type="warning" showIcon title="Confirmá los bimestres evaluables antes de nuevas entregas." />
+        <Table rowKey="inscripcionId" size="small" dataSource={data.cursos.find(course => course.cursoId === pendingCourse)?.cursadasPendientes || []}
+          columns={[{ title: 'Alumno', dataIndex: 'nombreCompleto' }, { title: 'Cursada', render: (_, row) => <Button onClick={() => setScopeId(row.inscripcionId)}>Confirmar</Button> }]} />
+      </Modal>
+      {scopeId && <CursadaModal key={scopeId} inscripcionId={scopeId} onClose={() => setScopeId(null)} onSuccess={() => refreshMonitoreo.current(true)} />}
     </SectionLayout>
   );
 };

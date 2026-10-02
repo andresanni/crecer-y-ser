@@ -86,6 +86,10 @@ export interface InscripcionRecord {
   fecha_inscripcion?: string;
   fecha_ingreso?: string;
   fecha_egreso?: string;
+  cursada_estado?: string;
+  bimestre_desde?: number;
+  bimestre_hasta?: number;
+  revision_cursada?: number;
   estado: EstadoInscripcion;
   promociono_con_acompanamiento?: OpcionBinariaSN;
   posee_apoyos?: OpcionBinariaSN;
@@ -98,6 +102,9 @@ export interface InscripcionRecord {
 }
 
 export interface Inscripcion {
+  cursadaEstado: string;
+  bimestreDesde: number;
+  bimestreHasta: number;
   id: string;
   alumnoId: string;
   cursoId: string;
@@ -129,6 +136,9 @@ export const inscripcionAdapter = (record: InscripcionRecord): Inscripcion => ({
   fechaIngreso: record.fecha_ingreso || '',
   fechaEgreso: record.fecha_egreso || '',
   estado: record.estado,
+  cursadaEstado: record.cursada_estado || 'PENDIENTE',
+  bimestreDesde: record.bimestre_desde || 0,
+  bimestreHasta: record.bimestre_hasta || 0,
   promocionoConAcompanamiento: record.promociono_con_acompanamiento || '-',
   poseeApoyos: record.posee_apoyos || '-',
   cualesApoyos: record.cuales_apoyos || '',

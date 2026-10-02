@@ -709,6 +709,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
                 rules={[{ required: !isEditing, message: 'Por favor seleccione el curso' }]}
               >
                 <Select
+                  disabled={Boolean(initialValues?.inscripcionId)}
                   placeholder="Seleccione el curso y turno"
                   showSearch
                   optionFilterProp="label"
@@ -734,6 +735,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
                 rules={[{ required: !isEditing, message: 'Seleccione el ciclo lectivo' }]}
               >
                 <Select
+                  disabled={Boolean(initialValues?.inscripcionId)}
                   placeholder="Ciclo escolar"
                   options={ciclos.map((c) => ({
                     value: c.id,
@@ -745,7 +747,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
 
             <Col xs={24} sm={12} md={7}>
               <Form.Item name="estadoInscripcion" label="Estado de Cursada">
-                <Select options={ESTADO_INSCRIPCION_OPTIONS} />
+                <Select disabled={initialValues?.estadoInscripcion === 'Baja'} options={ESTADO_INSCRIPCION_OPTIONS.filter(option => option.value !== 'Baja' || initialValues?.estadoInscripcion === 'Baja')} />
               </Form.Item>
             </Col>
           </Row>
@@ -756,7 +758,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               showIcon
               style={{ marginBottom: 14, borderRadius: 8 }}
               message="Estudiante en Estado de Baja"
-              description="Indique la fecha de egreso/retiro del alumno de la institución. Este campo es obligatorio para mantener la trazabilidad de bajas escolares."
+              description="Los bimestres evaluables se revisan desde la ficha de cursada. La baja administrativa no excluye su último boletín."
             />
           )}
 
@@ -785,11 +787,11 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               <Col xs={24} sm={12} md={5}>
                 <Form.Item
                   name="fechaEgreso"
-                  label={<span style={{ color: 'var(--cys-color-error-text)', fontWeight: 600 }}>Fecha Egreso / Baja *</span>}
-                  rules={[{ required: true, message: 'La fecha de baja es obligatoria' }]}
+                  label={<span style={{ color: 'var(--cys-color-error-text)', fontWeight: 600 }}>Fecha Egreso / Baja</span>}
                 >
                   <DatePicker
                     format="DD/MM/YYYY"
+                    disabled
                     style={{ width: '100%', borderColor: '#ef4444' }}
                     placeholder="DD/MM/AAAA"
                   />

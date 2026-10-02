@@ -2,6 +2,7 @@ export interface DocumentSnapshot {
   huella: string;
   datos: {
     versionContrato: number;
+    cursada?: { estado: 'PENDIENTE' | 'CONFIRMADA' | 'SIN_CURSADA'; desde: number; hasta: number; revision: number };
     inscripcionId: string;
     ciclo: { id: string; ano: number };
     curso: { id: string; nombre: string };

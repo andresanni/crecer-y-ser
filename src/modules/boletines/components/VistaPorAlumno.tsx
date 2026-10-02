@@ -185,6 +185,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     isModified: false,
   });
 
+  const [supportNeedsConfirmation, setSupportNeedsConfirmation] = useState(false);
   const [apoyoState, setApoyoState] = useState<ApoyoInclusionState>({
     promocionoConAcompanamiento: '-',
     poseeApoyos: '-',
@@ -336,6 +337,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           || curAlu?.promocionoConAcompanamiento
           || '-';
         const poseeApoyos = apoyos?.poseeApoyos || curAlu?.poseeApoyos || '-';
+        setSupportNeedsConfirmation((periodo?.numeroPeriodo === 1 && poseeApoyos === '-') || (periodo?.numeroPeriodo === 4 && promocionoConAcompanamiento === '-'));
         setApoyoState({
           promocionoConAcompanamiento: periodo?.numeroPeriodo === 4
             && promocionoConAcompanamiento === '-'
@@ -556,6 +558,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       setSaveOutcomeUnknown(false);
 
       if (apoyos) {
+        setSupportNeedsConfirmation(false);
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
         if (curAlu) {
           curAlu.promocionoConAcompanamiento = apoyoState.promocionoConAcompanamiento;
@@ -712,6 +715,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           access.onPeriodSubmitted?.(result);
         } catch (error) {
           if (error instanceof TeacherSubmissionIncompleteError) {
+            const pendingScopes = error.detail.cursadasPendientes || [];
+            if (pendingScopes.length) {
+              message.warning(`Dirección debe confirmar los bimestres evaluables de ${pendingScopes.length} alumno(s) antes de entregar: ${pendingScopes.map(item => item.nombreCompleto).join(', ')}.`, 10);
+              return;
+            }
             const count = error.detail.pendientes.length;
             message.warning(`La revisión del servidor encontró ${count} ${count === 1 ? 'alumno pendiente' : 'alumnos pendientes'}.`);
             setDrawerResumenOpen(true);
@@ -1148,7 +1156,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       )}
       { }
       {access.canEditStudentSupport && (
-        <div className={ui.operationalContent}>
+        <div id="integracion-escolar" className={ui.operationalContent}>
           <Card
             className={`${styles.evaluationCard} ${apoyoState.isModified ? styles.evaluationCardModified : ''}`}
             styles={{ body: { padding: '16px 20px' } }}
@@ -1189,7 +1197,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   size="small"
                   icon={<EditOutlined />}
                   disabled={Boolean(editingMateriaId || editingSection)}
-                  onClick={() => setEditingSection('support')}
+                  onClick={() => {
+                    setEditingSection('support');
+                    if (supportNeedsConfirmation) setApoyoState(current => ({ ...current, isModified: true }));
+                  }}
                 >
                   Editar
                 </Button>

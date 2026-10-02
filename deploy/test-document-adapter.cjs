@@ -81,14 +81,14 @@ test('Nota ausente, etiqueta desconocida y período futuro cargado bloquean', ()
 });
 
 test('Segundo ciclo separa todas las notas explícitas y admite No corresponde sin número', () => {
-  const labels = ['No Alcanzó Los Objetivos 1', 'No Alcanzó Los Objetivos 2', 'No Alcanzó Los Objetivos 3', 'En Proceso 4', 'En Proceso 5', 'Alcanzado 6', 'Alcanzado 7', 'Avanzado 8', 'Avanzado 9', 'Destacado 10', 'No corresponde'];
+  const labels = ['No Alcanzó Los Objetivos 1', 'No Alcanzó Los Objetivos 2', 'No Alcanzó Los Objetivos 3', 'En Proceso 4', 'En Proceso 5', 'Alcanzado 6', 'Alcanzado 7', 'Avanzado 8', 'Avanzado 9', 'Destacado 10', 'No Corresponde'];
   for (const grado of [4, 5, 6, 7]) {
     for (const [index, etiqueta] of labels.entries()) {
       const f = fixture();
       f.datos.curso.nombre = `${grado}°`;
       f.datos.materias.push({ ...f.datos.materias[9], id: 'extra' });
       f.datos.periodos[0].evaluaciones.push({ ...f.datos.periodos[0].evaluaciones[9], cursoMateriaId: 'extra' });
-      f.datos.escala[0] = { id: 'nota', etiqueta, pesoNumerico: 99 };
+      f.datos.escala[0] = { id: 'nota', etiqueta, pesoNumerico: index === 10 ? 0 : 99 };
       const result = adapt(f, institution);
       assert.equal(result.bloqueos.length, 0, result.bloqueos.join(' '));
       assert.equal(result.documento.materiasAcademicas.length, 9);

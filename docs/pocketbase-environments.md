@@ -291,3 +291,11 @@ PocketBase carga `CYS_PDF_WORKER_KEY` desde `C:/pocketbase/pdf-worker-dev.key` m
 ## Promoción del pulido PDF — 1 de octubre de 2026
 
 Sin nuevas migraciones. Respaldo consistente /root/pb/deploy_backups/20261001-091649 y worker /opt/cys-pdf/releases/20261001-091744. Ensayo de hooks en copia aislada saneada del VPS y comparación posterior de 13 tablas de dominio/autorización, esquema e historial de migraciones sin diferencias. Se preservaron datos productivos. La publicación del frontend se realiza mediante PR #11 de dev a master. El detalle de validaciones y rollback está en gradebook-pdf-emission.md.
+
+
+## Migración de cursada evaluable pendiente — 1 de octubre de 2026
+
+1790850000_enrollment_evaluable_scope.js fue probada en una base sintética y en snapshot consistente de 8090. Conserva todos los datos existentes y marca las 84 matrículas del snapshot como PENDIENTE. La copia se obtuvo con backup de SQLite en modo lectura, con el servidor local encendido; archivos fuera del repositorio en C:/pocketbase/evaluable-scope-migration-trial. before.db conserva el esquema anterior y data.db el resultado del ensayo. No se modificó 8090 ni el VPS: el intento de parada/respaldo/migración local fue rechazado por revisión automática. Aplicar mediante el procedimiento de respaldo y migración de este documento antes de usar el frontend nuevo. El esquema versionado proviene de una instancia sintética migrada; no implica que 8090 ya esté actualizado. No promover el frontend sin el gateway y las reglas nuevos.
+
+
+El 2 de octubre el usuario confirmó que la base habitual fue purgada intencionalmente tras una prueba de ingesta que apuntó por error a loopback, conservando estructura y catálogos. PocketBase se detuvo por reinicio de sesión. La instrucción vigente es dejarla intacta y realizar las pruebas de cursada en instancias temporales. La migración y una eventual repoblación sintética habitual quedan pendientes; no restaurar el snapshot de 84 matrículas automáticamente.
