@@ -42,6 +42,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
+import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 import { inscripcionService } from '../../inscripciones/services/inscripcion.service';
 import type { Inscripcion } from '../../inscripciones/models/inscripcion.model';
 import { responsableService } from '../../responsables/services/responsable.service';
@@ -74,6 +75,8 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
   onDelete,
   onBaja,
 }) => {
+  const [scopeId, setScopeId] = useState<string | null>(null);
+  const [detailsRevision, setDetailsRevision] = useState(0);
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
   const [responsables, setResponsables] = useState<
     { responsable: Responsable; vinculo: string; relationId: string }[]
@@ -119,7 +122,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [visible, alumno]);
+  }, [visible, alumno, detailsRevision]);
 
 
   const edad = useMemo(() => {
@@ -628,6 +631,10 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                         </Col>
                       )}
                     </Row>
+                    <Space wrap>
+                      <Tag color={insc.cursadaEstado === 'PENDIENTE' ? 'warning' : 'default'}>{insc.cursadaEstado === 'PENDIENTE' ? 'Cursada por confirmar' : insc.cursadaEstado === 'SIN_CURSADA' ? 'Sin cursada' : 'Bimestres ' + insc.bimestreDesde + ' a ' + insc.bimestreHasta}</Tag>
+                      <Button onClick={() => setScopeId(insc.id)}>Bimestres evaluables</Button>
+                    </Space>
                   </Card>
                 );
               })}
@@ -1042,6 +1049,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         items={tabItems}
         className="detail-tabs"
       />
+      {scopeId && <CursadaModal inscripcionId={scopeId} onClose={() => setScopeId(null)} onSuccess={() => setDetailsRevision(value => value + 1)} />}
     </Modal>
   );
 };

@@ -639,27 +639,6 @@ export const boletinService = {
       cursos.sort((a, b) => compareGrados(a.nombre, b.nombre));
 
 
-      const inscripcionesRecords = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<{
-        id: string;
-        curso_id: string;
-        alumno_id: string;
-        estado: string;
-      }>({
-        filter: `ciclo_id = "${periodo.cicloId}" && estado != "Baja"`,
-      });
-
-
-      const cursoInscripcionesMap: Record<string, string[]> = {};
-      for (const cur of cursos) {
-        cursoInscripcionesMap[cur.id] = [];
-      }
-      for (const insc of inscripcionesRecords) {
-        if (cursoInscripcionesMap[insc.curso_id]) {
-          cursoInscripcionesMap[insc.curso_id].push(insc.id);
-        }
-      }
-
-
       const cmRecords = await pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
         filter: `ciclo_id = "${periodo.cicloId}"`,
         expand: 'materia_id',
@@ -688,11 +667,14 @@ export const boletinService = {
         accesoDocenteService.list(undefined, periodoId),
         pb.send<{ cursos: Array<{
           cursoId: string;
+          inscripcionesEvaluables: string[];
+          cursadasPendientes: Array<{ inscripcionId: string; nombreCompleto: string }>;
           etapa: EtapaBoletinCurso;
           visados: number;
           totalBoletines: number;
         }> }>(`/api/cys/directivo/etapas/${periodoId}`, { requestKey: null }),
       ]);
+      const cursoInscripcionesMap = Object.fromEntries(stageResponse.cursos.map(stage => [stage.cursoId, stage.inscripcionesEvaluables]));
       const tokens = tokenRecords;
       const stagesByCourse = new Map(stageResponse.cursos.map((stage) => [stage.cursoId, stage]));
 
@@ -813,6 +795,7 @@ export const boletinService = {
           porcentaje: porcentajeCurso,
           estado,
           etapa: stage.etapa,
+          cursadasPendientes: stage.cursadasPendientes,
           visados: stage.visados,
           totalBoletines: stage.totalBoletines,
           entregado,

@@ -33,6 +33,7 @@ import {
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { alumnoService, type AlumnoCounts } from '../services/alumno.service';
 import type { Alumno } from '../models/alumno.model';
 import { AlumnoFormModal, type AlumnoFormValues } from './AlumnoFormModal';
@@ -50,6 +51,16 @@ const { Title, Text } = Typography;
 
 export const AlumnoList: React.FC = () => {
   const { message } = App.useApp();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const linkedStudent = searchParams.get('alumno');
+  const linkedEnrollment = searchParams.get('inscripcion');
+  const linkedSection = searchParams.get('seccion');
+  const returnCourse = searchParams.get('curso');
+  const returnPeriod = searchParams.get('periodo');
+  const returnToBulletin = returnCourse && returnPeriod && linkedEnrollment
+    ? `/app/boletines/calificaciones?${new URLSearchParams({ curso: returnCourse, periodo: returnPeriod, inscripcion: linkedEnrollment })}`
+    : null;
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -153,6 +164,23 @@ export const AlumnoList: React.FC = () => {
 
   const [editingInitialTab, setEditingInitialTab] = useState<string>('alumno');
 
+  useEffect(() => {
+    if (!linkedStudent || !linkedEnrollment) return;
+    let active = true;
+    void alumnoService.getForEnrollment(linkedStudent, linkedEnrollment).then(alumno => {
+      if (!active) return;
+      if (linkedSection === 'vinculos') {
+        setSelectedDetailAlumno(alumno);
+        setIsDetailModalVisible(true);
+      } else {
+        setEditingAlumno(alumno);
+        setEditingInitialTab(linkedSection === 'responsable' ? 'responsable' : 'alumno');
+        setIsModalVisible(true);
+      }
+    }).catch(() => { if (active) message.error('No se pudo abrir la ficha solicitada. Volvé al boletín y actualizá los datos.'); });
+    return () => { active = false; };
+  }, [linkedStudent, linkedEnrollment, linkedSection, message]);
+
   const handleOpenModal = (alumno?: Alumno, initialTab: string = 'alumno') => {
     setEditingAlumno(alumno || null);
     setEditingInitialTab(initialTab);
@@ -162,6 +190,7 @@ export const AlumnoList: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalVisible(false);
     setEditingAlumno(null);
+    if (returnToBulletin) navigate(returnToBulletin);
   };
 
   const handleOpenDetail = (alumno: Alumno) => {
@@ -264,11 +293,11 @@ export const AlumnoList: React.FC = () => {
         message.success('Alumno registrado, inscrito y vinculado exitosamente');
         void fetchAlumnos();
       }
-      handleCloseModal();
     } catch (error: unknown) {
       console.error('Error al guardar alumno:', error);
       const errorMsg = error instanceof Error ? error.message : 'Error al guardar los datos del alumno';
       message.error(errorMsg);
+      throw error;
     }
   };
 
@@ -485,6 +514,7 @@ export const AlumnoList: React.FC = () => {
       icon={<TeamOutlined />}
       actions={
         <Space size="middle" wrap>
+          {returnToBulletin && <Button onClick={() => navigate(returnToBulletin)}>Volver al boletín</Button>}
           { }
           <Segmented
             value={viewMode}

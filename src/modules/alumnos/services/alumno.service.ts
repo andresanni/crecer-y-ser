@@ -94,6 +94,15 @@ export interface CreateAlumnoIntegralParams {
 }
 
 export const alumnoService = {
+  getForEnrollment: async (id: string, enrollmentId: string): Promise<Alumno> => {
+    const record = await pb.collection(COLLECTION_NAME).getOne<AlumnoRecord>(id, {
+      expand: 'inscripciones_via_alumno_id.curso_id.nivel_id',
+      requestKey: null,
+    });
+    const enrollment = record.expand?.inscripciones_via_alumno_id?.find(item => item.id === enrollmentId);
+    if (!enrollment) throw new Error('La inscripción no pertenece a este alumno o ya no está disponible.');
+    return alumnoAdapter({ ...record, expand: { inscripciones_via_alumno_id: [enrollment] } });
+  },
   getCounts: async (filters?: Pick<AlumnoListFilters, 'searchTerm' | 'grade'>): Promise<AlumnoCounts> => {
     const baseFilter = buildAlumnoFilter({
       searchTerm: filters?.searchTerm,
@@ -434,7 +443,6 @@ export const alumnoService = {
           numero_inscripcion: params.inscripcion.numero_inscripcion || '',
           fecha_inscripcion: params.inscripcion.fecha_inscripcion || '',
           fecha_ingreso: params.inscripcion.fecha_ingreso || '',
-          fecha_egreso: params.inscripcion.fecha_egreso || '',
           estado: params.inscripcion.estado || 'Regular',
         });
       } else if (params.inscripcion.curso_id && params.inscripcion.ciclo_id) {
@@ -493,6 +501,7 @@ export const alumnoService = {
           });
         } catch (e) {
           console.error('Error al actualizar datos del responsable:', e);
+          throw e;
         }
       }
 
@@ -516,6 +525,7 @@ export const alumnoService = {
           }
         } catch (e) {
           console.error('Error al actualizar relación alumno_responsable:', e);
+          throw e;
         }
       }
     }
@@ -530,34 +540,6 @@ export const alumnoService = {
 
 
 
-
-  darDeBaja: async (alumnoId: string, fechaEgreso: string, inscripcionId?: string): Promise<void> => {
-    let targetInscId = inscripcionId;
-
-    if (!targetInscId) {
-      try {
-        const inscripciones = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList({
-          filter: `alumno_id = "${alumnoId}"`,
-          sort: '-created',
-        });
-        const active = inscripciones.find((i) => i.estado === 'Regular') || inscripciones[0];
-        if (active) {
-          targetInscId = active.id;
-        }
-      } catch (e) {
-        console.error('Error al buscar inscripción activa del alumno para baja:', e);
-      }
-    }
-
-    if (targetInscId) {
-      await pb.collection(COLLECTION_INSCRIPCIONES).update(targetInscId, {
-        estado: 'Baja',
-        fecha_egreso: fechaEgreso,
-      });
-    } else {
-      throw new Error('No se encontró una inscripción activa para registrar la baja del estudiante.');
-    }
-  },
 
   delete: async (id: string): Promise<boolean> => {
     return await pb.collection(COLLECTION_NAME).delete(id);

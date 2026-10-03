@@ -88,6 +88,7 @@ export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
                             ? 'Pendiente de visado'
                             : 'Pendiente de incorporar'}
                       </Tag>
+                      {bulletinByEnrollment.get(alumno.inscripcionId)?.preparacionDocumental?.completa === false && <Tag color="warning">Faltan datos para PDF</Tag>}
                     </div>
                   </div>
                   <ArrowRightOutlined className={styles.arrow} />

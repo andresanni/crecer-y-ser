@@ -121,3 +121,13 @@ Los visados incorporan una generación monotónica de autorización, independien
 La vista previa de un alumno elegible ofrece «Generar PDF de prueba» únicamente en desarrollo local. Revalida instantánea y autorizaciones antes y después del render y descarga un archivo, sin persistencia ni registro de emisión vigente. No está disponible en producción. El almacenamiento y la invalidación transaccional continúan pendientes; detalle en `docs/gradebook-pdf-emission.md`.
 
 La preparación de PDF local ya incluye emisiones persistidas: retirar o corregir un visado revoca los PDFs de ese corte y posteriores del alumno en la misma transacción. La descarga revalida la instantánea; la eliminación física se reintenta después. La UI local permite generar o reutilizar el archivo guardado. Se mantiene la distinción entre visado académico y estado de emisión. Alcance y pendientes de producción en `docs/gradebook-pdf-emission.md`.
+
+
+## Cursadas parciales — etapa 2
+
+El alcance académico se obtiene de los bimestres evaluables confirmados de la inscripción. Una baja administrativa conserva acceso docente a los bimestres del rango, incluso si todavía no se entregaron. Fuera de ese rango el gateway rechaza lectura/escritura docente. Las inscripciones pendientes conservan temporalmente la nómina anterior para borradores, pero impiden toda nueva entrega del curso/ciclo hasta que dirección las confirme. Las entregas anteriores se conservan. Contexto y error de envío informan las cursadas pendientes; el docente guarda su trabajo y vuelve a abrir el enlace después de cambios en la nómina. Contrato y estado de aplicación en pocketbase-api.md y gradebook-pdf-emission.md.
+
+
+## Altas tardías — etapa 3
+
+El editor compartido utiliza `bimestreApoyos` de la instantánea autoritativa para habilitar integración escolar en el primer bimestre evaluable del alumno. El valor inicial continúa siendo NO y se persiste al guardar o entregar ese bimestre. El PDF acumulativo exige visados desde el ingreso confirmado, muestra asteriscos en notas anteriores y la aclaración de legajo en sus observaciones. La convención aprobada, pruebas y límites de publicación están en gradebook-pdf-emission.md.

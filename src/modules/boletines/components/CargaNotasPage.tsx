@@ -22,6 +22,7 @@ export const CargaNotasPage = () => {
   if (selectedCursoId) {
     return (
       <PlanillaCalificacionesPage
+        key={`${selectedCursoId}:${selectedPeriodoId}`}
         onBackToDashboard={() => (
           navigate(`/app/boletines/calificaciones?periodo=${encodeURIComponent(selectedPeriodoId)}`)
         )}

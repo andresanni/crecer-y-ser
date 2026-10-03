@@ -2,6 +2,98 @@
 
 Documento iniciado el 28 de septiembre de 2026. Conserva la propuesta y el historial de implementación. El generador, la persistencia y las descargas ya están implementados y publicados; las secciones finales registran los pulidos vigentes.
 
+## Casos de borde: plan vigente — 1 de octubre de 2026
+
+### Decisiones confirmadas
+
+El usuario confirmó conservar NO como valor inicial de apoyos y definir mediante dirección el primer y último bimestre evaluable, independientemente de las fechas administrativas. La fecha de ingreso/egreso no determina por sí sola si corresponde evaluar un bimestre. Las reglas gráficas para períodos anteriores al alta quedan pendientes; los asteriscos son una propuesta, no una convención ya aprobada.
+
+### Diagnóstico del código
+
+- `evaluatePdfEligibility` exige todos los visados de 1..corte; el adaptador documental repite esa expectativa. Una alta tardía queda bloqueada por períodos anteriores aunque no correspondan a su cursada.
+- Los períodos sólo tienen ciclo, nombre y número; no existe calendario que permita derivar el bimestre de una fecha. Las inscripciones tienen estado y fechas, pero no un alcance evaluable.
+- El gateway excluye `estado = Baja` en nómina, completitud, entrega e incorporación a revisión. Las filas ya entregadas se conservan y dirección puede revisarlas aun después de la baja. La brecha está en la baja anterior a la entrega del último bimestre que sí corresponde evaluar.
+- La revisión calcula `LISTO_PARA_PDF` por visados y nómina. No equivale a una validación completa del documento: responsable, adaptación de escala y campos impresos se comprueban después.
+- La plantilla imprime apellido, nombre y DNI del alumno y apellido y nombre del responsable. El DNI del responsable no se imprime actualmente. No corresponde exigir todos los campos de la ficha para emitir: sólo los que utiliza cada corte documental.
+- Apoyos pertenece a la inscripción anual y se edita desde primero; promoción con acompañamiento desde cuarto. El guardado y la entrega mantienen NO por defecto, según la decisión confirmada. Un NO persistido no permite reconstruir retrospectivamente si fue elegido o normalizado.
+- Las hojas de síntesis/promoción y registro administrativo anual todavía carecen de fuentes completas. El render ya bloquea cuarto por esos pendientes; completar promoción con acompañamiento no resuelve esas hojas.
+
+### Etapa 1A: protección documental en servidor
+
+Implementada en el checkout de desarrollo, pendiente de promoción. `buildDocumentSnapshot` rechaza con 422 los apellidos, nombres o DNI del alumno ausentes; nombres o apellidos del tutor ausentes; apoyos distintos de SI/NO; detalle vacío cuando apoyos es SI; y promoción con acompañamiento distinta de SI/NO en cuarto. Espacios y guiones solos no cuentan como texto. NO no exige detalle; promoción no se exige en primero, segundo ni tercero. Se conserva el control preexistente de tutor único y visados.
+
+La respuesta incluye `codigo=DATOS_DOCUMENTALES_INCOMPLETOS`, mensaje operativo y lista de `faltantes` con campo, origen y bimestre de corrección. No se incorporan valores personales al diagnóstico. La interfaz existente muestra el mensaje al descargar individualmente y Revisar datos con el motivo en el lote; el resto de los alumnos puede continuar. Esta etapa no agrega un acceso directo ni anticipa el aviso antes de intentar obtener el PDF.
+
+La misma lectura autoritativa se usa para obtener, publicar y descargar emisiones, por lo que el control también protege contra cambios durante el render y contra descargas de archivos anteriores con datos ahora incompletos. El visado académico permanece independiente: un faltante administrativo no exige deshacer la revisión de notas. Corregir apoyos mediante el gateway sí conserva su invalidación académica vigente.
+
+No hay migraciones, cambios de valores por defecto ni escrituras de datos. El adaptador sigue admitiendo sinDato para vistas técnicas; la emisión operativa exige pasar por esta guarda del servidor. Pruebas: `node --test deploy/test-document-data.cjs deploy/test-pdf-eligibility.cjs deploy/test-pdf-emissions.cjs deploy/test-document-adapter.cjs`. Incluyen blancos, guiones, NO, SI sin detalle, corte de promoción, rechazo de instantánea y revocación de descarga de un archivo almacenado.
+
+Validación de esta entrega: 20 pruebas automatizadas, lint y build correctos, con el warning conocido del bundle. Lectura autenticada de 12 instantáneas en PocketBase local: cinco respuestas 200 y siete bloqueadas por visados (422), sin modificar registros. Los escenarios de faltantes nuevos se ensayaron con fixtures en Node; resta su aceptación HTTP con datos sintéticos incompletos en una instancia aislada antes de promover. No se probó una interacción visual nueva porque esta etapa no modifica componentes.
+
+### Etapa 1B: prevención y corrección contextual implementada en desarrollo
+
+La revisión devuelve `preparacionDocumental` por alumno (`completa`, `alumnoId`, `faltantes`), separada de `elegibilidadPdf` y calculada dentro de la misma transacción. Se revisa identidad y apoyos incluso antes de visar. El listado señala Faltan datos para PDF y el detalle muestra los campos concretos con acciones Completar ficha, Revisar responsable y Revisar apoyos por bimestre. La descarga individual permanece deshabilitada ante faltantes o una preparación desactualizada/desconocida. El lote excluye esos alumnos y ofrece Completar datos para abrir su revisión, sin impedir el procesamiento de sus compañeros.
+
+La selección de matrícula se conserva en la URL (`inscripcion`) junto con curso y período. El acceso al directorio abre el formulario existente en la pestaña correspondiente; carga exactamente la matrícula solicitada, sin sustituirla por otra regular o de otro ciclo. Guardar o cancelar vuelve al boletín. Ante tutor inexistente o múltiple se abre la ficha de vínculos; no se selecciona ni elimina automáticamente un responsable. La depuración de múltiples vínculos sigue siendo una operación administrativa explícita: esta entrega no agrega un editor nuevo para borrar relaciones.
+
+Revisar apoyos desplaza al bloque existente cuando corresponde al período abierto, o navega al primer/cuarto bimestre conservando una acción Volver al boletín de origen. Si ese período no está entregado, se conserva el bloqueo institucional del workflow. Para registros antiguos sin especificar, Editar permite confirmar el NO predeterminado sin obligar a alternar artificialmente el selector. Guardar conserva la revisión esperada, la retirada de visado y la invalidación de PDFs del gateway existente.
+
+El bloqueo es individual y documental: guardar borradores, avanzar con compañeros y visar notas sigue siendo posible. Realtime de alumnos, responsables, vínculos e inscripciones y el regreso del foco provocan una nueva consulta de preparación. No se remonta la libreta ni se reemplazan sus cambios locales por esos eventos; los accesos de corrección quedan inactivos mientras existen cambios sin guardar. Las listas que alimentan el editor conservan identidad cuando sólo cambia la preparación documental. Una lectura fallida no rehabilita una preparación anterior. El servidor continúa revalidando al obtener/publicar/descargar.
+
+Los errores del guardado integral de ficha se propagan al formulario para evitar cerrar o volver como si la corrección hubiera terminado. Esta reutilización no convierte el servicio administrativo existente en una transacción: si falla después de alguna escritura, pueden existir cambios parciales y se debe volver a leer la ficha. La preparación y la emisión nunca se dan por completas por el mero cierre del formulario.
+
+Validación de etapas 1A/1B: 22 pruebas entre reglas, adaptador, emisiones, lote y el ensayo HTTP/UI. `node --test deploy/test-document-readiness-http.cjs` crea desde cero una instancia PocketBase temporal con migraciones versionadas, administrador y usuario sintéticos y cuatro bimestres, exclusivamente en loopback. Comprueba 401 sin sesión, 422 por DNI/apoyos/promoción, diagnóstico previo al visado, tutor ausente/múltiple y deduplicación del mismo tutor. Edge prueba corregir apoyos con NO, retirada de visado, retorno al bimestre/alumno original, conservación de un cierre local ante cambios administrativos, cancelación y guardado de DNI desde la ficha y relectura de preparación completa. La base y proceso temporales se eliminan al terminar; no se modifican registros locales habituales ni productivos. Se inspeccionaron capturas de 1366 y 390 px. El ensayo observa un aviso de Ant Design sobre una instancia `useForm` desconectada al cerrar el formulario reutilizado bajo StrictMode, sin excepciones de página ni falla de persistencia. Lint, build y revisión de diff finales correctos; se conserva el warning conocido del bundle. No se publicó en producción.
+
+### Etapa 2: alcance evaluable y baja temprana implementados en código
+
+La matrícula define un primer y último bimestre evaluable, inclusivos, independientemente de las fechas administrativas. Una baja con último evaluable 2 permite completar, entregar, visar y descargar primero y segundo aun después de registrar la baja; no exige tercero ni cuarto. La transición rechaza rangos que excluyan datos académicos existentes.
+
+#### Implementación y transición
+
+La decisión posterior del usuario exige confirmar las cursadas ambiguas antes de nuevas entregas. La migración `1790850000_enrollment_evaluable_scope.js` agrega `bimestre_desde`, `bimestre_hasta`, `cursada_estado` y `revision_cursada`. Todas las matrículas existentes quedan PENDIENTE sin inferir un rango de fechas o notas. Una matrícula nueva sin esos campos también se interpreta como pendiente. CONFIRMADA exige un rango inclusivo 1–4; SIN_CURSADA representa una inscripción sin ningún bimestre evaluable. Para continuar hasta fin de año se selecciona cuarto explícitamente; no se mantiene un extremo abierto.
+
+Mientras está pendiente, se conserva la nómina anterior para guardar borradores; una baja pendiente no vuelve a incluirse automáticamente. Cualquier matrícula pendiente del curso/ciclo, incluso una baja, impide una nueva entrega y la respuesta identifica los alumnos que dirección debe resolver. Las entregas y visados anteriores siguen disponibles. La incorporación posterior a una entrega también exige confirmar las matrículas que se agregarán.
+
+Con rango confirmado, una única regla determina nómina docente, permisos docentes, completitud, normalización de NO, entrega, incorporación a revisión, conteos del tablero y corte documental. Baja no excluye bimestres dentro del rango. La revisión conserva sus filas entregadas y suma sólo las matrículas evaluables del bimestre. El tablero obtiene los IDs evaluables del servidor; ya no los deduce de estado administrativo.
+
+GET/PUT institucional de cursada leen y escriben en transacción. PUT exige revisión y fecha de actualización esperadas, rechaza intervalos inválidos o que excluyan cualquier evaluación, cierre o visado existente y no elimina datos. Baja y rango se guardan juntos. Un cambio incrementa la revisión de cursada y de las instancias del curso/ciclo, invalida emisiones acumulativas e incorpora el alcance a la huella documental. Las reglas de colección impiden escribir estos campos o pasar a/desde Baja directamente. La identidad alumno/curso/ciclo de una matrícula existente queda protegida; mover datos académicos entre matrículas requiere un procedimiento futuro explícito.
+
+Bimestres muestra las cursadas pendientes con acceso a su confirmación individual. La ficha ofrece Bimestres evaluables por inscripción, con estado y rango visibles. El formulario de baja reutiliza el mismo modal e incluye fecha administrativa. Los campos de curso/ciclo existentes y la fecha de baja no se editan desde la ficha general. La fecha se puede corregir desde Bimestres evaluables de una matrícula Baja. El formulario conserva errores y ante conflicto o resultado incierto exige volver a cargar antes de reintentar. El docente recibe aviso al abrir el enlace y un motivo explícito al intentar entregar; puede guardar borradores. Después de cambios en la nómina debe guardar y volver a abrir el enlace para releer su alcance.
+
+El PDF de una baja puede emitirse hasta su último bimestre evaluable. La etapa 3 implementa las altas tardías: las dependencias acumulativas comienzan en el primer bimestre evaluable confirmado; los anteriores se representan según la convención documental descrita abajo.
+
+Pruebas: `deploy/test-evaluable-scope-http.cjs` inicia PocketBase 0.22.17 vacío y sintético en loopback; cubre permisos anónimos, reglas contra escrituras directas, baja antes de entrega, cancelación sin cursada, alta tardía, alta/baja en un mismo bimestre, falta académica dentro del rango, concurrencia, preservación de visados, invalidación de emisiones y huella. Edge prueba confirmación desde el tablero y registra una baja tras resolver un conflicto. Capturas desktop/móvil fuera del repositorio. Junto con las regresiones documentales pasan 23 pruebas; lint/build conservan el warning conocido del bundle.
+
+Se ensayó además la migración sobre un snapshot consistente de la base local: 84 matrículas pasan a PENDIENTE, conservando exactamente todas sus columnas anteriores y los 84 alumnos, 84 responsables, 69 evaluaciones, 345 criterios evaluados, 7 cierres, 12 visados, 9 emisiones y 3 instancias. Snapshot previo: `C:/pocketbase/evaluable-scope-migration-trial/before.db`; resultado aislado: `data.db` en esa misma carpeta. El esquema versionado se exportó del backend sintético migrado.
+
+**Aplicación pendiente:** no se migró la base habitual 8090 ni producción. La revisión automática bloqueó la operación de detener, respaldar y migrar el servidor habitual sin detallar el motivo. El ensayo aislado sí se completó. Antes de usar la feature en 8090 hay que respaldar y aplicar la migración con el procedimiento de entornos. La promoción requiere backend y frontend compatibles; el frontend anterior no puede registrar bajas después de estas reglas. Los scripts de despliegue incluyen la nueva migración, pero no fueron ejecutados.
+
+#### Continuación del 2 de octubre e ingesta histórica
+
+Se revisaron los archivos completos y se retomó la prueba UI interrumpida. El fallo intermitente era un selector de prueba que exigía un nombre accesible exacto mientras Ant Design retiraba el icono de carga; se ajustó la selección conservando la comprobación de persistencia y conflicto.
+
+La rama `grades_bulk_import_analysis` (832b924) contiene la ingesta histórica y sus documentos `docs/gradebook-dataset-ingestion.md` y `docs/casos-borde-matricula-historica.md`. Se leyeron como referencia, sin merge ni ejecución en producción. Los datos de identidad y payloads no se duplican aquí. Según el briefing, primero quedó visado en los siete grados, tres altas desde segundo tienen la inscripción retirada y una baja fue omitida de las notas. El caso de baja requiere confirmar los bimestres evaluables; la fecha administrativa no sustituye esa decisión.
+
+Se agregó una regresión sintética de matrícula restaurada después de la entrega: confirmar desde segundo no agrega pendientes en primero; permite incorporarla explícitamente a segundo, sin cambiar el estado ni la generación de los visados anteriores. La baja omitida, una vez confirmado un rango que contiene primero, aparece como incorporación pendiente para resolver sus notas. Restaurar las inscripciones reales, con los IDs documentados y previa verificación de existencia, será una operación posterior a la promoción del backend. No usar SIN_CURSADA para omitir una cursada real ni No Corresponde como marcador de ingreso tardío. El valor de catálogo No Corresponde con peso cero está cubierto por el adaptador.
+
+Al retomar, la base habitual local contiene cero inscripciones y no hay proceso PocketBase activo, distinto del snapshot de 84 del 1 de octubre. El usuario confirmó que se purgaron intencionalmente las tablas operativas después de una prueba de ingesta que apuntó a loopback, y que el proceso se detuvo al reiniciar la sesión. Solicitó mantener esa base intacta y continuar las pruebas temporales sintéticas. No se aplicó la migración ni se restauró el snapshot anterior en la base habitual.
+
+### Etapa 3: alta tardía y documento acumulativo — implementada el 2 de octubre
+
+Los dos boletines de referencia facilitados por dirección coinciden: asterisco en criterios y calificación general anteriores al ingreso; guiones en PPI y control de asistencia; aclaración en las observaciones de cada bimestre anterior. Se conserva el formato vigente de la aplicación y `---` en períodos posteriores al corte. El estado documental `anteriorIngreso` es distinto de futuro y de dato pendiente; no se crean notas, cierres ni visados ficticios.
+
+Dirección confirmó expresamente que confirmar una cursada de ingreso tardío también confirma que la información del colegio anterior consta en el legajo. El modal informa esta consecuencia antes de guardar. La leyenda automática es «(*) Primer bimestre, información perteneciente a colegio anterior, consta en legajo de alumno.», sustituyendo Primer por Segundo o Tercer según la página. Los PDFs de referencia permanecen fuera del repositorio; las pruebas utilizan exclusivamente datos sintéticos.
+
+El gateway exige visados desde `bimestre_desde` hasta el corte inclusivo, únicamente con cursada CONFIRMADA. PENDIENTE conserva la exigencia histórica desde primero y SIN_CURSADA no habilita emisión. El adaptador rechaza cortes fuera del rango, históricos ausentes dentro del rango y datos anteriores al ingreso. La cursada ya forma parte de la huella de la instantánea; la versión de plantilla incorpora automáticamente los archivos modificados.
+
+Los gateways docente e institucional devuelven `bimestreApoyos`. El editor compartido habilita los apoyos en ese bimestre; la entrega y el guardado conservan NO por defecto. El diagnóstico documental enlaza al bimestre correspondiente. Corregir apoyos conserva la política de retirada de visado e invalidación acumulativa. Promoción con acompañamiento continúa en cuarto. El render de cuarto sigue bloqueado por las fuentes anuales pendientes, una limitación previa independiente de las cursadas parciales.
+
+Validación: pruebas de adaptador para ingresos en segundo, tercero y cuarto, faltantes reales y rangos inválidos; PocketBase temporal vacío con entrega sin primero, dependencias sólo del rango y defaults; interfaz institucional con corrección de apoyos en segundo, retirada y renovación de visado; generación y reutilización de PDFs de 13/14 páginas; render de alta tardía de 14 páginas revisado visualmente. Lint y build correctos. Los ensayos de navegador se ejecutan secuencialmente para evitar interferencia de caché y tiempos de arranque. La base local habitual y producción permanecen intactas.
+
+### Etapa 4: aceptación integrada y promoción
+
+Validar: cursada normal 1–4; baja después de segundo antes y después de entrega; alta en segundo con primero fuera de alcance; falta de notas dentro del alcance; alta y baja en el mismo bimestre; cambio de alcance con datos existentes; dos directivos concurrentes; cambio durante render; PDF previo y ZIP; y cuarto con sus fuentes anuales pendientes. Ensayar con datos sintéticos en PocketBase aislado y ambos ciclos (13/14 páginas). Publicar por etapas mediante backend compatible, frontend y plantilla versionada según los procedimientos vigentes. No se ejecutó despliegue productivo en esta tarea.
+
 ## Reglas solicitadas
 
 - El PDF representa el contenido visado en un momento determinado.
@@ -296,3 +388,35 @@ PocketBase actualizado mediante publish-pocketbase.ps1, con respaldo consistente
 Worker publicado mediante publish-pdf-worker.ps1 en /opt/cys-pdf/releases/20261001-091744. Las pruebas bajo cys-pdf con Chromium/Linux confirmaron PDF de 14 páginas, respuesta generated, reutilización con respuesta reused, exposición del resultado por CORS y ZIP con bytes idénticos. La release anterior del worker permanece en /opt/cys-pdf/releases/20260929-063535; el staging /root/cys-pdf-20261001-091744 conserva previous-release y Caddyfile.previous para rollback. Ante una falla del frontend, restaurar el deployment anterior de Vercel; no restaurar la base ni retirar migraciones para revertir sólo estos pulidos.
 
 Aviso operativo observado: apt conserva una advertencia de firma vencida en el repositorio Cloudsmith de Caddy. No impidió instalar/verificar las dependencias ya existentes ni validar y recargar Caddy; se deja registrado para mantenimiento independiente. El warning de tamaño del bundle permanece como deuda conocida.
+
+
+## Auditoría previa de producción — 3 de octubre de 2026
+
+Se auditó el primer bimestre del ciclo actual mediante SQLite en modo `ro`, `PRAGMA query_only=ON` y una transacción de lectura por SSH. No se llamaron rutas de generación, descarga o consulta de emisiones, porque algunas pueden invalidar registros. No se aplicaron migraciones ni se modificaron notas, fichas, apoyos, visados o emisiones. Se ejecutó el validador `documentDataIssues` del commit e72f4f5 sobre los campos mínimos leídos, sin almacenar números de DNI ni credenciales. El informe nominal y el script de repetición están bajo custodia local fuera de Git y OneDrive, en `C:/pocketbase/audits/pre-salvaguardas-20261003/`.
+
+Resultado de primaria: 84 matrículas; 81 visados vigentes y 81 emisiones DISPONIBLE. Cuatro matrículas regulares visadas carecen de DNI (una de tercero, una de cuarto y dos de sexto); las instantáneas de sus cuatro PDFs también carecen de ese dato. Las otras 77 matrículas visadas cumplen la guarda documental. Tres bajas sin notas, cierres, visado ni PDF presentan apoyos sin especificar; una también carece de DNI. No corresponde asignarles NO ni SIN_CURSADA automáticamente. No se encontraron faltantes de nombre/apellido o unicidad del responsable entre las matrículas auditadas.
+
+Hay tres fichas sin matrícula en el ciclo actual. Sus nombres coinciden con las altas tardías del briefing de ingesta; sólo dos IDs coinciden con los payloads de restauración de la rama grades_bulk_import_analysis. El tercer alumno_id documentado no existe en producción. Es necesario verificar identidad y reconstruir ese payload con la referencia vigente antes de autorizar cualquier restauración. No incorporar identidades ni payloads reales a este documento.
+
+Las 81 instantáneas guardadas no contienen `cursada`. Incorporar el alcance a la huella y actualizar la plantilla exige generar nuevamente los PDFs incluso cuando los datos están completos; no exige renovar los visados académicos. Confirmar posteriormente un rango también invalida emisiones, por lo que primero deben resolverse los alcances y después prepararse los lotes. No confundir este reemplazo de archivos con pérdida de notas. Los PDFs descargados previamente no se actualizan de forma retroactiva.
+
+Secuencia de regularización pendiente:
+
+1. Dirección aporta y verifica los cuatro DNI prioritarios; corregirlos mediante las fichas, conservando los visados académicos.
+2. Revisar los rangos de las 84 matrículas y las tres restauraciones. Las fechas administrativas y la falta de notas no autorizan inferir extremos ni cancelaciones. Resolver expresamente las tres bajas sin evaluaciones, incluida la baja mencionada en el briefing.
+3. Repetir la auditoría inmediatamente antes de la publicación y registrar cambios desde esta lectura. El informe verifica la guarda documental y la vigencia de los visados; no constituye una auditoría exhaustiva de las calificaciones ni de la autenticidad de los documentos físicos.
+4. Tras el ensayo de release y respaldo, aplicar backend compatible, confirmar las cursadas revisadas y restaurar sólo las matrículas verificadas. Publicar frontend/worker y preparar PDFs por curso después de las confirmaciones.
+5. Comprobar preservación de notas, cierres y visados; reemplazo de las 81 emisiones y disponibilidad de los boletines elegibles. Mantener identificados los archivos anteriores que dirección ya haya entregado.
+
+Esta auditoría no autoriza ni ejecuta la regularización de datos o el despliegue. El siguiente trabajo requiere la información verificada de dirección para resolver los casos nominales del informe privado.
+
+
+## Preparación de regularización tras aclaración de dirección — 3 de octubre
+
+Dirección confirmó los tres casos pendientes: una matrícula sin ningún bimestre evaluable, una baja con sólo primero evaluable y una baja con primero y segundo evaluables. Las fechas administrativas ya coinciden en producción; no corresponde recrear esas inscripciones. Se mantiene en blanco el DNI de los cuatro boletines regulares afectados, conservando notas y visados y aceptando el bloqueo documental individual. Esto reemplaza la propuesta inicial de esperar los cuatro DNI como requisito de publicación.
+
+Se transcribieron dos PDFs suministrados por dirección a tres planillas: 30 materias, 150 criterios, tres cierres y dos respuestas de apoyos. Los guiones en llegadas tarde se normalizan a cero por confirmación expresa; apoyos y PPI respetan cada materia del original. La validación en memoria mediante las funciones reales del gateway aceptó los tres payloads. Los documentos, IDs, payloads y revisión nominal están fuera de Git en `C:/pocketbase/audits/regularizacion-20261003/`. No se ejecutaron escrituras productivas.
+
+La carga requiere publicar primero el alcance evaluable, porque el gateway anterior excluye administrativamente a las bajas. Después de confirmar los rangos se incorporan las dos matrículas a la revisión existente de B1 y se escriben sus planillas mediante gateway institucional con precondiciones de revisión. Los ocho visados anteriores del curso se conservan. B2 aún no tiene instancia de carga en ese curso: sus datos deben incorporarse a un borrador autorizado, sin cerrar ni visar la nómina completa a partir de una sola planilla histórica.
+
+La comparación detectó dos criterios del catálogo truncados (Convivencia, quinto criterio; Inglés, tercero). Son prefijos exactos de los textos fuente y su materia/orden coinciden. No se modificó la malla durante esta preparación; su corrección requiere una tarea curricular separada.

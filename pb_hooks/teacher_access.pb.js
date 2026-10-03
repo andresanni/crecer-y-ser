@@ -3,6 +3,14 @@ routerAdd("GET", "/api/cys/docente/contexto", (c) => {
   return access.context(c)
 })
 
+routerAdd("GET", "/api/cys/directivo/inscripciones/:inscripcionId/cursada", (c) => {
+  return require(`${__hooks}/lib/teacherAccess.js`).staffEnrollmentScope(c)
+}, $apis.requireRecordAuth("users"))
+
+routerAdd("PUT", "/api/cys/directivo/inscripciones/:inscripcionId/cursada", (c) => {
+  return require(`${__hooks}/lib/teacherAccess.js`).saveEnrollmentScope(c)
+}, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
+
 routerAdd("GET", "/api/cys/docente/alumnos/:inscripcionId", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.student(c)

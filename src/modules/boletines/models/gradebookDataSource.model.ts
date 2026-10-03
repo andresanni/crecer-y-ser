@@ -21,6 +21,7 @@ export interface GradebookSupportState {
 }
 
 export interface GradebookStudentSnapshot {
+  bimestreApoyos?: number;
   revision?: number;
   materias: Record<string, GradebookSubjectState>;
   cierre: CierrePeriodoAlumno | null;
@@ -68,6 +69,7 @@ export interface GradebookSubmissionPendingStudent {
 }
 
 export interface GradebookSubmissionIncomplete {
+  cursadasPendientes?: Array<{ inscripcionId: string; nombreCompleto: string }>;
   totalAlumnos: number;
   totalMaterias: number;
   alumnosCompletos: number;

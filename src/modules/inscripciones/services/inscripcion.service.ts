@@ -95,19 +95,4 @@ export const inscripcionService = {
 
 
 
-  darDeBaja: async (inscripcionId: string, fechaEgreso: string): Promise<Inscripcion> => {
-    const record = await pb
-      .collection(COLLECTION_INSCRIPCIONES)
-      .update<InscripcionRecord>(
-        inscripcionId,
-        {
-          estado: 'Baja',
-          fecha_egreso: fechaEgreso,
-        },
-        {
-          expand: 'curso_id.nivel_id,ciclo_id',
-        }
-      );
-    return inscripcionAdapter(record);
-  },
 };

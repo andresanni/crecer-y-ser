@@ -20,12 +20,24 @@ interface StaffSaveDto {
   instancia: StaffWorkflowStateDto;
 }
 
+export interface DocumentPreparation {
+  completa: boolean;
+  alumnoId: string;
+  faltantes: Array<{
+    campo: string;
+    mensaje: string;
+    origen: 'alumno' | 'responsable' | 'apoyos';
+    bimestre: number | null;
+  }>;
+}
+
 export interface StaffReviewBulletin {
   inscripcionId: string;
   nombreCompleto: string;
   numeroOrden: number | null;
   estado: 'PENDIENTE_REVISION' | 'VISADO';
   generacionVisado: number;
+  preparacionDocumental?: DocumentPreparation;
   elegibilidadPdf?: {
     elegiblePorVisados: boolean;
     motivos: string[];
@@ -52,10 +64,12 @@ export interface StaffReviewDto {
   totalBoletines: number;
   visados: number;
   alumnosSinIncorporar: number;
+  inscripcionesEvaluables?: string[];
   boletines: StaffReviewBulletin[];
 }
 
 interface StaffStudentDto {
+  bimestreApoyos?: number;
   revision: number;
   evaluaciones: Array<{
     id: string;
@@ -118,6 +132,7 @@ const loadStaffStudent = async (
   return {
     revision: dto.revision,
     materias,
+    bimestreApoyos: dto.bimestreApoyos,
     cierre: dto.cierre ? {
       id: dto.cierre.id,
       inscripcionId,

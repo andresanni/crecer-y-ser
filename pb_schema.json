@@ -1011,13 +1011,72 @@
           "max": null,
           "pattern": ""
         }
+      },
+      {
+        "system": false,
+        "id": "cysfirstterm001",
+        "name": "bimestre_desde",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 4,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "cyslastterm0001",
+        "name": "bimestre_hasta",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 4,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "cysscopestate01",
+        "name": "cursada_estado",
+        "type": "select",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "PENDIENTE",
+            "CONFIRMADA",
+            "SIN_CURSADA"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "cysscoperev0001",
+        "name": "revision_cursada",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
       }
     ],
     "indexes": [],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
-    "createRule": "@request.auth.id != \"\"",
-    "updateRule": "@request.auth.id != \"\"",
+    "createRule": "@request.auth.id != \"\" && (@request.data.estado:isset = false || @request.data.estado != \"Baja\") && @request.data.bimestre_desde:isset = false && @request.data.bimestre_hasta:isset = false && @request.data.cursada_estado:isset = false && @request.data.revision_cursada:isset = false",
+    "updateRule": "@request.auth.id != \"\" && (@request.data.bimestre_desde:isset = false || @request.data.bimestre_desde = bimestre_desde) && (@request.data.bimestre_hasta:isset = false || @request.data.bimestre_hasta = bimestre_hasta) && (@request.data.cursada_estado:isset = false || @request.data.cursada_estado = cursada_estado) && (@request.data.revision_cursada:isset = false || @request.data.revision_cursada = revision_cursada) && (@request.data.alumno_id:isset = false || @request.data.alumno_id = alumno_id) && (@request.data.curso_id:isset = false || @request.data.curso_id = curso_id) && (@request.data.ciclo_id:isset = false || @request.data.ciclo_id = ciclo_id) && (@request.data.estado:isset = false || @request.data.estado = estado || (estado != \"Baja\" && @request.data.estado != \"Baja\")) && (@request.data.fecha_egreso:isset = false || @request.data.fecha_egreso = fecha_egreso || estado != \"Baja\")",
     "deleteRule": null,
     "options": {}
   },

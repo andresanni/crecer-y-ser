@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Card,
+  Alert,
   Col,
   Result,
   Row,
@@ -226,9 +227,11 @@ export const CargaDocentePublicaPage: React.FC = () => {
         </Row>
       </Card>
 
+      {!!context.cursadasPendientes.length && <Alert type="warning" showIcon title="Cursadas por confirmar"
+        description="Dirección debe confirmar los bimestres evaluables antes de la entrega. Podés continuar guardando el borrador. Una vez confirmados, guardá tus cambios y volvé a abrir el enlace para actualizar la lista." />}
       {alumnos.length === 0 ? (
         <Card className={ui.emptyPanel}>
-          <Text type="secondary">No hay estudiantes regulares en el alcance de este enlace.</Text>
+          <Text type="secondary">No hay estudiantes para evaluar en este bimestre.</Text>
         </Card>
       ) : (
         <VistaPorAlumno

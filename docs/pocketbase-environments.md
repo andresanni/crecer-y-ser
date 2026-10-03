@@ -9,9 +9,9 @@ Crecer y Ser opera con dos instancias independientes de PocketBase `0.22.17`:
 | Entorno | Ubicación | URL | Datos |
 | --- | --- | --- | --- |
 | Desarrollo | Equipo Windows ARM64, `C:\pocketbase` | `http://127.0.0.1:8090` | Datos descartables y una copia anonimizada de producción |
-| Producción | VPS, `/root/pb` | `https://alumnos-api.duckdns.org` | Datos de desarrollo descartables mientras la app no está operativa |
+| Producción | VPS, `/root/pb` | `https://alumnos-api.duckdns.org` | Datos escolares reales y boletines históricos; no descartables |
 
-No existe replicación continua ni sincronización bidireccional. Git transporta esquema, reglas, hooks, frontend y documentación. Los archivos `pb_data` son estado propio de cada entorno y nunca se promueven desde desarrollo a producción. Ambos entornos contienen por ahora datos de prueba, según la aclaración del responsable del proyecto.
+No existe replicación continua ni sincronización bidireccional. Git transporta esquema, reglas, hooks, frontend y documentación. Los archivos `pb_data` son estado propio de cada entorno y nunca se promueven desde desarrollo a producción. Desde la ingesta histórica de septiembre/octubre de 2026, producción contiene datos reales de alumnos, responsables, notas, visados y emisiones. La auditoría de sólo lectura del 3 de octubre confirmó ese estado. No tratar producción como un entorno descartable.
 
 La evolución de visado y configuración anual agrega `visados_boletin` y `curso_materias.ciclo_id`. La migración asigna las materias anteriores al ciclo marcado como actual, o al más reciente si no hay uno marcado, y crea visados pendientes para las entregas existentes. No presupone aprobación de boletines históricos. Las dos migraciones se ensayaron sobre una copia aislada del VPS y se desplegaron allí el 26 de septiembre de 2026 junto con los hooks, sin reemplazar `pb_data`. El respaldo previo es `/root/pb/deploy_backups/20260926-094932`.
 
@@ -291,3 +291,11 @@ PocketBase carga `CYS_PDF_WORKER_KEY` desde `C:/pocketbase/pdf-worker-dev.key` m
 ## Promoción del pulido PDF — 1 de octubre de 2026
 
 Sin nuevas migraciones. Respaldo consistente /root/pb/deploy_backups/20261001-091649 y worker /opt/cys-pdf/releases/20261001-091744. Ensayo de hooks en copia aislada saneada del VPS y comparación posterior de 13 tablas de dominio/autorización, esquema e historial de migraciones sin diferencias. Se preservaron datos productivos. La publicación del frontend se realiza mediante PR #11 de dev a master. El detalle de validaciones y rollback está en gradebook-pdf-emission.md.
+
+
+## Migración de cursada evaluable pendiente — 1 de octubre de 2026
+
+1790850000_enrollment_evaluable_scope.js fue probada en una base sintética y en snapshot consistente de 8090. Conserva todos los datos existentes y marca las 84 matrículas del snapshot como PENDIENTE. La copia se obtuvo con backup de SQLite en modo lectura, con el servidor local encendido; archivos fuera del repositorio en C:/pocketbase/evaluable-scope-migration-trial. before.db conserva el esquema anterior y data.db el resultado del ensayo. No se modificó 8090 ni el VPS: el intento de parada/respaldo/migración local fue rechazado por revisión automática. Aplicar mediante el procedimiento de respaldo y migración de este documento antes de usar el frontend nuevo. El esquema versionado proviene de una instancia sintética migrada; no implica que 8090 ya esté actualizado. No promover el frontend sin el gateway y las reglas nuevos.
+
+
+El 2 de octubre el usuario confirmó que la base habitual fue purgada intencionalmente tras una prueba de ingesta que apuntó por error a loopback, conservando estructura y catálogos. PocketBase se detuvo por reinicio de sesión. La instrucción vigente es dejarla intacta y realizar las pruebas de cursada en instancias temporales. La migración y una eventual repoblación sintética habitual quedan pendientes; no restaurar el snapshot de 84 matrículas automáticamente.

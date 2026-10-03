@@ -20,7 +20,7 @@ function TestApp() {
  const [open, setOpen] = useState(true);
  return React.createElement(React.Fragment, null,
   React.createElement('button', { onClick: () => setOpen(true) }, 'Abrir'),
-  open && React.createElement(BatchDocumentModal, { cursoId: 'curso', periodoId: 'periodo', cursoNombre: '1°', onClose: () => setOpen(false) }));
+  open && React.createElement(BatchDocumentModal, { cursoId: 'curso', periodoId: 'periodo', cursoNombre: '1°', onClose: () => setOpen(false), onReview: id => { window.reviewOpened = id; } }));
 }
 createRoot(document.getElementById('root')).render(React.createElement(React.StrictMode, null, React.createElement(TestApp)));`;
     },
@@ -35,7 +35,8 @@ await new Promise((resolve, reject) => {
 if (window.batchSettings.fail) throw Error('No se pudo consultar el curso.');
 return { alumnosSinIncorporar: 0, boletines: window.batchSettings.empty ? [] : [
  { inscripcionId: 'a', nombreCompleto: 'Alumno A', elegibilidadPdf: { elegiblePorVisados: true } },
- { inscripcionId: 'b', nombreCompleto: 'Alumno B', elegibilidadPdf: { elegiblePorVisados: false, motivos: ['Falta visar el bimestre 1.'] } }
+ { inscripcionId: 'b', nombreCompleto: 'Alumno B', elegibilidadPdf: { elegiblePorVisados: false, motivos: ['Falta visar el bimestre 1.'] } },
+ { inscripcionId: 'c', nombreCompleto: 'Alumno C', preparacionDocumental: { completa: false, faltantes: [{ mensaje: 'Completar DNI.' }] }, elegibilidadPdf: { elegiblePorVisados: true } }
 ] };
 }`;
       if (id.endsWith('/services/documentSnapshot.service.ts')) return `export class DocumentPdfError extends Error { constructor(message, status) { super(message); this.status = status; } }
@@ -67,6 +68,7 @@ export async function downloadDocumentBatch() { throw Error('No debe descargarse
     assert.equal(await page.getByRole('button', { name: 'Descargar PDFs (1)', exact: true }).isEnabled(), true);
     assert.equal(await page.getByText('PDF listo', { exact: true }).count(), 1);
     assert.equal(await page.getByText('Falta visar', { exact: true }).count(), 1);
+    assert.equal(await page.getByText('Revisar datos', { exact: true }).count(), 1);
     assert.equal(await page.getByRole('columnheader', { name: 'Detalle', exact: true }).count(), 0);
     assert.equal(await page.getByText('Ya estaba generado', { exact: true }).count(), 0);
     assert.equal(await page.getByText('1 PDFs listos para descargar.', { exact: true }).count(), 1);
@@ -96,6 +98,11 @@ export async function downloadDocumentBatch() { throw Error('No debe descargarse
     await page.getByRole('button', { name: 'Abrir', exact: true }).click();
     await page.getByText('No se pudo consultar el curso.', { exact: true }).first().waitFor();
     assert.equal(await page.evaluate(() => window.batchStats.reviews), 5);
+    await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+    await page.evaluate(() => { window.batchSettings.fail = false; window.batchSettings.empty = false; });
+    await page.getByRole('button', { name: 'Abrir', exact: true }).click();
+    await page.getByRole('button', { name: 'Completar datos', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.reviewOpened), 'c');
   } finally {
     await browser?.close();
     await vite.close();

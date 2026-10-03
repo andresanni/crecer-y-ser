@@ -40,6 +40,7 @@ interface TeacherAccessDto {
 }
 
 interface TeacherContextDto {
+  cursadasPendientes: Array<{ inscripcionId: string; nombreCompleto: string }>;
   acceso: TeacherAccessDto;
   instancia: {
     id: string;
@@ -80,6 +81,7 @@ interface TeacherContextDto {
 }
 
 interface TeacherStudentDto {
+  bimestreApoyos?: number;
   evaluaciones: Array<{
     id: string;
     cursoMateriaId: string;
@@ -123,6 +125,7 @@ interface TeacherSubmissionDto {
 }
 
 export interface TeacherGradebookContext {
+  cursadasPendientes: Array<{ inscripcionId: string; nombreCompleto: string }>;
   acceso: TokenAccesoDocente;
   instancia: InstanciaCargaBoletin;
   curso: Curso;
@@ -198,6 +201,7 @@ const mapStudentDto = (
   }
   return {
     materias,
+    bimestreApoyos: dto.bimestreApoyos,
     cierre: dto.cierre ? {
       ...dto.cierre,
       inscripcionId,
@@ -351,6 +355,7 @@ export const accesoDocenteService = {
     };
     return {
       acceso,
+      cursadasPendientes: dto.cursadasPendientes || [],
       instancia: {
         id: dto.instancia.id,
         cursoId: dto.acceso.cursoId,

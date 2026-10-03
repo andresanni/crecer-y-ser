@@ -1,6 +1,12 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 1 de octubre de 2026.
+Actualizado: 2 de octubre de 2026.
+
+## Salvaguardas documentales y cursadas parciales en desarrollo
+
+El plan vigente está en `docs/gradebook-pdf-emission.md`, sección Casos de borde. El usuario confirmó mantener NO por defecto en apoyos y que dirección defina los bimestres evaluables independientemente de las fechas administrativas. Las etapas 1A/1B están implementadas en desarrollo: guarda del servidor contra identidad/apoyos incompletos, preparación documental anticipada en revisión y accesos al formulario existente de ficha y al bimestre de apoyos, con retorno al alumno original. Realtime actualiza el diagnóstico sin reemplazar ediciones académicas locales. La corrección de un NO antiguo sin especificar conserva la retirada de visado del gateway. Las etapas 1A/1B no agregan migraciones. La etapa 2 está implementada en código y ensayada: rango evaluable inclusivo, baja con último boletín, cancelación sin cursada y confirmación obligatoria de cursadas pendientes antes de nuevas entregas. La migración 1790850000 sigue pendiente de aplicar a 8090 y a producción; ver el procedimiento y la evidencia en gradebook-pdf-emission.md. La etapa 3 también está implementada y validada: altas tardías con asteriscos en notas, guiones en PPI/asistencias y observación de legajo conforme a los ejemplos de dirección; apoyos editables en el primer bimestre evaluable. Confirmar ingreso tardío confirma la documentación anterior en legajo y el modal lo informa. El cuarto bimestre conserva el bloqueo de render por fuentes anuales pendientes. Estos cambios no están publicados en producción.
+
+La continuación del 2 de octubre considera el briefing de ingesta histórica de la rama grades_bulk_import_analysis (832b924), sin mezclar sus archivos ni tocar producción. La regresión sintética cubre matrículas restauradas después de una entrega y preservación de los visados anteriores. El usuario confirmó el vaciado intencional de las tablas operativas locales después de una prueba de ingesta dirigida por error a loopback. Por su indicación se conserva esa base intacta y detenida; las pruebas usan instancias temporales sintéticas. No se reemplazó con el snapshot anterior.
 
 ## Release de pulido de boletines PDF
 

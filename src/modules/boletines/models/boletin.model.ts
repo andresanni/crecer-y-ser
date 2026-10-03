@@ -430,6 +430,7 @@ export type EtapaBoletinCurso =
   | 'LISTO_PARA_PDF';
 
 export interface CursoMonitoreoResumen {
+  cursadasPendientes?: Array<{ inscripcionId: string; nombreCompleto: string }>;
   cursoId: string;
   cursoNombre: string;
   gradoNumero: number | null;

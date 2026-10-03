@@ -20,7 +20,9 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
 } from '@ant-design/icons';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import pb from '../../../core/pocketbase';
+import { DocumentReadinessAlert } from './DocumentReadinessAlert';
 import { ClientResponseError } from 'pocketbase';
 import { DownloadBulletinButton } from './DownloadBulletinButton';
 const BatchDocumentModal = React.lazy(() => import('./BatchDocumentModal'));
@@ -61,7 +63,8 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const { message, modal } = App.useApp();
   const { cicloActual } = useAppStore();
   useGradebookRealtime();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const urlCursoId = searchParams.get('curso');
   const urlPeriodoId = searchParams.get('periodo');
 
@@ -83,7 +86,15 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const [loadingWorkflow, setLoadingWorkflow] = useState(false);
   const [workflow, setWorkflow] = useState<InstanciaCargaBoletin | null>(null);
   const [reloadCounter, setReloadCounter] = useState(0);
-  const [reviewInscripcionId, setReviewInscripcionId] = useState<string | null>(null);
+  const reviewInscripcionId = searchParams.get('inscripcion');
+  const setReviewInscripcionId = (id: string | null) => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (id) next.set('inscripcion', id); else next.delete('inscripcion');
+      return next;
+    }, { replace: true });
+  };
+  const [documentRevision, setDocumentRevision] = useState(0);
   const [detailHasChanges, setDetailHasChanges] = useState(false);
   const [reviewSnapshot, setReview] = useState<StaffReviewDto | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -100,7 +111,26 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     .filter(item => item.cursoId === selectedCursoId)
     .map(item => `${item.id}:${item.revision}:${item.estado}`).sort().join('|'));
   const [reviewWorkflowKey, setReviewWorkflowKey] = useState('');
-  const documentScope = `${selectedCursoId}:${selectedPeriodoId}:${reviewInscripcionId}:${courseWorkflowKey}:${reloadCounter}`;
+  const reviewReadKey = `${courseWorkflowKey}:${documentRevision}:${reloadCounter}`;
+  const documentScope = `${selectedCursoId}:${selectedPeriodoId}:${reviewInscripcionId}:${reviewReadKey}`;
+
+  useEffect(() => {
+    let active = true;
+    const stops: Array<() => void> = [];
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = () => {
+      if (!active) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => setDocumentRevision(value => value + 1), 100);
+    };
+    for (const collection of ['alumnos', 'responsables', 'alumno_responable', 'inscripciones']) {
+      void pb.collection(collection).subscribe('*', refresh).then(stop => {
+        if (active) stops.push(stop); else stop();
+      }).catch(() => { if (active) message.warning('La actualización automática de datos no está disponible. Usá Actualizar antes de descargar.'); });
+    }
+    window.addEventListener('focus', refresh);
+    return () => { active = false; clearTimeout(timer); stops.forEach(stop => stop()); window.removeEventListener('focus', refresh); };
+  }, [message]);
 
 
 
@@ -237,6 +267,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const review = effectiveWorkflow?.estado === 'CONTROL_DIRECTIVO'
     && reviewSnapshot?.instancia.id === effectiveWorkflow.id
     && reviewSnapshot.instancia.revision === effectiveWorkflow.revision
+    && reviewWorkflowKey === reviewReadKey
     ? reviewSnapshot
     : null;
   const visibleReview = review || (
@@ -252,7 +283,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       setReviewLoading(true);
       try {
         const data = await getStaffGradebookReview(selectedCursoId, selectedPeriodoId);
-        if (active) { setReview(data); setReviewWorkflowKey(courseWorkflowKey); }
+        if (active) { setReview(data); setReviewWorkflowKey(reviewReadKey); }
       } catch (error) {
         if (active) {
           console.error(error);
@@ -264,7 +295,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     };
     void fetchReview();
     return () => { active = false; };
-  }, [selectedCursoId, selectedPeriodoId, effectiveWorkflow?.estado, effectiveWorkflow?.revision, courseWorkflowKey, reloadCounter, message]);
+  }, [selectedCursoId, selectedPeriodoId, effectiveWorkflow?.estado, effectiveWorkflow?.revision, reviewReadKey, message]);
 
   const handleSaveSuccess = useCallback((revision?: number) => {
     if (revision === undefined) return;
@@ -284,18 +315,20 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
     () => cursos.find((curso) => curso.id === selectedCursoId),
     [cursos, selectedCursoId],
   );
+  const reviewedEnrollmentKey = visibleReview?.boletines.map(item => item.inscripcionId).sort().join('|') || '';
+  const evaluableEnrollmentKey = visibleReview?.inscripcionesEvaluables?.slice().sort().join('|') || '';
   const reviewStudents = useMemo(() => {
-    const included = new Set(visibleReview?.boletines.map((item) => item.inscripcionId) || []);
+    const included = new Set(reviewedEnrollmentKey.split('|'));
     return alumnos
-      .filter((alumno) => alumno.estado !== 'Baja' || included.has(alumno.inscripcionId))
+      .filter((alumno) => evaluableEnrollmentKey.split('|').includes(alumno.inscripcionId) || included.has(alumno.inscripcionId))
       .sort((left, right) => left.nombreCompleto.localeCompare(right.nombreCompleto, 'es', { sensitivity: 'base', numeric: true })
         || (left.numeroOrden ?? Number.MAX_SAFE_INTEGER) - (right.numeroOrden ?? Number.MAX_SAFE_INTEGER)
         || left.inscripcionId.localeCompare(right.inscripcionId));
-  }, [alumnos, visibleReview]);
+  }, [alumnos, reviewedEnrollmentKey, evaluableEnrollmentKey]);
   const reviewableStudents = useMemo(() => {
-    const included = new Set(visibleReview?.boletines.map((item) => item.inscripcionId) || []);
+    const included = new Set(reviewedEnrollmentKey.split('|'));
     return reviewStudents.filter((alumno) => included.has(alumno.inscripcionId));
-  }, [reviewStudents, visibleReview]);
+  }, [reviewStudents, reviewedEnrollmentKey]);
 
   const handleBack = () => {
     if (!reviewInscripcionId) {
@@ -353,6 +386,22 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   };
 
   const selectedBulletin = visibleReview?.boletines.find((item) => item.inscripcionId === reviewInscripcionId);
+  const openStudentData = (section: 'alumno' | 'responsable' | 'vinculos') => {
+    if (detailHasChanges || !review || !selectedBulletin?.preparacionDocumental || !selectedCursoId || !selectedPeriodoId || !reviewInscripcionId) return;
+    const params = new URLSearchParams({ alumno: selectedBulletin.preparacionDocumental.alumnoId, seccion: section, curso: selectedCursoId, periodo: selectedPeriodoId, inscripcion: reviewInscripcionId });
+    navigate(`/app/alumnos?${params}`);
+  };
+  const openSupport = (term: number) => {
+    if (detailHasChanges || !review || !selectedCursoId || !selectedPeriodoId || !reviewInscripcionId) return;
+    const targets = periodos.filter(period => period.numeroPeriodo === term);
+    if (targets.length !== 1) { message.warning('El bimestre de corrección no tiene una configuración única.'); return; }
+    if (targets[0].id === selectedPeriodoId) {
+      document.getElementById('integracion-escolar')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    const params = new URLSearchParams({ curso: selectedCursoId, periodo: targets[0].id, inscripcion: reviewInscripcionId, volverPeriodo: searchParams.get('volverPeriodo') || selectedPeriodoId });
+    navigate(`/app/boletines/calificaciones?${params}`);
+  };
   const handleApproval = () => {
     if (!selectedBulletin || !selectedPeriodoId || !review || detailHasChanges || reviewLoading || approvalBusy) return;
     const approve = selectedBulletin.estado !== 'VISADO';
@@ -392,6 +441,12 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   return (
     <SectionLayout title="Bimestres" icon={<TableOutlined />} actions={
         <Space size="middle" wrap>
+          {searchParams.get('volverPeriodo') && <Button disabled={detailHasChanges} onClick={() => {
+            const next = new URLSearchParams(searchParams);
+            next.set('periodo', next.get('volverPeriodo')!);
+            next.delete('volverPeriodo');
+            navigate(`/app/boletines/calificaciones?${next}`);
+          }}>Volver al boletín de origen</Button>}
           {(reviewInscripcionId || onBackToDashboard) && (
             <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>
               {reviewInscripcionId ? 'Volver al listado del curso' : 'Volver a cursos'}
@@ -401,6 +456,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             <Button
               icon={<ReloadOutlined />}
               onClick={() => setReloadCounter((c) => c + 1)}
+              disabled={detailHasChanges}
               loading={loadingCursos || loadingCursoData || loadingPeriodos}
             />
           </Tooltip>
@@ -459,6 +515,14 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             />
           )}
           {reviewInscripcionId && selectedBulletin ? (
+            <>
+            <DocumentReadinessAlert
+              preparation={review ? selectedBulletin.preparacionDocumental : undefined}
+              disabled={!review || detailHasChanges || reviewLoading || approvalBusy}
+              onStudent={openStudentData}
+              onSupport={openSupport}
+              onRefresh={() => setDocumentRevision(value => value + 1)}
+            />
             <VistaPorAlumno
               key={`${selectedCursoId}:${selectedPeriodoId}:${reviewInscripcionId}:${reloadCounter}`}
               periodoId={selectedPeriodoId || ''}
@@ -497,12 +561,13 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
                     key={documentScope}
                     inscripcionId={reviewInscripcionId}
                     periodoId={selectedPeriodoId}
-                    disabled={!review || reviewLoading || detailHasChanges || approvalBusy || reviewWorkflowKey !== courseWorkflowKey || !selectedBulletin.elegibilidadPdf?.elegiblePorVisados}
+                    disabled={!review || reviewLoading || detailHasChanges || approvalBusy || !selectedBulletin.preparacionDocumental?.completa || !selectedBulletin.elegibilidadPdf?.elegiblePorVisados}
                   />
                 </div>
               )}
               onPendingChangesChange={setDetailHasChanges}
             />
+            </>
           ) : reviewInscripcionId && reviewLoading ? (
             <Card className={ui.loadingPanel}>
               <Spin description="Consultando el visado del alumno..." />
@@ -539,7 +604,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
       )}
       {batchScope === currentBatchScope && selectedCursoId && selectedPeriodoId && (
         <React.Suspense fallback={<Spin />}>
-          <BatchDocumentModal key={currentBatchScope} cursoId={selectedCursoId} periodoId={selectedPeriodoId} cursoNombre={selectedCurso?.nombre || 'Curso'} onClose={() => setBatchScope(null)} />
+          <BatchDocumentModal key={currentBatchScope} cursoId={selectedCursoId} periodoId={selectedPeriodoId} cursoNombre={selectedCurso?.nombre || 'Curso'} onClose={() => setBatchScope(null)} onReview={handleSelectStudent} />
         </React.Suspense>
       )}
     </SectionLayout>

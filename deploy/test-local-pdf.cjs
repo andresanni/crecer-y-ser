@@ -103,6 +103,16 @@ test('Generación local: autenticación, vigencia, generación y reutilización'
     assert.equal(deduplicated.headers.get('X-CYS-PDF-Result'), 'reused');
     await deduplicated.arrayBuffer();
     stored = null;
+    snapshot.datos.cursada = { estado: 'CONFIRMADA', desde: 2, hasta: 4, revision: 1 };
+    snapshot.datos.bimestreCorte = 2;
+    snapshot.datos.periodos[0].bimestre = 2;
+    snapshot.datos.dependencias[0].bimestre = 2;
+    const lateAdmission = await call();
+    assert.equal(lateAdmission.status, 200, await lateAdmission.clone().text());
+    const lateBytes = Buffer.from(await lateAdmission.arrayBuffer());
+    assert.equal((await PDFDocument.load(lateBytes)).getPageCount(), 14);
+    if (process.env.CYS_PDF_REVIEW_OUTPUT) fs.writeFileSync(process.env.CYS_PDF_REVIEW_OUTPUT, lateBytes);
+    stored = null;
     rejectWorker = true;
     const forbidden = await call();
     assert.equal(forbidden.status, 403);

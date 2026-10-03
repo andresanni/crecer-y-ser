@@ -24,7 +24,7 @@ export function TermClosingPage({ cierre }: { cierre: CierreBimestralDocumental 
         </tr>)}
         <tr><th colSpan={2} id={`observaciones-bimestre-${cierre.bimestre}`} className={styles.tituloObservaciones}>Observaciones</th></tr>
         <tr><td colSpan={2} headers={`observaciones-bimestre-${cierre.bimestre}`}>
-          <div className={`${styles.observacionesCierre} ${sinObservaciones ? styles.observacionesVacias : ''}`} data-dynamic-field={`Observaciones, bimestre ${cierre.bimestre}`}>{sinObservaciones ? '---' : <ValorCelda valor={cierre.observaciones} />}</div>
+          <div className={`${styles.observacionesCierre} ${sinObservaciones || cierre.observaciones.estado === 'anteriorIngreso' ? styles.observacionesVacias : ''}`} data-dynamic-field={`Observaciones, bimestre ${cierre.bimestre}`}>{sinObservaciones ? '---' : <ValorCelda valor={cierre.observaciones} />}</div>
         </td></tr>
       </tbody>
     </table>

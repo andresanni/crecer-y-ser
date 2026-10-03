@@ -185,6 +185,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     isModified: false,
   });
 
+  const [bimestreApoyos, setBimestreApoyos] = useState(1);
+  const [supportNeedsConfirmation, setSupportNeedsConfirmation] = useState(false);
   const [apoyoState, setApoyoState] = useState<ApoyoInclusionState>({
     promocionoConAcompanamiento: '-',
     poseeApoyos: '-',
@@ -332,16 +334,19 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
         const apoyos = snapshot.apoyos;
+        const primerBimestreEvaluable = snapshot.bimestreApoyos ?? 1;
+        setBimestreApoyos(primerBimestreEvaluable);
         const promocionoConAcompanamiento = apoyos?.promocionoConAcompanamiento
           || curAlu?.promocionoConAcompanamiento
           || '-';
         const poseeApoyos = apoyos?.poseeApoyos || curAlu?.poseeApoyos || '-';
+        setSupportNeedsConfirmation((periodo?.numeroPeriodo === primerBimestreEvaluable && poseeApoyos === '-') || (periodo?.numeroPeriodo === 4 && promocionoConAcompanamiento === '-'));
         setApoyoState({
           promocionoConAcompanamiento: periodo?.numeroPeriodo === 4
             && promocionoConAcompanamiento === '-'
             ? 'NO'
             : promocionoConAcompanamiento,
-          poseeApoyos: periodo?.numeroPeriodo === 1 && poseeApoyos === '-'
+          poseeApoyos: periodo?.numeroPeriodo === primerBimestreEvaluable && poseeApoyos === '-'
             ? 'NO'
             : poseeApoyos,
           cualesApoyos: apoyos?.cualesApoyos || curAlu?.cualesApoyos || '',
@@ -446,7 +451,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     }));
   };
 
-  const isPrimerBimestre = periodo?.numeroPeriodo === 1;
+  const isBimestreApoyos = periodo?.numeroPeriodo === bimestreApoyos;
   const isCuartoBimestre = periodo?.numeroPeriodo === 4;
 
   const handleApoyoChange = (
@@ -455,7 +460,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   ) => {
 
     if (field === 'promocionoConAcompanamiento' && !isCuartoBimestre) return;
-    if ((field === 'poseeApoyos' || field === 'cualesApoyos') && !isPrimerBimestre) return;
+    if ((field === 'poseeApoyos' || field === 'cualesApoyos') && !isBimestreApoyos) return;
 
     setApoyoState((prev) => {
       const next = { ...prev, [field]: val, isModified: true };
@@ -485,7 +490,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     ) return;
 
     if (
-      isPrimerBimestre
+      isBimestreApoyos
       && apoyoState.poseeApoyos === 'SI'
       && !apoyoState.cualesApoyos.trim()
     ) {
@@ -534,7 +539,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         }
         : undefined;
       const shouldPersistSupportDefaults = access.mode === 'magic-link'
-        && (isPrimerBimestre || isCuartoBimestre);
+        && (isBimestreApoyos || isCuartoBimestre);
       const apoyos = access.canEditStudentSupport
         && (apoyoState.isModified || shouldPersistSupportDefaults)
         ? {
@@ -556,6 +561,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       setSaveOutcomeUnknown(false);
 
       if (apoyos) {
+        setSupportNeedsConfirmation(false);
         const curAlu = alumnos.find((a) => a.inscripcionId === selectedInscripcionId);
         if (curAlu) {
           curAlu.promocionoConAcompanamiento = apoyoState.promocionoConAcompanamiento;
@@ -712,6 +718,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           access.onPeriodSubmitted?.(result);
         } catch (error) {
           if (error instanceof TeacherSubmissionIncompleteError) {
+            const pendingScopes = error.detail.cursadasPendientes || [];
+            if (pendingScopes.length) {
+              message.warning(`Dirección debe confirmar los bimestres evaluables de ${pendingScopes.length} alumno(s) antes de entregar: ${pendingScopes.map(item => item.nombreCompleto).join(', ')}.`, 10);
+              return;
+            }
             const count = error.detail.pendientes.length;
             message.warning(`La revisión del servidor encontró ${count} ${count === 1 ? 'alumno pendiente' : 'alumnos pendientes'}.`);
             setDrawerResumenOpen(true);
@@ -1148,7 +1159,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       )}
       { }
       {access.canEditStudentSupport && (
-        <div className={ui.operationalContent}>
+        <div id="integracion-escolar" className={ui.operationalContent}>
           <Card
             className={`${styles.evaluationCard} ${apoyoState.isModified ? styles.evaluationCardModified : ''}`}
             styles={{ body: { padding: '16px 20px' } }}
@@ -1161,7 +1172,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </Typography.Text>
             <Tag className={styles.evaluationMetaTag}>Trayectoria anual</Tag>
           </div>
-          {readOnly && (isPrimerBimestre || isCuartoBimestre) && (
+          {readOnly && (isBimestreApoyos || isCuartoBimestre) && (
             editingSection === 'support' ? (
               <Space size={6} className={styles.evaluationActions}>
                 <Button
@@ -1189,7 +1200,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   size="small"
                   icon={<EditOutlined />}
                   disabled={Boolean(editingMateriaId || editingSection)}
-                  onClick={() => setEditingSection('support')}
+                  onClick={() => {
+                    setEditingSection('support');
+                    if (supportNeedsConfirmation) setApoyoState(current => ({ ...current, isModified: true }));
+                  }}
                 >
                   Editar
                 </Button>
@@ -1204,18 +1218,18 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Col xs={24} lg={14}>
             <div
               style={{
-                background: isPrimerBimestre ? 'var(--cys-color-success-bg)' : "var(--cys-color-fill-quaternary)",
-                border: isPrimerBimestre ? '1px solid #86efac' : "1px solid var(--cys-color-border-secondary)",
+                background: isBimestreApoyos ? 'var(--cys-color-success-bg)' : "var(--cys-color-fill-quaternary)",
+                border: isBimestreApoyos ? '1px solid #86efac' : "1px solid var(--cys-color-border-secondary)",
                 borderRadius: 10,
                 padding: '10px 14px',
                 height: '100%',
-                opacity: isPrimerBimestre ? 1 : 0.75,
+                opacity: isBimestreApoyos ? 1 : 0.75,
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
                 <Space size={4}>
-                  {!isPrimerBimestre && <LockOutlined style={{ color: 'var(--cys-color-text-secondary)', fontSize: 12 }} />}
-                  <Typography.Text strong style={{ fontSize: 12.5, color: isPrimerBimestre ? "var(--cys-color-success-text)" : "var(--cys-color-text-description)" }}>
+                  {!isBimestreApoyos && <LockOutlined style={{ color: 'var(--cys-color-text-secondary)', fontSize: 12 }} />}
+                  <Typography.Text strong style={{ fontSize: 12.5, color: isBimestreApoyos ? "var(--cys-color-success-text)" : "var(--cys-color-text-description)" }}>
                     1. Dispositivos de Apoyo / Acompañamiento
                   </Typography.Text>
                 </Space>
@@ -1226,24 +1240,24 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     margin: 0,
                     fontWeight: 700,
                     padding: '1px 8px',
-                    background: isPrimerBimestre ? 'rgba(34, 197, 94, 0.12)' : "var(--cys-color-fill-tertiary)",
-                    color: isPrimerBimestre ? "var(--cys-color-success-text)" : "var(--cys-color-text-secondary)",
-                    border: isPrimerBimestre ? '1px solid rgba(34, 197, 94, 0.3)' : "1px solid var(--cys-color-border)",
+                    background: isBimestreApoyos ? 'rgba(34, 197, 94, 0.12)' : "var(--cys-color-fill-tertiary)",
+                    color: isBimestreApoyos ? "var(--cys-color-success-text)" : "var(--cys-color-text-secondary)",
+                    border: isBimestreApoyos ? '1px solid rgba(34, 197, 94, 0.3)' : "1px solid var(--cys-color-border)",
                   }}
                 >
-                  1ER BIMESTRE
+                  {bimestreApoyos}° BIMESTRE
                 </Tag>
               </div>
 
               <Row gutter={[12, 10]} align="middle">
                 <Col xs={24} sm={10}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                    <Typography.Text style={{ fontSize: 11.5, color: isPrimerBimestre ? "var(--cys-color-text-description)" : "var(--cys-color-text-secondary)", fontWeight: 600 }}>
+                    <Typography.Text style={{ fontSize: 11.5, color: isBimestreApoyos ? "var(--cys-color-text-description)" : "var(--cys-color-text-secondary)", fontWeight: 600 }}>
                       ¿Posee apoyos?
                     </Typography.Text>
-                    <Tooltip title={!isPrimerBimestre ? 'Los dispositivos de apoyo se establecen al inicio del ciclo lectivo en el 1° Bimestre.' : undefined}>
+                    <Tooltip title={!isBimestreApoyos ? `Los dispositivos de apoyo se establecen en el primer bimestre evaluable del alumno (${bimestreApoyos}°).` : undefined}>
                       <div>
-                        {readOnly && (editingSection !== 'support' || !isPrimerBimestre) ? (
+                        {readOnly && (editingSection !== 'support' || !isBimestreApoyos) ? (
                           <Typography.Text strong>
                             {apoyoState.poseeApoyos === 'SI' ? 'Sí' : apoyoState.poseeApoyos === 'NO' ? 'No' : 'Sin especificar'}
                           </Typography.Text>
@@ -1252,12 +1266,12 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             value={apoyoState.poseeApoyos}
                             onChange={(val) => handleApoyoChange('poseeApoyos', val)}
                             size="middle"
-                            disabled={!isPrimerBimestre}
+                            disabled={!isBimestreApoyos}
                             className={ui.fullWidth}
                             options={[
                               { value: 'SI', label: 'Sí' },
                               { value: 'NO', label: 'No' },
-                              ...(!isPrimerBimestre
+                              ...(!isBimestreApoyos
                                 ? [{ value: '-', label: 'Sin especificar (—)' }]
                                 : []),
                             ]}
@@ -1273,13 +1287,13 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     <Typography.Text
                       style={{
                         fontSize: 11.5,
-                        color: isPrimerBimestre && apoyoState.poseeApoyos === 'SI' ? "var(--cys-color-text-description)" : "var(--cys-color-text-secondary)",
+                        color: isBimestreApoyos && apoyoState.poseeApoyos === 'SI' ? "var(--cys-color-text-description)" : "var(--cys-color-text-secondary)",
                         fontWeight: 600,
                       }}
                     >
-                      ¿Cuáles? {isPrimerBimestre && apoyoState.poseeApoyos === 'SI' && <span style={{ color: '#ef4444' }}>*</span>}
+                      ¿Cuáles? {isBimestreApoyos && apoyoState.poseeApoyos === 'SI' && <span style={{ color: '#ef4444' }}>*</span>}
                     </Typography.Text>
-                    {readOnly && (editingSection !== 'support' || !isPrimerBimestre) ? (
+                    {readOnly && (editingSection !== 'support' || !isBimestreApoyos) ? (
                       <Typography.Text strong>
                         {apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos || 'Sin detalle' : 'No corresponde'}
                       </Typography.Text>
@@ -1287,13 +1301,13 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       <Input
                         size="middle"
                         placeholder={
-                          !isPrimerBimestre
+                          !isBimestreApoyos
                             ? apoyoState.cualesApoyos || (apoyoState.poseeApoyos === 'NO' ? 'Sin apoyos' : 'Sin especificar')
                             : apoyoState.poseeApoyos === 'SI'
                             ? 'Detallar apoyos (ej: DIL, MAI, etc.)...'
                             : 'Sin apoyos'
                         }
-                        disabled={!isPrimerBimestre || apoyoState.poseeApoyos !== 'SI'}
+                        disabled={!isBimestreApoyos || apoyoState.poseeApoyos !== 'SI'}
                         value={apoyoState.poseeApoyos === 'SI' ? apoyoState.cualesApoyos : ''}
                         onChange={(e) => handleApoyoChange('cualesApoyos', e.target.value)}
                         maxLength={150}

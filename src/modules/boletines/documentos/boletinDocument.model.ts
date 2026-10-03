@@ -9,6 +9,7 @@ export function cicloPedagogicoDelGrado(grado: GradoPrimario): string {
 
 export type ValorDocumental =
   | { estado: 'confirmado'; texto: string }
+  | { estado: 'anteriorIngreso'; texto?: string }
   | { estado: 'futuro' }
   | { estado: 'sinDato' };
 
@@ -16,6 +17,7 @@ export type ConceptoCalificacion = 'destacado' | 'avanzado' | 'alcanzado' | 'enP
 
 export type CalificacionDocumental =
   | { estado: 'confirmado'; concepto: ConceptoCalificacion; numero?: number }
+  | { estado: 'anteriorIngreso'; texto?: string }
   | { estado: 'futuro' }
   | { estado: 'sinDato' };
 
