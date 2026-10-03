@@ -121,7 +121,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
         )),
       ]);
       if (issued.secreto) {
-        await showIssuedLink(issued.secreto, 'Enlace docente generado');
+        showIssuedLink(issued.secreto, 'Enlace generado con éxito');
       }
       form.resetFields(['docenteNombre']);
     } catch (err) {
@@ -187,28 +187,18 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     }
   };
 
-  const showIssuedLink = async (tokenStr: string, title: string) => {
+  const showIssuedLink = (tokenStr: string, title: string) => {
     const url = getMagicLinkUrl(tokenStr);
-    const copied = await copyLink(tokenStr);
     modal.success({
       title,
       content: (
-        <Space orientation="vertical">
-          <Typography.Text>
-            {copied
-              ? 'El enlace fue copiado. También podés copiarlo desde esta ventana antes de cerrarla.'
-              : 'Copiá el enlace desde esta ventana antes de cerrarla.'}
-          </Typography.Text>
-          <Typography.Text type="secondary">
-            Podrás volver a copiar este enlace desde el gestor mientras sea la llave vigente.
-          </Typography.Text>
-          <Typography.Text copyable={{ text: url }}>{url}</Typography.Text>
-        </Space>
+        <Typography.Paragraph copyable={{ text: url }} style={{ margin: '12px 0 0', wordBreak: 'break-all' }}>
+          {url}
+        </Typography.Paragraph>
       ),
       okText: 'Listo',
     });
   };
-
 
   const handleShareWhatsApp = async (tokenItem: TokenAccesoDocente) => {
     try {
@@ -229,7 +219,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       const updated = { ...tokenItem, ...rotated };
       setTokens((current) => current.map((item) => item.id === tokenItem.id ? updated : item));
       if (updated.secreto) {
-        await showIssuedLink(updated.secreto, 'Enlace docente regenerado');
+        showIssuedLink(updated.secreto, 'Enlace regenerado con éxito');
       }
     } catch (err) {
       console.error(err);
@@ -296,7 +286,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
           ) : (
             <Popconfirm
               title="¿Regenerar este enlace?"
-              description="El enlace anterior dejará de funcionar y se copiará uno nuevo."
+              description="El enlace anterior dejará de funcionar y se generará uno nuevo."
               onConfirm={() => handleRotateToken(record)}
               okText="Regenerar"
               cancelText="Cancelar"
