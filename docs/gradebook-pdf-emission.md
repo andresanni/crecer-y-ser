@@ -388,3 +388,24 @@ PocketBase actualizado mediante publish-pocketbase.ps1, con respaldo consistente
 Worker publicado mediante publish-pdf-worker.ps1 en /opt/cys-pdf/releases/20261001-091744. Las pruebas bajo cys-pdf con Chromium/Linux confirmaron PDF de 14 páginas, respuesta generated, reutilización con respuesta reused, exposición del resultado por CORS y ZIP con bytes idénticos. La release anterior del worker permanece en /opt/cys-pdf/releases/20260929-063535; el staging /root/cys-pdf-20261001-091744 conserva previous-release y Caddyfile.previous para rollback. Ante una falla del frontend, restaurar el deployment anterior de Vercel; no restaurar la base ni retirar migraciones para revertir sólo estos pulidos.
 
 Aviso operativo observado: apt conserva una advertencia de firma vencida en el repositorio Cloudsmith de Caddy. No impidió instalar/verificar las dependencias ya existentes ni validar y recargar Caddy; se deja registrado para mantenimiento independiente. El warning de tamaño del bundle permanece como deuda conocida.
+
+
+## Auditoría previa de producción — 3 de octubre de 2026
+
+Se auditó el primer bimestre del ciclo actual mediante SQLite en modo `ro`, `PRAGMA query_only=ON` y una transacción de lectura por SSH. No se llamaron rutas de generación, descarga o consulta de emisiones, porque algunas pueden invalidar registros. No se aplicaron migraciones ni se modificaron notas, fichas, apoyos, visados o emisiones. Se ejecutó el validador `documentDataIssues` del commit e72f4f5 sobre los campos mínimos leídos, sin almacenar números de DNI ni credenciales. El informe nominal y el script de repetición están bajo custodia local fuera de Git y OneDrive, en `C:/pocketbase/audits/pre-salvaguardas-20261003/`.
+
+Resultado de primaria: 84 matrículas; 81 visados vigentes y 81 emisiones DISPONIBLE. Cuatro matrículas regulares visadas carecen de DNI (una de tercero, una de cuarto y dos de sexto); las instantáneas de sus cuatro PDFs también carecen de ese dato. Las otras 77 matrículas visadas cumplen la guarda documental. Tres bajas sin notas, cierres, visado ni PDF presentan apoyos sin especificar; una también carece de DNI. No corresponde asignarles NO ni SIN_CURSADA automáticamente. No se encontraron faltantes de nombre/apellido o unicidad del responsable entre las matrículas auditadas.
+
+Hay tres fichas sin matrícula en el ciclo actual. Sus nombres coinciden con las altas tardías del briefing de ingesta; sólo dos IDs coinciden con los payloads de restauración de la rama grades_bulk_import_analysis. El tercer alumno_id documentado no existe en producción. Es necesario verificar identidad y reconstruir ese payload con la referencia vigente antes de autorizar cualquier restauración. No incorporar identidades ni payloads reales a este documento.
+
+Las 81 instantáneas guardadas no contienen `cursada`. Incorporar el alcance a la huella y actualizar la plantilla exige generar nuevamente los PDFs incluso cuando los datos están completos; no exige renovar los visados académicos. Confirmar posteriormente un rango también invalida emisiones, por lo que primero deben resolverse los alcances y después prepararse los lotes. No confundir este reemplazo de archivos con pérdida de notas. Los PDFs descargados previamente no se actualizan de forma retroactiva.
+
+Secuencia de regularización pendiente:
+
+1. Dirección aporta y verifica los cuatro DNI prioritarios; corregirlos mediante las fichas, conservando los visados académicos.
+2. Revisar los rangos de las 84 matrículas y las tres restauraciones. Las fechas administrativas y la falta de notas no autorizan inferir extremos ni cancelaciones. Resolver expresamente las tres bajas sin evaluaciones, incluida la baja mencionada en el briefing.
+3. Repetir la auditoría inmediatamente antes de la publicación y registrar cambios desde esta lectura. El informe verifica la guarda documental y la vigencia de los visados; no constituye una auditoría exhaustiva de las calificaciones ni de la autenticidad de los documentos físicos.
+4. Tras el ensayo de release y respaldo, aplicar backend compatible, confirmar las cursadas revisadas y restaurar sólo las matrículas verificadas. Publicar frontend/worker y preparar PDFs por curso después de las confirmaciones.
+5. Comprobar preservación de notas, cierres y visados; reemplazo de las 81 emisiones y disponibilidad de los boletines elegibles. Mantener identificados los archivos anteriores que dirección ya haya entregado.
+
+Esta auditoría no autoriza ni ejecuta la regularización de datos o el despliegue. El siguiente trabajo requiere la información verificada de dirección para resolver los casos nominales del informe privado.
