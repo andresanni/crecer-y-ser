@@ -409,3 +409,14 @@ Secuencia de regularización pendiente:
 5. Comprobar preservación de notas, cierres y visados; reemplazo de las 81 emisiones y disponibilidad de los boletines elegibles. Mantener identificados los archivos anteriores que dirección ya haya entregado.
 
 Esta auditoría no autoriza ni ejecuta la regularización de datos o el despliegue. El siguiente trabajo requiere la información verificada de dirección para resolver los casos nominales del informe privado.
+
+
+## Preparación de regularización tras aclaración de dirección — 3 de octubre
+
+Dirección confirmó los tres casos pendientes: una matrícula sin ningún bimestre evaluable, una baja con sólo primero evaluable y una baja con primero y segundo evaluables. Las fechas administrativas ya coinciden en producción; no corresponde recrear esas inscripciones. Se mantiene en blanco el DNI de los cuatro boletines regulares afectados, conservando notas y visados y aceptando el bloqueo documental individual. Esto reemplaza la propuesta inicial de esperar los cuatro DNI como requisito de publicación.
+
+Se transcribieron dos PDFs suministrados por dirección a tres planillas: 30 materias, 150 criterios, tres cierres y dos respuestas de apoyos. Los guiones en llegadas tarde se normalizan a cero por confirmación expresa; apoyos y PPI respetan cada materia del original. La validación en memoria mediante las funciones reales del gateway aceptó los tres payloads. Los documentos, IDs, payloads y revisión nominal están fuera de Git en `C:/pocketbase/audits/regularizacion-20261003/`. No se ejecutaron escrituras productivas.
+
+La carga requiere publicar primero el alcance evaluable, porque el gateway anterior excluye administrativamente a las bajas. Después de confirmar los rangos se incorporan las dos matrículas a la revisión existente de B1 y se escriben sus planillas mediante gateway institucional con precondiciones de revisión. Los ocho visados anteriores del curso se conservan. B2 aún no tiene instancia de carga en ese curso: sus datos deben incorporarse a un borrador autorizado, sin cerrar ni visar la nómina completa a partir de una sola planilla histórica.
+
+La comparación detectó dos criterios del catálogo truncados (Convivencia, quinto criterio; Inglés, tercero). Son prefijos exactos de los textos fuente y su materia/orden coinciden. No se modificó la malla durante esta preparación; su corrección requiere una tarea curricular separada.
