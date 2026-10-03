@@ -22,14 +22,20 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
   if (!match || data.versionContrato !== 1 || !Number.isInteger(data.bimestreCorte) || data.bimestreCorte < 1 || data.bimestreCorte > 4) {
     return { documento: null, bloqueos: ['El grado, corte o versión del contrato no está admitido.'], pendientes };
   }
+  const scope = data.cursada;
+  const desde = scope?.estado === 'CONFIRMADA' ? scope.desde : 1;
+  if (scope && (scope.estado === 'SIN_CURSADA' || (scope.estado === 'CONFIRMADA' && (!Number.isInteger(desde) || !Number.isInteger(scope.hasta) || desde < 1 || scope.hasta > 4 || desde > data.bimestreCorte || data.bimestreCorte > scope.hasta)))) {
+    return { documento: null, bloqueos: ['El corte no pertenece a una cursada evaluable válida.'], pendientes };
+  }
+  const anteriorIngreso = { estado: 'anteriorIngreso' } as const;
   const grado = Number(match[1]) as GradoPrimario;
   const futuro = { estado: 'futuro' } as const;
   const sinDato = { estado: 'sinDato' } as const;
   const texto = (value: string | null): ValorDocumental => value?.trim() && value !== '-' ? { estado: 'confirmado', texto: value } : sinDato;
   const cuatro = <T,>(factory: (n: number) => T): [T, T, T, T] => [factory(1), factory(2), factory(3), factory(4)];
   const periodos = new Map(data.periodos.map(period => [period.bimestre, period]));
-  if (periodos.size !== data.periodos.length || data.periodos.some(p => p.bimestre > data.bimestreCorte || p.bimestre < 1)) bloqueos.push('La instantánea contiene períodos duplicados o fuera del corte.');
-  for (let n = 1; n <= data.bimestreCorte; n++) {
+  if (periodos.size !== data.periodos.length || data.periodos.some(p => p.bimestre > data.bimestreCorte || p.bimestre < desde)) bloqueos.push('La instantánea contiene períodos duplicados o fuera del corte.');
+  for (let n = desde; n <= data.bimestreCorte; n++) {
     const dependencies = data.dependencias.filter(d => d.bimestre === n);
     if (!periodos.has(n) || dependencies.length !== 1 || !dependencies[0].vigente) bloqueos.push(`Faltan datos o visado vigente del bimestre ${n}.`);
   }
@@ -44,6 +50,7 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     } else escala.set(value.id, { concepto, ...(numero === undefined ? {} : { numero }) });
   });
   const nota = (id: string | null | undefined, n: number, campo: string): CalificacionDocumental => {
+    if (n < desde) return anteriorIngreso;
     if (n > data.bimestreCorte) return futuro;
     const calificacion = id ? escala.get(id) : undefined;
     if (!calificacion) { bloqueos.push(`Falta una calificación válida: ${campo}, bimestre ${n}.`); return sinDato; }
@@ -65,12 +72,14 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
         id: criterio.id,
         texto: criterio.texto,
         bimestres: cuatro(n => {
+          if (n < desde) return anteriorIngreso;
           if (n > data.bimestreCorte) return futuro;
           const matches = evaluacion(n)?.criterios.filter(c => c.criterioId === criterio.id) || [];
           return nota(matches.length === 1 ? matches[0].valorEscalaId : null, n, criterio.texto);
         }),
       })),
       ppi: cuatro<ValorDocumental>(n => {
+        if (n < desde) return anteriorIngreso;
         if (n > data.bimestreCorte) return futuro;
         const value = evaluacion(n)?.ppi;
         if (typeof value !== 'boolean') { bloqueos.push(`Falta PPI: ${materia.materiaNombre}, bimestre ${n}.`); return sinDato; }
@@ -82,11 +91,12 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
   const cierre = <N extends 1 | 2 | 3 | 4>(bimestre: N) => {
     const source = periodos.get(bimestre)?.cierre;
     const cantidad = (value: number | undefined): ValorDocumental => {
+      if (bimestre < desde) return anteriorIngreso;
       if (bimestre > data.bimestreCorte) return futuro;
       if (value === undefined || !Number.isInteger(value) || value < 0) { bloqueos.push(`Falta un cierre válido en bimestre ${bimestre}.`); return sinDato; }
       return { estado: 'confirmado', texto: String(value) };
     };
-    return { bimestre, asistencias: cantidad(source?.asistencias), inasistencias: cantidad(source?.inasistencias), llegadasTarde: cantidad(source?.llegadasTarde), observaciones: bimestre > data.bimestreCorte ? futuro : source ? { estado: 'confirmado', texto: source.observaciones } as const : sinDato };
+    return { bimestre, asistencias: cantidad(source?.asistencias), inasistencias: cantidad(source?.inasistencias), llegadasTarde: cantidad(source?.llegadasTarde), observaciones: bimestre < desde ? { estado: 'anteriorIngreso', texto: `(*) ${['Primer', 'Segundo', 'Tercer', 'Cuarto'][bimestre - 1]} bimestre, información perteneciente a colegio anterior, consta en legajo de alumno.` } as const : bimestre > data.bimestreCorte ? futuro : source ? { estado: 'confirmado', texto: source.observaciones } as const : sinDato };
   };
   const anual = data.bimestreCorte < 4 ? futuro : sinDato;
   const respuestaBinaria = (value: string | null): ValorDocumental => value === 'SI'

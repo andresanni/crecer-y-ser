@@ -112,7 +112,7 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.equal((await saveScope(enrollment.id, { hasta: 2 }, old)).status, 409);
     assert.equal((await teacher(1, 'enviar', 'POST', {})).body.cursadasPendientes.length, 1);
     assert.equal((await saveScope(oldBaja.id, { sinCursada: true })).status, 200);
-    const late = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular', posee_apoyos: 'NO' });
+    const late = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular' });
     assert.equal((await saveScope(late.id, { desde: 2, hasta: 4 })).status, 200);
     assert.equal((await teacher(1, 'contexto')).body.alumnos.length, 1);
     assert.equal((await teacher(2, 'contexto')).body.alumnos.length, 2);
@@ -130,6 +130,7 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.equal((await teacher(1, 'enviar', 'POST', {})).status, 200);
     assert.equal((await teacher(1, 'contexto')).status, 401);
     assert.equal((await teacher(2, 'enviar', 'POST', {})).status, 422);
+    assert.equal((await teacher(2, 'alumnos/' + late.id)).body.bimestreApoyos, 2);
     await fill(late.id, 2);
     assert.equal((await teacher(2, 'enviar', 'POST', {})).status, 200);
     const approve = async (n, id) => {
@@ -146,7 +147,11 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.equal(beforePdf.status, 200, JSON.stringify(beforePdf.body));
     assert.deepEqual(beforePdf.body.datos.cursada, { estado: 'CONFIRMADA', desde: 1, hasta: 2, revision: 1 });
     assert.equal((await snapshot(3)).status, 403);
-    assert.equal((await snapshot(2, late.id)).status, 422);
+    const lateSnapshot = await snapshot(2, late.id);
+    assert.equal(lateSnapshot.status, 200, JSON.stringify(lateSnapshot.body));
+    assert.deepEqual(lateSnapshot.body.datos.periodos.map(p => p.bimestre), [2]);
+    assert.deepEqual(lateSnapshot.body.datos.dependencias.map(p => p.bimestre), [2]);
+    assert.equal(lateSnapshot.body.datos.apoyos.poseeApoyos, 'NO');
     assert.equal((await saveScope(enrollment.id, { hasta: 1 })).status, 409);
     const emission = await create('emisiones_boletin', { inscripcion_id: enrollment.id, periodo_id: periods[1].id, corte: 2, estado: 'DISPONIBLE', huella: beforePdf.body.huella, version: 'a'.repeat(64), instantanea: beforePdf.body.datos });
     assert.equal((await saveScope(enrollment.id, { hasta: 2 })).status, 200);
@@ -253,6 +258,18 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     const uiBaja = await readScope(pendingUi.id);
     assert.equal(uiBaja.estadoAdministrativo, 'Baja');
     assert.equal(uiBaja.cursada.hasta, 3);
+    await patch('inscripciones', late.id, { posee_apoyos: '-' });
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await page.goto('http://127.0.0.1:' + vite.httpServer.address().port + '/app/boletines/calificaciones?curso=' + course.id + '&periodo=' + periods[1].id + '&inscripcion=' + late.id);
+    await page.getByRole('button', { name: 'Revisar apoyos · 2.º bimestre', exact: true }).waitFor();
+    await page.locator('#integracion-escolar').getByRole('button', { name: /Editar/ }).click();
+    await page.locator('#integracion-escolar').getByRole('button', { name: /Guardar/ }).click();
+    await page.waitForFunction(() => !document.body.textContent.includes('Faltan datos para el PDF'));
+    assert.equal((await request('/api/collections/inscripciones/records/' + late.id, 'GET', null, token)).body.posee_apoyos, 'NO');
+    assert.equal((await snapshot(2, late.id)).status, 422);
+    await approve(2, late.id);
+    assert.equal((await snapshot(2, late.id)).status, 200);
+
     assert.deepEqual(errors, []);
     if (process.env.CYS_EXPORT_SCOPE_SCHEMA === '1') {
       const collections = (await request('/api/collections?perPage=500', 'GET', null, admin.body.token)).body.items;

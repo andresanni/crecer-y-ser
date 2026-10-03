@@ -81,6 +81,7 @@ interface TeacherContextDto {
 }
 
 interface TeacherStudentDto {
+  bimestreApoyos?: number;
   evaluaciones: Array<{
     id: string;
     cursoMateriaId: string;
@@ -200,6 +201,7 @@ const mapStudentDto = (
   }
   return {
     materias,
+    bimestreApoyos: dto.bimestreApoyos,
     cierre: dto.cierre ? {
       ...dto.cierre,
       inscripcionId,

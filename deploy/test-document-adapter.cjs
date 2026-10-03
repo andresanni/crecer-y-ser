@@ -106,3 +106,49 @@ test('Segundo ciclo rechaza números inválidos y referencias a la escala anteri
     assert.equal(adapt(f, institution).documento, null);
   }
 });
+
+
+test('Altas tardías distinguen historia anterior, corte y futuro sin inventar notas', () => {
+  for (const desde of [2, 3, 4]) {
+    const f = fixture();
+    f.datos.cursada = { estado: 'CONFIRMADA', desde, hasta: 4, revision: 1 };
+    f.datos.bimestreCorte = desde;
+    f.datos.periodos[0].bimestre = desde;
+    f.datos.dependencias[0].bimestre = desde;
+    const result = adapt(f, institution);
+    assert.equal(result.bloqueos.length, 0, result.bloqueos.join(' '));
+    const materia = result.documento.materiasAcademicas[0];
+    for (let i = 0; i < desde - 1; i++) {
+      assert.equal(materia.criterios[0].bimestres[i].estado, 'anteriorIngreso');
+      assert.equal(materia.calificacionGeneral[i].estado, 'anteriorIngreso');
+      assert.equal(materia.ppi[i].estado, 'anteriorIngreso');
+      assert.equal(result.documento.cierres[i].asistencias.estado, 'anteriorIngreso');
+      assert.match(result.documento.cierres[i].observaciones.texto, /consta en legajo/);
+    }
+    assert.equal(materia.calificacionGeneral[desde - 1].estado, 'confirmado');
+    if (desde < 4) assert.equal(materia.calificacionGeneral[desde].estado, 'futuro');
+    f.datos.dependencias[0].vigente = false;
+    assert.equal(adapt(f, institution).documento, null);
+  }
+});
+
+test('La falta de historial requiere alcance confirmado y no permite excluir datos', () => {
+  const f = fixture();
+  f.datos.bimestreCorte = 2;
+  f.datos.periodos[0].bimestre = 2;
+  f.datos.dependencias[0].bimestre = 2;
+  assert.equal(adapt(f, institution).documento, null);
+  for (const cursada of [
+    { estado: 'PENDIENTE', desde: 2, hasta: 4 },
+    { estado: 'SIN_CURSADA', desde: 0, hasta: 0 },
+    { estado: 'CONFIRMADA', desde: 3, hasta: 4 },
+    { estado: 'CONFIRMADA', desde: 1, hasta: 1 },
+    { estado: 'CONFIRMADA', desde: 0, hasta: 4 },
+  ]) {
+    f.datos.cursada = cursada;
+    assert.equal(adapt(f, institution).documento, null);
+  }
+  f.datos.cursada = { estado: 'CONFIRMADA', desde: 2, hasta: 4 };
+  f.datos.periodos.push({ ...f.datos.periodos[0], bimestre: 1 });
+  assert.equal(adapt(f, institution).documento, null);
+});

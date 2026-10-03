@@ -31,6 +31,7 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
   const [uncertain, setUncertain] = useState(false);
   const [reload, setReload] = useState(0);
   const recordWithdrawal = registrarBaja || snapshot?.estadoAdministrativo === 'Baja';
+  const desde = Form.useWatch('desde', form);
   const sinCursada = Form.useWatch('sinCursada', form);
   useEffect(() => {
     let active = true;
@@ -78,6 +79,7 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
           <Form.Item name="desde" label="Primer bimestre evaluable" rules={[{ required: true, message: 'Seleccioná el primer bimestre.' }]}>
             <Select options={[1, 2, 3, 4].map(value => ({ value, label: `${value}.º bimestre` }))} />
           </Form.Item>
+          {desde > 1 && <Alert type="info" showIcon title="Documentación del colegio anterior" description="Al confirmar esta cursada, confirmás que la información de los bimestres anteriores consta en el legajo. El boletín lo indicará en sus observaciones." />}
           <Form.Item name="hasta" label="Último bimestre evaluable" dependencies={['desde']} rules={[{ required: true, message: 'Seleccioná el último bimestre.' },
             ({ getFieldValue }) => ({ validator: (_, value) => !value || value >= getFieldValue('desde') ? Promise.resolve() : Promise.reject(new Error('El último no puede ser anterior al primero.')) })]}>
             <Select options={[1, 2, 3, 4].map(value => ({ value, label: `${value}.º bimestre` }))} />

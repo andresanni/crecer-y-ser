@@ -7,6 +7,10 @@ function enrollmentScope(enrollment) {
   }
 }
 
+function firstEvaluableTerm(enrollment) {
+  return enrollment.getString("cursada_estado") === "CONFIRMADA" ? enrollment.getInt("bimestre_desde") : 1
+}
+
 function enrollmentParticipates(enrollment, number) {
   var scope = enrollmentScope(enrollment)
   if (scope.estado === "SIN_CURSADA") return false
@@ -114,8 +118,7 @@ function evaluatePdfEligibility(dao, enrollment, cutoff) {
   const reasons = []
   const scope = enrollmentScope(enrollment)
   if (scope.estado !== "PENDIENTE" && !enrollmentParticipates(enrollment, number)) reasons.push("El bimestre no pertenece a la cursada evaluable confirmada.")
-  if (scope.estado === "CONFIRMADA" && scope.desde > 1) reasons.push("La emisión para altas tardías requiere resolver la representación de los bimestres anteriores al ingreso.")
-  for (let n = 1; n <= number; n++) {
+  for (let n = firstEvaluableTerm(enrollment); n <= number; n++) {
     const matching = periods.filter((period) => period.getInt("numero_periodo") === n)
     let reason = ""
     let approval = null
@@ -877,6 +880,7 @@ function studentSnapshot(dao, access, enrollment) {
   }
 
   return {
+    bimestreApoyos: firstEvaluableTerm(enrollment),
     evaluaciones: evaluationDtos,
     cierre: closure,
     apoyos: {
@@ -1022,7 +1026,7 @@ function saveSupport(txDao, access, enrollment, input) {
     throw new BadRequestError("El estado de apoyos no es válido.")
   }
   var periodNumber = requireRecord(txDao, "periodos", access.getString("periodo_id")).getInt("numero_periodo")
-  if (periodNumber === 1 && support === "-") support = "NO"
+  if (periodNumber === firstEvaluableTerm(enrollment) && support === "-") support = "NO"
   if (periodNumber === 4 && promotion === "-") promotion = "NO"
   var supportDetail = support === "SI" ? stringValue(input.cualesApoyos, 1000) : ""
   if (support === "SI" && !supportDetail) {
@@ -1037,12 +1041,11 @@ function saveSupport(txDao, access, enrollment, input) {
 function applySupportDefaults(txDao, access) {
   var period = requireRecord(txDao, "periodos", access.getString("periodo_id"))
   var periodNumber = period.getInt("numero_periodo")
-  if (periodNumber !== 1 && periodNumber !== 4) return
 
   var enrollments = currentEnrollments(txDao, access)
 
   enrollments.forEach((enrollment) => {
-    if (periodNumber === 1 && ["SI", "NO"].indexOf(enrollment.getString("posee_apoyos")) === -1) {
+    if (periodNumber === firstEvaluableTerm(enrollment) && ["SI", "NO"].indexOf(enrollment.getString("posee_apoyos")) === -1) {
       enrollment.set("posee_apoyos", "NO")
       enrollment.set("cuales_apoyos", "")
       txDao.saveRecord(enrollment)
@@ -1128,11 +1131,12 @@ function documentDataIssues(student, guardian, enrollment, cutoff) {
   } else {
     issues.push({ campo: "responsable.vinculo", mensaje: "El alumno debe tener exactamente un tutor vinculado. Revisar los vínculos en su ficha.", origen: "responsable", bimestre: null })
   }
+  var firstTerm = firstEvaluableTerm(enrollment)
   var support = enrollment.getString("posee_apoyos")
   if (["SI", "NO"].indexOf(support) === -1) {
-    issues.push({ campo: "apoyos.poseeApoyos", mensaje: "Indicar si posee apoyos en Integración Escolar del primer bimestre.", origen: "apoyos", bimestre: 1 })
+    issues.push({ campo: "apoyos.poseeApoyos", mensaje: "Indicar si posee apoyos en Integración Escolar del primer bimestre evaluable.", origen: "apoyos", bimestre: firstTerm })
   } else if (support === "SI") {
-    required(enrollment.getString("cuales_apoyos"), "apoyos.cualesApoyos", "Completar cuáles son los apoyos en Integración Escolar del primer bimestre.", "apoyos", 1)
+    required(enrollment.getString("cuales_apoyos"), "apoyos.cualesApoyos", "Completar cuáles son los apoyos en Integración Escolar del primer bimestre evaluable.", "apoyos", firstTerm)
   }
   if (cutoff === 4 && ["SI", "NO"].indexOf(enrollment.getString("promociono_con_acompanamiento")) === -1) {
     issues.push({ campo: "apoyos.promocionoConAcompanamiento", mensaje: "Indicar la promoción con acompañamiento en Integración Escolar del cuarto bimestre.", origen: "apoyos", bimestre: 4 })

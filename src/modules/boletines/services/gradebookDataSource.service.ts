@@ -69,6 +69,7 @@ export interface StaffReviewDto {
 }
 
 interface StaffStudentDto {
+  bimestreApoyos?: number;
   revision: number;
   evaluaciones: Array<{
     id: string;
@@ -131,6 +132,7 @@ const loadStaffStudent = async (
   return {
     revision: dto.revision,
     materias,
+    bimestreApoyos: dto.bimestreApoyos,
     cierre: dto.cierre ? {
       id: dto.cierre.id,
       inscripcionId,
