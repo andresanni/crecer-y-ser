@@ -31,3 +31,6 @@ backups/
 !.env.example
 
 dist-render/
+*.csv
+plantillas_notas/
+temp_alumnos_2026.csv
