@@ -212,3 +212,7 @@ La UX de PDFs muestra la disponibilidad para descargar: el modal del curso inici
 ## Dominio institucional vigente
 
 El frontend principal es https://www.creceryser.edu.ar; el dominio raíz redirige mediante 308 y el alias anterior de Vercel continúa accesible. PocketBase conserva su origen alumnos-api.duckdns.org. El worker PDF autoriza ambos dominios institucionales y el alias de Vercel; deploy/configure-pdf-origins.py permite actualizar la lista con respaldo y rollback sin modificar claves ni datos académicos. Los enlaces docentes se construyen con el origen actual y las sesiones institucionales son independientes por dominio. El procedimiento y la auditoría de correo se documentan en docs/vercel-deployment.md.
+
+## Continuación operativa del 4 de octubre
+
+La inscripción de alta tardía de segundo grado ya está confirmada B2–B4 y la nómina de B2 tiene diez alumnos; B1 conserva diez visados y B2 sigue sin evaluaciones. Al asignar curso desde la pestaña de inscripción se detectó un fallo de preservación de campos personales del formulario. La ficha afectada se restauró y verificó contra el respaldo; el fallo de código queda pendiente y es prioritario antes de nuevas asignaciones. Estado y pasos de relevo en docs/salvaguardas-continuacion.md. El usuario solicitó finalizar únicamente la operación interrumpida y continuar después con otro asistente.
