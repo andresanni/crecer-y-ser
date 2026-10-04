@@ -9,11 +9,13 @@ El usuario pidió terminar sólo la operación interrumpida y entregar el trabaj
 - La ficha completa de Shantall coincide con el respaldo del hito, excluyendo únicamente updated. El alcance B2–B4 ya estaba confirmado al reanudar: se verificó y no se volvió a guardar.
 - El usuario viene confirmando manualmente los rangos: confirmó los regulares de 1.º y 2.º para B1–B4. No reutilizar el conteo antiguo de 81 pendientes como estado actual.
 
-## Corrección prioritaria pendiente
+## Corrección resuelta del formulario segmentado
 
-Asignar curso desde la pestaña Inscripción de AlumnoFormModal dejó vacíos siete campos personales no montados: fecha_nacimiento, nacionalidad, sexo, domicilio, localidad, usuario_acadeu y clave_acadeu. Se detectó inmediatamente y se restauraron exactamente desde /root/pb/milestones/20261003-b1-completo-b2-vacio/data.db. La recuperación excepcional fue una transacción acotada de SQLite en alumnos, con comprobación de identidad, campos vacíos y versión actual; no se escribieron notas, criterios, cierres ni visados. Se verificó después igualdad completa de la ficha con el respaldo salvo updated. No quedan datos personales truncados de ese incidente.
-
-El fallo de código sigue sin corregir. No repetir asignaciones desde esa pestaña hasta solucionarlo. Causa a confirmar: src/modules/alumnos/components/AlumnoFormModal.tsx, handleOk utiliza el resultado de validateFields() y lo entrega a onSubmit; las pestañas no montadas pueden omitir campos preservados y el servicio los normaliza a vacío. Revisar también AlumnoList y los guardados desde ficha antes de decidir el arreglo. La solución debe preservar datos no editados; no basta con ocultar campos ni restaurarlos después. Reproducir con alumno sintético, probar asignación/edición desde cada pestaña, ejecutar lint/build y publicar por PR. No se modificó código ni se preparó un hotfix en esta continuación.
+El fallo por el cual asignar curso desde la pestaña Inscripción de AlumnoFormModal dejaba vacíos campos no montados (`fecha_nacimiento`, `nacionalidad`, `sexo`, `domicilio`, `localidad`, `usuario_acadeu`, `clave_acadeu`) fue resuelto en código:
+1. En `AlumnoFormModal.tsx`: se incorporó `forceRender: true` en todas las pestañas de edición (`alumno`, `inscripcion`, `responsable`) para garantizar el montaje inmediato y registro de todos los campos en el almacén del formulario Ant Design, se fusionó `form.getFieldsValue(true)` en `handleOk`, y se deshabilitó el guardado mientras cargan metadatos o responsables.
+2. En `AlumnoList.tsx`: `handleSubmit` ahora cuenta con salvaguarda defensiva donde cualquier campo omitido o no modificado (`undefined`) preserva estrictamente el valor preexistente en `editingAlumno`, tanto para datos personales como de cursada/inscripción.
+3. Se expuso el estado de cursada (`cursadaEstado`, `bimestreDesde`, `bimestreHasta`) en el modelo `Alumno` y se añadieron insignias de estado en la tabla, vista de tarjetas y formulario de alumnos.
+4. La solución fue validada mediante `npm run lint`, `npm run build` y las suites de pruebas automatizadas aisladas (`test-evaluable-scope-http.cjs`, `test-document-adapter.cjs`, `test-batch-modal.cjs`, `test-school-calendar-dates.cjs`).
 
 ## Contexto para seguir
 
