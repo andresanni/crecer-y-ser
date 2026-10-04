@@ -180,15 +180,31 @@
   text-align: right;
 }
 
-@media (max-width: 575px) {
-  .studentBanner {
-    align-items: flex-start;
-  }
+.studentProgressBar {
+  display: inline-block;
+  margin: 0;
+  width: 110px;
+}
 
-  .studentActions {
-    justify-content: flex-start;
-    width: 100%;
-  }
+.generalGradeRow {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.03));
+  border: 1px solid rgba(37, 99, 235, 0.22);
+  border-radius: var(--cys-border-radius-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 4px;
+  padding: 8px 14px;
+}
+
+.generalGradeTitle {
+  align-items: center;
+  display: flex;
+  flex: 1 1 240px;
+  gap: 8px;
+  min-width: 240px;
 }
 
 .gradeSummary {
@@ -214,8 +230,174 @@
 }
 
 @media (max-width: 575px) {
-  .gradeSummary {
+  .studentBanner {
+    align-items: stretch;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .studentNavigation {
+    align-items: center;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
     justify-content: space-between;
     width: 100%;
   }
+
+  .studentNavigation > :global(.ant-btn) {
+    flex-shrink: 0;
+    font-size: 11.5px;
+    height: 32px;
+    padding: 4px 6px !important;
+  }
+
+  .studentIdentity {
+    flex: 1 1 auto;
+    gap: 6px;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+    padding: 2px 4px;
+  }
+
+  .studentDetails {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .studentName {
+    font-size: 13.5px;
+  }
+
+  .studentProgressBar {
+    display: none !important;
+  }
+
+  .studentActions {
+    display: flex;
+    gap: 8px;
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .studentActions > :global(.ant-btn) {
+    flex: 1 1 auto;
+    height: 38px;
+    justify-content: center;
+  }
+
+  .evaluationCard:global(.ant-card) :global(.ant-card-body) {
+    padding: 12px 10px !important;
+  }
+
+  .evaluationHeader {
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .evaluationHeading {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .evaluationTitle:global(.ant-typography) {
+    font-size: 13.5px;
+  }
+
+  .criterionRow {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  .criterionDescription {
+    flex: 1 1 auto;
+    max-width: 100%;
+  }
+
+  .criterionGrade {
+    flex: 1 1 auto;
+    justify-content: stretch;
+    margin-left: 0;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .gradeEditor {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .gradeSelect {
+    width: 100%;
+  }
+
+  .gradeSelect :global(.ant-select-selector) {
+    align-items: center;
+    display: flex;
+    min-height: 40px;
+  }
+
+  .gradeSummary {
+    background: #ffffff;
+    border: 1px solid var(--cys-color-border-secondary);
+    border-radius: var(--cys-border-radius-sm);
+    justify-content: space-between;
+    min-width: 0;
+    padding: 6px 10px;
+    width: 100%;
+  }
+
+  .gradeSummary button {
+    align-items: center;
+    display: inline-flex;
+    font-size: 14px;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+  }
+
+  .generalGradeRow {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  .generalGradeTitle {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  :global(.cys-floating-action-bar) {
+    bottom: 8px !important;
+    gap: 10px !important;
+    margin-top: 14px !important;
+    padding: 8px 12px !important;
+  }
+
+  :global(.cys-floating-action-bar) > :global(.ant-space):last-child {
+    display: flex;
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  :global(.cys-floating-action-bar) > :global(.ant-space):last-child > :global(.ant-space-item) {
+    flex: 1;
+  }
+
+  :global(.cys-floating-action-bar) > :global(.ant-space):last-child button {
+    height: 40px;
+    width: 100%;
+  }
+
+  :global(.ant-drawer-content-wrapper) {
+    max-width: 100vw !important;
+    width: 100% !important;
+  }
 }
+

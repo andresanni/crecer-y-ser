@@ -25,3 +25,11 @@
 .compactAction { font-size: 12px; padding: 0; }
 .sectionLabel { font-size: 11.5px; letter-spacing: .5px; text-transform: uppercase; color: var(--cys-color-text-description); }
 .filterBody { padding: 14px 18px; }
+
+@media (max-width: 575px) {
+  .publicPage {
+    gap: 12px;
+    padding: 12px 10px;
+  }
+}
+

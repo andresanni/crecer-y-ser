@@ -24,6 +24,7 @@ import {
   type TeacherGradebookContext,
 } from '../services/accesoDocente.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
+import styles from './CargaDocentePublicaPage.module.css';
 
 const { Title, Text } = Typography;
 
@@ -131,31 +132,13 @@ export const CargaDocentePublicaPage: React.FC = () => {
   return (
     <div className={ui.publicPage}>
       <Card
-        className={ui.operationalContent}
-        style={{
-          borderRadius: 16,
-          background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
-          color: '#ffffff',
-          boxShadow: '0 4px 14px rgba(30, 64, 175, 0.18)',
-        }}
+        className={`${ui.operationalContent} ${styles.publicHeaderCard}`}
         styles={{ body: { padding: '18px 24px' } }}
       >
         <Row justify="space-between" align="middle" gutter={[16, 16]}>
           <Col xs={24} lg={13}>
-            <Space size={16} align="center">
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 14,
-                  background: '#ffffff',
-                  padding: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
-                }}
-              >
+            <div className={styles.teacherContainer}>
+              <div className={styles.schoolLogo}>
                 <img
                   src="/isotype.png"
                   alt="Colegio Crecer y Ser"
@@ -169,27 +152,16 @@ export const CargaDocentePublicaPage: React.FC = () => {
                     COLEGIO CRECER Y SER · ACCESO DOCENTE
                   </Text>
                 </Space>
-                <Title level={3} style={{ color: '#ffffff', margin: 0, fontSize: 22 }}>
+                <Title level={3} className={styles.teacherTitle}>
                   {acceso.docenteNombre}
                 </Title>
                 <Text style={{ color: '#e0e7ff' }}>Carga de boletín</Text>
               </div>
-            </Space>
+            </div>
           </Col>
           <Col xs={24} lg={11}>
-            <Space wrap size={10} style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 9,
-                  minWidth: 176,
-                  padding: '10px 14px',
-                  border: '1px solid rgba(255, 255, 255, 0.32)',
-                  borderRadius: 10,
-                  background: 'rgba(15, 23, 42, 0.18)',
-                }}
-              >
+            <div className={styles.metadataContainer}>
+              <div className={styles.courseCard}>
                 <UserOutlined style={{ fontSize: 18, color: '#bfdbfe' }} />
                 <div>
                   <Text style={{ display: 'block', color: '#bfdbfe', fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
@@ -200,18 +172,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
                   </Text>
                 </div>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 9,
-                  minWidth: 152,
-                  padding: '10px 14px',
-                  border: '1px solid rgba(255, 255, 255, 0.4)',
-                  borderRadius: 10,
-                  background: 'rgba(255, 255, 255, 0.16)',
-                }}
-              >
+              <div className={styles.periodCard}>
                 <CalendarOutlined style={{ fontSize: 18, color: '#dbeafe' }} />
                 <div>
                   <Text style={{ display: 'block', color: '#dbeafe', fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>
@@ -222,7 +183,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
                   </Text>
                 </div>
               </div>
-            </Space>
+            </div>
           </Col>
         </Row>
       </Card>

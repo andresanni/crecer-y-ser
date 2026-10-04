@@ -91,3 +91,13 @@ La preparación documental anticipada agrega una advertencia en la libreta cuand
 
 
 La etapa 2 incorpora un único CursadaModal basado en FormModal para confirmar bimestres y registrar bajas. Bimestres presenta pendientes por curso con acceso individual; la ficha de cursada muestra rango/estado por matrícula. Las bajas incluyen fecha administrativa y rango, o Sin cursada. Un conflicto conserva el formulario y ofrece Volver a cargar; el servidor no acepta reintentos con versiones vencidas. El aviso docente permite continuar el borrador, pero informa que dirección debe confirmar antes de la entrega.
+
+## Adaptación mobile para carga docente por Magic Link
+
+El flujo de carga docente accesible mediante enlaces mágicos (`/carga`) está optimizado para su uso en teléfonos móviles preservando intacta la experiencia de escritorio:
+
+- **Encabezado institucional**: En pantallas reducidas (≤ 767 px), las tarjetas de grado, turno y período se reorganizan en una grilla de distribución uniforme y el isotipo institucional y título escalan armoniosamente sin desbordes horizontales.
+- **Barra fija del estudiante**: La navegación compacta sitúa los botones Anterior/Siguiente y la identidad del estudiante en una única fila fluida, truncando nombres extensos y restringiendo el selector de alumnos al ancho visible. Las acciones operativas ("Guía del Curso" y "Enviar bimestre") se ubican en una segunda fila con áreas táctiles amplias.
+- **Tarjetas y criterios pedagógicos**: Los criterios de evaluación se apilan verticalmente en pantallas móviles (≤ 575 px), presentando la descripción en la parte superior y el selector de notas debajo a ancho completo con altura táctil accesible (40 px). Los criterios ya calificados muestran un resumen con acceso cómodo de modificación. La Calificación General adopta idéntico comportamiento de apilamiento vertical.
+- **Barra de guardado y panel de monitoreo**: La barra flotante de cambios pendientes se fija inferiormente con botones táctiles de ancho completo, y el drawer lateral de la guía del curso aprovecha la totalidad del ancho móvil.
+
