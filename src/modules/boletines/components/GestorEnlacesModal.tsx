@@ -302,7 +302,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       onCancel={onClose}
       width={1040}
       title="Enlaces de carga docente"
-      description="Generá y administrá accesos directos para la carga de calificaciones."
       icon={<KeyOutlined />}
       footer={<Button onClick={onClose}>Cerrar</Button>}
     >
@@ -390,9 +389,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
           <div className={styles.listHeader}>
             <Typography.Text id="enlaces-disponibles-title" strong className={styles.listTitle}>
               Enlaces disponibles ({tokens.length})
-            </Typography.Text>
-            <Typography.Text type="secondary" className={styles.listHint}>
-              Regenerar reemplaza la llave anterior sin perder el avance de la carga.
             </Typography.Text>
           </div>
 
