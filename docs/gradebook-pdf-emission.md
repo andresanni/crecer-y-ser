@@ -420,3 +420,17 @@ Se transcribieron dos PDFs suministrados por dirección a tres planillas: 30 mat
 La carga requiere publicar primero el alcance evaluable, porque el gateway anterior excluye administrativamente a las bajas. Después de confirmar los rangos se incorporan las dos matrículas a la revisión existente de B1 y se escriben sus planillas mediante gateway institucional con precondiciones de revisión. Los ocho visados anteriores del curso se conservan. B2 aún no tiene instancia de carga en ese curso: sus datos deben incorporarse a un borrador autorizado, sin cerrar ni visar la nómina completa a partir de una sola planilla histórica.
 
 La comparación detectó dos criterios del catálogo truncados (Convivencia, quinto criterio; Inglés, tercero). Son prefijos exactos de los textos fuente y su materia/orden coinciden. No se modificó la malla durante esta preparación; su corrección requiere una tarea curricular separada.
+
+## Hito productivo: B1 completo y B2 vacío — 3 de octubre de 2026
+
+La promoción autorizada se completó mediante PR #13 (`b621f162a4c20e4d9bd2924e7fe2a66be6c9f53c`), con ensayo aislado de migración y 26 pruebas, lint y build correctos. Respaldo de PocketBase: `/root/pb/deploy_backups/20261003-093440`. Worker publicado: `/opt/cys-pdf/releases/20261003-093546`. El frontend posterior de PR #14 conserva esta feature e incorpora las herramientas de ingesta de la otra rama.
+
+Se confirmaron por gateway tres alcances indicados por dirección: sin cursada, sólo B1 y B1–B2, conservando sus fechas administrativas. Las dos matrículas evaluables se incorporaron a la revisión existente, se cargaron y visaron individualmente sus boletines de B1 mediante la interfaz institucional. La lectura independiente de producción coincidió con las 20 materias, 100 criterios, dos cierres y dos respuestas de apoyos preparados desde los PDFs. La comparación por ID y todos los campos confirmó que las 867 evaluaciones, 4335 criterios, 81 cierres y 81 visados anteriores permanecen idénticos, al igual que alumnos, responsables y vínculos.
+
+Estado del hito confirmado por dirección: 83 boletines de B1 visados, 887 evaluaciones y 4435 criterios. B2, B3 y B4 tienen cero evaluaciones; B2 se conserva sin boletines ni una nueva entrega. La planilla histórica de B2 preparada queda pendiente y no se aplica en este hito. No se creó ni compartió un enlace de carga para ella.
+
+Los cuatro DNI regulares faltantes permanecen vacíos: conservan sus notas y visados, pero sus PDFs se bloquean hasta completar la documentación. Las otras 81 cursadas siguen por confirmar antes de nuevas entregas; no se infiere B1–B4 de las notas históricas. Las tres fichas sin inscripción requieren su regularización específica antes de incorporarse a futuros períodos. Estos pendientes no invalidan el hito académico de B1 ni autorizan asignar rangos automáticamente.
+
+La aceptación detectó que fechas de calendario almacenadas a medianoche UTC se mostraban un día antes en Buenos Aires. Los adaptadores de alumnos/inscripciones y el modal de alcance preservan el componente YYYY-MM-DD antes de entregarlo a Day.js. No cambia fechas persistidas ni timestamps de concurrencia. La regresión verifica presentación y guardado en la zona horaria argentina.
+
+Los dos PDFs regularizados de B1 se generaron y quedaron DISPONIBLE en el servidor, con archivo y SHA-256 persistidos. Los payloads preparados de B2 se conservan sólo como referencia privada y no forman parte del hito aplicado.
