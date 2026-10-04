@@ -112,16 +112,11 @@ La matriz reproducible y las pruebas de concurrencia pendientes de automatizaci�
 Después de la entrega, las sesiones institucionales comparten el control pero no escriben a ciegas. Cada libreta se lee mediante un gateway que devuelve materias, PPI, integración, cierre y revisión desde una misma transacción. Cada corrección lleva esa revisión, el gateway la compara dentro de la transacción y rechaza versiones vencidas sin modificar datos. Realtime invalida el tablero, el resumen y el detalle; Zustand nunca acepta una revisión menor. Si existe una edición local, la interfaz la conserva y exige cargar la versión actual. Un resultado de red incierto también bloquea nuevos guardados hasta reconciliar la instantánea confirmada. El protocolo general está en `docs/concurrency-model.md`.
 
 
-## Preparación de emisión PDF en desarrollo local
+## Emisión PDF y salvaguardas publicadas
 
-Los visados incorporan una generación monotónica de autorización, independiente de la revisión académica: retirar y volver a visar sin editar produce una autorización diferente. La revisión institucional incluye la elegibilidad acumulativa por alumno desde primero hasta el período seleccionado. La interfaz muestra visados completos o motivos de bloqueo y vuelve a consultar ante cambios Realtime del curso, incluidos otros períodos; no muestra todavía un botón de generación. Esta evolución se aplicó sólo a PocketBase local; el VPS sigue con el contrato anterior.
+La revisión institucional incluye preparación documental y elegibilidad acumulativa por alumno. Con cursada confirmada, las dependencias comienzan en el primer bimestre evaluable; la cursada pendiente conserva la exigencia desde primero. La descarga individual y los lotes generan o reutilizan emisiones persistidas y revalidan identidad, apoyos, visados y huella. Retirar o corregir un visado revoca sus PDFs acumulativos. Completar identidad no retira visados académicos, pero invalida el documento para regenerarlo en la siguiente obtención.
 
-## Descarga PDF experimental en desarrollo
-
-La vista previa de un alumno elegible ofrece «Generar PDF de prueba» únicamente en desarrollo local. Revalida instantánea y autorizaciones antes y después del render y descarga un archivo, sin persistencia ni registro de emisión vigente. No está disponible en producción. El almacenamiento y la invalidación transaccional continúan pendientes; detalle en `docs/gradebook-pdf-emission.md`.
-
-La preparación de PDF local ya incluye emisiones persistidas: retirar o corregir un visado revoca los PDFs de ese corte y posteriores del alumno en la misma transacción. La descarga revalida la instantánea; la eliminación física se reintenta después. La UI local permite generar o reutilizar el archivo guardado. Se mantiene la distinción entre visado académico y estado de emisión. Alcance y pendientes de producción en `docs/gradebook-pdf-emission.md`.
-
+Backend, worker y frontend están publicados. El hito del 3 de octubre conserva 83 boletines visados de B1 y ningún boletín de B2. Los cuatro DNI faltantes bloquean sólo sus documentos; las 81 cursadas pendientes deberán confirmarse antes de nuevas entregas. El cuarto bimestre mantiene el bloqueo previo por fuentes anuales incompletas. Contrato, pruebas y límites en docs/gradebook-pdf-emission.md y docs/pocketbase-api.md.
 
 ## Cursadas parciales — etapa 2
 

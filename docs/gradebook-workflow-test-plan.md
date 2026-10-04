@@ -4,6 +4,25 @@
 
 Validar la persistencia progresiva docente, la transferencia unidireccional y exclusiva de control y la corrección institucional sin exponer las colecciones académicas a escrituras directas.
 
+## Sesión conjunta de salvaguardas — preparación del 4 de octubre de 2026
+
+Partir del hito hito-b1-completo-2026-10-03: B1 completo, B2 vacío. No usar el VPS para inventar identidades/notas o modificar rangos como prueba. La base local habitual se conserva intacta; los escenarios con escrituras se preparan en una instancia temporal sintética según pocketbase-environments.md. En producción sólo se inspeccionan los datos existentes y sus diagnósticos mientras no se autorice una corrección real.
+
+| Escenario | Resultado esperado |
+| --- | --- |
+| DNI vacío, espacios o guiones | PDF individual bloqueado y acceso a la ficha; notas/visado conservados y compañeros procesables. Completar identidad habilita una nueva obtención del PDF. |
+| Apoyos NO / SI sin detalle | NO válido sin detalle; SI requiere texto. Se corrige en el primer bimestre evaluable. Cambiar apoyos retira visado e invalida PDF. |
+| Baja administrativa con rango B1–B2 | B1/B2 siguen evaluables aunque la baja sea anterior a la entrega; B3/B4 no se exigen. |
+| SIN_CURSADA | Alta/baja e inscripción se conservan; no se exige boletín. No se puede excluir un período que ya contiene datos. |
+| Alta tardía desde B2 sin B1 | B2 puede completarse sin notas/visados ficticios de B1; PDF con asteriscos en notas, guiones en PPI/asistencias y leyenda de legajo. |
+| Falta real dentro del rango | Impide la entrega o el PDF acumulativo según el dato faltante; no se trata como alta tardía. |
+| Cursada PENDIENTE | Borrador y visados anteriores conservados; nueva entrega bloqueada hasta confirmar todas las cursadas del curso/ciclo. |
+| Dos sesiones y cambio durante generación | Revisión vencida produce conflicto; no sobrescribe ni publica un PDF con autorización obsoleta. |
+| Fechas de calendario | Alta y baja mantienen el día en Buenos Aires al mostrar, editar y volver a abrir. |
+| Corte de cuarto bimestre | Bloqueo explícito por fuentes anuales pendientes; completar apoyos/promoción no inventa esas fuentes. |
+
+Esta matriz está preparada para la sesión conjunta; no acredita que esa sesión manual ya se haya realizado. La evidencia automatizada y productiva anterior está en gradebook-pdf-emission.md.
+
 ## Preparación
 
 - Desplegar juntas las migraciones y `pb_hooks` versionados.
