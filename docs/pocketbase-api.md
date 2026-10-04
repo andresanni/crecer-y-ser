@@ -38,7 +38,7 @@ El cliente sólo muestra éxito después de recibir `200`. Ante cualquier error 
 
 ### `GET /api/cys/docente/contexto`
 
-Devuelve el alcance autorizado: referencia del acceso, instancia de carga, curso, período, materias, criterios, valores de escala y alumnos regulares. La instancia informa su identidad, estado, revisión y datos mínimos de envío. No devuelve DNI, legajo, credenciales escolares ni el secreto.
+Devuelve el alcance autorizado: referencia del acceso, instancia de carga, curso, período, materias, criterios, valores de escala y alumnos evaluables según su cursada confirmada (nómina legada si está pendiente). La instancia informa su identidad, estado, revisión y datos mínimos de envío. No devuelve DNI, legajo, credenciales escolares ni el secreto.
 
 ### `GET /api/cys/docente/alumnos/:inscripcionId`
 
@@ -81,7 +81,7 @@ PocketBase vuelve a validar enlace, curso, período, inscripción, cada materia 
 
 Cada materia incluida debe contener todos sus criterios configurados y, salvo las materias formativas identificadas como conducta, una calificación general. Cuando se incluye `cierre`, `asistencias`, `inasistencias` y `llegadasTarde` son enteros obligatorios entre 0 y 180; `0` representa ausencia de novedades. `observaciones` es opcional y puede enviarse como cadena vacía. El editor docente incluye el cierre en cada guardado para que esos tres valores siempre viajen explícitamente.
 
-Los campos de integración son anuales aunque se completen desde el boletín. En el primer bimestre, `poseeApoyos` vacío o `-` se normaliza a `NO`; si su valor es `SI`, `cualesApoyos` es obligatorio y una cadena vacía produce `400`. En el cuarto se aplica la misma normalización a `promocionoConAcompanamiento`. El cliente envía el bloque `apoyos` en cada guardado docente de esos períodos y el envío final aplica la normalización a cualquier registro histórico que todavía permanezca sin especificar.
+Los campos de integración son anuales aunque se completen desde el boletín. En el primer bimestre evaluable (`bimestreApoyos`; primero en el contrato legado), `poseeApoyos` vacío o `-` se normaliza a `NO`; si su valor es `SI`, `cualesApoyos` es obligatorio y una cadena vacía produce `400`. En el cuarto se aplica la misma normalización a `promocionoConAcompanamiento`. El cliente envía el bloque `apoyos` en cada guardado docente de esos períodos y el envío final aplica la normalización a cualquier registro histórico que todavía permanezca sin especificar.
 
 Los enlaces legados que tengan `materia_id` informado no pueden usar el gateway. La emisión rechaza `materiaId`; todo acceso nuevo abarca el curso y período completos.
 
@@ -151,9 +151,9 @@ Cada operación revalida dentro de la transacción que ningún bimestre del curs
 
 `GET /api/cys/directivo/etapas/:periodoId` devuelve, para cada curso, `etapa`, `revision`, `totalBoletines` y `visados`. Las etapas son `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF`. Son una proyección del servidor: el estado persistido de control sigue siendo `BORRADOR_DOCENTE` o `CONTROL_DIRECTIVO`.
 
-`GET /api/cys/directivo/revision/:cursoId/:periodoId` devuelve desde una transacción la instancia, su revisión, el conteo y la lista de boletines con `estado`, `revisionContenido`, fecha y usuario de visado. `alumnosSinIncorporar` informa altas activas posteriores a la entrega. Los boletines históricos se migran como `PENDIENTE_REVISION`; ningún registro se visa por inferencia.
+`GET /api/cys/directivo/revision/:cursoId/:periodoId` devuelve desde una transacción la instancia, su revisión, el conteo y la lista de boletines con `estado`, `revisionContenido`, fecha y usuario de visado. `alumnosSinIncorporar` informa matrículas evaluables ausentes de la entrega, incluidas bajas dentro del rango confirmado. Los boletines históricos se migran como `PENDIENTE_REVISION`; ningún registro se visa por inferencia.
 
-`POST /api/cys/directivo/revision/:cursoId/:periodoId/sincronizar-matricula` recibe `{ "expectedRevision": 7 }`. Agrega las matrículas activas ausentes como pendientes, conserva las filas existentes e incrementa la revisión sólo si hubo incorporaciones. Un `409` indica que se debe releer el curso antes de repetir la operación.
+`POST /api/cys/directivo/revision/:cursoId/:periodoId/sincronizar-matricula` recibe `{ "expectedRevision": 7 }`. Agrega las matrículas evaluables confirmadas ausentes como visados pendientes, conserva las filas existentes e incrementa la revisión sólo si hubo incorporaciones. Un `409` indica que se debe releer el curso antes de repetir la operación.
 
 `POST /api/cys/directivo/boletines/:inscripcionId/visar` y `POST /api/cys/directivo/boletines/:inscripcionId/retirar-visado` reciben `periodoId`, `expectedRevision` y `expectedContentRevision`. Comparan ambas revisiones en la transacción. El visado exige que el boletín individual tenga todas sus materias, criterios y cierre completos. Una operación repetida sobre el mismo estado no incrementa la revisión. La corrección directiva de ese alumno incrementa `revision_contenido` y retira su visado en la misma transacción.
 
@@ -170,18 +170,18 @@ Cada operación revalida dentro de la transacción que ningún bimestre del curs
 Los mensajes públicos son deliberadamente genéricos. El frontend debe retirar la planilla cuando recibe `401` o `403` y no debe reintentar una escritura automáticamente.
 
 
-## Elegibilidad acumulativa para PDF (implementada en desarrollo local)
+## Elegibilidad acumulativa para PDF (publicada)
 
 `GET /api/cys/directivo/revision/:cursoId/:periodoId` incluye en cada boletín `generacionVisado` y `elegibilidadPdf`. Esta última contiene `elegiblePorVisados`, `motivos` y `dependencias` por bimestre: `bimestre`, `periodoId`, `visadoId`, `generacionVisado`, `revisionContenido`, `revisionVisada`, `vigente` y `motivo`. Se calcula en la misma transacción de lectura de la revisión, con autenticación institucional y `Cache-Control: no-store`. No es un permiso de emisión ni acredita que haya un archivo disponible.
 
-En el checkout de desarrollo agrega `preparacionDocumental: { completa, alumnoId, faltantes }`, también transaccional e independiente del estado de visado. Cada faltante contiene `campo`, `mensaje`, `origen` (`alumno`, `responsable` o `apoyos`) y `bimestre` (1/4 o null). Comparte las reglas de identidad y apoyos de la instantánea; `responsable.vinculo` indica que no hay exactamente un tutor distinto. No devuelve DNI ni valores personales en los motivos. `completa` sólo confirma esos campos administrativos/documentales, no notas, escala ni fuentes anuales. El frontend nuevo requiere esta preparación para habilitar la descarga individual: publicar backend compatible antes del frontend.
+La respuesta incluye `preparacionDocumental: { completa, alumnoId, faltantes }`, también transaccional e independiente del estado de visado. Cada faltante contiene `campo`, `mensaje`, `origen` (`alumno`, `responsable` o `apoyos`) y `bimestre` (primer evaluable/4 o null). Comparte las reglas de identidad y apoyos de la instantánea; `responsable.vinculo` indica que no hay exactamente un tutor distinto. No devuelve DNI ni valores personales en los motivos. `completa` sólo confirma esos campos administrativos/documentales, no notas, escala ni fuentes anuales. El frontend nuevo requiere esta preparación para habilitar la descarga individual: publicar backend compatible antes del frontend.
 
-Se requieren períodos únicos 1..corte del mismo ciclo, instancia CONTROL_DIRECTIVO, alumno incorporado y visado vigente con revisión aprobada igual a contenido y generación positiva. Faltantes de históricos/altas tardías bloquean hasta resolver su política; no se omiten. Esta etapa comprueba exclusivamente visados, no la completitud futura del modelo documental ni su renderizado.
+Se requieren períodos únicos desde el primer bimestre evaluable confirmado hasta el corte (1..corte para cursada pendiente), del mismo ciclo, instancia CONTROL_DIRECTIVO, alumno incorporado y visado vigente con revisión aprobada igual a contenido y generación positiva. Los históricos faltantes dentro del rango bloquean; los anteriores al ingreso confirmado no se exigen. SIN_CURSADA y cortes fuera del rango no habilitan PDF. Esta etapa comprueba exclusivamente visados, no la completitud futura del modelo documental ni su renderizado.
 
 `visados_boletin.generacion_visado` aumenta al visar, retirar o corregir. Repetir una operación ya satisfecha no aumenta el contador. La migración inicializa los visados existentes en 1 y pendientes en 0; no reconstruye eventos históricos. Las respuestas de visar/retirar incluyen la generación actual. La revisión de curso se conserva como control de concurrencia para escrituras.
 
 
-## Instantánea documental de preparación (desarrollo local)
+## Instantánea documental de preparación (publicada)
 
 `GET /api/cys/directivo/boletines/:inscripcionId/instantanea?periodoId=...` requiere sesión institucional y devuelve `Cache-Control: no-store`. Lee en una sola transacción el alcance, elegibilidad, alumno, tutor, malla anual con criterios ordenados, escala, evaluaciones y cierres hasta el corte, apoyos, datos administrativos disponibles y dependencias de visado. No escribe ni almacena la instantánea.
 
@@ -189,21 +189,21 @@ Respuesta 200: `{ datos, huella }`; `datos.versionContrato=1`, `inscripcionId`, 
 
 422 si falta un visado requerido (incluye `elegibilidadPdf`); 422 con `codigo=TUTOR_UNICO_REQUERIDO` si no hay exactamente un responsable distinto vinculado. Se deduplican vínculos al mismo responsable. La norma de tutor único está confirmada por el usuario; no se permite seleccionar automáticamente entre varios. Alcance fuera de curso/ciclo o entrega se rechaza; ruta sin sesión devuelve 401.
 
-La protección documental del checkout de desarrollo agrega 422 con `codigo=DATOS_DOCUMENTALES_INCOMPLETOS`, `message` y `faltantes: [{ campo, mensaje, origen, bimestre }]`. Origen es `alumno`, `responsable` o `apoyos`; bimestre es 1/4 para integración o null para identidad. Exige nombres, apellidos y DNI impresos del alumno, nombres y apellidos del tutor, SI/NO en apoyos, detalle real si es SI y SI/NO en promoción con acompañamiento sólo en cuarto. Vacíos, espacios y guiones solos no completan textos. Conserva NO por defecto y no modifica datos. La publicación y descarga revalidan esta misma guarda; un archivo anterior incompleto no elude el bloqueo. No reemplaza los controles académicos ni resuelve las fuentes anuales pendientes. Plan y estado en `gradebook-pdf-emission.md`, sección Casos de borde.
+La protección documental devuelve 422 con `codigo=DATOS_DOCUMENTALES_INCOMPLETOS`, `message` y `faltantes: [{ campo, mensaje, origen, bimestre }]`. Origen es `alumno`, `responsable` o `apoyos`; bimestre es el primer evaluable/4 para integración o null para identidad. Exige nombres, apellidos y DNI impresos del alumno, nombres y apellidos del tutor, SI/NO en apoyos, detalle real si es SI y SI/NO en promoción con acompañamiento sólo en cuarto. Vacíos, espacios y guiones solos no completan textos. Conserva NO por defecto y no modifica datos. La publicación y descarga revalidan esta misma guarda; un archivo anterior incompleto no elude el bloqueo. No reemplaza los controles académicos ni resuelve las fuentes anuales pendientes. Plan y estado en `gradebook-pdf-emission.md`, sección Casos de borde.
 
-Sólo se consultan evaluaciones y cierres 1..corte. La promoción con acompañamiento se devuelve como null antes de cuarto; los apoyos y datos administrativos se identifican como valores actuales de matrícula/alumno, sin atribuirles historial. La respuesta no incluye credenciales Acadeu, DNI ni contactos del tutor. Los campos anuales sin fuente no se inventan. Los pendientes de integración son MAPEO_ESCALA, CIERRE_ANUAL e HISTORIAL_ADMINISTRATIVO. El adaptador a `BoletinDocumentData` y la emisión se implementarán posteriormente.
+Sólo se consultan evaluaciones y cierres del rango evaluable hasta el corte; la cursada pendiente conserva 1..corte. La promoción con acompañamiento se devuelve como null antes de cuarto; los apoyos y datos administrativos se identifican como valores actuales de matrícula/alumno, sin atribuirles historial. La respuesta no incluye credenciales Acadeu, DNI ni contactos del tutor. Los campos anuales sin fuente no se inventan. Los pendientes de integración son MAPEO_ESCALA, CIERRE_ANUAL e HISTORIAL_ADMINISTRATIVO. El adaptador y la emisión están publicados; el render de cuarto continúa bloqueado por fuentes anuales pendientes.
 
 ## Servicio local de prueba PDF (fuera de PocketBase)
 
-POST `/__cys/pdf-prueba` pertenece al middleware Vite de desarrollo; no es un endpoint desplegado de PocketBase. Recibe `{ inscripcionId, periodoId, huella }` y Authorization de la sesión institucional; consulta dos veces el GET de instantánea local y devuelve PDF adjunto sólo si la huella permanece igual. Rechaza origen ajeno, solicitudes sin sesión, cambios de datos, faltantes de visado y bloqueos documentales. No almacena archivos ni autoriza descargas posteriores. Ver `gradebook-pdf-emission.md` para alcance y límites.
+POST `/__cys/pdf-prueba` pertenece al middleware Vite de desarrollo; no es un endpoint desplegado de PocketBase. Recibe `{ inscripcionId, periodoId, huella }` y Authorization de la sesión institucional; consulta dos veces el GET de instantánea local y devuelve PDF adjunto sólo si la huella permanece igual. Rechaza origen ajeno, solicitudes sin sesión, cambios de datos, faltantes de visado y bloqueos documentales. Genera o reutiliza una emisión persistida mediante el gateway y revalida la autorización para la descarga. Ver `gradebook-pdf-emission.md` para alcance y límites.
 
-## Emisiones persistidas (desarrollo local)
+## Emisiones persistidas (publicadas)
 
-- POST `/api/cys/directivo/boletines/:inscripcionId/emisiones`: sesión `users` y header privado `X-CYS-PDF-Worker`; multipart `periodoId`, `huella`, `version`, `archivoSha256`, `archivo`. Revalida la instantánea dentro de transacción; 409 si cambió, 200 `{id}` si guardó o reutilizó una emisión. Sólo el generador validado debe utilizarlo.
+- POST `/api/cys/directivo/boletines/:inscripcionId/emisiones`: sesión `users` y header privado `X-CYS-PDF-Worker`; multipart `periodoId`, `huella`, `version`, `archivoSha256`, `archivo`. Revalida la instantánea dentro de transacción; 409 si cambió, 200 `{id, created}` si guardó o reutilizó una emisión. Sólo el generador validado debe utilizarlo.
 - GET `/api/cys/directivo/boletines/:inscripcionId/emisiones?periodoId=...&version=...`: sesión institucional; devuelve `{emision: {id,huella} | null}` y detecta emisiones desactualizadas por datos.
 - GET `/api/cys/directivo/emisiones/:emisionId/archivo?download=1`: sesión institucional; revalida visados y huella, sirve archivo protegido o 409 si fue invalidado. Respuestas no-store.
 
-La colección `emisiones_boletin` no admite acceso directo de clientes. La instantánea se elimina al invalidar; las dependencias se conservan como auditoría. La retirada/corrección de un visado invalida ese corte y posteriores del mismo alumno dentro de su transacción; limpieza física reintentable cada minuto. El motor Vite local usa estos endpoints cuando está configurada la clave privada. Producción permanece sin esta evolución.
+La colección `emisiones_boletin` no admite acceso directo de clientes. La instantánea se elimina al invalidar; las dependencias se conservan como auditoría. La retirada/corrección de un visado invalida ese corte y posteriores del mismo alumno dentro de su transacción; limpieza física reintentable cada minuto. El motor Vite local usa estos endpoints cuando está configurada la clave privada. Producción usa el mismo contrato mediante el worker publicado.
 
 
 ## ZIP de emisiones por curso (servidor Vite local)
@@ -225,7 +225,7 @@ POST `/api/cys/directivo/boletines/:inscripcionId/emisiones` amplía su respuest
 El worker individual (`/__cys/pdf-prueba` en desarrollo y `/api/cys/pdf/generar` en producción) devuelve `X-CYS-PDF-Result`: generated para una emisión nueva, reused para una existente y unknown cuando el publicador anterior no informa el resultado. Conserva `X-CYS-Emission-Id` y expone ambos headers mediante CORS. La UI no deduce generación a partir del tiempo de respuesta. El ZIP reúne emisiones disponibles y no genera PDFs.
 
 
-## Cursada evaluable institucional (etapa 2, pendiente de aplicar)
+## Cursada evaluable institucional (publicada el 3 de octubre de 2026)
 
 GET `/api/cys/directivo/inscripciones/:inscripcionId/cursada` requiere sesión users y devuelve `inscripcionId, nombreCompleto, curso, ciclo, cursada: { estado, desde, hasta, revision }, updated, estadoAdministrativo, fechaEgreso, bimestresConDatos`. Lee todo dentro de una transacción y no usa caché.
 

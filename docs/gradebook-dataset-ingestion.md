@@ -1,6 +1,12 @@
 # Guía canónica de ingesta de calificaciones y boletines históricos
 
-Actualizado: 1 de octubre de 2026.
+Actualizado: 4 de octubre de 2026.
+
+## Compatibilidad con las salvaguardas publicadas
+
+Las herramientas y ejemplos siguientes describen la ingesta histórica anterior al alcance evaluable. No son un procedimiento habilitado para nuevas cargas sobre producción: la implementación conserva escrituras directas y supuestos de alumnos regulares/apoyos en B1 que deben adaptarse y probarse contra los gateways y bimestreApoyos antes de reutilizarla. El contrato de AGENTS.md exige que las nuevas escrituras académicas atraviesen el gateway del rol y su workflow.
+
+El hito vigente conserva B1 completo y B2 vacío; no ejecutar estos scripts para completar B2 durante las pruebas de salvaguardas. Las altas tardías requieren históricos sólo dentro de su rango confirmado, y apoyos en el primer bimestre evaluable. Los payloads antiguos de restauración no son autoridad vigente; ver casos-borde-matricula-historica.md y gradebook-pdf-emission.md.
 
 ## 1. Propósito y alcance
 
