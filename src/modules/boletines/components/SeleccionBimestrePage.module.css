@@ -5,27 +5,36 @@
   min-height: 220px;
 }
 
+.grid {
+  max-width: 1040px;
+}
+
 .periodCard {
-  align-items: center;
   background: var(--cys-color-bg-container);
   border: 1px solid var(--cys-color-border-secondary);
-  border-radius: 14px;
+  border-radius: 16px;
   color: inherit;
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   font: inherit;
-  gap: 14px;
-  min-height: 82px;
-  padding: 16px 18px;
+  justify-content: space-between;
+  min-height: 120px;
+  padding: 18px 20px;
   text-align: left;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   width: 100%;
 }
 
 .periodCard:hover {
+  background: #ffffff;
   border-color: var(--cys-color-primary-border);
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -4px rgba(37, 99, 235, 0.12), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
+  transform: translateY(-3px);
+}
+
+.periodCard:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
 .periodCard:focus-visible {
@@ -33,28 +42,77 @@
   outline-offset: 2px;
 }
 
-.periodNumber {
+.cardTop {
   align-items: center;
-  background: var(--cys-color-primary-bg);
-  border-radius: 10px;
-  color: var(--cys-color-primary-text);
   display: flex;
-  flex: 0 0 auto;
-  font-size: 17px;
-  font-weight: 700;
-  height: 38px;
-  justify-content: center;
-  width: 38px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  width: 100%;
 }
 
-.periodName {
-  flex: 1;
-  font-size: 16px;
-  min-width: 0;
+.periodNumber {
+  align-items: center;
+  background: var(--cys-color-fill-secondary);
+  border-radius: 10px;
+  color: var(--cys-color-primary-text);
+  display: inline-flex;
+  font-family: var(--font-heading);
+  font-size: 18px;
+  font-weight: 750;
+  height: 40px;
+  justify-content: center;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  width: 40px;
+}
+
+.periodCard:hover .periodNumber {
+  background: var(--cys-color-primary-bg);
+  color: var(--cys-color-primary);
 }
 
 .arrow {
-  color: var(--cys-color-primary-text);
-  flex: 0 0 auto;
+  color: var(--cys-color-text-tertiary);
   font-size: 15px;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.periodCard:hover .arrow {
+  color: var(--cys-color-primary);
+  transform: translateX(4px);
+}
+
+.cardBottom {
+  display: flex;
+  align-items: baseline;
+}
+
+.periodName {
+  color: var(--cys-color-text);
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+@media (max-width: 575px) {
+  .periodCard {
+    border-radius: 12px;
+    min-height: 104px;
+    padding: 14px;
+  }
+
+  .cardTop {
+    margin-bottom: 12px;
+  }
+
+  .periodNumber {
+    border-radius: 8px;
+    font-size: 16px;
+    height: 34px;
+    width: 34px;
+  }
+
+  .periodName {
+    font-size: 14.5px;
+  }
 }

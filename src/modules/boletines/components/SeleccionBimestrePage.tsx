@@ -63,19 +63,23 @@ export const SeleccionBimestrePage: React.FC<SeleccionBimestrePageProps> = ({
           <Empty description="No hay bimestres configurados para el ciclo lectivo actual." />
         </Card>
       ) : (
-        <Row gutter={[16, 16]}>
+        <Row gutter={[16, 16]} className={styles.grid}>
           {periodos.map((periodo) => (
-            <Col xs={24} sm={12} key={periodo.id}>
+            <Col xs={12} sm={12} lg={6} key={periodo.id}>
               <button
                 type="button"
                 className={styles.periodCard}
                 onClick={() => onSelectPeriod(periodo.id)}
               >
-                <span className={styles.periodNumber}>{periodo.numeroPeriodo}</span>
-                <Typography.Text strong className={styles.periodName}>
-                  {periodo.nombre}
-                </Typography.Text>
-                <ArrowRightOutlined className={styles.arrow} />
+                <div className={styles.cardTop}>
+                  <span className={styles.periodNumber}>{periodo.numeroPeriodo}</span>
+                  <ArrowRightOutlined className={styles.arrow} />
+                </div>
+                <div className={styles.cardBottom}>
+                  <Typography.Text strong className={styles.periodName}>
+                    {periodo.nombre}
+                  </Typography.Text>
+                </div>
               </button>
             </Col>
           ))}
