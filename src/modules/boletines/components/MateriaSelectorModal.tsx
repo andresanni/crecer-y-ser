@@ -147,7 +147,7 @@ const MateriaSelectorModalSession: React.FC<Props> = ({
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 24 }}>
-            <Spin tip="Cargando catálogo..." />
+            <Spin description="Cargando catálogo..." />
           </div>
         ) : availableMaterias.length === 0 ? (
           <Empty

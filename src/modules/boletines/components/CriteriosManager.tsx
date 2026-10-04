@@ -352,7 +352,7 @@ const CriteriosManagerSession: React.FC<Props> = ({ cursoMateria, readOnly = fal
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: 40 }}>
-            <Spin tip="Cargando criterios de la materia..." />
+            <Spin description="Cargando criterios de la materia..." />
           </div>
         ) : (
           <div

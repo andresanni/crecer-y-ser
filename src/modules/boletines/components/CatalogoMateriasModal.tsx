@@ -172,7 +172,7 @@ const CatalogoMateriasModalSession: React.FC<Props> = ({
         { }
         {loading ? (
           <div style={{ textAlign: 'center', padding: 30 }}>
-            <Spin tip="Cargando materias..." />
+            <Spin description="Cargando materias..." />
           </div>
         ) : filteredMaterias.length === 0 ? (
           <Empty
