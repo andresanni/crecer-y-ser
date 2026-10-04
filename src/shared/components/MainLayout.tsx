@@ -54,7 +54,7 @@ export const MainLayout = () => {
         onClick={({ key }) => { navigate(key); setMobileOpen(false); }}
       />
       <div className={styles.navFooter}>
-        {!compact && <span>Crecer juntos, cada día.</span>}
+        {!compact && <span className={styles.slogan}>Educamos para la vida</span>}
         {isDesktop && <Button type="text" block icon={compact ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />} onClick={() => setCollapsed(!collapsed)} aria-label={compact ? 'Expandir menú' : 'Contraer menú'}>{!compact && 'Contraer menú'}</Button>}
       </div>
     </div>
