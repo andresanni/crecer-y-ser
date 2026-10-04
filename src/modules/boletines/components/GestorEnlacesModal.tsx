@@ -25,7 +25,6 @@ import {
   CopyOutlined,
   DeleteOutlined,
   PlusCircleOutlined,
-  WhatsAppOutlined,
   UserOutlined,
   CalendarOutlined,
   KeyOutlined,
@@ -200,19 +199,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     });
   };
 
-  const handleShareWhatsApp = async (tokenItem: TokenAccesoDocente) => {
-    try {
-      const secret = await recoverSecret(tokenItem);
-      const url = getMagicLinkUrl(secret);
-      const text = `Hola ${tokenItem.docenteNombre || 'Docente'}, te compartimos el enlace para la carga completa de calificaciones de ${tokenItem.cursoNombre || 'tu curso'} (${tokenItem.periodoNombre || 'período activo'}) en el Colegio Crecer y Ser:\n\n🔗 ${url}\n\nEste enlace es personal y de acceso directo sin contraseñas.`;
-      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-      window.open(whatsappUrl, '_blank');
-    } catch (err) {
-      console.error(err);
-      message.error('No se pudo recuperar el enlace');
-    }
-  };
-
   const handleRotateToken = async (tokenItem: TokenAccesoDocente) => {
     try {
       const rotated = await accesoDocenteService.rotate(tokenItem.id);
@@ -247,15 +233,15 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       title: 'Curso y Período',
       key: 'curso_periodo',
       render: (_, record) => (
-        <div>
-          <Tag color="blue" className={styles.tag}>
+        <Space size={8} wrap>
+          <Tag color="blue" className={styles.courseTag}>
             {record.cursoNombre || 'Curso'}
           </Tag>
-          <Tag color="green" className={styles.tag}>
+          <Tag color="green" className={styles.periodTag}>
             <CalendarOutlined className={styles.tagIcon} />
             {record.periodoNombre || 'Período'}
           </Tag>
-        </div>
+        </Space>
       ),
     },
     {
@@ -265,24 +251,14 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       render: (_, record) => (
         <Space size={6}>
           {record.secreto || record.recuperable ? (
-            <>
-              <Tooltip title="Copiar enlace directo">
-                <Button
-                  size="small"
-                  icon={<CopyOutlined />}
-                  onClick={() => void handleCopyLink(record)}
-                  aria-label={`Copiar enlace de ${record.docenteNombre || 'docente'}`}
-                />
-              </Tooltip>
-              <Tooltip title="Compartir por WhatsApp">
-                <Button
-                  size="small"
-                  icon={<WhatsAppOutlined className={styles.successIcon} />}
-                  onClick={() => void handleShareWhatsApp(record)}
-                  aria-label={`Compartir enlace de ${record.docenteNombre || 'docente'} por WhatsApp`}
-                />
-              </Tooltip>
-            </>
+            <Tooltip title="Copiar enlace directo">
+              <Button
+                size="small"
+                icon={<CopyOutlined />}
+                onClick={() => void handleCopyLink(record)}
+                aria-label={`Copiar enlace de ${record.docenteNombre || 'docente'}`}
+              />
+            </Tooltip>
           ) : (
             <Popconfirm
               title="¿Regenerar este enlace?"
