@@ -24,6 +24,9 @@ export interface AlumnoRecord {
       fecha_ingreso?: string;
       fecha_egreso?: string;
       estado: string;
+      cursada_estado?: string;
+      bimestre_desde?: number;
+      bimestre_hasta?: number;
       expand?: {
         curso_id?: {
           id: string;
@@ -58,6 +61,9 @@ export interface Alumno {
   nivelNombre?: string;
   turno?: string;
   estadoInscripcion?: string;
+  cursadaEstado?: string;
+  bimestreDesde?: number;
+  bimestreHasta?: number;
   fechaEgreso?: string;
   fechaIngreso?: string;
   numeroOrden?: number | null;
@@ -94,6 +100,9 @@ export const alumnoAdapter = (record: AlumnoRecord): Alumno => {
     nivelNombre: cursoRecord?.expand?.nivel_id?.nombre || undefined,
     turno: cursoRecord?.turno || undefined,
     estadoInscripcion: activeInsc?.estado || undefined,
+    cursadaEstado: activeInsc?.cursada_estado || undefined,
+    bimestreDesde: activeInsc?.bimestre_desde ?? undefined,
+    bimestreHasta: activeInsc?.bimestre_hasta ?? undefined,
     fechaEgreso: activeInsc?.fecha_egreso?.slice(0, 10) || undefined,
     fechaIngreso: activeInsc?.fecha_ingreso?.slice(0, 10) || undefined,
     numeroOrden: activeInsc?.numero_orden ?? null,

@@ -380,7 +380,7 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
 
       {!hasLoaded && syncStatus === 'refreshing' ? (
         <Card style={{ textAlign: 'center', padding: 80, borderRadius: 16 }}>
-          <Spin size="large" tip="Calculando estado de avance de la escuela..." />
+          <Spin size="large" description="Calculando estado de avance de la escuela..." />
         </Card>
       ) : !hasLoaded && loadError ? (
         <Alert

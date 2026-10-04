@@ -141,7 +141,7 @@ const PeriodosModalSession: React.FC<Props> = ({ open, onClose }) => {
 
             {loading ? (
               <div style={{ textAlign: 'center', padding: 24 }}>
-                <Spin tip="Cargando períodos..." />
+                <Spin description="Cargando períodos..." />
               </div>
             ) : periodos.length === 0 ? (
               <Empty

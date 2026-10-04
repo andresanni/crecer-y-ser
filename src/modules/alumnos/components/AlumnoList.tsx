@@ -356,6 +356,21 @@ export const AlumnoList: React.FC = () => {
                     </Tag>
                   </Tooltip>
                 )}
+                {record.cursadaEstado === 'PENDIENTE' && (
+                  <Tag color="warning" className={ui.statusTag}>
+                    Cursada por confirmar
+                  </Tag>
+                )}
+                {record.cursadaEstado === 'CONFIRMADA' && ((record.bimestreDesde !== undefined && record.bimestreDesde > 1) || (record.bimestreHasta !== undefined && record.bimestreHasta < 4)) && (
+                  <Tag color="cyan" className={ui.statusTag}>
+                    B{record.bimestreDesde}–B{record.bimestreHasta}
+                  </Tag>
+                )}
+                {record.cursadaEstado === 'SIN_CURSADA' && (
+                  <Tag color="default" className={ui.statusTag}>
+                    Sin cursada
+                  </Tag>
+                )}
               </div>
               <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
                 {record.nacionalidad ? `${record.nacionalidad}` : 'Estudiante'}
@@ -682,6 +697,21 @@ export const AlumnoList: React.FC = () => {
                           {isBaja && (
                             <Tag color="error" className={ui.statusTag}>
                               Baja {alumno.fechaEgreso ? `• ${dayjs(alumno.fechaEgreso).format('DD/MM/YY')}` : ''}
+                            </Tag>
+                          )}
+                          {alumno.cursadaEstado === 'PENDIENTE' && (
+                            <Tag color="warning" className={ui.statusTag}>
+                              Cursada por confirmar
+                            </Tag>
+                          )}
+                          {alumno.cursadaEstado === 'CONFIRMADA' && ((alumno.bimestreDesde !== undefined && alumno.bimestreDesde > 1) || (alumno.bimestreHasta !== undefined && alumno.bimestreHasta < 4)) && (
+                            <Tag color="cyan" className={ui.statusTag}>
+                              B{alumno.bimestreDesde}–B{alumno.bimestreHasta}
+                            </Tag>
+                          )}
+                          {alumno.cursadaEstado === 'SIN_CURSADA' && (
+                            <Tag color="default" className={ui.statusTag}>
+                              Sin cursada
                             </Tag>
                           )}
                           {alumno.cursoNombre ? (
