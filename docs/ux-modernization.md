@@ -14,7 +14,7 @@ La modernización visual fue desarrollada originalmente en la rama `feature/ui-u
 - `MainLayout` es el shell privado: sidebar, navegación móvil, barra superior, breadcrumbs, sesión y `Outlet`.
 - `SectionLayout` es la raíz de cada pantalla operativa: compone el encabezado y el área funcional con separación uniforme.
 - `PageHeader` es una implementación interna de `SectionLayout`: icono, título y acciones opcionales, sin subtítulo.
-- El sidebar usa 200 px desplegado y 64 px contraído. El drawer móvil usa 224 px. Las opciones de `Boletines` se alinean con las secciones principales y comparten un fondo sutil que indica pertenencia sin indentación.
+- El sidebar usa 200 px desplegado y 64 px contraído, con fondo diferenciado y borde institucional en tono azul. El drawer móvil usa 224 px. Las opciones de `Boletines` se agrupan en un contenedor con guía visual vertical y sangría para sus subsecciones (`Bimestres` y `Constructor`), expresando claramente su jerarquía secundaria.
 - La barra superior usa una altura mínima de 64 px y el contenido aprovecha todo el ancho disponible.
 - `Boletines` presenta sólo dos accesos navegables, `Bimestres` y `Constructor`. La selección de bimestre muestra los períodos directamente, sin bloque introductorio.
 

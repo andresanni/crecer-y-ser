@@ -1,7 +1,7 @@
 .content {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
 }
 
 .createCard {
@@ -41,22 +41,13 @@
 }
 
 .listHeader {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .listTitle {
   color: var(--cys-color-text);
   font-family: var(--font-heading);
   font-size: 14px;
-}
-
-.listHint {
-  font-size: 12px;
-  text-align: right;
 }
 
 .teacherName {
@@ -74,15 +65,26 @@
   font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
-.tag {
-  margin: 0 4px 2px 0;
+.courseTag {
+  margin: 0;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 650;
+  padding: 3px 10px;
+  line-height: 20px;
+}
+
+.periodTag {
+  margin: 0;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 600;
+  padding: 3px 10px;
+  line-height: 20px;
 }
 
 .tagIcon {
-  margin-inline-end: 3px;
+  margin-inline-end: 5px;
 }
 
 .successIcon {
@@ -91,20 +93,10 @@
 
 @media (max-width: 767px) {
   .content {
-    gap: 14px;
+    gap: 16px;
   }
 
   .createCard :global(.ant-card-body) {
     padding: 14px 14px 2px;
-  }
-
-  .listHeader {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .listHint {
-    text-align: left;
   }
 }

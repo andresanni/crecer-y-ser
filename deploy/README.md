@@ -27,6 +27,7 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `pb_schema.json`: snapshot legible del esquema resultante.
 - `deploy/pocketbase.service`: unidad systemd vigente.
 - `deploy/start-pocketbase-dev.ps1`: lanzador local restringido a loopback.
+- `deploy/setup-worktree-dev.ps1`: inicialización de dependencias y entorno local para git worktrees.
 - `deploy/setup-pocketbase-dev.ps1`: instalación y reconstrucción local desde cero.
 - `deploy/backup-pocketbase-dev.ps1`: backup local cifrado y autenticado.
 - `deploy/restore-pocketbase-dev.ps1`: restauración local hacia un destino vacío.

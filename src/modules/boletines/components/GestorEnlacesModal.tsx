@@ -25,7 +25,6 @@ import {
   CopyOutlined,
   DeleteOutlined,
   PlusCircleOutlined,
-  WhatsAppOutlined,
   UserOutlined,
   CalendarOutlined,
   KeyOutlined,
@@ -121,7 +120,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
         )),
       ]);
       if (issued.secreto) {
-        await showIssuedLink(issued.secreto, 'Enlace docente generado');
+        showIssuedLink(issued.secreto, 'Enlace generado con éxito');
       }
       form.resetFields(['docenteNombre']);
     } catch (err) {
@@ -187,40 +186,17 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
     }
   };
 
-  const showIssuedLink = async (tokenStr: string, title: string) => {
+  const showIssuedLink = (tokenStr: string, title: string) => {
     const url = getMagicLinkUrl(tokenStr);
-    const copied = await copyLink(tokenStr);
     modal.success({
       title,
       content: (
-        <Space orientation="vertical">
-          <Typography.Text>
-            {copied
-              ? 'El enlace fue copiado. También podés copiarlo desde esta ventana antes de cerrarla.'
-              : 'Copiá el enlace desde esta ventana antes de cerrarla.'}
-          </Typography.Text>
-          <Typography.Text type="secondary">
-            Podrás volver a copiar este enlace desde el gestor mientras sea la llave vigente.
-          </Typography.Text>
-          <Typography.Text copyable={{ text: url }}>{url}</Typography.Text>
-        </Space>
+        <Typography.Paragraph copyable={{ text: url }} style={{ margin: '12px 0 0', wordBreak: 'break-all' }}>
+          {url}
+        </Typography.Paragraph>
       ),
       okText: 'Listo',
     });
-  };
-
-
-  const handleShareWhatsApp = async (tokenItem: TokenAccesoDocente) => {
-    try {
-      const secret = await recoverSecret(tokenItem);
-      const url = getMagicLinkUrl(secret);
-      const text = `Hola ${tokenItem.docenteNombre || 'Docente'}, te compartimos el enlace para la carga completa de calificaciones de ${tokenItem.cursoNombre || 'tu curso'} (${tokenItem.periodoNombre || 'período activo'}) en el Colegio Crecer y Ser:\n\n🔗 ${url}\n\nEste enlace es personal y de acceso directo sin contraseñas.`;
-      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-      window.open(whatsappUrl, '_blank');
-    } catch (err) {
-      console.error(err);
-      message.error('No se pudo recuperar el enlace');
-    }
   };
 
   const handleRotateToken = async (tokenItem: TokenAccesoDocente) => {
@@ -229,7 +205,7 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       const updated = { ...tokenItem, ...rotated };
       setTokens((current) => current.map((item) => item.id === tokenItem.id ? updated : item));
       if (updated.secreto) {
-        await showIssuedLink(updated.secreto, 'Enlace docente regenerado');
+        showIssuedLink(updated.secreto, 'Enlace regenerado con éxito');
       }
     } catch (err) {
       console.error(err);
@@ -257,15 +233,15 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       title: 'Curso y Período',
       key: 'curso_periodo',
       render: (_, record) => (
-        <div>
-          <Tag color="blue" className={styles.tag}>
+        <Space size={8} wrap>
+          <Tag color="blue" className={styles.courseTag}>
             {record.cursoNombre || 'Curso'}
           </Tag>
-          <Tag color="green" className={styles.tag}>
+          <Tag color="green" className={styles.periodTag}>
             <CalendarOutlined className={styles.tagIcon} />
             {record.periodoNombre || 'Período'}
           </Tag>
-        </div>
+        </Space>
       ),
     },
     {
@@ -275,28 +251,18 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       render: (_, record) => (
         <Space size={6}>
           {record.secreto || record.recuperable ? (
-            <>
-              <Tooltip title="Copiar enlace directo">
-                <Button
-                  size="small"
-                  icon={<CopyOutlined />}
-                  onClick={() => void handleCopyLink(record)}
-                  aria-label={`Copiar enlace de ${record.docenteNombre || 'docente'}`}
-                />
-              </Tooltip>
-              <Tooltip title="Compartir por WhatsApp">
-                <Button
-                  size="small"
-                  icon={<WhatsAppOutlined className={styles.successIcon} />}
-                  onClick={() => void handleShareWhatsApp(record)}
-                  aria-label={`Compartir enlace de ${record.docenteNombre || 'docente'} por WhatsApp`}
-                />
-              </Tooltip>
-            </>
+            <Tooltip title="Copiar enlace directo">
+              <Button
+                size="small"
+                icon={<CopyOutlined />}
+                onClick={() => void handleCopyLink(record)}
+                aria-label={`Copiar enlace de ${record.docenteNombre || 'docente'}`}
+              />
+            </Tooltip>
           ) : (
             <Popconfirm
               title="¿Regenerar este enlace?"
-              description="El enlace anterior dejará de funcionar y se copiará uno nuevo."
+              description="El enlace anterior dejará de funcionar y se generará uno nuevo."
               onConfirm={() => handleRotateToken(record)}
               okText="Regenerar"
               cancelText="Cancelar"
@@ -336,7 +302,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
       onCancel={onClose}
       width={1040}
       title="Enlaces de carga docente"
-      description="Generá y administrá accesos directos para la carga de calificaciones."
       icon={<KeyOutlined />}
       footer={<Button onClick={onClose}>Cerrar</Button>}
     >
@@ -424,9 +389,6 @@ const GestorEnlacesModalSession: React.FC<GestorEnlacesModalProps> = ({
           <div className={styles.listHeader}>
             <Typography.Text id="enlaces-disponibles-title" strong className={styles.listTitle}>
               Enlaces disponibles ({tokens.length})
-            </Typography.Text>
-            <Typography.Text type="secondary" className={styles.listHint}>
-              Regenerar reemplaza la llave anterior sin perder el avance de la carga.
             </Typography.Text>
           </div>
 

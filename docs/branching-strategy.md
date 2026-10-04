@@ -90,6 +90,15 @@ Antes de cargar o modificar datos de prueba:
 npm run dev
 ```
 
+Al crear o abrir un git worktree para una rama de feature:
+
+```powershell
+.\deploy\setup-worktree-dev.ps1
+npm run dev
+```
+
+`setup-worktree-dev.ps1` enlaza `node_modules` desde el repositorio principal mediante un junction NTFS (evitando duplicar paquetes) y copia `.env.development.local`. A su vez, `start-pocketbase-dev.ps1` autoriza peticiones CORS desde los puertos `5173` a `5176` para permitir instancias concurrentes de Vite conectadas al PocketBase local en `127.0.0.1:8090`.
+
 `.env.development.local` debe apuntar a `http://127.0.0.1:8090`. Cambiar de `master` a `dev` no cambia automáticamente el backend: la separación efectiva depende de esta configuración y de usar exclusivamente credenciales locales.
 
 La configuración SMTP local vive en `C:\pocketbase\pb_data`. Una reconstrucción desde cero no incorpora credenciales SMTP desde Git y requiere configurar nuevamente el servidor de correo desde el panel local.
