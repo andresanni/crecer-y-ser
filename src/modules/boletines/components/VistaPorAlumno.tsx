@@ -880,6 +880,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             showInfo={false}
             strokeColor={stats.percent === 100 ? '#10b981' : '#2563eb'}
             size="small"
+            className={styles.studentProgressBar}
             style={{ width: 110, margin: 0 }}
           />
         </div>}
@@ -998,7 +999,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               onOpenChange={setStickySelectorOpen}
               trigger="click"
               placement="bottomLeft"
-              overlayStyle={{ width: 340 }}
+              overlayStyle={{ width: 340, maxWidth: 'calc(100vw - 20px)' }}
               content={
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 6, borderBottom: "1px solid var(--cys-color-border-secondary)" }}>
@@ -1629,21 +1630,8 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                     { }
                     {!esConducta && (
                       <Col span={24}>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.03))',
-                            border: '1px solid rgba(37, 99, 235, 0.22)',
-                            padding: '8px 14px',
-                            borderRadius: 8,
-                            gap: 12,
-                            flexWrap: 'wrap',
-                            marginTop: 4,
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 240, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className={styles.generalGradeRow}>
+                          <div className={styles.generalGradeTitle}>
                             <div
                               style={{
                                 width: 24,
