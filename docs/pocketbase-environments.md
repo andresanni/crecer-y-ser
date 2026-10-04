@@ -299,3 +299,7 @@ Sin nuevas migraciones. Respaldo consistente /root/pb/deploy_backups/20261001-09
 
 
 El 2 de octubre el usuario confirmó que la base habitual fue purgada intencionalmente tras una prueba de ingesta que apuntó por error a loopback, conservando estructura y catálogos. PocketBase se detuvo por reinicio de sesión. La instrucción vigente es dejarla intacta y realizar las pruebas de cursada en instancias temporales. La migración y una eventual repoblación sintética habitual quedan pendientes; no restaurar el snapshot de 84 matrículas automáticamente.
+
+## Salvaguardas y alcance evaluable publicados — 3 de octubre de 2026
+
+La migración 1790850000, los hooks compatibles y el worker documental se publicaron después del ensayo aislado de producción. Respaldo previo: `/root/pb/deploy_backups/20261003-093440`; worker vigente: `/opt/cys-pdf/releases/20261003-093546`. El entorno local normal permanece intacto. La comparación previa/posterior conservó los registros académicos existentes. El hito de regularización de B1 y los pendientes de documentación/confirmación están en `docs/gradebook-pdf-emission.md`.
