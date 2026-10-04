@@ -432,7 +432,12 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       .then(async (values) => {
         try {
           setSubmitting(true);
-          await onSubmit(values, initialValues?.updatedAt);
+          const allFormValues = form.getFieldsValue(true);
+          const mergedValues: AlumnoFormValues = {
+            ...allFormValues,
+            ...values,
+          };
+          await onSubmit(mergedValues, initialValues?.updatedAt);
           handleModalClose();
         } finally {
           setSubmitting(false);
@@ -1045,6 +1050,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         </div>
       ),
       children: renderTabAlumno(),
+      forceRender: true,
     },
     {
       key: 'inscripcion',
@@ -1068,6 +1074,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         </div>
       ),
       children: renderTabInscripcion(),
+      forceRender: true,
     },
     {
       key: 'responsable',
@@ -1091,6 +1098,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         </div>
       ),
       children: renderTabResponsable(),
+      forceRender: true,
     },
   ];
 
@@ -1130,6 +1138,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             key="submit"
             type="primary"
             loading={submitting}
+            disabled={submitting || (isEditing && loadingResponsable) || loadingMetadata}
             onClick={handleOk}
             icon={<CheckOutlined />}
             className="btn-primary-gradient"

@@ -39,6 +39,7 @@ import type { Alumno } from '../models/alumno.model';
 import { AlumnoFormModal, type AlumnoFormValues } from './AlumnoFormModal';
 import { AlumnoDetailModal } from './AlumnoDetailModal';
 import { DarDeBajaModal } from './DarDeBajaModal';
+import type { EstadoInscripcion } from '../../inscripciones/models/inscripcion.model';
 import {
   getGradeColorConfig,
   compareGrados,
@@ -206,32 +207,34 @@ export const AlumnoList: React.FC = () => {
   const handleSubmit = async (values: AlumnoFormValues, originalUpdatedDate?: string) => {
     try {
       const alumnoData = {
-        numero_legajo: values.numeroLegajo || '',
-        dni: values.dni,
-        apellidos: values.apellidos,
-        nombres: values.nombres,
-        fecha_nacimiento: values.fechaNacimiento ? values.fechaNacimiento.format('YYYY-MM-DD') : '',
-        nacionalidad: values.nacionalidad || '',
-        sexo: values.sexo || '',
-        domicilio: values.domicilio || '',
-        localidad: values.localidad || '',
-        usuario_acadeu: values.usuarioAcadeu || '',
-        clave_acadeu: values.claveAcadeu || '',
+        numero_legajo: values.numeroLegajo !== undefined ? values.numeroLegajo.trim() : (editingAlumno?.numeroLegajo || ''),
+        dni: (values.dni !== undefined ? values.dni : (editingAlumno?.dni || '')).trim(),
+        apellidos: (values.apellidos !== undefined ? values.apellidos : (editingAlumno?.apellidos || '')).trim(),
+        nombres: (values.nombres !== undefined ? values.nombres : (editingAlumno?.nombres || '')).trim(),
+        fecha_nacimiento: values.fechaNacimiento !== undefined
+          ? (values.fechaNacimiento ? values.fechaNacimiento.format('YYYY-MM-DD') : '')
+          : (editingAlumno?.fechaNacimiento || ''),
+        nacionalidad: (values.nacionalidad !== undefined ? values.nacionalidad : (editingAlumno?.nacionalidad || '')).trim(),
+        sexo: (values.sexo !== undefined ? values.sexo : (editingAlumno?.sexo || '')).trim(),
+        domicilio: (values.domicilio !== undefined ? values.domicilio : (editingAlumno?.domicilio || '')).trim(),
+        localidad: (values.localidad !== undefined ? values.localidad : (editingAlumno?.localidad || '')).trim(),
+        usuario_acadeu: (values.usuarioAcadeu !== undefined ? values.usuarioAcadeu : (editingAlumno?.usuarioAcadeu || '')).trim(),
+        clave_acadeu: (values.claveAcadeu !== undefined ? values.claveAcadeu : (editingAlumno?.claveAcadeu || '')).trim(),
       };
 
-      const respNum = values.responsableDniNumero || values.responsableDni;
+      const respNum = (values.responsableDniNumero || values.responsableDni || '').trim();
       const responsableData = respNum
         ? {
             id: values.responsableId,
-            dni_tipo: values.responsableDniTipo || 'DNI',
+            dni_tipo: (values.responsableDniTipo || 'DNI').trim(),
             dni_numero: respNum,
             dni: respNum,
-            apellidos: values.responsableApellidos || '',
-            nombres: values.responsableNombres || '',
-            nacionalidad: values.responsableNacionalidad || '',
-            profesion: values.responsableProfesion || '',
-            telefono: values.responsableTelefono || '',
-            email: values.responsableEmail || '',
+            apellidos: (values.responsableApellidos || '').trim(),
+            nombres: (values.responsableNombres || '').trim(),
+            nacionalidad: (values.responsableNacionalidad || '').trim(),
+            profesion: (values.responsableProfesion || '').trim(),
+            telefono: (values.responsableTelefono || '').trim(),
+            email: (values.responsableEmail || '').trim(),
           }
         : undefined;
 
@@ -240,17 +243,21 @@ export const AlumnoList: React.FC = () => {
       if (editingAlumno) {
         if (!originalUpdatedDate) throw new Error('Falta la fecha de actualización original');
         const editInscripcionData =
-          values.cursoId || values.estadoInscripcion
+          values.cursoId || values.estadoInscripcion || editingAlumno.inscripcionId
             ? {
                 id: editingAlumno.inscripcionId,
-                curso_id: values.cursoId,
-                ciclo_id: values.cicloId,
-                numero_orden: values.numeroOrden,
-                numero_inscripcion: values.numeroInscripcion || '',
+                curso_id: values.cursoId !== undefined ? values.cursoId : editingAlumno.cursoId,
+                ciclo_id: values.cicloId !== undefined ? values.cicloId : editingAlumno.cicloId,
+                numero_orden: (values.numeroOrden !== undefined ? values.numeroOrden : editingAlumno.numeroOrden) ?? undefined,
+                numero_inscripcion: (values.numeroInscripcion !== undefined ? values.numeroInscripcion : (editingAlumno.numeroInscripcion || '')).trim(),
                 fecha_inscripcion: values.fechaInscripcion ? values.fechaInscripcion.format('YYYY-MM-DD') : '',
-                fecha_ingreso: values.fechaIngreso ? values.fechaIngreso.format('YYYY-MM-DD') : '',
-                fecha_egreso: values.fechaEgreso ? values.fechaEgreso.format('YYYY-MM-DD') : '',
-                estado: values.estadoInscripcion || 'Regular',
+                fecha_ingreso: values.fechaIngreso !== undefined
+                  ? (values.fechaIngreso ? values.fechaIngreso.format('YYYY-MM-DD') : '')
+                  : (editingAlumno.fechaIngreso || ''),
+                fecha_egreso: values.fechaEgreso !== undefined
+                  ? (values.fechaEgreso ? values.fechaEgreso.format('YYYY-MM-DD') : '')
+                  : (editingAlumno.fechaEgreso || ''),
+                estado: (values.estadoInscripcion || editingAlumno.estadoInscripcion || 'Regular') as EstadoInscripcion,
               }
             : undefined;
 
