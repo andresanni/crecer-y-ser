@@ -41,7 +41,7 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
       setError('');
       setUncertain(false);
       form.setFieldsValue({ desde: value.cursada.desde || undefined, hasta: value.cursada.hasta || undefined,
-        sinCursada: value.cursada.estado === 'SIN_CURSADA', fechaEgreso: value.fechaEgreso ? dayjs(value.fechaEgreso) : dayjs() });
+        sinCursada: value.cursada.estado === 'SIN_CURSADA', fechaEgreso: value.fechaEgreso ? dayjs(value.fechaEgreso.slice(0, 10)) : dayjs() });
     }).catch(() => { if (active) setError('No se pudo leer la cursada. Volvé a cargarla.'); });
     return () => { active = false; };
   }, [inscripcionId, reload, form]);
