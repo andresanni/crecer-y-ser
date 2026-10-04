@@ -547,7 +547,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: '30px 0' }}>
-              <Spin tip="Cargando historial de cursada..." />
+              <Spin description="Cargando historial de cursada..." />
             </div>
           ) : inscripciones.length === 0 ? (
             <Card className="detail-section-card" size="small" style={{ textAlign: 'center', padding: '24px 0' }}>
@@ -668,7 +668,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '30px 0' }}>
-              <Spin tip="Cargando datos del responsable..." />
+              <Spin description="Cargando datos del responsable..." />
             </div>
           ) : responsables.length === 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

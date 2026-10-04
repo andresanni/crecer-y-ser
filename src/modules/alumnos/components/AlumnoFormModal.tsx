@@ -432,7 +432,12 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       .then(async (values) => {
         try {
           setSubmitting(true);
-          await onSubmit(values, initialValues?.updatedAt);
+          const allFormValues = form.getFieldsValue(true);
+          const mergedValues: AlumnoFormValues = {
+            ...allFormValues,
+            ...values,
+          };
+          await onSubmit(mergedValues, initialValues?.updatedAt);
           handleModalClose();
         } finally {
           setSubmitting(false);
@@ -673,6 +678,19 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             >
               Cursada: {initialValues?.estadoInscripcion || 'Regular'}
             </Tag>
+            {initialValues?.cursadaEstado === 'PENDIENTE' ? (
+              <Tag color="warning" className={ui.compactTag}>
+                Cursada por confirmar
+              </Tag>
+            ) : initialValues?.cursadaEstado === 'SIN_CURSADA' ? (
+              <Tag color="default" className={ui.compactTag}>
+                Sin cursada
+              </Tag>
+            ) : initialValues?.cursadaEstado === 'CONFIRMADA' ? (
+              <Tag color={(initialValues.bimestreDesde && initialValues.bimestreDesde > 1) || (initialValues.bimestreHasta && initialValues.bimestreHasta < 4) ? 'cyan' : 'default'} className={ui.compactTag}>
+                Bimestres {initialValues.bimestreDesde} a {initialValues.bimestreHasta}
+              </Tag>
+            ) : null}
             {initialValues?.numeroOrden ? (
               <Tag color="purple" className={ui.compactTag}>
                 Nº de Orden: #{initialValues.numeroOrden}
@@ -1045,6 +1063,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         </div>
       ),
       children: renderTabAlumno(),
+      forceRender: true,
     },
     {
       key: 'inscripcion',
@@ -1068,6 +1087,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         </div>
       ),
       children: renderTabInscripcion(),
+      forceRender: true,
     },
     {
       key: 'responsable',
@@ -1091,6 +1111,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         </div>
       ),
       children: renderTabResponsable(),
+      forceRender: true,
     },
   ];
 
@@ -1130,6 +1151,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             key="submit"
             type="primary"
             loading={submitting}
+            disabled={submitting || (isEditing && loadingResponsable) || loadingMetadata}
             onClick={handleOk}
             icon={<CheckOutlined />}
             className="btn-primary-gradient"
