@@ -69,9 +69,11 @@ if (Test-Path -LiteralPath $pdfWorkerKeyPath) {
   $env:CYS_PDF_WORKER_KEY = (Get-Content -Raw -LiteralPath $pdfWorkerKeyPath).Trim()
 }
 
+$originsArg = "--origins=" + ($Origins -join ",")
+
 & $executable serve `
   --http="127.0.0.1:8090" `
-  --origins=($Origins -join ",") `
+  $originsArg `
   --dir="$dataDirectory" `
   --hooksDir="$hooksDirectory" `
   --migrationsDir="$migrationsDirectory" `
