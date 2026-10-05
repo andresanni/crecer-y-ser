@@ -247,6 +247,7 @@ function buildScaleValueLookup(valoresEscala) {
 
   const primaryShortcuts = {
     D: 'DESTACADO',
+    DE: 'DESTACADO',
     DEST: 'DESTACADO',
     AV: 'AVANZADO',
     AL: 'ALCANZADO',

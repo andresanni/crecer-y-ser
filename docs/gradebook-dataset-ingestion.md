@@ -38,7 +38,7 @@ Aplica para la carga histórica previa al debut operativo del sistema en el 3° 
 ### 3.2. Reglas de Tipeo Rápido en Google Sheets
 
 1. **Atajos para 1° Ciclo (1°, 2° y 3° grado):**
-   - `D`: Destacado
+   - `D`, `DE` o `DEST`: Destacado
    - `AV`: Avanzado
    - `AL` o `A`: Alcanzado
    - `EP` o `P`: En proceso
