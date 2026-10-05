@@ -350,10 +350,6 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
             Cambiar bimestre
           </Button>
 
-          <Tag color="blue" icon={<CalendarOutlined />}>
-            {selectedPeriodo?.nombre || 'Bimestre seleccionado'}
-          </Tag>
-
           <Button
             icon={<LinkOutlined className={ui.primary} />}
             onClick={() => {
@@ -377,6 +373,22 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
           </Tooltip>
         </Space>
       }>
+
+      <div className={styles.periodBanner}>
+        <div className={styles.periodIdentity}>
+          <span className={styles.periodIconBox} aria-hidden="true">
+            <CalendarOutlined />
+          </span>
+          <div className={styles.periodTextGroup}>
+            <Typography.Title level={4} className={styles.periodTitle}>
+              {selectedPeriodo?.nombre || 'Bimestre seleccionado'}
+            </Typography.Title>
+            <Typography.Text type="secondary" className={styles.periodSubtitle}>
+              Cursos y estado de calificaciones
+            </Typography.Text>
+          </div>
+        </div>
+      </div>
 
       {!hasLoaded && syncStatus === 'refreshing' ? (
         <Card style={{ textAlign: 'center', padding: 80, borderRadius: 16 }}>

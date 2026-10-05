@@ -23,23 +23,21 @@ export const RevisionCursoHeader: React.FC<RevisionCursoHeaderProps> = ({
   cursoNombre,
   periodoNombre,
 }) => (
-  <Card className={styles.container} styles={{ body: { padding: 0 } }}>
-    <div className={styles.header}>
-      <div className={styles.headingGroup}>
-        <div className={styles.iconBox}>
-          <TeamOutlined />
-        </div>
-        <div>
-          <Typography.Title level={4} className={styles.title}>
-            {cursoNombre}
-          </Typography.Title>
-          <Typography.Text strong className={styles.contextLabel}>
-            {periodoNombre}
-          </Typography.Text>
-        </div>
+  <div className={styles.headerBanner}>
+    <div className={styles.headerIdentity}>
+      <span className={styles.iconBox} aria-hidden="true">
+        <TeamOutlined />
+      </span>
+      <div className={styles.headerTextGroup}>
+        <Typography.Title level={4} className={styles.title}>
+          {cursoNombre}
+        </Typography.Title>
+        <Typography.Text type="secondary" className={styles.subtitle}>
+          {periodoNombre}
+        </Typography.Text>
       </div>
     </div>
-  </Card>
+  </div>
 );
 
 export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
