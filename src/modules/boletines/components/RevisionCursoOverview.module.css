@@ -4,42 +4,55 @@
   overflow: hidden;
 }
 
-.header {
+.headerBanner {
   align-items: center;
   background: linear-gradient(135deg, var(--cys-color-primary-bg), var(--cys-color-fill-quaternary));
-  border-bottom: 1px solid var(--cys-color-border-secondary);
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: 12px;
   display: flex;
-  gap: 16px;
-  justify-content: space-between;
-  padding: 16px 24px;
+  gap: 14px;
+  padding: 14px 20px;
 }
 
-.headingGroup {
+.headerIdentity {
   align-items: center;
   display: flex;
   gap: 12px;
+  min-width: 0;
 }
 
 .iconBox {
   align-items: center;
   background: var(--cys-color-primary);
-  border-radius: 10px;
+  border-radius: 8px;
   color: #fff;
   display: flex;
   flex: 0 0 auto;
-  font-size: 20px;
-  height: 42px;
+  font-size: 18px;
+  height: 38px;
   justify-content: center;
-  width: 42px;
+  width: 38px;
+}
+
+.headerTextGroup {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
 }
 
 .title {
+  color: var(--cys-color-text) !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
   margin: 0 !important;
-  font-size: clamp(20px, 2vw, 24px) !important;
 }
 
-.contextLabel {
-  color: var(--cys-color-primary-text);
+.subtitle {
+  color: var(--cys-color-text-secondary);
+  font-size: 14px;
 }
 
 .toolbar {
@@ -111,7 +124,29 @@
 .studentName {
   display: flex;
   flex-direction: column;
+  gap: 4px;
   min-width: 0;
+}
+
+.studentTags {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.statusTag:global(.ant-tag) {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  margin: 0;
+  max-width: 100%;
+  text-align: center;
+  width: 160px;
+}
+
+.secondaryTag:global(.ant-tag) {
+  margin: 0;
 }
 
 .arrow {
@@ -121,7 +156,15 @@
 }
 
 @media (max-width: 575px) {
-  .header,
+  .headerBanner {
+    padding: 12px 14px;
+  }
+
+  .headerTextGroup {
+    flex-direction: column;
+    gap: 2px;
+  }
+
   .toolbar {
     align-items: flex-start;
     flex-direction: column;

@@ -23,23 +23,21 @@ export const RevisionCursoHeader: React.FC<RevisionCursoHeaderProps> = ({
   cursoNombre,
   periodoNombre,
 }) => (
-  <Card className={styles.container} styles={{ body: { padding: 0 } }}>
-    <div className={styles.header}>
-      <div className={styles.headingGroup}>
-        <div className={styles.iconBox}>
-          <TeamOutlined />
-        </div>
-        <div>
-          <Typography.Title level={4} className={styles.title}>
-            {cursoNombre}
-          </Typography.Title>
-          <Typography.Text strong className={styles.contextLabel}>
-            {periodoNombre}
-          </Typography.Text>
-        </div>
+  <div className={styles.headerBanner}>
+    <div className={styles.headerIdentity}>
+      <span className={styles.iconBox} aria-hidden="true">
+        <TeamOutlined />
+      </span>
+      <div className={styles.headerTextGroup}>
+        <Typography.Title level={4} className={styles.title}>
+          {cursoNombre}
+        </Typography.Title>
+        <Typography.Text type="secondary" className={styles.subtitle}>
+          {periodoNombre}
+        </Typography.Text>
       </div>
     </div>
-  </Card>
+  </div>
 );
 
 export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
@@ -81,14 +79,23 @@ export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
                     </span>
                     <div className={styles.studentName}>
                       <Typography.Text strong>{alumno.nombreCompleto}</Typography.Text>
-                      <Tag color={bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO' ? 'success' : 'warning'}>
-                        {bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO'
-                          ? 'Visado'
-                          : bulletinByEnrollment.has(alumno.inscripcionId)
-                            ? 'Pendiente de visado'
-                            : 'Pendiente de incorporar'}
-                      </Tag>
-                      {bulletinByEnrollment.get(alumno.inscripcionId)?.preparacionDocumental?.completa === false && <Tag color="warning">Faltan datos para PDF</Tag>}
+                      <div className={styles.studentTags}>
+                        <Tag
+                          className={styles.statusTag}
+                          color={bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO' ? 'success' : 'warning'}
+                        >
+                          {bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO'
+                            ? 'Visado'
+                            : bulletinByEnrollment.has(alumno.inscripcionId)
+                              ? 'Pendiente de visado'
+                              : 'Pendiente de incorporar'}
+                        </Tag>
+                        {bulletinByEnrollment.get(alumno.inscripcionId)?.preparacionDocumental?.completa === false && (
+                          <Tag color="warning" className={styles.secondaryTag}>
+                            Faltan datos para PDF
+                          </Tag>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <ArrowRightOutlined className={styles.arrow} />

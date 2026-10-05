@@ -19,3 +19,65 @@
   font-weight: 600;
   border-radius: 6px;
 }
+
+.periodBanner {
+  align-items: center;
+  background: linear-gradient(135deg, var(--cys-color-primary-bg), var(--cys-color-fill-quaternary));
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: 12px;
+  display: flex;
+  gap: 14px;
+  padding: 14px 20px;
+}
+
+.periodIdentity {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.periodIconBox {
+  align-items: center;
+  background: var(--cys-color-primary);
+  border-radius: 8px;
+  color: #fff;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 18px;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.periodTextGroup {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.periodTitle {
+  color: var(--cys-color-text) !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+}
+
+.periodSubtitle {
+  color: var(--cys-color-text-secondary);
+  font-size: 14px;
+}
+
+@media (max-width: 575px) {
+  .periodBanner {
+    padding: 12px 14px;
+  }
+
+  .periodTextGroup {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
