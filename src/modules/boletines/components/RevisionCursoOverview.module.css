@@ -111,7 +111,29 @@
 .studentName {
   display: flex;
   flex-direction: column;
+  gap: 4px;
   min-width: 0;
+}
+
+.studentTags {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.statusTag:global(.ant-tag) {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  margin: 0;
+  max-width: 100%;
+  text-align: center;
+  width: 160px;
+}
+
+.secondaryTag:global(.ant-tag) {
+  margin: 0;
 }
 
 .arrow {

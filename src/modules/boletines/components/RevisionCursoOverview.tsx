@@ -81,14 +81,23 @@ export const RevisionCursoOverview: React.FC<RevisionCursoOverviewProps> = ({
                     </span>
                     <div className={styles.studentName}>
                       <Typography.Text strong>{alumno.nombreCompleto}</Typography.Text>
-                      <Tag color={bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO' ? 'success' : 'warning'}>
-                        {bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO'
-                          ? 'Visado'
-                          : bulletinByEnrollment.has(alumno.inscripcionId)
-                            ? 'Pendiente de visado'
-                            : 'Pendiente de incorporar'}
-                      </Tag>
-                      {bulletinByEnrollment.get(alumno.inscripcionId)?.preparacionDocumental?.completa === false && <Tag color="warning">Faltan datos para PDF</Tag>}
+                      <div className={styles.studentTags}>
+                        <Tag
+                          className={styles.statusTag}
+                          color={bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO' ? 'success' : 'warning'}
+                        >
+                          {bulletinByEnrollment.get(alumno.inscripcionId)?.estado === 'VISADO'
+                            ? 'Visado'
+                            : bulletinByEnrollment.has(alumno.inscripcionId)
+                              ? 'Pendiente de visado'
+                              : 'Pendiente de incorporar'}
+                        </Tag>
+                        {bulletinByEnrollment.get(alumno.inscripcionId)?.preparacionDocumental?.completa === false && (
+                          <Tag color="warning" className={styles.secondaryTag}>
+                            Faltan datos para PDF
+                          </Tag>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <ArrowRightOutlined className={styles.arrow} />
