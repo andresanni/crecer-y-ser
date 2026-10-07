@@ -74,6 +74,12 @@ export const cicloLectivoAdapter = (record: CicloLectivoRecord): CicloLectivo =>
   actual: record.actual,
 });
 
+export interface CambioEscuelaItem {
+  fecha: string;
+  causa: string;
+  escuelaDestino: string;
+}
+
 export interface InscripcionRecord {
   id: string;
   created: string;
@@ -94,6 +100,11 @@ export interface InscripcionRecord {
   promociono_con_acompanamiento?: OpcionBinariaSN;
   posee_apoyos?: OpcionBinariaSN;
   cuales_apoyos?: string;
+  escuela_inicial?: string;
+  fecha_ingreso_inicial?: string;
+  fecha_egreso_inicial?: string;
+  cambios_escuela?: CambioEscuelaItem[];
+  cambio_domicilio?: string;
   expand?: {
     alumno_id?: unknown;
     curso_id?: CursoRecord;
@@ -118,6 +129,11 @@ export interface Inscripcion {
   promocionoConAcompanamiento: OpcionBinariaSN;
   poseeApoyos: OpcionBinariaSN;
   cualesApoyos: string;
+  escuelaInicial: string;
+  fechaIngresoInicial: string;
+  fechaEgresoInicial: string;
+  cambiosEscuela: CambioEscuelaItem[];
+  cambioDomicilio: string;
   cursoNombre?: string;
   nivelNombre?: string;
   cicloAno?: number;
@@ -142,6 +158,11 @@ export const inscripcionAdapter = (record: InscripcionRecord): Inscripcion => ({
   promocionoConAcompanamiento: record.promociono_con_acompanamiento || '-',
   poseeApoyos: record.posee_apoyos || '-',
   cualesApoyos: record.cuales_apoyos || '',
+  escuelaInicial: record.escuela_inicial || '',
+  fechaIngresoInicial: record.fecha_ingreso_inicial?.slice(0, 10) || '',
+  fechaEgresoInicial: record.fecha_egreso_inicial?.slice(0, 10) || '',
+  cambiosEscuela: Array.isArray(record.cambios_escuela) ? record.cambios_escuela : [],
+  cambioDomicilio: record.cambio_domicilio || '',
   cursoNombre: record.expand?.curso_id?.nombre,
   nivelNombre: record.expand?.curso_id?.expand?.nivel_id?.nombre,
   cicloAno: record.expand?.ciclo_id?.ano,

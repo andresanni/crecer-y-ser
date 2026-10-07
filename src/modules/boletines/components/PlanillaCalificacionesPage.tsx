@@ -25,6 +25,7 @@ import pb from '../../../core/pocketbase';
 import { DocumentReadinessAlert } from './DocumentReadinessAlert';
 import { ClientResponseError } from 'pocketbase';
 import { DownloadBulletinButton } from './DownloadBulletinButton';
+import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 const BatchDocumentModal = React.lazy(() => import('./BatchDocumentModal'));
 import { boletinService } from '../services/boletin.service';
 import { VistaPorAlumno } from './VistaPorAlumno';
@@ -100,6 +101,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
   const [reviewLoading, setReviewLoading] = useState(false);
   const [approvalBusy, setApprovalBusy] = useState(false);
   const [batchScope, setBatchScope] = useState<string | null>(null);
+  const [cursadaModalInscripcionId, setCursadaModalInscripcionId] = useState<string | null>(null);
   const currentBatchScope = `${selectedCursoId}:${selectedPeriodoId}`;
   const realtimeWorkflow = useGradebookConcurrencyStore((state) => (
     selectedCursoId && selectedPeriodoId
@@ -521,6 +523,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
               disabled={!review || detailHasChanges || reviewLoading || approvalBusy}
               onStudent={openStudentData}
               onSupport={openSupport}
+              onCursada={() => setCursadaModalInscripcionId(reviewInscripcionId)}
               onRefresh={() => setDocumentRevision(value => value + 1)}
             />
             <VistaPorAlumno
@@ -606,6 +609,16 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
         <React.Suspense fallback={<Spin />}>
           <BatchDocumentModal key={currentBatchScope} cursoId={selectedCursoId} periodoId={selectedPeriodoId} cursoNombre={selectedCurso?.nombre || 'Curso'} onClose={() => setBatchScope(null)} onReview={handleSelectStudent} />
         </React.Suspense>
+      )}
+      {cursadaModalInscripcionId && (
+        <CursadaModal
+          inscripcionId={cursadaModalInscripcionId}
+          onClose={() => setCursadaModalInscripcionId(null)}
+          onSuccess={() => {
+            setReloadCounter((value) => value + 1);
+            setDocumentRevision((value) => value + 1);
+          }}
+        />
       )}
     </SectionLayout>
   );

@@ -170,7 +170,7 @@ export const AlumnoList: React.FC = () => {
     let active = true;
     void alumnoService.getForEnrollment(linkedStudent, linkedEnrollment).then(alumno => {
       if (!active) return;
-      if (linkedSection === 'vinculos') {
+      if (linkedSection === 'vinculos' || linkedSection === 'cursada') {
         setSelectedDetailAlumno(alumno);
         setIsDetailModalVisible(true);
       } else {
@@ -830,6 +830,7 @@ export const AlumnoList: React.FC = () => {
       <AlumnoDetailModal
         visible={isDetailModalVisible}
         alumno={selectedDetailAlumno}
+        initialTab={linkedSection === 'cursada' ? 'inscripcion' : 'alumno'}
         onClose={handleCloseDetail}
         onEdit={(alumnoToEdit, targetTab) => handleOpenModal(alumnoToEdit, targetTab)}
         onDelete={handleDelete}

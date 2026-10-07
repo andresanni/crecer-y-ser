@@ -30,7 +30,17 @@ export interface DocumentSnapshot {
       cierre: { asistencias: number; inasistencias: number; llegadasTarde: number; observaciones: string } | null;
     }>;
     apoyos: { poseeApoyos: string; cualesApoyos: string; promocionoConAcompanamiento: string | null };
-    administrativo: { domicilio: string; telefono: string; fechaIngreso: string; fechaEgreso: string };
+    administrativo: {
+      domicilio: string;
+      telefono: string;
+      escuelaInicial?: string;
+      fechaIngresoInicial?: string;
+      fechaEgresoInicial?: string;
+      cambiosEscuela?: Array<{ fecha: string; causa: string; escuelaDestino: string }>;
+      cambioDomicilio?: string;
+      fechaIngreso: string;
+      fechaEgreso: string;
+    };
     dependencias: Array<{ bimestre: number; vigente: boolean; visadoId: string | null; generacionVisado: number | null; revisionContenido: number | null; revisionVisada: number | null }>;
     pendientesDeIntegracion: string[];
   };

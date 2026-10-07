@@ -26,7 +26,7 @@ export interface DocumentPreparation {
   faltantes: Array<{
     campo: string;
     mensaje: string;
-    origen: 'alumno' | 'responsable' | 'apoyos';
+    origen: 'alumno' | 'responsable' | 'apoyos' | 'cursada';
     bimestre: number | null;
   }>;
 }

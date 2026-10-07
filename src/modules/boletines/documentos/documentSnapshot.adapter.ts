@@ -1,4 +1,4 @@
-import type { BoletinDocumentData, CalificacionDocumental, ConceptoCalificacion, GradoPrimario, ValorDocumental } from './boletinDocument.model';
+import type { BoletinDocumentData, CalificacionDocumental, CambioEscuelaDocumental, ConceptoCalificacion, GradoPrimario, ValorDocumental } from './boletinDocument.model';
 import type { DocumentSnapshot } from './documentSnapshot.model';
 
 const conceptos: Record<string, ConceptoCalificacion> = {
@@ -109,7 +109,27 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
       : data.apoyos.poseeApoyos === 'SI' ? texto(data.apoyos.cualesApoyos) : sinDato,
     promocionoConAcompanamiento: data.bimestreCorte < 4 ? futuro : respuestaBinaria(data.apoyos.promocionoConAcompanamiento),
   };
-  const cambio = () => ({ fecha: anual, causa: anual, escuelaDestino: anual });
+  const formatearFecha = (raw?: string | null): ValorDocumental => {
+    if (!raw?.trim()) return { estado: 'confirmado', texto: '---' };
+    const dateOnly = raw.trim().slice(0, 10);
+    const parts = dateOnly.split('-');
+    if (parts.length === 3) return { estado: 'confirmado', texto: `${parts[2]}/${parts[1]}/${parts[0]}` };
+    return { estado: 'confirmado', texto: dateOnly };
+  };
+  const celdaLimpia = (raw?: string | null): ValorDocumental => ({
+    estado: 'confirmado',
+    texto: raw?.trim() || '---',
+  });
+  const escuelaInicialTexto = data.administrativo?.escuelaInicial?.trim() || '';
+  const fechaIngresoTexto = data.administrativo?.fechaIngresoInicial || '';
+  const fechaEgresoTexto = data.administrativo?.fechaEgresoInicial || '';
+  const listaCambios = Array.isArray(data.administrativo?.cambiosEscuela) ? data.administrativo.cambiosEscuela : [];
+  const cuatroCambios: [CambioEscuelaDocumental, CambioEscuelaDocumental, CambioEscuelaDocumental, CambioEscuelaDocumental] = [
+    { fecha: formatearFecha(listaCambios[0]?.fecha), causa: celdaLimpia(listaCambios[0]?.causa), escuelaDestino: celdaLimpia(listaCambios[0]?.escuelaDestino) },
+    { fecha: formatearFecha(listaCambios[1]?.fecha), causa: celdaLimpia(listaCambios[1]?.causa), escuelaDestino: celdaLimpia(listaCambios[1]?.escuelaDestino) },
+    { fecha: formatearFecha(listaCambios[2]?.fecha), causa: celdaLimpia(listaCambios[2]?.causa), escuelaDestino: celdaLimpia(listaCambios[2]?.escuelaDestino) },
+    { fecha: formatearFecha(listaCambios[3]?.fecha), causa: celdaLimpia(listaCambios[3]?.causa), escuelaDestino: celdaLimpia(listaCambios[3]?.escuelaDestino) },
+  ];
   const documento: BoletinDocumentData = {
     institucion,
     alumno: data.alumno,
@@ -121,7 +141,15 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     cierres: [cierre(1), cierre(2), cierre(3), cierre(4)],
     integracion,
     cierreAnual: { sintesis: anual, permaneceEn: anual, promovidoA: anual },
-    registroAdministrativo: { escuelaInicial: anual, fechaIngreso: anual, fechaEgreso: anual, cambiosEscuela: [cambio(), cambio(), cambio(), cambio()], domicilio: anual, telefono: anual, cambioDomicilio: anual },
+    registroAdministrativo: {
+      escuelaInicial: celdaLimpia(escuelaInicialTexto),
+      fechaIngreso: formatearFecha(fechaIngresoTexto),
+      fechaEgreso: formatearFecha(fechaEgresoTexto),
+      cambiosEscuela: cuatroCambios,
+      domicilio: celdaLimpia(data.administrativo?.domicilio),
+      telefono: celdaLimpia(data.administrativo?.telefono),
+      cambioDomicilio: celdaLimpia(data.administrativo?.cambioDomicilio),
+    },
   };
   return { documento: bloqueos.length ? null : documento, bloqueos: [...new Set(bloqueos)], pendientes };
 }

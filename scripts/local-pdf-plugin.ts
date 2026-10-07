@@ -32,7 +32,7 @@ export function createPdfMiddleware(pocketBaseUrl: string, workerKey: string, ru
         let acquired = false;
         try {
           const port = runtime.port();
-          if (!port || !['127.0.0.1', '::1'].includes(request.socket.remoteAddress || '')) throw new PdfError('Disponible sólo en desarrollo local.', 403);
+          if (!port || !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(request.socket.remoteAddress || '')) throw new PdfError('Disponible sólo en desarrollo local.', 403);
           const origin = request.headers.origin;
           const allowed = runtime.allowedOrigins || [`http://127.0.0.1:${port}`, `http://localhost:${port}`, `http://[::1]:${port}`];
           if (!origin || !allowed.includes(origin)) throw new PdfError('Origen no admitido.', 403);

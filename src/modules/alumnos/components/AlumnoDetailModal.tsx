@@ -54,6 +54,7 @@ const { Title, Text } = Typography;
 interface AlumnoDetailModalProps {
   alumno: Alumno | null;
   visible: boolean;
+  initialTab?: string;
   onClose: () => void;
   onEdit: (alumno: Alumno, initialTab?: string) => void;
   onDelete: (id: string) => void;
@@ -70,6 +71,7 @@ export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = (props) => {
 const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
   alumno,
   visible,
+  initialTab = 'alumno',
   onClose,
   onEdit,
   onDelete,
@@ -83,7 +85,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
   >([]);
   const [loading, setLoading] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>('alumno');
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
 
   const handleModalClose = () => {
     setShowPassword(false);
@@ -631,9 +633,50 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                         </Col>
                       )}
                     </Row>
-                    <Space wrap>
+                    {(insc.escuelaInicial || (insc.cambiosEscuela && insc.cambiosEscuela.length > 0) || insc.cambioDomicilio || insc.bimestreDesde > 1 || insc.bimestreHasta < 4) && (
+                      <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--cys-color-fill-quaternary)', borderRadius: 8 }}>
+                        <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                          Registro administrativo y cambios de escuela:
+                        </Text>
+                        <Row gutter={[12, 6]}>
+                          {insc.escuelaInicial && (
+                            <Col xs={24} sm={12}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Escuela inicial / procedencia: </Text>
+                              <Text style={{ fontSize: 12 }}>{insc.escuelaInicial}</Text>
+                            </Col>
+                          )}
+                          {insc.fechaIngresoInicial && (
+                            <Col xs={12} sm={6}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Ingreso inicial: </Text>
+                              <Text style={{ fontSize: 12 }}>{dayjs(insc.fechaIngresoInicial).format('DD/MM/YYYY')}</Text>
+                            </Col>
+                          )}
+                          {insc.fechaEgresoInicial && (
+                            <Col xs={12} sm={6}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Egreso inicial: </Text>
+                              <Text style={{ fontSize: 12 }}>{dayjs(insc.fechaEgresoInicial).format('DD/MM/YYYY')}</Text>
+                            </Col>
+                          )}
+                          {insc.cambiosEscuela && insc.cambiosEscuela.length > 0 && (
+                            <Col xs={24}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Pases registrados ({insc.cambiosEscuela.length}): </Text>
+                              <Text style={{ fontSize: 12 }}>
+                                {insc.cambiosEscuela.map((item) => `${item.fecha ? dayjs(item.fecha).format('DD/MM/YYYY') : '-'} (${item.causa || 'Sin causa'} → ${item.escuelaDestino || '-'})`).join(', ')}
+                              </Text>
+                            </Col>
+                          )}
+                          {insc.cambioDomicilio && (
+                            <Col xs={24}>
+                              <Text type="secondary" style={{ fontSize: 11 }}>Cambio de domicilio: </Text>
+                              <Text style={{ fontSize: 12 }}>{insc.cambioDomicilio}</Text>
+                            </Col>
+                          )}
+                        </Row>
+                      </div>
+                    )}
+                    <Space wrap style={{ marginTop: 8 }}>
                       <Tag color={insc.cursadaEstado === 'PENDIENTE' ? 'warning' : 'default'}>{insc.cursadaEstado === 'PENDIENTE' ? 'Cursada por confirmar' : insc.cursadaEstado === 'SIN_CURSADA' ? 'Sin cursada' : 'Bimestres ' + insc.bimestreDesde + ' a ' + insc.bimestreHasta}</Tag>
-                      <Button onClick={() => setScopeId(insc.id)}>Bimestres evaluables</Button>
+                      <Button onClick={() => setScopeId(insc.id)}>Cursada y pases</Button>
                     </Space>
                   </Card>
                 );
