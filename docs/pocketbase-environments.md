@@ -126,11 +126,13 @@ El primer backup real cifrado se creó en OneDrive y su SHA-256 se verificó el 
 ## Flujo diario de desarrollo
 
 1. Actualizar el checkout y revisar `git status` antes de trabajar.
-2. Iniciar PocketBase con `deploy/start-pocketbase-dev.ps1`.
-3. Confirmar `GET http://127.0.0.1:8090/api/health` y que el listener sea `127.0.0.1`.
-4. Iniciar Vite con `npm run dev` y comprobar que `VITE_POCKETBASE_URL` apunta a loopback.
-5. Usar únicamente cuentas y datos descartables del entorno local.
-6. Detener PocketBase con `Ctrl+C` al terminar si no se necesita mantenerlo activo.
+2. Ejecutar `npm run dev`. Este comando único realiza automáticamente:
+   - Configuración de worktree: si faltan `node_modules` o archivos de entorno (`.env.development.local`, `.env`), crea el junction y copia las variables desde el repositorio principal o las sintetiza para loopback con las claves locales de `C:\pocketbase`.
+   - Inicialización de PocketBase: comprueba si la base ya está activa en `http://127.0.0.1:8090`. Si no lo está, inicia `pocketbase.exe` con `pb_hooks` y `pb_migrations` del checkout actual y aguarda el health check.
+   - Presentación de credenciales: muestra en consola las credenciales mock de `C:\pocketbase\dev-credentials.txt` (panel admin y usuario institucional de desarrollo).
+   - Servidor frontend: inicia Vite en modo desarrollo. Al salir con `Ctrl+C`, detiene limpiamente el proceso de PocketBase si fue iniciado por dicha sesión.
+3. De forma alternativa para pruebas sin frontend o diagnósticos independientes, PocketBase puede iniciarse de manera aislada con `deploy/start-pocketbase-dev.ps1`.
+4. Usar únicamente cuentas y datos descartables del entorno local.
 
 La verificación reproducible del backend local se ejecuta con:
 
@@ -141,6 +143,26 @@ La verificación reproducible del backend local se ejecuta con:
 Después de una reconstrucción limpia se agrega `-ExpectSyntheticSeed` para comprobar también todas las cantidades del fixture.
 
 No se realizan pruebas destructivas contra `https://alumnos-api.duckdns.org`. Una tarea que necesite producción debe identificarlo explícitamente y limitarse al procedimiento documentado de despliegue o diagnóstico.
+
+## Monitoreo y diagnóstico de conectividad
+
+Para asegurar el descarte rápido de fallas de infraestructura tanto en desarrollo como en producción, el sistema cuenta con dos mecanismos:
+
+1. **Diagnóstico desde CLI / DevOps:**
+   Permite comprobar en 1 segundo la resolución DNS de DuckDNS, el enlace HTTPS, el estado de `GET /api/health` de PocketBase y la disponibilidad del worker PDF de Caddy, sin depender del estado del navegador:
+
+   ```powershell
+   .\deploy\check-vps-status.ps1
+   # o alternativamente:
+   npm run check:vps
+   ```
+
+   Para auditar el entorno local se pasa `-Target Local` o `node scripts/check-vps-status.mjs local`.
+
+2. **Indicador no invasivo en la interfaz (`MainLayout`):**
+   - **Operación normal:** silenciosa y sin impacto para usuarios no técnicos. El menú del usuario incorpora un ítem discreto con el estado operativo y la latencia en milisegundos (`Servidor: Operativo (XX ms)`), permitiendo abrir un modal de diagnóstico técnico a demanda.
+   - **Frecuencia:** chequeo en segundo plano cada 90 segundos o al reactivarse la pestaña (`visibilitychange`).
+   - **Contingencia:** ante pérdida de conectividad o falla del backend, se presenta un banner sobrio de reintento (`Alert`) en la cabecera del contenido para evitar que los usuarios intenten operaciones sin enlace activo.
 
 ## Servicio de Correo (SMTP) y Formulario de Contacto
 

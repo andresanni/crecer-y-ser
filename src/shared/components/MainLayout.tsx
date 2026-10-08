@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Layout, Menu, Tag, Spin, Space, Dropdown, Avatar, Breadcrumb, Button, Drawer, Grid } from 'antd';
+import { Layout, Menu, Tag, Spin, Space, Dropdown, Avatar, Breadcrumb, Button, Drawer, Grid, Alert, Badge } from 'antd';
 import { TeamOutlined, LogoutOutlined, CalendarOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, SettingOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import pb from '../../core/pocketbase';
+import { useServerHealth } from '../hooks/useServerHealth';
+import { ConnectionDiagnosticModal } from './ConnectionDiagnosticModal';
 import styles from './MainLayout.module.css';
 
 const sections = [
@@ -16,6 +18,7 @@ const sections = [
 export const MainLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isDiagnosticOpen, setIsDiagnosticOpen] = useState(false);
   const screens = Grid.useBreakpoint();
   const isDesktop = Boolean(screens.lg);
   const navigate = useNavigate();
@@ -25,6 +28,7 @@ export const MainLayout = () => {
     ? menuState.openKeys
     : pathname.startsWith('/app/boletines') ? ['/app/boletines'] : menuState.openKeys;
   const { cicloActual, isCicloLoading, fetchCicloActual, currentUser } = useAppStore();
+  const { status: serverStatus, latencyMs, lastChecked, checkHealth } = useServerHealth();
   const userName = currentUser?.name || currentUser?.email || 'Usuario institucional';
   const currentSection = sections.find((section) => section.key === pathname);
   useEffect(() => { void fetchCicloActual(); }, [fetchCicloActual]);
@@ -78,6 +82,16 @@ export const MainLayout = () => {
             {isCicloLoading ? <Spin size="small" /> : <Tag color={cicloActual ? 'green' : 'default'} icon={<CalendarOutlined />}>{cicloActual ? `Ciclo ${cicloActual.ano}` : 'Sin ciclo activo'}</Tag>}
             <Dropdown trigger={['click']} menu={{ items: [
               { key: 'user', label: userName, disabled: true },
+              {
+                key: 'server-status',
+                label: serverStatus === 'online'
+                  ? (latencyMs !== null ? `Servidor: Operativo (${latencyMs} ms)` : 'Servidor: Operativo')
+                  : serverStatus === 'checking'
+                    ? 'Servidor: Comprobando...'
+                    : 'Servidor: Sin conexión',
+                icon: <Badge status={serverStatus === 'online' ? 'success' : serverStatus === 'offline' ? 'error' : 'processing'} />,
+                onClick: () => setIsDiagnosticOpen(true),
+              },
               { key: 'website', label: 'Ver sitio web', icon: <GlobalOutlined />, onClick: () => navigate('/') },
               { type: 'divider' },
               { key: 'logout', label: 'Cerrar sesión', icon: <LogoutOutlined />, danger: true, onClick: () => pb.authStore.clear() },
@@ -90,9 +104,30 @@ export const MainLayout = () => {
           </Space>
         </Layout.Header>
         <Layout.Content id="main-content" tabIndex={-1} className={styles.content}>
+          {serverStatus === 'offline' && (
+            <Alert
+              banner
+              type="warning"
+              showIcon
+              message="Sin conexión con el servidor escolar. Comprobando enlace..."
+              action={
+                <Button size="small" type="link" onClick={() => void checkHealth()}>
+                  Reintentar
+                </Button>
+              }
+            />
+          )}
           <div className={styles.contentSurface}><Outlet /></div>
         </Layout.Content>
       </Layout>
+      <ConnectionDiagnosticModal
+        open={isDiagnosticOpen}
+        onClose={() => setIsDiagnosticOpen(false)}
+        status={serverStatus}
+        latencyMs={latencyMs}
+        lastChecked={lastChecked}
+        onCheckAgain={checkHealth}
+      />
     </Layout>
   );
 };
