@@ -13,6 +13,8 @@ test -f "$stage_dir/pdfEmissions.js"
 test -f "$stage_dir/teacher_access.pb.js"
 test -f "$stage_dir/curriculum.js"
 test -f "$stage_dir/curriculum.pb.js"
+test -f "$stage_dir/attendance.js"
+test -f "$stage_dir/attendance.pb.js"
 test -f "$stage_dir/contactService.js"
 test -f "$stage_dir/contacto.pb.js"
 test -f "$stage_dir/1789330000_created_initial_collections.js"
@@ -30,6 +32,11 @@ test -f "$stage_dir/1790625600_document_emissions.js"
 test -f "$stage_dir/1790630000_second_cycle_grading_catalog.js"
 test -f "$stage_dir/1790640000_update_student_and_guardian_fields.js"
 test -f "$stage_dir/1790850000_enrollment_evaluable_scope.js"
+test -f "$stage_dir/1790860000_school_transfer_and_administrative_records.js"
+test -f "$stage_dir/1790900000_added_enrollment_attendance_fields.js"
+test -f "$stage_dir/1790901000_created_attendance_management_collections.js"
+test -f "$stage_dir/1791468903_updated_meses_calendario.js"
+test -f "$stage_dir/1791470000_attendance_transactional_writes.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -92,6 +99,8 @@ install -m 0644 "$stage_dir/teacherAccess.js" /root/pb/pb_hooks/lib/teacherAcces
 install -m 0644 "$stage_dir/teacher_access.pb.js" /root/pb/pb_hooks/teacher_access.pb.js
 install -m 0644 "$stage_dir/curriculum.js" /root/pb/pb_hooks/lib/curriculum.js
 install -m 0644 "$stage_dir/curriculum.pb.js" /root/pb/pb_hooks/curriculum.pb.js
+install -m 0644 "$stage_dir/attendance.js" /root/pb/pb_hooks/lib/attendance.js
+install -m 0644 "$stage_dir/attendance.pb.js" /root/pb/pb_hooks/attendance.pb.js
 install -m 0644 "$stage_dir/contactService.js" /root/pb/pb_hooks/lib/contactService.js
 install -m 0644 "$stage_dir/contacto.pb.js" /root/pb/pb_hooks/contacto.pb.js
 install -m 0644 "$stage_dir/1789330000_created_initial_collections.js" /root/pb/pb_migrations/1789330000_created_initial_collections.js
@@ -110,6 +119,11 @@ install -m 0644 "$stage_dir/1790553600_versioned_approval_authorization.js" /roo
 install -m 0644 "$stage_dir/1790630000_second_cycle_grading_catalog.js" /root/pb/pb_migrations/1790630000_second_cycle_grading_catalog.js
 install -m 0644 "$stage_dir/1790640000_update_student_and_guardian_fields.js" /root/pb/pb_migrations/1790640000_update_student_and_guardian_fields.js
 install -m 0644 "$stage_dir/1790850000_enrollment_evaluable_scope.js" /root/pb/pb_migrations/1790850000_enrollment_evaluable_scope.js
+install -m 0644 "$stage_dir/1790860000_school_transfer_and_administrative_records.js" /root/pb/pb_migrations/1790860000_school_transfer_and_administrative_records.js
+install -m 0644 "$stage_dir/1790900000_added_enrollment_attendance_fields.js" /root/pb/pb_migrations/1790900000_added_enrollment_attendance_fields.js
+install -m 0644 "$stage_dir/1790901000_created_attendance_management_collections.js" /root/pb/pb_migrations/1790901000_created_attendance_management_collections.js
+install -m 0644 "$stage_dir/1791468903_updated_meses_calendario.js" /root/pb/pb_migrations/1791468903_updated_meses_calendario.js
+install -m 0644 "$stage_dir/1791470000_attendance_transactional_writes.js" /root/pb/pb_migrations/1791470000_attendance_transactional_writes.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Layout, Menu, Tag, Spin, Space, Dropdown, Avatar, Breadcrumb, Button, Drawer, Grid, Alert, Badge } from 'antd';
-import { TeamOutlined, LogoutOutlined, CalendarOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, SettingOutlined } from '@ant-design/icons';
+import { TeamOutlined, LogoutOutlined, CalendarOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, SettingOutlined, CheckSquareOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import pb from '../../core/pocketbase';
@@ -13,6 +13,7 @@ const sections = [
   { key: '/app/boletines', label: 'Boletines', icon: <ScheduleOutlined /> },
   { key: '/app/boletines/calificaciones', label: 'Bimestres', icon: <CalendarOutlined /> },
   { key: '/app/boletines/constructor', label: 'Constructor', icon: <SettingOutlined /> },
+  { key: '/app/asistencias', label: 'Asistencias', icon: <CheckSquareOutlined /> },
 ];
 
 export const MainLayout = () => {
@@ -52,8 +53,9 @@ export const MainLayout = () => {
             ...sections[1],
             className: compact ? undefined : styles.sectionGroup,
             onTitleClick: () => navigate('/app/boletines'),
-            children: sections.slice(2),
+            children: sections.slice(2, 4),
           },
+          sections[4],
         ]}
         onClick={({ key }) => { navigate(key); setMobileOpen(false); }}
       />

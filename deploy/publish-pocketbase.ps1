@@ -33,6 +33,8 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_hooks\teacher_access.pb.js"; Target = "teacher_access.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\curriculum.js"; Target = "curriculum.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\curriculum.pb.js"; Target = "curriculum.pb.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\attendance.js"; Target = "attendance.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\attendance.pb.js"; Target = "attendance.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\contactService.js"; Target = "contactService.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\contacto.pb.js"; Target = "contacto.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789330000_created_initial_collections.js"; Target = "1789330000_created_initial_collections.js" },
@@ -50,6 +52,11 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1790630000_second_cycle_grading_catalog.js"; Target = "1790630000_second_cycle_grading_catalog.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1790640000_update_student_and_guardian_fields.js"; Target = "1790640000_update_student_and_guardian_fields.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1790850000_enrollment_evaluable_scope.js"; Target = "1790850000_enrollment_evaluable_scope.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1790860000_school_transfer_and_administrative_records.js"; Target = "1790860000_school_transfer_and_administrative_records.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1790900000_added_enrollment_attendance_fields.js"; Target = "1790900000_added_enrollment_attendance_fields.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1790901000_created_attendance_management_collections.js"; Target = "1790901000_created_attendance_management_collections.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1791468903_updated_meses_calendario.js"; Target = "1791468903_updated_meses_calendario.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1791470000_attendance_transactional_writes.js"; Target = "1791470000_attendance_transactional_writes.js" },
   @{ Source = Join-Path $PSScriptRoot "pocketbase.service"; Target = "pocketbase.service" },
   @{ Source = Join-Path $PSScriptRoot "apply-pocketbase-workflow.sh"; Target = "apply-pocketbase-workflow.sh" }
 )

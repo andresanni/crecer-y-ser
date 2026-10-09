@@ -105,6 +105,9 @@ export interface InscripcionRecord {
   fecha_egreso_inicial?: string;
   cambios_escuela?: CambioEscuelaItem[];
   cambio_domicilio?: string;
+  procedencia_ingreso?: string;
+  destino_egreso?: string;
+  resolucion_apoyo?: string;
   expand?: {
     alumno_id?: unknown;
     curso_id?: CursoRecord;
@@ -134,6 +137,9 @@ export interface Inscripcion {
   fechaEgresoInicial: string;
   cambiosEscuela: CambioEscuelaItem[];
   cambioDomicilio: string;
+  procedenciaIngreso: string;
+  destinoEgreso: string;
+  resolucionApoyo: string;
   cursoNombre?: string;
   nivelNombre?: string;
   cicloAno?: number;
@@ -163,6 +169,9 @@ export const inscripcionAdapter = (record: InscripcionRecord): Inscripcion => ({
   fechaEgresoInicial: record.fecha_egreso_inicial?.slice(0, 10) || '',
   cambiosEscuela: Array.isArray(record.cambios_escuela) ? record.cambios_escuela : [],
   cambioDomicilio: record.cambio_domicilio || '',
+  procedenciaIngreso: record.procedencia_ingreso || '',
+  destinoEgreso: record.destino_egreso || '',
+  resolucionApoyo: record.resolucion_apoyo || '',
   cursoNombre: record.expand?.curso_id?.nombre,
   nivelNombre: record.expand?.curso_id?.expand?.nivel_id?.nombre,
   cicloAno: record.expand?.ciclo_id?.ano,

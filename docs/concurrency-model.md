@@ -88,3 +88,9 @@ No se considera resuelta la concurrencia sólo por usar Realtime, deshabilitar b
 ## Evolución prevista
 
 La siguiente capa, cuando el producto requiera trazabilidad, es una colección de auditoría escrita en la misma transacción con usuario, agregado, revisión anterior, revisión nueva, fecha y tipo de operación. No debe guardar secretos ni duplicar el contenido académico completo.
+
+## Agregados de asistencia y calendario (feature local)
+
+El registro editable de curso/mes usa `registros_asistencia_curso.revision`. La lectura transaccional devuelve su revisión junto con calendario, nómina, novedades y observaciones; la escritura transaccional compara esa revisión y una huella canónica de fuentes externas antes de tocar filas. Una modificación del calendario o de la inscripción invalida la lectura aunque nadie haya escrito asistencias. La configuración del calendario usa `ciclos_lectivos.revision_calendario`, porque cambiar un mes puede modificar acumulados de otros meses. La revisión y la huella se comparan dentro de la transacción que sincroniza eventos y acumulados.
+
+La UI conserva los cambios ante 409 o respuesta incierta y exige cargar explícitamente la versión guardada, sin reintentar. La actualización manual consulta una instantánea nueva y la apertura de impresión también relee el registro. No se incorporó todavía una suscripción Realtime al módulo de asistencias; la precondición del servidor protege las escrituras aunque no haya notificación anticipada. La prueba HTTP demuestra una única escritura ganadora entre solicitudes simultáneas para ambos agregados y rollback completo de lotes inválidos.

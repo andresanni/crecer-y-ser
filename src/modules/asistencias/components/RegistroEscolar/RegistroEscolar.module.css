@@ -1,0 +1,95 @@
+.sheetWrapper {
+  background-color: #525659;
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+  padding: 24px;
+}
+
+.registroEscolar {
+  aspect-ratio: 1008 / 612;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  color: #000000;
+  display: block;
+  flex: 0 0 auto;
+  font-family: Arial, Helvetica, sans-serif;
+  height: auto;
+  letter-spacing: normal;
+  line-height: normal;
+  margin: 0 auto;
+  max-width: 100%;
+  text-transform: none;
+  width: 100%;
+}
+
+@media print {
+
+  :global(body):has(.sheetWrapper) :global(#root) {
+    display: none !important;
+  }
+
+  :global(body):has(.sheetWrapper) {
+    background: #ffffff !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  :global(.ant-modal-root):has(.sheetWrapper) :global(.ant-modal-mask),
+  :global(.ant-modal-root):has(.sheetWrapper) :global(.ant-modal-header),
+  :global(.ant-modal-root):has(.sheetWrapper) :global(.ant-modal-footer),
+  :global(.ant-modal-root):has(.sheetWrapper) :global(.ant-modal-close) {
+    display: none !important;
+  }
+
+  :global(.ant-modal-root):has(.sheetWrapper),
+  :global(.ant-modal-wrap):has(.sheetWrapper),
+  :global(.ant-modal):has(.sheetWrapper),
+  :global(.ant-modal-content):has(.sheetWrapper),
+  :global(.ant-modal-container):has(.sheetWrapper),
+  :global(.ant-modal-section):has(.sheetWrapper),
+  :global(.ant-modal-body):has(.sheetWrapper) {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    display: block !important;
+    height: auto !important;
+    inset: auto !important;
+    margin: 0 !important;
+    max-height: none !important;
+    max-width: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    position: static !important;
+    transform: none !important;
+    width: 297mm !important;
+  }
+
+  .sheetWrapper {
+    background: #ffffff !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 209.9mm !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    width: 297mm !important;
+    break-inside: avoid;
+  }
+
+  .registroEscolar {
+    box-shadow: none !important;
+    display: block !important;
+    height: auto !important;
+    margin: 0 !important;
+    max-height: none !important;
+    max-width: none !important;
+    overflow: visible !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    width: 297mm !important;
+  }
+}

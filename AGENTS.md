@@ -17,6 +17,7 @@ Antes de modificar código, consultar:
 9. `docs/branching-strategy.md` antes de crear ramas, integrar cambios, preparar releases o aplicar hotfixes.
 10. `docs/student-dataset-ingestion.md` antes de preparar, validar o ingestar datasets masivos de estudiantes y cursada.
 11. `docs/gradebook-dataset-ingestion.md` antes de preparar, validar o ingestar calificaciones históricas o generar plantillas de boletines.
+12. `docs/primary-attendance-records.md` antes de modificar la gestión de registros de asistencia mensual de primaria.
 
 ## Reglas de trabajo
 

@@ -318,13 +318,27 @@
         "presentable": false,
         "unique": false,
         "options": {}
+      },
+      {
+        "system": false,
+        "id": "attcalrev00001",
+        "name": "revision_calendario",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
       }
     ],
     "indexes": [],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
-    "createRule": null,
-    "updateRule": null,
+    "createRule": "@request.auth.id != \"\" && @request.data.revision_calendario:isset = false",
+    "updateRule": "@request.auth.id != \"\" && (@request.data.revision_calendario:isset = false || @request.data.revision_calendario = revision_calendario)",
     "deleteRule": null,
     "options": {}
   },
@@ -1127,6 +1141,48 @@
         "system": false,
         "id": "cysaddreschg001",
         "name": "cambio_domicilio",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "cysprocing000001",
+        "name": "procedencia_ingreso",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "cysdestegr000001",
+        "name": "destino_egreso",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "cysresapo0000001",
+        "name": "resolucion_apoyo",
         "type": "text",
         "required": false,
         "presentable": false,
@@ -2036,6 +2092,373 @@
     ],
     "listRule": null,
     "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cyscalmonth0001",
+    "name": "meses_calendario",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "calm_ciclo0001",
+        "name": "ciclo_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "qkdgtlebf3lt3mw",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "calm_mes0000001",
+        "name": "mes",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": 12,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "calm_ano0000001",
+        "name": "ano",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 2020,
+          "max": 2100,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "calm_tothab0001",
+        "name": "total_dias_habiles",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 31,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "calm_totacm0001",
+        "name": "dias_habiles_acumulados",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": 365,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "calm_perbol0001",
+        "name": "periodo_boletin_id",
+        "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "per_col_0000002",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_meses_calendario_ciclo_mes` ON `meses_calendario` (\n  `ciclo_id`,\n  `mes`\n)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cyscalevent0001",
+    "name": "eventos_calendario",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "calev_mesid0001",
+        "name": "mes_calendario_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cyscalmonth0001",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "calev_fecha0001",
+        "name": "fecha",
+        "type": "date",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "calev_dia000001",
+        "name": "dia",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": 31,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "calev_tipo00001",
+        "name": "tipo",
+        "type": "select",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "FERIADO",
+            "JORNADA_EMI",
+            "RECESO",
+            "ASUETO"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "calev_vertxt001",
+        "name": "texto_celda_vertical",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 200,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "calev_obsdes001",
+        "name": "descripcion_observaciones",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 500,
+          "pattern": ""
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX `idx_eventos_calendario_mes` ON `eventos_calendario` (`mes_calendario_id`, `dia`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cysdailyatt0001",
+    "name": "asistencias_diarias",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "attd_inucid0001",
+        "name": "inscripcion_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "wnp87hpjzmztwyk",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "attd_fecha00001",
+        "name": "fecha",
+        "type": "date",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "attd_estado0001",
+        "name": "estado",
+        "type": "select",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "A",
+            "J",
+            "E",
+            "IT",
+            "RA"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "attd_obs0000001",
+        "name": "observacion",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 500,
+          "pattern": ""
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_asistencias_diarias_insc_fecha` ON `asistencias_diarias` (`inscripcion_id`, `fecha`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cyscoursatt0001",
+    "name": "registros_asistencia_curso",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "crsatt_croid001",
+        "name": "curso_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "vqrxx07qeuos8oo",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "crsatt_mesid001",
+        "name": "mes_calendario_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cyscalmonth0001",
+          "cascadeDelete": true,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "crsatt_obs00001",
+        "name": "observaciones_adicionales",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1000,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "attrevision001",
+        "name": "revision",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_registros_curso_mes` ON `registros_asistencia_curso` (`curso_id`, `mes_calendario_id`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
     "createRule": null,
     "updateRule": null,
     "deleteRule": null,

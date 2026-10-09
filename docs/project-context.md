@@ -1,6 +1,8 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 4 de octubre de 2026.
+## Registros de asistencia de primaria — integración en dev, 8 de octubre de 2026
+
+La feature se integra en `dev` por autorización del usuario, con navegación mes → cursos → registro y calendarios contextuales. La plantilla SVG de ambos ciclos emite una sola página A4 horizontal; es la única presentación vigente del registro. Las bajas permanecen todo el año con su número de orden; la asistencia cuenta hasta el egreso inclusive y edades/nacionalidad reflejan quienes quedan al último día. Las notas se consultan automáticamente por ciclo y bimestre del mes y pueden aparecer después de abrir el calendario. Los días hábiles son informativos; el acumulado incluye el mes actual y se identifica como provisorio si faltan meses anteriores. Los gateways guardan agregados transaccionalmente y rechazan revisiones vencidas, preservando borradores locales ante conflictos. La validación comprende 19 pruebas de dominio/HTTP y pruebas de navegación, presentación y PDFs con datos sintéticos. El contrato, operación y límites están en `docs/primary-attendance-records.md`. Integrar el código no aplica las migraciones a la base habitual ni despliega en producción.
 
 ## Salvaguardas documentales y cursadas parciales publicadas
 
