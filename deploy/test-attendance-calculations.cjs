@@ -249,14 +249,26 @@ test('Días hábiles: lunes a viernes, exclusiones únicas, fines de semana y a�
   assert.equal(calculate(2024, 2, [29], []).habiles, 20);
 });
 
-test('El acumulado incluye el mes actual y solo meses anteriores desde marzo; advierte huecos', () => {
+test('El acumulado incluye el mes actual y solo meses anteriores desde febrero; advierte huecos', () => {
   const calculate = calendarCalculations.calcularDiasHabilesYAcumulado;
   const incomplete = calculate(2026, 5, [1], [{mes: 1, total_dias_habiles: 22}, {mes: 3, total_dias_habiles: 21}, {mes: 5, total_dias_habiles: 99}, {mes: 6, total_dias_habiles: 22}]);
   assert.equal(incomplete.acumulado, 41);
-  assert.deepEqual(plain(incomplete.mesesPendientes), [4]);
-  const complete = calculate(2026, 5, [1], [{mes:3,total_dias_habiles:21},{mes:4,total_dias_habiles:21}]);
-  assert.equal(complete.acumulado, 62);
+  assert.deepEqual(plain(incomplete.mesesPendientes), [2, 4]);
+  const complete = calculate(2026, 5, [1], [{mes:2,total_dias_habiles:3},{mes:3,total_dias_habiles:21},{mes:4,total_dias_habiles:21}]);
+  assert.equal(complete.acumulado, 65);
   assert.deepEqual(plain(complete.mesesPendientes), []);
   assert.equal(calculate(2026, 3, [], []).acumulado, 22);
-  assert.deepEqual(plain(calculate(2026, 3, [], []).mesesPendientes), []);
+  assert.deepEqual(plain(calculate(2026, 3, [], []).mesesPendientes), [2]);
+  assert.deepEqual(plain(calculate(2026, 2, [], []).mesesPendientes), []);
+});
+
+test('Sin clases excluye presencias, ausencias, tardanzas y observaciones del registro', async () => {
+  const f = fixture();
+  const before = await f.read();
+  f.records.eventos_calendario.push({ id: 'no-class', dia: 4, tipo: 'SIN_CLASES', texto_celda_vertical: 'No imprimir', descripcion_observaciones: 'No imprimir' });
+  const after = await f.read();
+  assert.equal(after.alumnos[0].asistencias, before.alumnos[0].asistencias - 1);
+  assert.equal(after.alumnos[0].llegadasTarde, 0);
+  assert.equal(after.alumnos[0].marcasPorDia[4], '');
+  assert.equal(after.observacionesDelMes.some(item => item.includes('No imprimir')), false);
 });

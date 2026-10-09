@@ -1,6 +1,6 @@
 # Entornos y promoción de PocketBase
 
-Actualizado: 27 de septiembre de 2026.
+Actualizado: 9 de octubre de 2026.
 
 ## Decisión arquitectónica
 
@@ -320,8 +320,29 @@ Sin nuevas migraciones. Respaldo consistente /root/pb/deploy_backups/20261001-09
 1790850000_enrollment_evaluable_scope.js fue probada en una base sintética y en snapshot consistente de 8090. Conserva todos los datos existentes y marca las 84 matrículas del snapshot como PENDIENTE. La copia se obtuvo con backup de SQLite en modo lectura, con el servidor local encendido; archivos fuera del repositorio en C:/pocketbase/evaluable-scope-migration-trial. before.db conserva el esquema anterior y data.db el resultado del ensayo. No se modificó 8090 ni el VPS: el intento de parada/respaldo/migración local fue rechazado por revisión automática. Aplicar mediante el procedimiento de respaldo y migración de este documento antes de usar el frontend nuevo. El esquema versionado proviene de una instancia sintética migrada; no implica que 8090 ya esté actualizado. No promover el frontend sin el gateway y las reglas nuevos.
 
 
-El 2 de octubre el usuario confirmó que la base habitual fue purgada intencionalmente tras una prueba de ingesta que apuntó por error a loopback, conservando estructura y catálogos. PocketBase se detuvo por reinicio de sesión. La instrucción vigente es dejarla intacta y realizar las pruebas de cursada en instancias temporales. La migración y una eventual repoblación sintética habitual quedan pendientes; no restaurar el snapshot de 84 matrículas automáticamente.
+El 2 de octubre el usuario confirmó que la base habitual fue purgada intencionalmente tras una prueba de ingesta que apuntó por error a loopback, conservando estructura y catálogos. PocketBase se detuvo por reinicio de sesión. En ese momento indicó dejarla intacta y realizar las pruebas de cursada en instancias temporales. La autorización del 9 de octubre descrita abajo reemplaza esa indicación para la preparación del dataset de asistencia; no restaurar el snapshot de 84 matrículas automáticamente.
 
 ## Salvaguardas y alcance evaluable publicados — 3 de octubre de 2026
 
 La migración 1790850000, los hooks compatibles y el worker documental se publicaron después del ensayo aislado de producción. Respaldo previo: `/root/pb/deploy_backups/20261003-093440`; worker vigente: `/opt/cys-pdf/releases/20261003-093546`. El entorno local normal permanece intacto. La comparación previa/posterior conservó los registros académicos existentes. El hito de regularización de B1 y los pendientes de documentación/confirmación están en `docs/gradebook-pdf-emission.md`.
+
+## Dataset habitual para asistencia — 9 de octubre de 2026
+
+El usuario autorizó expresamente limpiar los datos operativos locales y cargar alumnos reales de un CSV externo para contrastar registros de asistencia con la realidad, prohibiendo cualquier acceso al VPS. Esta excepción de pruebas con identidades reales se limita a la base habitual local: no cambia el requisito de anonimizar snapshots productivos ni el carácter exclusivamente sintético de `deploy/pocketbase-dev-seed` y las pruebas automatizadas.
+
+`scripts/prepare-attendance-local.mjs` fija `http://127.0.0.1:8090`, ignora variables de URL/credenciales y rechaza opciones externas. Antes de autenticar verifica el proceso Windows, su escucha loopback y sus rutas a `C:/pocketbase/pb_data`, hooks y migraciones del checkout. Usa exclusivamente `C:/pocketbase/dev-credentials.txt` y rechaza redirecciones HTTP. El CSV debe permanecer fuera del repositorio.
+
+El modo predeterminado valida sin escribir registros. `--execute` valida primero todo el CSV, esquema y catálogos, confirma un respaldo de PocketBase en disco local y limpia, en orden referencial, alumnos, responsables, vínculos, matrículas, evaluaciones, criterios evaluados, cierres, novedades diarias, registros mensuales de curso, instancias, enlaces, visados y emisiones. Conserva usuarios, estructura curricular, escalas, períodos, calendarios y eventos institucionales. No borra ni sustituye colecciones. La preparación requiere 3.º y 4.º del ciclo 2026, alumnos regulares con ingreso hasta mayo y las mallas completas existentes.
+
+```powershell
+node scripts/prepare-attendance-local.mjs --csv "C:\ruta\dataset-externo.csv" --dry-run
+node scripts/prepare-attendance-local.mjs --csv "C:\ruta\dataset-externo.csv" --execute
+```
+
+La ejecución del 9 de octubre dejó 11 alumnos de 3.º y 19 de 4.º, 29 responsables, 30 vínculos y 30 matrículas. Conservó las fechas originales de ingreso, incluidas dos altas de mayo en 4.º. Para la prueba de ambos bimestres se confirmó el rango evaluable 1..4 por gateway institucional, independiente de esas fechas administrativas. Los campos de procedencia, destino y resolución ausentes del CSV no se inventan. El esquema de alumnos no incluye teléfono; esa columna adicional del CSV no se importa.
+
+Las notas de B1/B2 son ficticias por autorización del usuario. Se escribieron 638 evaluaciones de materia y 3190 criterios mediante el gateway docente, sin escrituras directas académicas. Los cuatro workflows quedan en `BORRADOR_DOCENTE`, sin enlaces vigentes, cierres, entregas ni visados. Esto permite leer notas en mayo/julio sin simular asistencia ni aprobar boletines. Las escalas abarcan todos los valores calificativos salvo No corresponde; PPI permanece falso. La elección reproducible y el orden curricular se documentan en el reporte local y en `docs/gradebook-dataset-ingestion.md`.
+
+Respaldo previo confirmado: `C:/pocketbase/pb_data/backups/attendance-reset-1791548176193.zip`. Reporte sin identidades personales: `C:/pocketbase/audits/attendance-local-1791548179254.json`. La preparación no es una transacción global: si falla después de empezar, conservar ese respaldo y revisar el estado antes de repetir `--execute`, que vuelve a limpiar la base. No ejecutarlo después de comenzar pruebas manuales si se desea conservarlas.
+
+La verificación leyó los cuatro registros mediante el servicio TypeScript real: nóminas de 11/19, ocho/nueve notas curriculares por alumno, criterios completos y cero novedades persistidas. Mayo de 4.º refleja 17 alumnos al inicio y 19 al cierre. Se conservaron los calendarios existentes de mayo, julio, septiembre y octubre. La ausencia de novedades se presenta como Presente por la regla del dominio; no implica datos de asistencia cargados. `npm run lint` y `npm run build` finalizaron correctamente, con el warning de bundle conocido. No hubo solicitudes a producción ni modificaciones del seed.

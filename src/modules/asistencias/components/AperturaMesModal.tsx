@@ -73,6 +73,7 @@ export const AperturaMesModal = ({
   const [eventos, setEventos] = useState<EventoLocal[]>([]);
 
   const [nuevoDia, setNuevoDia] = useState<number>(1);
+  const [nuevoDiaHasta, setNuevoDiaHasta] = useState<number | null>(null);
   const [nuevoTipo, setNuevoTipo] = useState<TipoEventoCalendario>('FERIADO');
   const [nuevoTextoVertical, setNuevoTextoVertical] = useState<string>('');
   const [nuevaDescripcion, setNuevaDescripcion] = useState<string>('');
@@ -138,25 +139,31 @@ export const AperturaMesModal = ({
       message.warning(`El día debe estar entre 1 y ${ultimoDia}.`);
       return;
     }
-    const texto = nuevoTextoVertical.trim() || nuevoTipo;
-    const desc = nuevaDescripcion.trim() || `${nuevoDia}. ${texto}`;
-    const yaExiste = eventos.some((e) => e.dia === nuevoDia);
+    const hasta = nuevoTipo === 'SIN_CLASES' ? nuevoDiaHasta ?? nuevoDia : nuevoDia;
+    if (!Number.isInteger(hasta) || hasta < nuevoDia || hasta > ultimoDia) {
+      message.warning(`El último día debe estar entre ${nuevoDia} y ${ultimoDia}.`);
+      return;
+    }
+    const texto = nuevoTipo === 'SIN_CLASES' ? '' : nuevoTextoVertical.trim() || nuevoTipo;
+    const desc = nuevoTipo === 'SIN_CLASES' ? '' : nuevaDescripcion.trim() || `${nuevoDia}. ${texto}`;
+    const yaExiste = eventos.some((e) => e.dia >= nuevoDia && e.dia <= hasta);
     if (yaExiste) {
-      message.warning(`Ya existe un evento registrado para el día ${nuevoDia}.`);
+      message.warning('Ya existe una fecha configurada dentro del rango seleccionado.');
       return;
     }
 
-    const nuevo: EventoLocal = {
-      dia: nuevoDia,
+    const nuevos: EventoLocal[] = Array.from({ length: hasta - nuevoDia + 1 }, (_, index) => ({
+      dia: nuevoDia + index,
       tipo: nuevoTipo,
       textoCeldaVertical: texto,
       descripcionObservaciones: desc,
-    };
+    }));
 
-    const nuevosEventos = [...eventos, nuevo].sort((a, b) => a.dia - b.dia);
+    const nuevosEventos = [...eventos, ...nuevos].sort((a, b) => a.dia - b.dia);
     setEventos(nuevosEventos);
     setNuevoTextoVertical('');
     setNuevaDescripcion('');
+    setNuevoDiaHasta(null);
 
     const resumen = calcularHabilesYAcumulado(mesSeleccionado, nuevosEventos);
     setResumenDias(resumen);
@@ -178,7 +185,7 @@ export const AperturaMesModal = ({
       setSaving(true);
 
       const listaFinal = [...eventos];
-      if (nuevoTextoVertical.trim() || nuevaDescripcion.trim()) {
+      if (nuevoTipo !== 'SIN_CLASES' && (nuevoTextoVertical.trim() || nuevaDescripcion.trim())) {
         const ultimoDia = dayjs(`${ano}-${String(mesSeleccionado).padStart(2, '0')}-01`).daysInMonth();
         if (!Number.isInteger(nuevoDia) || nuevoDia < 1 || nuevoDia > ultimoDia || listaFinal.some(e => e.dia === nuevoDia)) {
           message.warning('Revisá el día del evento pendiente: debe existir en el mes y no estar repetido.');
@@ -249,7 +256,7 @@ export const AperturaMesModal = ({
                   {!!resumenDias?.mesesPendientes.length && <Tag color="gold">Provisorio</Tag>}
                 </Space>
               } value={resumenDias?.acumulado ?? '—'} />
-              <Typography.Text type="secondary">Desde marzo hasta este mes inclusive.</Typography.Text>
+              <Typography.Text type="secondary">Desde febrero hasta este mes inclusive.</Typography.Text>
               {!!resumenDias?.mesesPendientes.length && (
                 <div><Typography.Text type="warning">
                   Falta configurar: {resumenDias.mesesPendientes.map((mes) => NOMBRES_MESES[mes].toLowerCase()).join(', ')}.
@@ -260,7 +267,7 @@ export const AperturaMesModal = ({
 
           <Card
             size="small"
-            title="Feriados, Jornadas EMI y Efemérides del Mes"
+            title="Fechas sin clases del mes"
             style={{ marginTop: 12 }}
           >
             <Space orientation="vertical" style={{ width: '100%' }} size="middle">
@@ -271,39 +278,45 @@ export const AperturaMesModal = ({
                     max={dayjs(`${ano}-${String(mesSeleccionado).padStart(2, '0')}-01`).daysInMonth()}
                     value={nuevoDia}
                     onChange={(val) => setNuevoDia(val || 1)}
-                    placeholder="Día"
+                    placeholder={nuevoTipo === 'SIN_CLASES' ? 'Desde' : 'Día'}
+                    aria-label={nuevoTipo === 'SIN_CLASES' ? 'Desde el día' : 'Día'}
                     style={{ width: '100%' }}
                   />
                 </Col>
+                {nuevoTipo === 'SIN_CLASES' && <Col xs={6} sm={3}>
+                  <InputNumber min={nuevoDia} max={dayjs(`${ano}-${String(mesSeleccionado).padStart(2, '0')}-01`).daysInMonth()}
+                    value={nuevoDiaHasta} onChange={setNuevoDiaHasta} placeholder="Hasta" aria-label="Hasta el día" style={{ width: '100%' }} />
+                </Col>}
                 <Col xs={10} sm={5}>
                   <Select
                     value={nuevoTipo}
-                    onChange={setNuevoTipo}
+                    onChange={(value) => { setNuevoTipo(value); setNuevoDiaHasta(null); }}
                     style={{ width: '100%' }}
                     options={[
                       { value: 'FERIADO', label: 'Feriado' },
                       { value: 'JORNADA_EMI', label: 'Jornada EMI' },
                       { value: 'RECESO', label: 'Receso' },
                       { value: 'ASUETO', label: 'Asueto' },
+                      { value: 'SIN_CLASES', label: 'Sin clases' },
                     ]}
                   />
                 </Col>
-                <Col xs={8} sm={6}>
+                {nuevoTipo !== 'SIN_CLASES' && <Col xs={8} sm={6}>
                   <Input
                     value={nuevoTextoVertical}
                     onChange={(e) => setNuevoTextoVertical(e.target.value)}
                     onPressEnter={handleAgregarEvento}
                     placeholder="Texto celda (ej. DÍA DEL MAESTRO)"
                   />
-                </Col>
-                <Col xs={18} sm={6}>
+                </Col>}
+                {nuevoTipo !== 'SIN_CLASES' && <Col xs={18} sm={6}>
                   <Input
                     value={nuevaDescripcion}
                     onChange={(e) => setNuevaDescripcion(e.target.value)}
                     onPressEnter={handleAgregarEvento}
                     placeholder="Descripción al pie (opcional)"
                   />
-                </Col>
+                </Col>}
                 <Col xs={6} sm={4}>
                   <Button
                     type="primary"
@@ -315,6 +328,9 @@ export const AperturaMesModal = ({
                   </Button>
                 </Col>
               </Row>
+              {nuevoTipo === 'SIN_CLASES' && <Typography.Text type="secondary">
+                Agregá un día o un rango. Se aplica a todos los cursos del ciclo, queda en blanco en el registro y no cuenta como asistencia ni día hábil.
+              </Typography.Text>}
 
               <Table
                 size="small"
@@ -335,7 +351,7 @@ export const AperturaMesModal = ({
                     render: (tipo: TipoEventoCalendario) => {
                       const color =
                         tipo === 'FERIADO' ? 'red' : tipo === 'JORNADA_EMI' ? 'purple' : 'orange';
-                      return <Tag color={color}>{tipo}</Tag>;
+                      return <Tag color={tipo === 'SIN_CLASES' ? undefined : color}>{tipo === 'SIN_CLASES' ? 'Sin clases' : tipo}</Tag>;
                     },
                   },
                   {

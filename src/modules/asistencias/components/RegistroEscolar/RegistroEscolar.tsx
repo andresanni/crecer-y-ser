@@ -21,6 +21,17 @@ const HEADER_BOXES: Record<string, readonly [number, number]> = {
 };
 const SOURCE_CELLS: Readonly<Record<string, { x: number; y: number; size: number; width: number; text: string }>> = layout.cells;
 
+function withdrawalSegments(from: number, blankDays: readonly number[] = []) {
+  const segments: { from: number; to: number }[] = [];
+  let start = from;
+  for (const day of [...new Set(blankDays)].filter(day => day >= from && day <= 31).sort((a, b) => a - b)) {
+    if (start < day) segments.push({ from: start, to: day - 1 });
+    start = day + 1;
+  }
+  if (start <= 31) segments.push({ from: start, to: 31 });
+  return segments;
+}
+
 function Cell({ field, value, x, y, size = 6.6447, anchor = 'middle', fill = '#000000', width, clip, useSource = true }: {
   field: string; value: string | number; x: number; y: number; size?: number;
   anchor?: 'start' | 'middle'; fill?: string; width?: number; clip?: string; useSource?: boolean;
@@ -154,10 +165,10 @@ export function RegistroEscolar({ data, className = '', showPresentMarks = false
                 x={GRID_LEFT + (day - 0.5) * layout.dayWidth} y={rowY(row)} size={rowSize} width={10.5}
                 fill={mark === 'P' && !showPresentMarks ? '#ffffff' : '#000000'} useSource={rowCount === 21} />;
             })}
-            {student.withdrawalFromDay && student.withdrawalFromDay <= 31 && <line data-withdrawal-from={student.withdrawalFromDay}
-              x1={GRID_LEFT + (student.withdrawalFromDay - 1) * layout.dayWidth + 0.8} x2={GRID_RIGHT - 0.8}
+            {student.withdrawalFromDay && student.withdrawalFromDay <= 31 && withdrawalSegments(student.withdrawalFromDay, data.noClassDays).map(segment => <line key={segment.from} data-withdrawal-from={segment.from} data-withdrawal-to={segment.to}
+              x1={GRID_LEFT + (segment.from - 1) * layout.dayWidth + 0.8} x2={(segment.to === 31 ? GRID_RIGHT : GRID_LEFT + segment.to * layout.dayWidth) - 0.8}
               y1={BODY_TOP + (row + 0.5) * rowHeight} y2={BODY_TOP + (row + 0.5) * rowHeight}
-              stroke="#000000" strokeWidth={0.6} />}
+              stroke="#000000" strokeWidth={0.6} />)}
             {student.totals.map((total, col) => <Cell key={`total-${col}`} field={`students.${row}.totals.${col}`} value={total}
               x={(TOTAL_EDGES[col] + TOTAL_EDGES[col + 1]) / 2} y={rowY(row)} size={rowSize} width={10.5} useSource={rowCount === 21} />)}
           </>}

@@ -47,7 +47,8 @@ try{
   await page.goto('http://127.0.0.1:5190/__attendance-navigation');
   await page.getByRole('button',{name:'Septiembre'}).waitFor();
   assert.equal(await page.getByText('Abierto',{exact:true}).count(),2);
-  assert.equal(await page.getByText('Sin abrir',{exact:true}).count(),8);
+  assert.equal(await page.getByText('Sin abrir',{exact:true}).count(),9);
+  assert.equal(await page.getByRole('button',{name:'Febrero',exact:true}).count(),1);
   assert.equal(await page.evaluate(()=>window.loads.length),0);
   await fs.mkdir('dist-render/attendance',{recursive:true});
   await page.screenshot({path:'dist-render/attendance/navigation-months.png'});
@@ -60,7 +61,14 @@ try{
   assert.equal(await page.getByText('Período de boletines vinculado',{exact:true}).count(),0);
   await page.getByRole('dialog').getByText('Provisorio',{exact:true}).waitFor();
   assert.equal(await page.getByRole('dialog').getByRole('spinbutton').count(),1);
-  await page.getByRole('dialog').getByText('Falta configurar: marzo.',{exact:true}).waitFor();
+  await page.getByRole('dialog').getByText('Falta configurar: febrero, marzo.',{exact:true}).waitFor();
+  await page.getByRole('dialog').getByRole('combobox').click();
+  await page.getByText('Sin clases',{exact:true}).click();
+  await page.getByRole('spinbutton',{name:'Desde el día',exact:true}).fill('1');
+  await page.getByRole('spinbutton',{name:'Hasta el día',exact:true}).fill('10');
+  await page.getByRole('button',{name:/Agregar/}).click();
+  assert.equal(await page.getByRole('dialog').locator('tbody tr').count(),10);
+  assert.equal(await page.getByRole('dialog').getByText('Sin clases',{exact:true}).count(),11);
   await page.getByRole('dialog').screenshot({path:'dist-render/attendance/calendar-informative-days.png'});
   await page.getByRole('button',{name:'Guardar Configuración',exact:true}).click();
   await page.getByRole('button',{name:'Calendario',exact:true}).waitFor();

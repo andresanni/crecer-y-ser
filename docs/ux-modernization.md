@@ -1,5 +1,7 @@
 # Arquitectura UX/UI vigente
 
+El calendario de asistencia admite febrero a diciembre y la opción Sin clases con un día o rango inclusive. El formulario aclara que aplica a todos los cursos del ciclo. Estas fechas se presentan con celdas vacías y bloqueadas, sin texto impreso, y quedan fuera de los indicadores de asistencia. Se reutilizan los controles nativos de Ant Design y el cálculo informativo de días hábiles del calendario; el acumulado comienza en febrero. Contrato y operación en `docs/primary-attendance-records.md`.
+
 La modernización visual fue desarrollada originalmente en la rama `feature/ui-ux-modernization`, aprobada y fusionada en `master` el 12 de septiembre de 2026. Como parte de las tareas de limpieza y paridad de ramas del 21 de septiembre de 2026, la rama `feature/ui-ux-modernization` fue eliminada en local y remoto al encontrarse plenamente integrada en el historial de `master`. Este documento describe el contrato actual, no el historial de la rama de trabajo.
 
 ## Principios

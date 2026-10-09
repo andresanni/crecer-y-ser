@@ -18,8 +18,8 @@ export const calcularDiasHabilesYAcumulado = (
     const semana = inicio.date(dia).day();
     if (semana !== 0 && semana !== 6 && !excluidos.has(dia)) habiles++;
   }
-  const anteriores = mesesConfigurados.filter((item) => item.mes >= 3 && item.mes < mes);
-  const mesesPendientes = Array.from({ length: Math.max(0, mes - 3) }, (_, index) => index + 3)
+  const anteriores = mesesConfigurados.filter((item) => item.mes >= 2 && item.mes < mes);
+  const mesesPendientes = Array.from({ length: Math.max(0, mes - 2) }, (_, index) => index + 2)
     .filter((numero) => !anteriores.some((item) => item.mes === numero));
   return {
     habiles,

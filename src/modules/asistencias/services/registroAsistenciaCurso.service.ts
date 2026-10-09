@@ -391,7 +391,7 @@ export const registroAsistenciaCursoService = {
 
     const observacionesDelMes: string[] = [];
     for (const ev of eventos) {
-      if (ev.descripcionObservaciones) {
+      if (ev.tipo !== 'SIN_CLASES' && ev.descripcionObservaciones) {
         observacionesDelMes.push(/^\s*\d/.test(ev.descripcionObservaciones) ? ev.descripcionObservaciones : `${ev.dia}. ${ev.descripcionObservaciones}`);
       }
     }

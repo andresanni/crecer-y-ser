@@ -46,7 +46,7 @@ export const AsistenciasPage = () => {
   const [rutaActual, setRutaActual] = useState(rutaSolicitada);
   const parametrosActuales = new URLSearchParams(rutaActual);
   const mesParametro = Number(parametrosActuales.get('mes'));
-  const mesSeleccionado = mesParametro >= 3 && mesParametro <= 12 && Number.isInteger(mesParametro) ? mesParametro : 0;
+  const mesSeleccionado = mesParametro >= 2 && mesParametro <= 12 && Number.isInteger(mesParametro) ? mesParametro : 0;
   const cursoSeleccionadoId = mesSeleccionado ? parametrosActuales.get('curso') || '' : '';
   const [cargandoNavegacion, setCargandoNavegacion] = useState(true);
   const [errorNavegacion, setErrorNavegacion] = useState<string | null>(null);
@@ -172,6 +172,7 @@ export const AsistenciasPage = () => {
   };
 
   const mesesBase = [
+    { value: 2, label: 'Febrero' },
     { value: 3, label: 'Marzo' },
     { value: 4, label: 'Abril' },
     { value: 5, label: 'Mayo' },

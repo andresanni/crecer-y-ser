@@ -56,7 +56,7 @@ export function adaptarRegistroEscolar(registro: RegistroMensualCompleto): Regis
     }
   }
 
-  const events: EventoColumna[] = registro.eventos.map((e) => ({
+  const events: EventoColumna[] = registro.eventos.filter((e) => e.tipo !== 'SIN_CLASES').map((e) => ({
     dia: e.dia,
     texto: (e.textoCeldaVertical || e.tipo).toUpperCase(),
     observation: e.descripcionObservaciones,
@@ -196,6 +196,7 @@ export function adaptarRegistroEscolar(registro: RegistroMensualCompleto): Regis
     monthlyTotals: [asist.totAsistencia, asist.totInasistencia, registro.alumnos.reduce((total, alumno) => total + alumno.llegadasTarde, 0)],
     weekends,
     blockedDays,
+    noClassDays: registro.eventos.filter(event => event.tipo === 'SIN_CLASES').map(event => event.dia),
     events,
     observations: registro.observacionesDelMes,
     footer,

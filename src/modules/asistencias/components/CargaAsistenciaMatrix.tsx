@@ -411,6 +411,7 @@ export const CargaAsistenciaMatrix = ({
                     }
 
                     if (evento) {
+                      if (evento.tipo === 'SIN_CLASES') return <td key={d} className={styles.eventCol} title="Sin clases" />;
                       if (aIndex === 0) {
                         return (
                           <td

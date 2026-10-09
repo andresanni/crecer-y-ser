@@ -170,6 +170,32 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     assert.equal(accumulatedMay.totalDiasHabiles, 19);
     assert.equal(accumulatedMay.diasHabilesAcumulados, 61);
     assert.equal(accumulatedJune.diasHabilesAcumulados, 83);
+    const withoutClass = (first, last) => Array.from({ length: last - first + 1 }, (_, index) => ({
+      dia: first + index, tipo: 'SIN_CLASES', textoCeldaVertical: 'No imprimir', descripcionObservaciones: 'No imprimir',
+    }));
+    const february = await configure(2, withoutClass(1, 24));
+    assert.equal(february.mes.total_dias_habiles, 3);
+    assert.equal(february.mes.dias_habiles_acumulados, 3);
+    assert.ok(february.eventos.every(event => event.texto_celda_vertical === '' && event.descripcion_observaciones === ''));
+    assert.equal((await calendar.obtenerMesPorCicloYNumero(cycle.id, 6)).diasHabilesAcumulados, 86);
+    await admin.collection('inscripciones').update(enrollments[0].id, { fecha_ingreso: '2026-02-25' });
+    const februarySheet = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 2);
+    assert.equal(februarySheet.alumnos[0].asistencias, 3);
+    assert.equal(februarySheet.alumnos[0].inasistencias, 0);
+    assert.equal(februarySheet.observacionesDelMes.some(text => text.includes('No imprimir')), false);
+    await assert.rejects(monthly.guardarCambios(februarySheet, [{ inscripcionId: enrollments[0].id, fecha: '2026-02-24', estado: 'A' }], ''), error => error.status === 400);
+    await configure(7, withoutClass(20, 31));
+    const recess = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 7);
+    assert.equal(recess.mesCalendario.totalDiasHabiles, 13);
+    assert.equal(recess.alumnos[0].asistencias, 12);
+    assert.equal(recess.alumnos[0].inasistencias, 1);
+    const december = await configure(12, withoutClass(21, 31));
+    assert.equal(december.mes.total_dias_habiles, 14);
+    const decemberSheet = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 12);
+    assert.equal(decemberSheet.alumnos[0].asistencias, 14);
+    assert.equal(decemberSheet.alumnos[0].inasistencias, 0);
+    assert.equal(decemberSheet.alumnos[0].marcasPorDia[21], '');
+    await assert.rejects(calendar.obtenerConfiguracion(cycle.id, 1), error => error.status === 400);
     if (process.env.EXPORT_ATTENDANCE_SCHEMA === '1') {
       const actual = await admin.collections.getFullList();
       const schema = JSON.parse(fs.readFileSync(path.resolve('pb_schema.json'), 'utf8'));

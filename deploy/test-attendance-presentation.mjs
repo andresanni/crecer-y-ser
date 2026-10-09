@@ -190,8 +190,25 @@ try {
     assert.ok(Math.abs(size.width - 841.89) < 0.1 && Math.abs(size.height - 595.28) < 0.5);
   }
   assert.deepEqual(errors, []);
+  await page.evaluate(() => window.renderRegistro({...window.fixture, mesCalendario:{...window.fixture.mesCalendario,mes:2},
+    eventos:[{dia:4,tipo:'SIN_CLASES',textoCeldaVertical:'No imprimir',descripcionObservaciones:'No imprimir'}],
+    alumnos:window.fixture.alumnos.map(student=>({...student,bajaDesdeDia:1,marcasPorDia:{4:'P',25:'P'}}))}));
+  await page.waitForFunction(()=>document.querySelector('[data-field="header.month"]')?.textContent==='FEBRERO');
+  assert.equal(await page.locator('[data-event-day="4"]').count(),0);
+  assert.equal(await page.locator('[data-field="students.0.attendance.4"]').count(),0);
+  assert.equal(await page.locator('[data-field="dailyTotals.4"]').count(),0);
+  assert.ok(await page.locator('[data-withdrawal-from]').evaluateAll(lines=>lines.every(line=>Number(line.dataset.withdrawalFrom)>4 || Number(line.dataset.withdrawalTo)<4)));
+  await page.locator('svg[role="img"]').screenshot({path:path.join(output,'february-no-class-screen.png')});
+  await page.emulateMedia({media:'print'});
+  await page.pdf({path:path.join(output,'february-no-class-a4.pdf'),preferCSSPageSize:true,printBackground:true});
+  const noClassPdf = await PDFDocument.load(await fs.readFile(path.join(output,'february-no-class-a4.pdf')));
+  assert.equal(noClassPdf.getPageCount(),1);
   await page.emulateMedia({media:'screen'});
-  await page.evaluate(() => window.renderRegistro({...window.fixture, alumnos:window.fixture.alumnos.map((student, index) => ({...student,
+  await page.evaluate(() => { window.fixture.eventos = [{dia:4,tipo:'SIN_CLASES',textoCeldaVertical:'',descripcionObservaciones:''}]; window.renderCarga(); });
+  await page.locator('td[title="Sin clases"]').first().waitFor();
+  assert.ok(await page.locator('td[title="Sin clases"]').evaluateAll(cells=>cells.every(cell=>cell.textContent==='' && !cell.hasAttribute('tabindex'))));
+  await page.emulateMedia({media:'screen'});
+  await page.evaluate(() => window.renderRegistro({...window.fixture, eventos:[], alumnos:window.fixture.alumnos.map((student, index) => ({...student,
     numeroOrden: [3, 9, 11, 15][index], bajaDesdeDia: index === 1 ? 1 : index === 2 ? 21 : undefined,
   }))}));
   await page.locator('[data-withdrawal-from="1"]').waitFor({state:'attached'});

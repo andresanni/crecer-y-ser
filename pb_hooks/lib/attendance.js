@@ -19,7 +19,7 @@ function canonical(value) {
 }
 
 function context(dao, courseId, cycleId, month) {
-  if (!Number.isInteger(month) || month < 3 || month > 12) throw new BadRequestError("Mes lectivo inválido.")
+  if (!Number.isInteger(month) || month < 2 || month > 12) throw new BadRequestError("Mes lectivo inválido.")
   const cycle = record(dao, "ciclos_lectivos", cycleId)
   const course = record(dao, "cursos", courseId)
   const level = record(dao, "niveles", course.getString("nivel_id"))
@@ -119,7 +119,7 @@ function saveRegister(c) {
 
 
 function calendarContext(dao, cycleId, month) {
-  if (!Number.isInteger(month) || month < 3 || month > 12) throw new BadRequestError("Mes lectivo inválido.")
+  if (!Number.isInteger(month) || month < 2 || month > 12) throw new BadRequestError("Mes lectivo inválido.")
   const cycle = record(dao, "ciclos_lectivos", cycleId)
   const months = records(dao, "meses_calendario", "ciclo_id = {:cycle}", { cycle: cycleId }, "mes,id")
   const events = []
@@ -166,7 +166,7 @@ function saveCalendar(c) {
     const seen = {}
     payload.eventos.forEach(event => {
       if (!Number.isInteger(event.dia) || event.dia < 1 || event.dia > days || seen[event.dia]) throw new BadRequestError("Día inexistente o repetido.")
-      if (!["FERIADO", "JORNADA_EMI", "RECESO", "ASUETO"].includes(event.tipo)) throw new BadRequestError("Tipo de evento inválido.")
+      if (!["FERIADO", "JORNADA_EMI", "RECESO", "ASUETO", "SIN_CLASES"].includes(event.tipo)) throw new BadRequestError("Tipo de evento inválido.")
       if (typeof event.textoCeldaVertical !== "string" || event.textoCeldaVertical.length > 200 || typeof event.descripcionObservaciones !== "string" || event.descripcionObservaciones.length > 500) throw new BadRequestError("Texto de evento inválido.")
       seen[event.dia] = true
     })
@@ -185,12 +185,12 @@ function saveCalendar(c) {
       value.set("dia", event.dia)
       value.set("fecha", year + "-" + String(data.month).padStart(2, "0") + "-" + String(event.dia).padStart(2, "0") + " 00:00:00")
       value.set("tipo", event.tipo)
-      value.set("texto_celda_vertical", event.textoCeldaVertical)
-      value.set("descripcion_observaciones", event.descripcionObservaciones)
+      value.set("texto_celda_vertical", event.tipo === "SIN_CLASES" ? "" : event.textoCeldaVertical)
+      value.set("descripcion_observaciones", event.tipo === "SIN_CLASES" ? "" : event.descripcionObservaciones)
       dao.saveRecord(value)
     })
     let accumulated = 0
-    records(dao, "meses_calendario", "ciclo_id = {:cycle} && mes >= 3", { cycle: data.cycle.getId() }, "mes,id").forEach(item => {
+    records(dao, "meses_calendario", "ciclo_id = {:cycle} && mes >= 2", { cycle: data.cycle.getId() }, "mes,id").forEach(item => {
       const holidays = records(dao, "eventos_calendario", "mes_calendario_id = {:calendar}", { calendar: item.getId() }).map(event => event.getInt("dia"))
       const count = workingDays(year, item.getInt("mes"), holidays)
       accumulated += count

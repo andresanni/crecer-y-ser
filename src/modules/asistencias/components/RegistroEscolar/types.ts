@@ -34,6 +34,7 @@ export interface RegistroEscolarData {
   monthlyTotals: readonly [present: number, absent: number, late: number];
   weekends: readonly number[];
   blockedDays: readonly number[];
+  noClassDays?: readonly number[];
   events: readonly EventoColumna[];
   observations: readonly string[];
   firstCycle?: boolean;

@@ -2265,7 +2265,8 @@
             "FERIADO",
             "JORNADA_EMI",
             "RECESO",
-            "ASUETO"
+            "ASUETO",
+            "SIN_CLASES"
           ]
         }
       },

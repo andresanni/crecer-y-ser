@@ -1,6 +1,14 @@
 # Guía canónica de ingesta de calificaciones y boletines históricos
 
-Actualizado: 4 de octubre de 2026.
+Actualizado: 9 de octubre de 2026.
+
+## Preparación local de notas para asistencia
+
+Para el ensayo local de registros de asistencia se utiliza `scripts/prepare-attendance-local.mjs`, con el procedimiento y respaldo descritos en `docs/pocketbase-environments.md`. El CSV aporta identidades y cursada; las notas de B1/B2 son ficticias y reproducibles, autorizadas para esa prueba. No reutilizar el ingestor histórico de escrituras directas para esta preparación.
+
+Por materia, la escala se ordena por `orden_visual`, excluyendo No corresponde. El índice de valor es `(numero_orden + numero_bimestre + indice_materia - 2) % cantidad_valores`, con índice de materia desde cero y malla ordenada por `orden_visual`. Los cinco criterios reciben ese mismo valor; PPI es falso. Trabajo en el Aula y Convivencia sólo reciben criterios, sin nota general. Esta fórmula depende del catálogo conservado, no de IDs aleatorios ni de datos personales.
+
+El script emite un enlace local por curso y período, guarda mediante `PUT /api/cys/docente/alumnos/:inscripcionId`, omite el bloque de cierre y elimina el enlace al terminar. En B1 normaliza apoyos vacíos a NO según el contrato vigente. No envía, visa ni genera PDFs: los cuatro bimestres de curso quedan en borrador y las asistencias permanecen sin registros. El servicio de asistencia consume esas notas al leer mayo y julio. El seed y las pruebas automatizadas siguen usando exclusivamente datos sintéticos.
 
 ## Compatibilidad con las salvaguardas publicadas
 

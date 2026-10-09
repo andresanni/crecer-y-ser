@@ -1,10 +1,22 @@
 # Registros de Asistencia de Primaria
 
-Actualizado: 8 de octubre de 2026.
+Actualizado: 9 de octubre de 2026.
 
 ## Propósito
 
 Centralizar y automatizar la gestión mensual de los registros oficiales de asistencia y seguimiento pedagógico para los cursos de nivel primario, reemplazando la gestión manual previa en Google Sheets y permitiendo la emisión e impresión directa en formato A4 apaisado conforme a la normativa escolar.
+
+## Inicio, fin de cursada y días sin clases — 9 de octubre de 2026
+
+La navegación admite febrero a diciembre. Para los días anteriores al inicio, posteriores al fin de las clases o del receso invernal, elegir **Sin clases** en Calendario, indicar **Desde** y **Hasta** y pulsar **Agregar** antes de guardar. Sin Hasta se agrega un solo día. Los rangos son inclusivos, deben existir en el mes y no superponerse con fechas ya configuradas; para un receso que atraviese dos meses se configura cada tramo en su mes. Las fechas las define la institución, sin asumir un calendario oficial ni un receso fijo.
+
+Este calendario es institucional y se aplica a todos los cursos del ciclo. SIN_CLASES no es una marca individual de alumno: excluye el día completo del total hábil y de las presencias, ausencias, tardanzas, media y porcentajes de asistencia. Las celdas no son editables y quedan vacías, sin texto vertical ni observaciones automáticas, también en impresión. Las líneas de baja se interrumpen en esos días para mantenerlos en blanco. Los recuentos de matrícula, edad y nacionalidad mantienen sus reglas de cierre mensual. Receso continúa disponible para quien necesite su etiqueta vertical; Sin clases permite dejarlo sin marcas.
+
+El acumulado incluye febrero y advierte su ausencia entre los meses pendientes. Abrirlo o modificarlo recalcula los acumulados de los meses posteriores por el gateway existente. No se crean fechas sin clases ni se modifican calendarios guardados automáticamente.
+
+Requiere la migración `1791549000_attendance_non_class_days.js`, los hooks y el frontend compatibles. Se validó en una instancia temporal sintética, con 20 pruebas de dominio/HTTP, navegación con rango de diez días y cinco PDFs A4 de una página, incluido febrero y exclusiones en blanco. El esquema deriva de esa instancia; los scripts de despliegue enumeran la migración, pero no se ejecutaron contra producción.
+
+La aplicación a `C:/pocketbase/pb_data` quedó pendiente porque revisión automática rechazó detener/migrar/reiniciar la instancia local («blocked by policy», sin detalle adicional). Para aplicarla manualmente, detener la sesión local de PocketBase, crear un respaldo mediante `deploy/backup-pocketbase-dev.ps1` y arrancar `deploy/start-pocketbase-dev.ps1` desde este checkout: el lanzador usa loopback y aplica las migraciones pendientes. Este procedimiento preserva alumnos, notas y asistencias existentes; no ejecutar el script de preparación del dataset para actualizar el esquema.
 
 ## Formato y reglas del documento oficial
 
@@ -13,7 +25,7 @@ El registro mensual se emite por curso y mes (ej. Mayo, Julio, Octubre) en una s
 1. **Encabezado y calendario escolar**:
    - `MES`, `GRADO`, `SECCIÓN`, `TURNO`, `AÑO`.
    - `TOTAL DÍAS HÁBILES`: Días hábiles de clase del mes. **Determinístico**: Calculado automáticamente como los días de lunes a viernes del mes menos los eventos no computables (feriados, jornadas EMI, receso, asuetos). No admite carga manual arbitraria para asegurar la integridad matemática de la Asistencia Media y el porcentaje de asistencia.
-   - `TOTAL DÍAS HÁBILES ACUMULADOS`: Suma de días hábiles desde el inicio del ciclo lectivo (marzo) hasta el mes en curso. Calculado y actualizado en cascada automáticamente.
+   - `TOTAL DÍAS HÁBILES ACUMULADOS`: Suma de días hábiles desde el inicio del ciclo lectivo (febrero) hasta el mes en curso. Calculado y actualizado en cascada automáticamente.
 
 2. **Matriz de asistencia diaria (Días 1 al 31)**:
    - Días hábiles sin novedad: computan como `P` (Presente).
@@ -76,7 +88,7 @@ Eventos, feriados, asuetos y jornadas institucionales del mes.
 - `mes_calendario_id`: Relación a `meses_calendario`.
 - `fecha`: Fecha del evento.
 - `dia`: Día del mes (1 al 31).
-- `tipo`: `FERIADO`, `JORNADA_EMI`, `RECESO`, `ASUETO`.
+- `tipo`: `FERIADO`, `JORNADA_EMI`, `RECESO`, `ASUETO`, `SIN_CLASES`.
 - `texto_celda_vertical`: Texto vertical a renderizar en la columna del día.
 - `descripcion_observaciones`: Texto para el cuadro de observaciones al pie.
 
@@ -171,7 +183,7 @@ Los límites pendientes son: máximo de 24 alumnos por hoja, actualización manu
 
 ## Navegación por mes
 
-La entrada a `/app/asistencias` presenta marzo a diciembre del ciclo seleccionado mediante las mismas tarjetas navegables y grilla adaptable que Bimestres (`NavigationCard`). Los meses con calendario guardado aparecen como **Abierto**, con etiqueta verde y marca de verificación sobre una superficie neutra; los restantes como **Sin abrir**. Toda la tarjeta permite navegar, también mediante teclado. La navegación continúa al listado de todos los cursos de primaria, ordenados por grado y turno, y luego al registro. El mes sin abrir muestra los cursos y ofrece **Abrir mes**, pero bloquea su carga hasta guardar el calendario.
+La entrada a `/app/asistencias` presenta febrero a diciembre del ciclo seleccionado mediante las mismas tarjetas navegables y grilla adaptable que Bimestres (`NavigationCard`). Los meses con calendario guardado aparecen como **Abierto**, con etiqueta verde y marca de verificación sobre una superficie neutra; los restantes como **Sin abrir**. Toda la tarjeta permite navegar, también mediante teclado. La navegación continúa al listado de todos los cursos de primaria, ordenados por grado y turno, y luego al registro. El mes sin abrir muestra los cursos y ofrece **Abrir mes**, pero bloquea su carga hasta guardar el calendario.
 
 La URL conserva la selección con `?mes=5` y `?mes=5&curso=<id>`, permitiendo recarga, acceso directo y navegación del navegador. Los botones **Cursos** y **Meses** permiten volver al nivel anterior. **Calendario** está disponible en el mes y el registro. Los cambios pendientes bloquean los botones de navegación; si la URL cambia mediante el historial, se conserva la edición hasta confirmar su descarte. Los errores de carga del calendario se muestran con reintento, sin marcar meses como cerrados por un fallo de conexión.
 
@@ -181,7 +193,7 @@ El modal de calendario recibe el mes obligatorio desde el contexto de navegació
 
 El modal de calendario no contiene selector de período ni consulta boletines. El gateway de calendario recibe únicamente las precondiciones y eventos, y limpia el vínculo legado del mes al guardar. La regla fija es mayo → bimestre 1, julio → 2, octubre → 3 y diciembre → 4. Las fallas de red o permisos continúan mostrándose como errores; no se ocultan como notas pendientes. Se verificó con PocketBase aislado que se puede abrir y cargar asistencia antes de crear el período, recibir evaluaciones sin nota e incorporar luego las calificaciones al releer, preservando asistencia y calendario.
 
-Los días hábiles del calendario aparecen como indicadores informativos, no como entradas deshabilitadas. Se cuentan lunes a viernes y se excluyen las fechas configuradas sin clase (FERIADO, JORNADA_EMI, RECESO y ASUETO); un día de fin de semana o una exclusión repetida no se resta dos veces. El acumulado suma los meses configurados desde marzo anteriores al actual, más el cálculo del mes actual inclusive. Si faltan meses anteriores, el modal marca **Provisorio** y enumera los meses pendientes, por decisión del usuario. No estima feriados ni días de meses sin configurar. Al abrir o corregir un mes previo, el gateway recalcula los acumulados de todos los meses abiertos posteriores. La vista previa del modal utiliza la lista de meses de su instantánea, sin mezclar una segunda lectura de otra versión.
+Los días hábiles del calendario aparecen como indicadores informativos, no como entradas deshabilitadas. Se cuentan lunes a viernes y se excluyen las fechas configuradas sin clase (FERIADO, JORNADA_EMI, RECESO, ASUETO y SIN_CLASES); un día de fin de semana o una exclusión repetida no se resta dos veces. El acumulado suma los meses configurados desde febrero anteriores al actual, más el cálculo del mes actual inclusive. Si faltan meses anteriores, el modal marca **Provisorio** y enumera los meses pendientes, por decisión del usuario. No estima feriados ni días de meses sin configurar. Al abrir o corregir un mes previo, el gateway recalcula los acumulados de todos los meses abiertos posteriores. La vista previa del modal utiliza la lista de meses de su instantánea, sin mezclar una segunda lectura de otra versión.
 
 ## Verificación y mantenimiento
 
@@ -195,6 +207,6 @@ node deploy/test-attendance-navigation.mjs
 node deploy/test-attendance-presentation.mjs
 ```
 
-Las 19 pruebas de dominio y HTTP cubren reglas de asistencia, matrícula, bajas, notas pendientes, días hábiles, años bisiestos, acumulados inclusivos, recalculado de meses posteriores, autorización, concurrencia y rollback. Las pruebas de navegador usan Edge headless y datos sintéticos: navegación, calendario contextual sin selectores residuales, acumulado provisorio, protección de borradores, cierre del menú de marcas, foco, grilla de 31 días, ambas plantillas y cuatro PDFs de una página A4 horizontal. La prueba HTTP requiere `C:\pocketbase\pocketbase.exe` 0.22.17; crea y elimina su propia instancia temporal, sin tocar `127.0.0.1:8090`. Las pruebas visuales tienen cachés Vite separadas dentro de los artefactos ignorados.
+Las 20 pruebas de dominio y HTTP cubren reglas de asistencia, matrícula, bajas, notas pendientes, días hábiles, años bisiestos, acumulados inclusivos, recalculado de meses posteriores, autorización, concurrencia y rollback. Las pruebas de navegador usan Edge headless y datos sintéticos: navegación, calendario contextual sin selectores residuales, acumulado provisorio, protección de borradores, cierre del menú de marcas, foco, grilla de 31 días, ambas plantillas y cinco PDFs de una página A4 horizontal. La prueba HTTP requiere `C:\pocketbase\pocketbase.exe` 0.22.17; crea y elimina su propia instancia temporal, sin tocar `127.0.0.1:8090`. Las pruebas visuales tienen cachés Vite separadas dentro de los artefactos ignorados.
 
 La grilla interactiva usa filas de 36 px, ampliables únicamente por nombres u observaciones que requieran más líneas. El texto vertical de eventos se posiciona dentro de la celda combinada sin determinar la altura de la tabla; los textos largos se recortan con el detalle completo en el título al pasar el mouse. El encabezado de sección concentra Actualizar, Imprimir A4 y Calendario, sin duplicados en la grilla. La barra de carga conserva indicadores del curso y Guardar/Descartar, manteniendo el bloqueo de impresión y calendario cuando hay cambios pendientes. Estos ajustes no modifican la plantilla impresa.

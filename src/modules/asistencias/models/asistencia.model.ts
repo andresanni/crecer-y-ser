@@ -1,6 +1,6 @@
 export type TipoEstadoAsistencia = 'A' | 'J' | 'E' | 'IT' | 'RA' | 'P';
 
-export type TipoEventoCalendario = 'FERIADO' | 'JORNADA_EMI' | 'RECESO' | 'ASUETO';
+export type TipoEventoCalendario = 'FERIADO' | 'JORNADA_EMI' | 'RECESO' | 'ASUETO' | 'SIN_CLASES';
 
 export type MesLectivoNumero = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
