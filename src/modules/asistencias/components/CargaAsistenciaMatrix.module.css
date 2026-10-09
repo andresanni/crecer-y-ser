@@ -116,7 +116,14 @@
 
 .verticalEventText {
   color: #b91c1c;
-  display: inline-block;
+  display: block;
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1px;
@@ -215,4 +222,12 @@
 
 .studentLabel > span {
   min-width: 0;
+}
+
+.matrixTable tbody tr {
+  height: 36px;
+}
+
+.matrixTable tbody td.eventCol {
+  position: relative;
 }

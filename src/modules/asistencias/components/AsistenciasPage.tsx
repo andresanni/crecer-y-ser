@@ -268,8 +268,6 @@ export const AsistenciasPage = () => {
           key={`${registroCompleto.curso.id}_${registroCompleto.mesCalendario.id}`}
           registro={registroCompleto}
           onRecargar={() => void cargarRegistro()}
-          onAbrirAperturaMes={() => setModalAperturaOpen(true)}
-          onImprimirA4={() => void abrirImpresion()}
           onCambiosPendientes={setCambiosPendientes}
         />
       )}

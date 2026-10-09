@@ -16,9 +16,7 @@ import {
 } from 'antd';
 import {
   SaveOutlined,
-  CalendarOutlined,
   CheckCircleOutlined,
-  PrinterOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type {
@@ -36,8 +34,6 @@ const { TextArea } = Input;
 interface CargaAsistenciaMatrixProps {
   registro: RegistroMensualCompleto;
   onRecargar: () => void;
-  onAbrirAperturaMes: () => void;
-  onImprimirA4?: () => void;
   onCambiosPendientes?: (pendientes: boolean) => void;
 }
 
@@ -53,8 +49,6 @@ const OPCIONES_ESTADO: Array<{ estado: TipoEstadoAsistencia; etiqueta: string; c
 export const CargaAsistenciaMatrix = ({
   registro,
   onRecargar,
-  onAbrirAperturaMes,
-  onImprimirA4,
   onCambiosPendientes,
 }: CargaAsistenciaMatrixProps) => {
   const { message, modal } = App.useApp();
@@ -315,21 +309,9 @@ export const CargaAsistenciaMatrix = ({
             Días hábiles: <strong>{mesCalendario.totalDiasHabiles}</strong> (Acumulados:{' '}
             {mesCalendario.diasHabilesAcumulados})
           </Tag>
-          <Button icon={<CalendarOutlined />} onClick={onAbrirAperturaMes} disabled={hayCambiosPendientes || saving || Boolean(guardadoBloqueado)}>
-            Configurar Mes / Calendario
-          </Button>
         </Space>
 
         <Space wrap>
-          {onImprimirA4 && (
-            <Button
-              icon={<PrinterOutlined />}
-              onClick={onImprimirA4}
-              disabled={hayCambiosPendientes || saving || Boolean(guardadoBloqueado)}
-            >
-              Imprimir / Vista Previa A4
-            </Button>
-          )}
           {hayCambiosPendientes && <Button disabled={saving} onClick={() => {
             setMarcasLocales(new Map());
             setCeldasModificadas(new Set());
@@ -343,7 +325,7 @@ export const CargaAsistenciaMatrix = ({
               loading={saving}
               disabled={Boolean(guardadoBloqueado) || !hayCambiosPendientes}
             >
-              Guardar Cambios
+              Guardar cambios
             </Button>
           </Badge>
         </Space>
@@ -351,9 +333,9 @@ export const CargaAsistenciaMatrix = ({
 
       <div className={styles.keyboardGuide}>
         <Text type="secondary">
-          Atajos de teclado en la celda: <strong>P</strong> (Presente), <strong>A</strong> (Ausente),{' '}
-          <strong>J</strong> (Justificado), <strong>E</strong> (Enfermedad), <strong>T</strong> (Llegada Tarde),{' '}
-          <strong>R</strong> (Retiro Anticipado). Use <strong>Flechas</strong> o <strong>Enter</strong> para moverse como en Excel.
+          Atajos: <strong>P</strong> (Presente), <strong>A</strong> (Ausente),{' '}
+          <strong>J</strong> (Justificado), <strong>E</strong> (Enfermedad), <strong>T</strong> (Tarde),{' '}
+          <strong>R</strong> (Retiro). <strong>Flechas</strong> / <strong>Enter</strong> para moverse.
         </Text>
       </div>
 
@@ -435,7 +417,7 @@ export const CargaAsistenciaMatrix = ({
                             key={d}
                             rowSpan={alumnos.length}
                             className={styles.eventCol}
-                            title={evento.descripcionObservaciones || evento.textoCeldaVertical}
+                            title={[...new Set([evento.textoCeldaVertical || evento.tipo, evento.descripcionObservaciones].filter(Boolean))].join(' · ')}
                           >
                             <span className={styles.verticalEventText}>
                               {evento.textoCeldaVertical || evento.tipo}

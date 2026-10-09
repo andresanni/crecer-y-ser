@@ -57,7 +57,7 @@ const server = await createServer({
         window.fixture = ${JSON.stringify(fixture)};
         window.renderCarga = () => root.render(React.createElement(AntApp, null, React.createElement(CargaAsistenciaMatrix, {
           registro: {...window.fixture, observacionesAdicionales: ''},
-          onRecargar: () => {}, onAbrirAperturaMes: () => {}, onImprimirA4: () => {},
+          onRecargar: () => {},
           onCambiosPendientes: value => { window.pendingAttendance = value; }
         })));
         window.renderCalendar = () => root.render(React.createElement(AntApp, null, React.createElement(AperturaMesModal, {
@@ -208,15 +208,25 @@ try {
   assert.equal(await page.locator('#root').isVisible(), true);
   await page.emulateMedia({media:'screen'});
   await page.setViewportSize({width:1536,height:1000});
-  await page.evaluate(() => {document.body.style.padding = '16px'; window.fixture.mesCalendario.mes = 7; window.renderCarga();});
+  await page.evaluate(() => {
+    document.body.style.padding = '16px';
+    window.fixture.mesCalendario.mes = 7;
+    window.fixture.alumnos = window.fixture.alumnos.map((student,index)=>({...student,apellidoYNombre:'Estudiante sintético '+(index+1),observacion:''}));
+    window.fixture.eventos = [{dia:9,tipo:'FERIADO',textoCeldaVertical:'DÍA DE LA INDEPENDENCIA',descripcionObservaciones:'Día de la Independencia'}, {dia:10,tipo:'ASUETO',textoCeldaVertical:'DÍA NO LABORABLE CON FINES TURÍSTICOS',descripcionObservaciones:'Día no laborable con fines turísticos'}, ...Array.from({length:12},(_,i)=>({dia:20+i,tipo:'RECESO',textoCeldaVertical:'RECESO ESCOLAR INVERNAL',descripcionObservaciones:'Receso escolar invernal'}))];
+    window.renderCarga();
+  });
   await page.locator('td[tabindex="0"]').first().waitFor();
   assert.equal(await page.locator('table').first().evaluate(table => table.parentElement.scrollWidth <= table.parentElement.clientWidth), true);
+  const rowHeights = await page.locator('table tbody tr').evaluateAll(rows => rows.map(row => row.getBoundingClientRect().height));
+  assert.ok(rowHeights.every(height => height <= 40), JSON.stringify(rowHeights));
+  assert.equal(await page.getByRole('button',{name:/Calendario/}).count(),0);
+  assert.equal(await page.getByRole('button',{name:/Imprimir/}).count(),0);
   await page.locator('table').first().screenshot({path:path.join(output,'attendance-grid-31-days.png')});
   await page.setViewportSize({width:900,height:1000});
   assert.equal(await page.locator('table').first().evaluate(table => table.parentElement.scrollWidth > table.parentElement.clientWidth), true);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
   await page.setViewportSize({width:1536,height:1000});
-  await page.evaluate(() => {window.fixture.mesCalendario.mes = 9; window.renderCarga();});
+  await page.evaluate(() => {window.fixture.mesCalendario.mes = 9; window.fixture.eventos = [{dia:11,tipo:'FERIADO',textoCeldaVertical:'DÍA DEL MAESTRO',descripcionObservaciones:'Día del Maestro'}]; window.renderCarga();});
   const editable = page.locator('td[tabindex="0"]').nth(1);
   await editable.waitFor();
   assert.equal(await editable.textContent(), 'P');
@@ -233,23 +243,23 @@ try {
   await editable.focus();
   await page.keyboard.press('a');
   await page.waitForFunction(() => window.pendingAttendance === true);
-  assert.equal(await page.getByRole('button', {name:'Imprimir / Vista Previa A4'}).isDisabled(), true);
+  assert.equal(await page.getByRole('button', {name:/Imprimir/}).count(), 0);
   await page.keyboard.press('p');
   await page.waitForFunction(() => window.pendingAttendance === false);
-  assert.equal(await page.getByRole('button', {name:'Guardar Cambios'}).isDisabled(), true);
+  assert.equal(await page.getByRole('button', {name:'Guardar cambios'}).isDisabled(), true);
   await page.locator('textarea').fill('Nota pendiente');
   await page.waitForFunction(() => window.pendingAttendance === true);
   await page.getByRole('button', {name:'Descartar cambios'}).click();
   await page.waitForFunction(() => window.pendingAttendance === false);
   assert.equal(await page.locator('textarea').inputValue(), '');
-  assert.equal(await page.getByRole('button', {name:'Imprimir / Vista Previa A4'}).isDisabled(), false);
+  assert.equal(await page.getByRole('button', {name:/Imprimir/}).count(), 0);
   await page.route('**/api/cys/directivo/asistencias/**', route => route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ code: 409, message: 'Conflicto sintético', data: {} }) }));
   await editable.focus();
   await page.keyboard.press('a');
-  await page.getByRole('button', {name:'Guardar Cambios'}).click();
+  await page.getByRole('button', {name:'Guardar cambios'}).click();
   await page.getByText('Es necesario volver a cargar el registro').waitFor();
   assert.equal(await editable.textContent(), 'A');
-  assert.equal(await page.getByRole('button', {name:'Guardar Cambios'}).isDisabled(), true);
+  assert.equal(await page.getByRole('button', {name:'Guardar cambios'}).isDisabled(), true);
   assert.equal(await page.getByRole('button', {name:'Cargar versión guardada'}).count(), 1);
   const listResponse = JSON.stringify({ page: 1, perPage: 500, totalItems: 0, totalPages: 0, items: [] });
   await page.route('**/api/collections/periodos/records**', route => route.fulfill({status:200,contentType:'application/json',body:listResponse}));

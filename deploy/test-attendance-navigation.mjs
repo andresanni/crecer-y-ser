@@ -82,7 +82,11 @@ try{
   assert.equal(await page.getByText('Período de boletines vinculado',{exact:true}).count(),0);
   await page.getByRole('button',{name:'Cancelar',exact:true}).click();
   await page.getByRole('dialog').waitFor({state:'hidden'});
+  assert.equal(await page.getByRole('button',{name:/Imprimir/}).count(),1);
+  assert.equal(await page.getByRole('button',{name:/Calendario/}).count(),1);
   await page.getByPlaceholder('Observaciones manuales al pie...').fill('Cambio pendiente');
+  assert.equal(await page.getByRole('button',{name:/Imprimir/}).isDisabled(),true);
+  assert.equal(await page.getByRole('button',{name:/Calendario/}).isDisabled(),true);
   assert.ok(await page.getByRole('button',{name:'Cursos',exact:true}).isDisabled());
   await page.goBack();
   await page.getByRole('button',{name:'Seguir editando',exact:true}).click();
