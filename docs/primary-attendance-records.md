@@ -171,7 +171,7 @@ Los límites pendientes son: máximo de 24 alumnos por hoja, actualización manu
 
 ## Navegación por mes
 
-La entrada a `/app/asistencias` presenta marzo a diciembre del ciclo seleccionado. Los meses con calendario guardado aparecen como **Abierto**, con color y marca de verificación; los restantes como **Sin abrir**. La navegación continúa al listado de todos los cursos de primaria, ordenados por grado y turno, y luego al registro. El mes sin abrir muestra los cursos y ofrece **Abrir mes**, pero bloquea su carga hasta guardar el calendario.
+La entrada a `/app/asistencias` presenta marzo a diciembre del ciclo seleccionado mediante las mismas tarjetas navegables y grilla adaptable que Bimestres (`NavigationCard`). Los meses con calendario guardado aparecen como **Abierto**, con etiqueta verde y marca de verificación sobre una superficie neutra; los restantes como **Sin abrir**. Toda la tarjeta permite navegar, también mediante teclado. La navegación continúa al listado de todos los cursos de primaria, ordenados por grado y turno, y luego al registro. El mes sin abrir muestra los cursos y ofrece **Abrir mes**, pero bloquea su carga hasta guardar el calendario.
 
 La URL conserva la selección con `?mes=5` y `?mes=5&curso=<id>`, permitiendo recarga, acceso directo y navegación del navegador. Los botones **Cursos** y **Meses** permiten volver al nivel anterior. **Calendario** está disponible en el mes y el registro. Los cambios pendientes bloquean los botones de navegación; si la URL cambia mediante el historial, se conserva la edición hasta confirmar su descarte. Los errores de carga del calendario se muestran con reintento, sin marcar meses como cerrados por un fallo de conexión.
 

@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Row,
-  Col,
   Typography,
   Empty,
   theme,
@@ -25,6 +23,8 @@ import {
 } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
+import { NavigationCard, NavigationCardGrid } from '../../../shared/components/NavigationCard';
+import ui from '../../../shared/styles/ui.module.css';
 import { useAppStore } from '../../../store/appStore';
 import { inscripcionService } from '../../inscripciones/services/inscripcion.service';
 import type { Curso } from '../../inscripciones/models/inscripcion.model';
@@ -210,27 +210,23 @@ export const AsistenciasPage = () => {
       }
     >
       {!cicloActual && <Empty description="Seleccioná un ciclo lectivo" />}
-      {cicloActual && cargandoNavegacion && <Spin style={{ display: 'block', margin: 40 }} />}
+      {cicloActual && cargandoNavegacion && <Card className={ui.loadingPanel}><Spin description="Cargando meses..." /></Card>}
       {errorNavegacion && <Alert type="error" showIcon title={errorNavegacion}
         action={<Button onClick={() => void cargarNavegacion()}>Reintentar</Button>} />}
       {cicloActual && !cargandoNavegacion && !errorNavegacion && !mesSeleccionado && <>
-        <Typography.Title level={5} style={{ marginTop: 0 }}>Seleccionar mes · {cicloActual.ano}</Typography.Title>
-        <Row gutter={[16, 16]}>
+        <NavigationCardGrid>
           {mesesBase.map(({ value, label }) => {
             const abierto = mesesConfigurados.includes(value);
-            return <Col key={value} xs={24} sm={12} lg={8} xl={6}>
-              <Card size="small" style={{ height: '100%', borderColor: abierto ? token.colorSuccessBorder : token.colorBorderSecondary,
-                background: abierto ? token.colorSuccessBg : token.colorBgContainer }}>
-                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-                  <Button aria-label={label} type="link" style={{ padding: 0, fontSize: token.fontSizeLG, fontWeight: 600 }}
-                    onClick={() => setSearchParams({ mes: String(value) })}>{label}<RightOutlined /></Button>
-                  <Tag color={abierto ? 'success' : 'default'} icon={abierto ? <CheckCircleOutlined /> : undefined}>
-                    {abierto ? 'Abierto' : 'Sin abrir'}</Tag>
-                </Space>
-              </Card>
-            </Col>;
+            return <NavigationCard
+              key={value}
+              title={label}
+              marker={<CalendarOutlined />}
+              status={{ label: abierto ? 'Abierto' : 'Sin abrir', color: abierto ? 'success' : 'default',
+                icon: abierto ? <CheckCircleOutlined /> : undefined }}
+              onClick={() => setSearchParams({ mes: String(value) })}
+            />;
           })}
-        </Row>
+        </NavigationCardGrid>
       </>}
       {cicloActual && !cargandoNavegacion && !errorNavegacion && mesSeleccionado > 0 && !cursoSeleccionadoId && (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>

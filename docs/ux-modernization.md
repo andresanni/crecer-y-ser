@@ -14,11 +14,13 @@ La modernización visual fue desarrollada originalmente en la rama `feature/ui-u
 - `MainLayout` es el shell privado: sidebar, navegación móvil, barra superior, breadcrumbs, sesión y `Outlet`.
 - `SectionLayout` es la raíz de cada pantalla operativa: compone el encabezado y el área funcional con separación uniforme.
 - `PageHeader` es una implementación interna de `SectionLayout`: icono, título y acciones opcionales, sin subtítulo.
-- El sidebar usa 200 px desplegado y 64 px contraído, con fondo diferenciado y borde institucional en tono azul. El drawer móvil usa 224 px. Las opciones de `Boletines` se agrupan en un contenedor con guía visual vertical y sangría para sus subsecciones (`Bimestres` y `Constructor`), expresando claramente su jerarquía secundaria.
-- La barra superior usa una altura mínima de 64 px y el contenido aprovecha todo el ancho disponible.
-- `Boletines` presenta sólo dos accesos navegables, `Bimestres` y `Constructor`. La selección de bimestre muestra los períodos directamente, sin bloque introductorio.
+- El sidebar usa 200 px desplegado y 64 px contraído, con fondo azul suave derivado de los tokens del tema, sin borde separador. El menú es transparente para mantener una superficie continua, diferenciada del área de trabajo únicamente por el fondo. El drawer móvil usa 224 px y comparte el fondo. Las opciones de `Boletines` se agrupan en un contenedor con guía visual vertical y sangría para sus subsecciones (`Bimestres` y `Constructor`), expresando claramente su jerarquía secundaria.
+- La barra superior y la franja del logo comparten `--cys-shell-header-height` (64 px). En escritorio el logo se centra dentro de esa altura, sin padding superior adicional del sidebar, y su superficie blanca queda contenida con aire arriba y abajo. La altura de la topbar es fija en escritorio y mínima en móvil. El contenido aprovecha todo el ancho disponible.
+- `Boletines` es exclusivamente un desplegable: abrirlo o cerrarlo conserva la ruta y el contenido de trabajo. Sólo `Bimestres` y `Constructor` navegan. El menú contraído también abre las opciones mediante clic; en móvil abrir el grupo mantiene el drawer visible y elegir una subsección lo cierra. El grupo empieza cerrado fuera de Boletines y abierto en sus rutas. No existe página de atajos; `/app/boletines` redirige a Bimestres por compatibilidad. En breadcrumbs, Boletines es una categoría sin enlace. La selección de bimestre muestra los períodos directamente, sin bloque introductorio.
 
 ## Tipografía y densidad
+
+El marco visual aprobado el 9 de octubre de 2026 utiliza el mismo azul muy claro en la barra lateral, la barra superior y el drawer, derivado de `colorPrimaryBg` (50 %) y `colorBgContainer` (50 %), con textos oscuros y una diferencia sutil respecto del área operativa. La selección se destaca con superficie blanca y texto azul mediante el menú claro nativo. La barra superior forma un marco continuo con el sidebar; `shellHeaderTheme` centraliza los tokens de breadcrumbs, botones de texto y carga, aplicados mediante un ConfigProvider limitado al encabezado. El contenido operativo conserva su tema claro y las etiquetas de ciclo mantienen su significado. La separación se resuelve mediante el fondo, sin borde exterior.
 
 - Manrope para títulos y navegación.
 - Inter para cuerpo, tablas, formularios y controles.
@@ -45,12 +47,19 @@ La modernización visual fue desarrollada originalmente en la rama `feature/ui-u
 | Shell privado | `src/shared/components/MainLayout*` |
 | Pantallas operativas | `src/shared/components/SectionLayout*` |
 | Encabezado de sección | `src/shared/components/PageHeader*` |
+| Tarjetas de selección y grilla adaptable | `src/shared/components/NavigationCard*` |
 | Formularios en modal | `src/shared/components/FormModal*` |
 | Foco de validación | `src/shared/utils/formValidation.ts` |
 | Composición reutilizable menor | `src/shared/styles/ui.module.css` |
 | Estilo propio de una pantalla | CSS Module dentro de su módulo |
 
 `src/index.css` contiene reglas globales e históricas todavía vigentes. Debe reducirse gradualmente al migrar cada área; no es el destino para nuevas reglas específicas.
+
+## Centralización gradual de la zona operativa — 9 de octubre de 2026
+
+La selección de bimestres y meses de asistencia comparte `NavigationCard` y `NavigationCardGrid`. La tarjeta centraliza superficie neutra, borde, radio, espaciado, título, marcador, flecha, interacción y foco; la grilla usa Row/Col de Ant Design con cuatro columnas en escritorio, dos desde 576 px y una en teléfonos. Los módulos aportan título, marcador, acción y estado opcional, sin duplicar el CSS de la tarjeta ni definir paletas locales. Toda la superficie activa la navegación mediante un botón nativo accesible por teclado; el estado también se anuncia como descripción accesible.
+
+Los meses abiertos conservan la etiqueta verde con verificación y texto `Abierto`; el estado no tiñe toda la superficie ni cambia el color de la acción. Los restantes muestran `Sin abrir`. Bimestres conserva su número y nombre, sin inventar estados. El encabezado pertenece a SectionLayout y la selección comienza directamente con las tarjetas. Carga y vacío reutilizan los paneles de `shared/styles/ui.module.css`; los errores mantienen sus alertas operativas. Las demás pantallas se migrarán por composición a medida que se trabaje sobre ellas, conservando el tema Ant Design como fuente de botones y etiquetas.
 
 ## Reglas de implementación
 

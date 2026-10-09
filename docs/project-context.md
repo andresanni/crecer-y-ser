@@ -51,7 +51,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 | `/login` | Acceso institucional |
 | `/carga` | Carga pública mediante token docente |
 | `/app/alumnos` | Directorio y gestión de alumnos |
-| `/app/boletines` | Accesos a Bimestres y Constructor |
+| `/app/boletines` | Redirección de compatibilidad a Bimestres |
 | `/app/boletines/calificaciones` | Bimestres: selección, tablero de carga y revisión |
 | `/app/boletines/constructor` | Constructor de la malla curricular |
 
@@ -106,13 +106,17 @@ Los secretos nuevos conservan SHA-256 para autenticación y una copia AES-256-GC
 
 ## Arquitectura UX/UI
 
+La selección de bimestres y meses de asistencia comparte las tarjetas y grilla adaptables de `src/shared/components/NavigationCard`, con estilos basados en el tema. Cada dominio aporta sus datos, acción y estado opcional; los meses abiertos se distinguen mediante una etiqueta con texto y verificación. Es el primer paso de centralización gradual de la zona operativa, documentado en `docs/ux-modernization.md`.
+
+El marco aprobado el 9 de octubre de 2026 comparte un fondo azul muy claro entre sidebar y topbar, con textos oscuros y sin borde exterior. La franja del logo y la topbar comparten altura de 64 px en escritorio. Boletines funciona exclusivamente como desplegable; sólo sus subsecciones cambian el contenido operativo.
+
 `MainLayout` contiene la navegación, barra superior, breadcrumbs y el `Outlet` de las rutas privadas. Cada pantalla operativa usa `SectionLayout`, que encapsula `PageHeader` y el ritmo vertical con el contenido.
 
 La tipografía de títulos y navegación es Manrope; Inter se reserva para lectura y controles. Los colores, radios y familias tipográficas se centralizan en `src/theme` y las variables globales. Las reglas específicas viven en CSS Modules próximos al componente; `src/index.css` conserva estilos heredados que deben reducirse gradualmente, no ampliarse.
 
 El producto es desktop first para equipos escolares, con validación prioritaria en 1366, 1440 y 1920 px. El soporte móvil sigue siendo obligatorio para navegación, modales y tareas compatibles.
 
-La sección institucional `Bimestres` concentra la selección del período, el seguimiento y la operación por curso. La portada `Boletines` sólo ofrece accesos a `Bimestres` y `Constructor`, sin estadísticas ni consultas propias. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
+La sección institucional `Bimestres` concentra la selección del período, el seguimiento y la operación por curso. `Boletines` es sólo un desplegable de la barra lateral que conserva el área de trabajo hasta elegir `Bimestres` o `Constructor`. Se retiró la portada de atajos; `/app/boletines` redirige a Bimestres por compatibilidad. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
 
 El tablero distingue el avance académico del control operativo. Las etapas `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF` provienen del servidor. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
 

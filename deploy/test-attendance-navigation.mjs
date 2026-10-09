@@ -13,7 +13,10 @@ const server = await createServer({configFile:false,cacheDir:'dist-render/attend
     import React from 'react';
     import {createRoot} from 'react-dom/client';
     import {BrowserRouter} from 'react-router-dom';
-    import {App} from 'antd';
+    import {App,ConfigProvider} from 'antd';
+    import {getAntdTheme} from '/src/theme/themeConfig.ts';
+    import {SeleccionBimestrePage} from '/src/modules/boletines/components/SeleccionBimestrePage.tsx';
+    import {boletinService} from '/src/modules/boletines/services/boletin.service.ts';
     import {AsistenciasPage} from '/src/modules/asistencias/components/AsistenciasPage.tsx';
     import {useAppStore} from '/src/store/appStore.ts';
     import {inscripcionService} from '/src/modules/inscripciones/services/inscripcion.service.ts';
@@ -23,14 +26,16 @@ const server = await createServer({configFile:false,cacheDir:'dist-render/attend
     import '/src/index.css';
     pb.collection=()=>({getFullList:async()=>[]});
     const fixture=${JSON.stringify(fixture)};
-    useAppStore.setState({cicloActual:{id:'synthetic-cycle',ano:2026,actual:true}});
+    useAppStore.setState({cicloActual:{id:'synthetic-cycle',ano:2026,actual:true},isCicloLoading:false});
+    boletinService.getPeriodosByCiclo=async()=>Array.from({length:4},(_,i)=>({id:String(i+1),numeroPeriodo:i+1,nombre:(i+1)+'º Bimestre'}));
     window.months=[3,9]; window.loads=[];
     inscripcionService.getCursos=async()=>[{id:'second',nombre:'2°',nivelNombre:'Primaria',turno:'Mañana'},{id:'first',nombre:'1°',nivelNombre:'Primaria',turno:'Mañana'}];
     calendarioMesService.obtenerMesesPorCiclo=async()=>window.months.map(mes=>({mes}));
     calendarioMesService.obtenerConfiguracion=async(ciclo,mes)=>({revision:0,versionFuentes:'test',ano:2026,mes:null,meses:[],eventos:[]});
     calendarioMesService.guardarConfiguracion=async(ciclo,mes)=>{window.months.push(mes);return {revision:1,versionFuentes:'test',ano:2026,mes:{mes},meses:[],eventos:[]};};
     registroAsistenciaCursoService.obtenerHojaAsistenciaCompleta=async(curso,ciclo,mes)=>{window.loads.push({curso,mes});return {...fixture,curso:{...fixture.curso,id:curso},mesCalendario:{...fixture.mesCalendario,mes}};};
-    createRoot(document.getElementById('root')).render(React.createElement(BrowserRouter,null,React.createElement(App,null,React.createElement(AsistenciasPage))));
+    const screen=location.search.includes('bimestres') ? React.createElement(SeleccionBimestrePage,{onSelectPeriod:id=>window.selectedPeriod=id}) : React.createElement(AsistenciasPage);
+    createRoot(document.getElementById('root')).render(React.createElement(ConfigProvider,{theme:getAntdTheme()},React.createElement(BrowserRouter,null,React.createElement(App,null,screen))));
   `;},
   configureServer(vite){vite.middlewares.use('/__attendance-navigation',async(req,res)=>{res.setHeader('Content-Type','text/html');res.end(await vite.transformIndexHtml('/__attendance-navigation','<html><head><meta charset="UTF-8"></head><body style="margin:0;padding:24px"><div id="root"></div><script type="module" src="/@id/attendance-navigation-test"></script></body></html>'));});}
 }]});
@@ -95,6 +100,28 @@ try{
   await page.getByRole('button',{name:'Septiembre',exact:true}).waitFor();
   await page.screenshot({path:'dist-render/attendance/navigation-mobile.png',fullPage:true});
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+  for(const width of [1366,1440,1920,390]){
+    await page.setViewportSize({width,height:900});
+    await page.goto('http://127.0.0.1:5190/__attendance-navigation');
+    const month=page.getByRole('button',{name:'Marzo',exact:true});
+    await month.waitFor();
+    const monthSize=await month.boundingBox();
+    assert.equal(await month.getAttribute('aria-describedby')!==null,true);
+    await page.screenshot({path:`dist-render/attendance/selection-months-${width}.png`,fullPage:true});
+    await page.goto('http://127.0.0.1:5190/__attendance-navigation?bimestres=1');
+    const period=page.getByRole('button',{name:'1º Bimestre',exact:true});
+    await period.waitFor();
+    const periodSize=await period.boundingBox();
+    assert.ok(Math.abs(monthSize.width-periodSize.width)<1);
+    assert.ok(Math.abs(monthSize.height-periodSize.height)<1, JSON.stringify({width,monthSize,periodSize}));
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth));
+    await page.keyboard.press('Tab');
+    assert.ok(await period.evaluate(button=>button===document.activeElement));
+    assert.equal(await period.evaluate(button=>getComputedStyle(button).outlineStyle),'solid');
+    await page.keyboard.press('Enter');
+    assert.equal(await page.evaluate(()=>window.selectedPeriod),'1');
+    await page.screenshot({path:`dist-render/attendance/selection-bimestres-${width}.png`,fullPage:true});
+  }
   assert.deepEqual(errors,[]);
-  console.log('Navegación verificada: meses, estados, cursos ordenados, apertura de calendario, cambios pendientes, URL, recarga y móvil.');
+  console.log('Navegación verificada: meses, estados, cursos ordenados, apertura de calendario, cambios pendientes, URL, recarga, selección uniforme en 1366/1440/1920/390 px y teclado.');
 }finally{await browser.close();await server.close();}
