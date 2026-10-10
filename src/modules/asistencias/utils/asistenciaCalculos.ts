@@ -146,16 +146,16 @@ export const determinarMarcaDia = (
   const egreso = fechaEgreso ? fechaEgreso.slice(0, 10) : '';
   const esBaja = estadoInscripcion === 'Baja';
 
+  if (!esDiaHabil) {
+    return '';
+  }
+
   if (ingreso && fecha < ingreso) {
     return '---';
   }
 
   if (esBaja && egreso && fecha > egreso) {
     return '---';
-  }
-
-  if (!esDiaHabil) {
-    return '';
   }
 
   if (novedadEstado) {

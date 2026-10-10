@@ -18,6 +18,7 @@ import {
   Alert,
   Statistic,
   Typography,
+  DatePicker,
 } from 'antd';
 import {
   PlusOutlined,
@@ -67,6 +68,7 @@ export const AperturaMesModal = ({
   const [saving, setSaving] = useState<boolean>(false);
   const [versionCalendario, setVersionCalendario] = useState<VersionRegistroAsistencia | null>(null);
   const [guardadoBloqueado, setGuardadoBloqueado] = useState<string | null>(null);
+  const [fechaInicioClases, setFechaInicioClases] = useState<dayjs.Dayjs | null>(null);
   const solicitudMes = useRef(0);
   const mesesConfigurados = useRef<MesCalendarioRecord[]>([]);
   const [resumenDias, setResumenDias] = useState<ReturnType<typeof calcularDiasHabilesYAcumulado> | null>(null);
@@ -112,6 +114,24 @@ export const AperturaMesModal = ({
         }
         setEventos(eventosLocales);
 
+        if (snapshot.fechaInicioClases) {
+          setFechaInicioClases(dayjs(snapshot.fechaInicioClases.slice(0, 10)));
+        } else if (mesNum === 2) {
+          const diasMes = dayjs(`${ano}-02-01`).daysInMonth();
+          const diasBloqueados = new Set(eventosLocales.map((e) => e.dia));
+          let primerHabil: number | null = null;
+          for (let d = 1; d <= diasMes; d++) {
+            const dow = dayjs(`${ano}-02-${String(d).padStart(2, '0')}`).day();
+            if (dow !== 0 && dow !== 6 && !diasBloqueados.has(d)) {
+              primerHabil = d;
+              break;
+            }
+          }
+          setFechaInicioClases(primerHabil ? dayjs(`${ano}-02-${String(primerHabil).padStart(2, '0')}`) : null);
+        } else {
+          setFechaInicioClases(null);
+        }
+
         setResumenDias(calcularHabilesYAcumulado(mesNum, eventosLocales));
       } catch {
         if (solicitud !== solicitudMes.current) return;
@@ -121,7 +141,7 @@ export const AperturaMesModal = ({
         if (solicitud === solicitudMes.current) setLoading(false);
       }
     },
-    [cicloId, message, calcularHabilesYAcumulado]
+    [cicloId, ano, message, calcularHabilesYAcumulado]
   );
 
   useEffect(() => {
@@ -205,7 +225,10 @@ export const AperturaMesModal = ({
       }
 
       if (!versionCalendario) throw new Error('Esperá a que se cargue la configuración del mes.');
-      await calendarioMesService.guardarConfiguracion(cicloId, mesSeleccionado, versionCalendario, listaFinal);
+      const fechaInicioIso = mesSeleccionado === 2
+        ? (fechaInicioClases ? fechaInicioClases.format('YYYY-MM-DD') : '')
+        : undefined;
+      await calendarioMesService.guardarConfiguracion(cicloId, mesSeleccionado, versionCalendario, listaFinal, fechaInicioIso);
       message.success(`Mes de ${NOMBRES_MESES[mesSeleccionado]} configurado exitosamente.`);
       onMesGuardado?.(mesSeleccionado);
       onClose();
@@ -264,6 +287,32 @@ export const AperturaMesModal = ({
               )}
             </Col>
           </Row>
+
+          {mesSeleccionado === 2 && (
+            <Card
+              size="small"
+              title="Inicio de clases del ciclo lectivo"
+              style={{ marginBottom: 12 }}
+            >
+              <Space orientation="vertical" style={{ width: '100%' }} size="small">
+                <Typography.Text type="secondary">
+                  Fecha institucional de inicio de clases para filtrar altas de inicio de ciclo. Los alumnos ingresados en o antes de esta fecha no generarán aviso de alta.
+                </Typography.Text>
+                <Row gutter={[8, 8]} align="middle">
+                  <Col xs={24} sm={12} md={8}>
+                    <DatePicker
+                      format="DD/MM/YYYY"
+                      placeholder="DD/MM/AAAA"
+                      value={fechaInicioClases}
+                      onChange={setFechaInicioClases}
+                      disabledDate={(current) => current && (current.year() !== ano || current.month() !== 1)}
+                      style={{ width: '100%' }}
+                    />
+                  </Col>
+                </Row>
+              </Space>
+            </Card>
+          )}
 
           <Card
             size="small"

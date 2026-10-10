@@ -10,7 +10,6 @@ import {
   Row,
   Col,
   Input,
-  Statistic,
   Badge,
   Alert,
 } from 'antd';
@@ -490,7 +489,8 @@ export const CargaAsistenciaMatrix = ({
           </tbody>
           <tfoot>
             <tr className={styles.footerRow}>
-              <td colSpan={2} style={{ textAlign: 'right' }}>
+              <td className={styles.stickyColLeft1}></td>
+              <td className={styles.stickyColLeft2} style={{ fontWeight: 700, textAlign: 'right' }}>
                 PRESENTES
               </td>
               {dias.map((d) => {
@@ -514,8 +514,8 @@ export const CargaAsistenciaMatrix = ({
       </div>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" title="Inscripción ( 1 + 2 - 3 = 4 )">
+        <Col xs={24} sm={12} md={12} lg={8} xl={{ flex: '1 1 0%' }}>
+          <Card size="small" title="Inscripción ( 1 + 2 - 3 = 4 )" style={{ height: '100%' }}>
             <Space orientation="vertical" size={2} style={{ width: '100%' }}>
               <div>
                 (1) Inscriptos 1er día: <strong>{inscripcion.inscriptosPrimerDia.t}</strong> (V:{' '}
@@ -535,49 +535,62 @@ export const CargaAsistenciaMatrix = ({
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" title="Resumen Asistencia">
-            <Row gutter={8}>
-              <Col span={12}>
-                <Statistic title="Total Asist." value={totalAsistenciasGrilla} />
-              </Col>
-              <Col span={12}>
-                <Statistic title="Total Inasist." value={totalInasistenciasGrilla} />
-              </Col>
-            </Row>
-            <Row gutter={8} style={{ marginTop: 8 }}>
-              <Col span={12}>
-                <Statistic title="Asist. Media" value={asistenciaMediaGrilla} />
-              </Col>
-              <Col span={12}>
-                <Statistic title="% Asistencia" value={`${porcentajeAsistenciaGrilla}%`} />
-              </Col>
-            </Row>
-          </Card>
-        </Col>
-
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" title="Edades y Nacionalidad">
+        <Col xs={24} sm={12} md={12} lg={8} xl={{ flex: '1 1 0%' }}>
+          <Card size="small" title="Alumnos por edad" style={{ height: '100%' }}>
             <Space orientation="vertical" size={2} style={{ width: '100%' }}>
-              <Text strong>Edades:</Text>
               {edades.filas.map((f) => (
                 <div key={f.edad}>
                   {f.edad} años: <strong>{f.t}</strong> (V: {f.v}, M: {f.m})
                 </div>
               ))}
-              <div style={{ marginTop: 6 }}>
-                <Text strong>Nacionalidad:</Text>
-              </div>
               <div>
-                Argentinos: <strong>{nacionalidad.argentinos.t}</strong> | Extranjeros:{' '}
-                <strong>{nacionalidad.extranjeros.t}</strong>
+                Total: <strong>{edades.total.t}</strong> (V: {edades.total.v}, M: {edades.total.m})
               </div>
             </Space>
           </Card>
         </Col>
 
-        <Col xs={24} sm={12} lg={6}>
-          <Card size="small" title="Observaciones del Mes">
+        <Col xs={24} sm={12} md={12} lg={8} xl={{ flex: '1 1 0%' }}>
+          <Card size="small" title="Asistencia" style={{ height: '100%' }}>
+            <Space orientation="vertical" size={2} style={{ width: '100%' }}>
+              <div>
+                Total Asist.: <strong>{totalAsistenciasGrilla}</strong>
+              </div>
+              <div>
+                Total Inasist.: <strong>{totalInasistenciasGrilla}</strong>
+              </div>
+              <div>
+                Asist. Media: <strong>{asistenciaMediaGrilla}</strong>
+              </div>
+              <div>
+                % Asistencia: <strong>{porcentajeAsistenciaGrilla}%</strong>
+              </div>
+            </Space>
+          </Card>
+        </Col>
+
+        <Col xs={24} sm={12} md={12} lg={8} xl={{ flex: '1 1 0%' }}>
+          <Card size="small" title="Nacionalidad" style={{ height: '100%' }}>
+            <Space orientation="vertical" size={2} style={{ width: '100%' }}>
+              <div>
+                Argentinos: <strong>{nacionalidad.argentinos.t}</strong> (V:{' '}
+                {nacionalidad.argentinos.v}, M: {nacionalidad.argentinos.m})
+              </div>
+              <div>
+                Extranjeros: <strong>{nacionalidad.extranjeros.t}</strong> (V:{' '}
+                {nacionalidad.extranjeros.v}, M: {nacionalidad.extranjeros.m})
+              </div>
+              <div>
+                Total: <strong>{nacionalidad.total?.t ?? (nacionalidad.argentinos.t + nacionalidad.extranjeros.t)}</strong> (V:{' '}
+                {nacionalidad.total?.v ?? (nacionalidad.argentinos.v + nacionalidad.extranjeros.v)}, M:{' '}
+                {nacionalidad.total?.m ?? (nacionalidad.argentinos.m + nacionalidad.extranjeros.m)})
+              </div>
+            </Space>
+          </Card>
+        </Col>
+
+        <Col xs={24} sm={12} md={12} lg={8} xl={{ flex: '1 1 0%' }}>
+          <Card size="small" title="Observaciones" style={{ height: '100%' }}>
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
               {registro.observacionesDelMes.length > 0 && (
                 <div style={{ maxHeight: 80, overflowY: 'auto' }}>

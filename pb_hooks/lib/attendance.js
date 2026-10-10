@@ -29,13 +29,17 @@ function context(dao, courseId, cycleId, month) {
   const calendar = months[0]
   if (calendar.getInt("ano") !== cycle.getInt("ano")) throw new BadRequestError("El año del calendario no corresponde al ciclo.")
   const events = records(dao, "eventos_calendario", "mes_calendario_id = {:calendar}", { calendar: calendar.getId() }, "dia,id")
-  const enrollments = records(dao, "inscripciones", "curso_id = {:course} && ciclo_id = {:cycle}", { course: courseId, cycle: cycleId }, "numero_orden,id")
-  const pupils = enrollments.map(item => record(dao, "alumnos", item.getString("alumno_id")))
-  const registrations = records(dao, "registros_asistencia_curso", "curso_id = {:course} && mes_calendario_id = {:calendar}", { course: courseId, calendar: calendar.getId() })
-  const registration = registrations[0]
   const first = String(calendar.getInt("ano")) + "-" + String(month).padStart(2, "0") + "-01"
   const days = new Date(Date.UTC(calendar.getInt("ano"), month, 0)).getUTCDate()
   const last = first.slice(0, 8) + String(days).padStart(2, "0")
+  const allEnrollments = records(dao, "inscripciones", "curso_id = {:course} && ciclo_id = {:cycle}", { course: courseId, cycle: cycleId }, "numero_orden,id")
+  const enrollments = allEnrollments.filter(item => {
+    const entry = item.getString("fecha_ingreso").slice(0, 10)
+    return !entry || entry <= last
+  })
+  const pupils = enrollments.map(item => record(dao, "alumnos", item.getString("alumno_id")))
+  const registrations = records(dao, "registros_asistencia_curso", "curso_id = {:course} && mes_calendario_id = {:calendar}", { course: courseId, calendar: calendar.getId() })
+  const registration = registrations[0]
   const daily = []
   enrollments.forEach(item => {
     records(dao, "asistencias_diarias", "inscripcion_id = {:enrollment} && fecha >= {:first} && fecha <= {:last}", {
@@ -45,12 +49,15 @@ function context(dao, courseId, cycleId, month) {
   const sources = [calendar, ...events, ...enrollments, ...pupils, course, level, cycle].map(dto)
   return { calendar, events, enrollments, pupils, registration, daily, first, last,
     version: $security.sha256(JSON.stringify(canonical(sources))), revision: registration ? registration.getInt("revision") : 0,
-    course, level }
+    course, level, cycle }
 }
 
 function snapshot(data) {
+  const cycleStart = data.cycle ? data.cycle.getString("fecha_inicio_clases") : ""
   return {
     revision: data.revision, versionFuentes: data.version,
+    fechaInicioClases: cycleStart ? cycleStart.slice(0, 10) : "",
+    ciclo: data.cycle ? dto(data.cycle) : null,
     mes: dto(data.calendar), eventos: data.events.map(dto),
     curso: Object.assign(dto(data.course), { expand: { nivel_id: dto(data.level) } }),
     inscripciones: data.enrollments.map((item, index) => Object.assign(dto(item), { expand: { alumno_id: dto(data.pupils[index]) } })),
@@ -130,7 +137,10 @@ function calendarContext(dao, cycleId, month) {
 
 function calendarSnapshot(data) {
   const selected = data.months.find(item => item.getInt("mes") === data.month)
+  const cycleStart = data.cycle ? data.cycle.getString("fecha_inicio_clases") : ""
   return { revision: data.revision, versionFuentes: data.version, ano: data.cycle.getInt("ano"),
+    fechaInicioClases: cycleStart ? cycleStart.slice(0, 10) : "",
+    ciclo: dto(data.cycle),
     mes: selected ? dto(selected) : null, meses: data.months.map(dto),
     eventos: selected ? data.events.filter(item => item.getString("mes_calendario_id") === selected.getId()).map(dto) : [] }
 }
@@ -153,7 +163,7 @@ function workingDays(year, month, events) {
 }
 
 function saveCalendar(c) {
-  const body = new DynamicModel({ expectedRevision: -1, expectedVersionFuentes: "", eventos: [] })
+  const body = new DynamicModel({ expectedRevision: -1, expectedVersionFuentes: "", eventos: [], fechaInicioClases: "" })
   c.bind(body)
   const payload = JSON.parse(JSON.stringify(body))
   if (!Number.isInteger(payload.expectedRevision) || payload.expectedRevision < 0 || !Array.isArray(payload.eventos) || payload.eventos.length > 31) throw new BadRequestError("Configuración de calendario inválida.")
@@ -200,6 +210,12 @@ function saveCalendar(c) {
         dao.saveRecord(item)
       }
     })
+    if (typeof payload.fechaInicioClases === "string") {
+      if (payload.fechaInicioClases && !/^\d{4}-\d{2}-\d{2}$/.test(payload.fechaInicioClases)) {
+        throw new BadRequestError("Fecha de inicio de clases inválida.")
+      }
+      data.cycle.set("fecha_inicio_clases", payload.fechaInicioClases ? payload.fechaInicioClases + " 00:00:00" : "")
+    }
     data.cycle.set("revision_calendario", data.revision + 1)
     dao.saveRecord(data.cycle)
     result = calendarSnapshot(calendarContext(dao, data.cycle.getId(), data.month))

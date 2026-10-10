@@ -28,7 +28,7 @@ const fixture = {
   })),
   inscripcion: { inscriptosPrimerDia: { v: 3, m: 1, t: 4 }, entradosPosteriormente: movement, salidosEnElMes: movement, quedanUltimoDia: { v: 3, m: 1, t: 4 } },
   edades: { filas: [{ edad: 6, v: 1, m: 0, t: 1 }, { edad: 7, v: 1, m: 1, t: 2 }, { edad: 8, v: 1, m: 0, t: 1 }], total: { v: 3, m: 1, t: 4 } },
-  nacionalidad: { argentinos: { v: 3, m: 1, t: 4 }, extranjeros: emptyCount },
+  nacionalidad: { argentinos: { v: 3, m: 1, t: 4 }, extranjeros: emptyCount, total: { v: 3, m: 1, t: 4 } },
   asistenciaGeneral: { totAsistencia: 79, totInasistencia: 5, porcentajeAsistencia: 94, porcentajeInasistencia: 6, asistenciaMedia: 4 },
   observacionesDelMes: ['Día del Maestro', 'Una observación extensa de ejemplo que debe continuar en otra línea dentro del recuadro, sin invadir las celdas de convivencia ni superar el borde derecho de la hoja.'],
 };
@@ -94,6 +94,9 @@ try {
   assert.equal(await page.locator('[data-field="header.month"]').textContent(), 'SEPTIEMBRE');
   assert.equal(await page.locator('[data-event-day]').count(), 1);
   assert.equal(await page.locator('[data-event-day="11"]').textContent(), 'DÍA DEL MAESTRO');
+  assert.equal(await page.locator('[data-event-line="11"]').count(), 1);
+  const eventLineY1 = await page.locator('[data-event-line="11"]').evaluate(el => Number(el.getAttribute('y1')));
+  assert.ok(eventLineY1 > 200 && eventLineY1 < 370);
   assert.equal(await page.locator('[data-day-rows="1"]').count(), 1);
   assert.equal(await page.locator('[data-day-rows="14"]').count(), 1);
   assert.equal(await page.locator('[data-day-rows="25"]').count(), 1);
@@ -195,8 +198,10 @@ try {
     alumnos:window.fixture.alumnos.map(student=>({...student,bajaDesdeDia:1,marcasPorDia:{4:'P',25:'P'}}))}));
   await page.waitForFunction(()=>document.querySelector('[data-field="header.month"]')?.textContent==='FEBRERO');
   assert.equal(await page.locator('[data-event-day="4"]').count(),0);
+  assert.equal(await page.locator('[data-event-line="4"]').count(),0);
   assert.equal(await page.locator('[data-field="students.0.attendance.4"]').count(),0);
   assert.equal(await page.locator('[data-field="dailyTotals.4"]').count(),0);
+  assert.equal(await page.locator('[data-day-rows="4"]').count(),1);
   assert.ok(await page.locator('[data-withdrawal-from]').evaluateAll(lines=>lines.every(line=>Number(line.dataset.withdrawalFrom)>4 || Number(line.dataset.withdrawalTo)<4)));
   await page.locator('svg[role="img"]').screenshot({path:path.join(output,'february-no-class-screen.png')});
   await page.emulateMedia({media:'print'});
@@ -238,6 +243,14 @@ try {
   assert.ok(rowHeights.every(height => height <= 40), JSON.stringify(rowHeights));
   assert.equal(await page.getByRole('button',{name:/Calendario/}).count(),0);
   assert.equal(await page.getByRole('button',{name:/Imprimir/}).count(),0);
+  const cardTitles = await page.locator('.ant-card-head-title').allTextContents();
+  assert.deepEqual(cardTitles, [
+    'Inscripción ( 1 + 2 - 3 = 4 )',
+    'Alumnos por edad',
+    'Asistencia',
+    'Nacionalidad',
+    'Observaciones',
+  ]);
   await page.locator('table').first().screenshot({path:path.join(output,'attendance-grid-31-days.png')});
   await page.setViewportSize({width:900,height:1000});
   assert.equal(await page.locator('table').first().evaluate(table => table.parentElement.scrollWidth > table.parentElement.clientWidth), true);

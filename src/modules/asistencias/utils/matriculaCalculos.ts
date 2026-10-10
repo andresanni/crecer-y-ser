@@ -56,7 +56,8 @@ const sumarAlConteo = (conteo: ConteoPorSexo, sexo?: string): void => {
 export const calcularMovimientosInscripcion = (
   alumnos: AlumnoMatriculaInput[],
   ano: number,
-  mes: number
+  mes: number,
+  fechaInicioClases?: string
 ): ResumenInscripcionMovimientos => {
   const mesPad = String(mes).padStart(2, '0');
   const primerDiaMes = `${ano}-${mesPad}-01`;
@@ -67,13 +68,19 @@ export const calcularMovimientosInscripcion = (
   const entradosPosteriormente = crearDetalleCero();
   const salidosEnElMes = crearDetalleCero();
 
+  const fechaInicioCorta = fechaInicioClases ? fechaInicioClases.slice(0, 10) : '';
+  const fechaCorteInicio =
+    fechaInicioCorta && fechaInicioCorta >= primerDiaMes && fechaInicioCorta <= ultimoDiaMes
+      ? fechaInicioCorta
+      : primerDiaMes;
+
   for (const item of alumnos) {
     const fechaIn = item.fechaIngreso ? item.fechaIngreso.slice(0, 10) : '';
     const fechaOut = item.fechaEgreso ? item.fechaEgreso.slice(0, 10) : '';
     const esBaja = item.estado === 'Baja';
 
-    const ingresoAntesOEnPrimerDia = !fechaIn || fechaIn <= primerDiaMes;
-    const ingresoDespuesDelPrimerDia = Boolean(fechaIn && fechaIn > primerDiaMes && fechaIn <= ultimoDiaMes);
+    const ingresoAntesOEnPrimerDia = !fechaIn || fechaIn <= fechaCorteInicio;
+    const ingresoDespuesDelPrimerDia = Boolean(fechaIn && fechaIn > fechaCorteInicio && fechaIn <= ultimoDiaMes);
     const egresoAntesDelPrimerDia = Boolean(esBaja && fechaOut && fechaOut < primerDiaMes);
     const egresoDuranteElMes = Boolean(esBaja && fechaOut && fechaOut >= primerDiaMes && fechaOut <= ultimoDiaMes);
 

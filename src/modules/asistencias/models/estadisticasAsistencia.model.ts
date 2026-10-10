@@ -80,6 +80,7 @@ export interface ResumenAsistenciaAlumno {
 }
 
 export interface RegistroMensualCompleto extends VersionRegistroAsistencia {
+  fechaInicioClases?: string;
   mesCalendario: MesCalendario;
   curso: Curso;
   materias: MateriaCalificada[];

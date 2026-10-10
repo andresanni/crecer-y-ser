@@ -96,21 +96,25 @@ export const registroAsistenciaCursoService = {
     }
 
     const curso: Curso = cursoAdapter(snapshot.curso);
-    const inscripcionesDelCurso = snapshot.inscripciones;
+    const ano = mesCalendario.ano;
+    const mesPad = String(mes).padStart(2, '0');
+    const primerDiaMes = `${ano}-${mesPad}-01`;
+    const diasEnElMes = dayjs(primerDiaMes).daysInMonth();
+    const ultimoDiaMes = `${ano}-${mesPad}-${String(diasEnElMes).padStart(2, '0')}`;
 
-    const inscripcionesRecords = inscripcionesDelCurso.filter(inscripcion => inscripcion.cursada_estado !== 'SIN_CURSADA');
+    const inscripcionesDelCurso = snapshot.inscripciones;
+    const inscripcionesRecords = inscripcionesDelCurso.filter(inscripcion => {
+      if (inscripcion.cursada_estado === 'SIN_CURSADA') return false;
+      const fechaIngresoCorta = inscripcion.fecha_ingreso ? inscripcion.fecha_ingreso.slice(0, 10) : '';
+      if (fechaIngresoCorta && fechaIngresoCorta > ultimoDiaMes) return false;
+      return true;
+    });
 
     inscripcionesRecords.sort((a, b) => {
       const ordA = a.numero_orden && a.numero_orden > 0 ? a.numero_orden : Infinity;
       const ordB = b.numero_orden && b.numero_orden > 0 ? b.numero_orden : Infinity;
       return ordA === ordB ? 0 : ordA - ordB;
     });
-
-    const ano = mesCalendario.ano;
-    const mesPad = String(mes).padStart(2, '0');
-    const primerDiaMes = `${ano}-${mesPad}-01`;
-    const diasEnElMes = dayjs(primerDiaMes).daysInMonth();
-    const ultimoDiaMes = `${ano}-${mesPad}-${String(diasEnElMes).padStart(2, '0')}`;
 
     const inscripcionIds = inscripcionesRecords.map((i) => i.id);
     const novedades = snapshot.novedades.map(asistenciaDiariaAdapter);
@@ -301,7 +305,15 @@ export const registroAsistenciaCursoService = {
       }
 
       const fechaIngresoCorta = insc.fecha_ingreso ? insc.fecha_ingreso.slice(0, 10) : '';
-      if (fechaIngresoCorta && fechaIngresoCorta >= primerDiaMes && fechaIngresoCorta <= ultimoDiaMes) {
+      const fechaInicioClasesCorta = snapshot.fechaInicioClases ? snapshot.fechaInicioClases.slice(0, 10) : '';
+      const esAltaTardia = Boolean(
+        fechaIngresoCorta &&
+        fechaIngresoCorta >= primerDiaMes &&
+        fechaIngresoCorta <= ultimoDiaMes &&
+        (!fechaInicioClasesCorta || fechaIngresoCorta > fechaInicioClasesCorta)
+      );
+
+      if (esAltaTardia) {
         const diaIngreso = dayjs(fechaIngresoCorta).date();
         const etiquetaAlta = `ALTA ${diaIngreso}/${mes}`;
         obsPartes.push(etiquetaAlta);
@@ -370,7 +382,7 @@ export const registroAsistenciaCursoService = {
       destinoEgreso: i.destino_egreso,
     }));
 
-    const inscripcion = calcularMovimientosInscripcion(matriculaInputs, ano, mes);
+    const inscripcion = calcularMovimientosInscripcion(matriculaInputs, ano, mes, snapshot.fechaInicioClases);
 
     const alumnosEstadisticas = inscripcionesRecords
       .filter((i) => permaneceAlUltimoDia({ fechaIngreso: i.fecha_ingreso, fechaEgreso: i.fecha_egreso, estado: i.estado }, ultimoDiaMes))
@@ -403,6 +415,7 @@ export const registroAsistenciaCursoService = {
     return {
       revision: snapshot.revision,
       versionFuentes: snapshot.versionFuentes,
+      fechaInicioClases: snapshot.fechaInicioClases,
       mesCalendario,
       curso,
       materias: materiasCalificadas,

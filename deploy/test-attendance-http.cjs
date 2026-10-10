@@ -62,9 +62,9 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     await staff.collection('users').authWithPassword('attendance-staff@example.local', password);
     const calendar = loadSource('services/calendarioMes.service.ts', staff).calendarioMesService;
     const monthly = loadSource('services/registroAsistenciaCurso.service.ts', staff).registroAsistenciaCursoService;
-    const configure = async (month, events = []) => {
+    const configure = async (month, events = [], fechaInicioClases) => {
       const current = await calendar.obtenerConfiguracion(cycle.id, month);
-      return calendar.guardarConfiguracion(cycle.id, month, current, events);
+      return calendar.guardarConfiguracion(cycle.id, month, current, events, fechaInicioClases);
     };
     const configured = await configure(5, [{ dia: 1, tipo: 'FERIADO', textoCeldaVertical: 'FERIADO', descripcionObservaciones: 'Feriado sintético' }]);
     const month = configured.mes;
@@ -76,7 +76,7 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     assert.equal(initial.revision, 0);
     await monthly.guardarCambios(initial, [{ inscripcionId: enrollments[0].id, fecha: '2026-05-04', estado: 'IT' }, { inscripcionId: enrollments[0].id, fecha: '2026-05-05', estado: 'A' }], 'Nota sintética');
     const record = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 5);
-    assert.equal(record.alumnos.length, 4);
+    assert.equal(record.alumnos.length, 3);
     assert.equal(record.alumnos[0].llegadasTarde, 1);
     assert.equal(record.alumnos[0].inasistencias, 1);
     assert.equal(record.alumnos[0].calificacionesMaterias[material.id], 'AL7');
@@ -151,6 +151,7 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     assert.equal(ungraded.alumnos[0].calificacionesMaterias[material.id], '');
     await admin.collection('evaluaciones_materia').update(pendingEvaluation.id, { calificacion_general_id: note.id });
     const completedGrades = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 7);
+    assert.equal(completedGrades.alumnos.length, 4);
     assert.equal(completedGrades.alumnos[0].calificacionesMaterias[material.id], 'AL7');
     assert.equal(completedGrades.alumnos[0].marcasPorDia[1], 'A');
     assert.equal(completedGrades.observacionesAdicionales, 'A la espera de notas');
@@ -173,13 +174,18 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     const withoutClass = (first, last) => Array.from({ length: last - first + 1 }, (_, index) => ({
       dia: first + index, tipo: 'SIN_CLASES', textoCeldaVertical: 'No imprimir', descripcionObservaciones: 'No imprimir',
     }));
-    const february = await configure(2, withoutClass(1, 24));
+    const february = await configure(2, withoutClass(1, 24), '2026-02-25');
+    assert.equal(february.fechaInicioClases, '2026-02-25');
     assert.equal(february.mes.total_dias_habiles, 3);
     assert.equal(february.mes.dias_habiles_acumulados, 3);
     assert.ok(february.eventos.every(event => event.texto_celda_vertical === '' && event.descripcion_observaciones === ''));
     assert.equal((await calendar.obtenerMesPorCicloYNumero(cycle.id, 6)).diasHabilesAcumulados, 86);
     await admin.collection('inscripciones').update(enrollments[0].id, { fecha_ingreso: '2026-02-25' });
     const februarySheet = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 2);
+    assert.equal(februarySheet.alumnos.length, 1);
+    assert.equal(februarySheet.fechaInicioClases, '2026-02-25');
+    assert.equal(februarySheet.alumnos[0].observacion, '');
+    assert.equal(februarySheet.observacionesDelMes.some(text => text.includes('Alta')), false);
     assert.equal(februarySheet.alumnos[0].asistencias, 3);
     assert.equal(februarySheet.alumnos[0].inasistencias, 0);
     assert.equal(februarySheet.observacionesDelMes.some(text => text.includes('No imprimir')), false);

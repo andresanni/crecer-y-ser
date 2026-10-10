@@ -55,6 +55,8 @@
   left: 0;
   position: sticky;
   width: 36px;
+  min-width: 36px;
+  max-width: 36px;
   z-index: 20;
 }
 
@@ -62,7 +64,22 @@
   background: #f8fafc;
   left: 36px;
   position: sticky;
+  width: 220px;
+  min-width: 220px;
+  max-width: 220px;
   text-align: left !important;
+  z-index: 20;
+}
+
+.matrixTable thead th.stickyColLeft1,
+.matrixTable thead th.stickyColLeft2 {
+  background-color: #f8fafc;
+  z-index: 30;
+}
+
+.matrixTable tfoot td.stickyColLeft1,
+.matrixTable tfoot td.stickyColLeft2 {
+  background-color: #f8fafc;
   z-index: 20;
 }
 

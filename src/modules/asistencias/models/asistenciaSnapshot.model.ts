@@ -28,6 +28,7 @@ export interface VersionRegistroAsistencia {
 }
 
 export interface RegistroAsistenciaSnapshot extends VersionRegistroAsistencia {
+  fechaInicioClases?: string;
   mes: MesCalendarioRecord;
   curso: CursoRecord;
   inscripciones: InscripcionConAlumnoRecord[];

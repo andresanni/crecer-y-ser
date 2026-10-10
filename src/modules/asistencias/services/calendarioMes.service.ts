@@ -6,6 +6,7 @@ import type { VersionRegistroAsistencia } from '../models/asistenciaSnapshot.mod
 
 export interface CalendarioSnapshot extends VersionRegistroAsistencia {
   ano: number;
+  fechaInicioClases?: string;
   mes: MesCalendarioRecord | null;
   meses: MesCalendarioRecord[];
   eventos: EventoCalendarioRecord[];
@@ -23,9 +24,21 @@ export const calendarioMesService = {
     return pb.send(`/api/cys/directivo/calendario/${cicloId}/${mes}`, { method: 'GET' });
   },
 
-  async guardarConfiguracion(cicloId: string, mes: number, version: VersionRegistroAsistencia, eventos: EventoCalendarioPayload[]): Promise<CalendarioSnapshot> {
+  async guardarConfiguracion(
+    cicloId: string,
+    mes: number,
+    version: VersionRegistroAsistencia,
+    eventos: EventoCalendarioPayload[],
+    fechaInicioClases?: string
+  ): Promise<CalendarioSnapshot> {
     return pb.send(`/api/cys/directivo/calendario/${cicloId}/${mes}`, {
-      method: 'PUT', body: { expectedRevision: version.revision, expectedVersionFuentes: version.versionFuentes, eventos },
+      method: 'PUT',
+      body: {
+        expectedRevision: version.revision,
+        expectedVersionFuentes: version.versionFuentes,
+        eventos,
+        ...(fechaInicioClases !== undefined ? { fechaInicioClases } : {}),
+      },
     });
   },
 

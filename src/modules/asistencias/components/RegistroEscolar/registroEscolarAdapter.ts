@@ -48,19 +48,22 @@ export function adaptarRegistroEscolar(registro: RegistroMensualCompleto): Regis
     }
   }
 
-  const eventDays = new Set(registro.eventos.map((e) => e.dia));
-  const blockedDays: number[] = [];
-  for (let d = 1; d <= 31; d++) {
-    if (weekends.includes(d) || eventDays.has(d)) {
-      blockedDays.push(d);
-    }
-  }
+  const noClassDays = registro.eventos.filter((e) => e.tipo === 'SIN_CLASES').map((e) => e.dia);
+  const noClassSet = new Set(noClassDays);
 
   const events: EventoColumna[] = registro.eventos.filter((e) => e.tipo !== 'SIN_CLASES').map((e) => ({
     dia: e.dia,
     texto: (e.textoCeldaVertical || e.tipo).toUpperCase(),
     observation: e.descripcionObservaciones,
   }));
+
+  const sweepEventDays = new Set(events.map((e) => e.dia));
+  const blockedDays: number[] = [];
+  for (let d = 1; d <= 31; d++) {
+    if (weekends.includes(d) || sweepEventDays.has(d)) {
+      blockedDays.push(d);
+    }
+  }
 
   const esPrimerCiclo = /^[123](?:\D|$)/.test(registro.curso.nombre.trim());
 
@@ -104,7 +107,7 @@ export function adaptarRegistroEscolar(registro: RegistroMensualCompleto): Regis
 
   const dailyTotals: Record<number, number | string> = {};
   for (let d = 1; d <= 31; d++) {
-    if (!blockedDays.includes(d)) {
+    if (!blockedDays.includes(d) && !noClassSet.has(d)) {
       let presentes = 0;
       for (const alu of registro.alumnos) {
         const m = alu.marcasPorDia[d];
@@ -196,7 +199,7 @@ export function adaptarRegistroEscolar(registro: RegistroMensualCompleto): Regis
     monthlyTotals: [asist.totAsistencia, asist.totInasistencia, registro.alumnos.reduce((total, alumno) => total + alumno.llegadasTarde, 0)],
     weekends,
     blockedDays,
-    noClassDays: registro.eventos.filter(event => event.tipo === 'SIN_CLASES').map(event => event.dia),
+    noClassDays,
     events,
     observations: registro.observacionesDelMes,
     footer,

@@ -8,10 +8,11 @@ const enrollment = loadSource('utils/matriculaCalculos.ts');
 const plain = value => JSON.parse(JSON.stringify(value));
 const missing = () => new ClientResponseError({ status: 404 });
 
-function fixture({ month = 5, linked = 'period', periodNumber = 1, periodCycle = 'cycle', failure, noPeriod = false } = {}) {
+function fixture({ month = 5, linked = 'period', periodNumber = 1, periodCycle = 'cycle', failure, noPeriod = false, fechaInicioClases = '' } = {}) {
   const calls = [];
   const student = (id, values = {}) => ({ id, estado: 'Regular', fecha_ingreso: '2026-03-01', numero_orden: 1, posee_apoyos: 'SI', expand: { alumno_id: { id: 'student-' + id, apellidos: 'Sintético', nombres: id, sexo: 'Femenino', fecha_nacimiento: '2018-08-10', nacionalidad: 'Argentina' } }, ...values });
   const records = {
+    ciclos_lectivos: [{ id: 'cycle', ano: 2026, actual: true, fecha_inicio_clases: fechaInicioClases }],
     meses_calendario: [{ id: 'month', ciclo_id: 'cycle', ano: 2026, mes: month, total_dias_habiles: 20, dias_habiles_acumulados: 60, periodo_boletin_id: linked }],
     eventos_calendario: [{ id: 'holiday', mes_calendario_id: 'month', fecha: `2026-${String(month).padStart(2, '0')}-01`, dia: 1, tipo: 'FERIADO', texto_celda_vertical: 'FERIADO', descripcion_observaciones: 'Feriado sintético' }],
     cursos: [{ id: 'course', nombre: '4°', turno: 'Mañana', expand: { nivel_id: { nombre: 'Primario' } } }],
@@ -24,6 +25,7 @@ function fixture({ month = 5, linked = 'period', periodNumber = 1, periodCycle =
     registros_asistencia_curso: [],
   };
   const pb = { send: async () => ({ revision: 0, versionFuentes: 'synthetic-version', mes: records.meses_calendario[0], curso: records.cursos[0],
+    fechaInicioClases: records.ciclos_lectivos[0].fecha_inicio_clases,
     eventos: records.eventos_calendario, inscripciones: records.inscripciones, novedades: records.asistencias_diarias, registroCurso: records.registros_asistencia_curso[0] || null }),
     collection: name => ({
     getFullList: async options => { calls.push({ name, operation: 'list', options }); if (failure?.name === name) throw failure.error; return records[name] || []; },
@@ -183,6 +185,7 @@ test('La baja permanece visible hasta diciembre, conserva el orden y deja de sum
     f.records.inscripciones[1].numero_orden = 11;
     f.records.inscripciones[2].numero_orden = 3;
     f.records.inscripciones[3].numero_orden = 15;
+    f.records.inscripciones[3].fecha_ingreso = '2026-03-01';
     const record = await f.read();
     assert.deepEqual(plain(record.alumnos.map(row => row.numeroOrden)), [3, 9, 11, 15]);
     const withdrawn = record.alumnos.find(row => row.inscripcionId === 'exit');
@@ -271,4 +274,41 @@ test('Sin clases excluye presencias, ausencias, tardanzas y observaciones del re
   assert.equal(after.alumnos[0].llegadasTarde, 0);
   assert.equal(after.alumnos[0].marcasPorDia[4], '');
   assert.equal(after.observacionesDelMes.some(item => item.includes('No imprimir')), false);
+});
+
+test('Fecha de inicio de clases filtra altas de inicio de ciclo en febrero y computa inscriptos 1er día', async () => {
+  const f = fixture({ month: 2, fechaInicioClases: '2026-02-25' });
+  f.records.meses_calendario[0].mes = 2;
+  f.records.inscripciones = [
+    { id: 'standard', estado: 'Regular', fecha_ingreso: '2026-02-25', numero_orden: 1, expand: { alumno_id: { id: 's1', apellidos: 'Pérez', nombres: 'Juan', sexo: 'Masculino', fecha_nacimiento: '2018-08-10', nacionalidad: 'Argentina' } } },
+    { id: 'late', estado: 'Regular', fecha_ingreso: '2026-02-27', numero_orden: 2, expand: { alumno_id: { id: 's2', apellidos: 'Gómez', nombres: 'María', sexo: 'Femenino', fecha_nacimiento: '2018-08-10', nacionalidad: 'Argentina' } } },
+  ];
+  const record = await f.read();
+  const standard = record.alumnos.find(a => a.inscripcionId === 'standard');
+  const late = record.alumnos.find(a => a.inscripcionId === 'late');
+  assert.equal(standard.observacion, '');
+  assert.equal(late.observacion, 'ALTA 27/2');
+  assert.equal(record.observacionesDelMes.some(obs => obs.includes('Pérez')), false);
+  assert.equal(record.observacionesDelMes.some(obs => obs.includes('27. Alta : Gómez, María')), true);
+  assert.equal(record.inscripcion.inscriptosPrimerDia.t, 1);
+  assert.equal(record.inscripcion.entradosPosteriormente.total.t, 1);
+});
+
+test('Las altas tardías no integran la nómina en meses previos a su incorporación y se incorporan en su mes de ingreso', async () => {
+  const fFeb = fixture({ month: 2 });
+  fFeb.records.meses_calendario[0].mes = 2;
+  fFeb.records.inscripciones = [
+    { id: 'standard', estado: 'Regular', fecha_ingreso: '2026-02-25', numero_orden: 1, expand: { alumno_id: { id: 's1', apellidos: 'Pérez', nombres: 'Juan', sexo: 'Masculino', fecha_nacimiento: '2018-08-10', nacionalidad: 'Argentina' } } },
+    { id: 'mayEntry', estado: 'Regular', fecha_ingreso: '2026-05-04', numero_orden: 2, expand: { alumno_id: { id: 's2', apellidos: 'Vázquez', nombres: 'Clara', sexo: 'Femenino', fecha_nacimiento: '2018-08-10', nacionalidad: 'Argentina' } } },
+  ];
+  const febRecord = await fFeb.read();
+  assert.equal(febRecord.alumnos.length, 1);
+  assert.equal(febRecord.alumnos[0].inscripcionId, 'standard');
+
+  const fMay = fixture({ month: 5 });
+  fMay.records.inscripciones = fFeb.records.inscripciones;
+  const mayRecord = await fMay.read();
+  assert.equal(mayRecord.alumnos.length, 2);
+  assert.equal(mayRecord.alumnos[1].inscripcionId, 'mayEntry');
+  assert.equal(mayRecord.alumnos[1].observacion, 'ALTA 4/5');
 });

@@ -332,6 +332,19 @@
           "max": null,
           "noDecimal": true
         }
+      },
+      {
+        "system": false,
+        "id": "cysfinitclases01",
+        "name": "fecha_inicio_clases",
+        "type": "date",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
       }
     ],
     "indexes": [],
