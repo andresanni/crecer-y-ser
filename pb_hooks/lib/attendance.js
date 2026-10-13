@@ -210,7 +210,7 @@ function saveCalendar(c) {
         dao.saveRecord(item)
       }
     })
-    if (typeof payload.fechaInicioClases === "string") {
+    if (data.month === 2 && typeof payload.fechaInicioClases === "string") {
       if (payload.fechaInicioClases && !/^\d{4}-\d{2}-\d{2}$/.test(payload.fechaInicioClases)) {
         throw new BadRequestError("Fecha de inicio de clases inválida.")
       }

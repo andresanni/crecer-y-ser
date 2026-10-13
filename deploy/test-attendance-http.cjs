@@ -192,15 +192,21 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     await assert.rejects(monthly.guardarCambios(februarySheet, [{ inscripcionId: enrollments[0].id, fecha: '2026-02-24', estado: 'A' }], ''), error => error.status === 400);
     await configure(7, withoutClass(20, 31));
     const recess = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 7);
+    assert.equal(recess.fechaInicioClases, '2026-02-25');
     assert.equal(recess.mesCalendario.totalDiasHabiles, 13);
     assert.equal(recess.alumnos[0].asistencias, 12);
     assert.equal(recess.alumnos[0].inasistencias, 1);
     const december = await configure(12, withoutClass(21, 31));
+    assert.equal(december.fechaInicioClases, '2026-02-25');
     assert.equal(december.mes.total_dias_habiles, 14);
     const decemberSheet = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 12);
+    assert.equal(decemberSheet.fechaInicioClases, '2026-02-25');
     assert.equal(decemberSheet.alumnos[0].asistencias, 14);
     assert.equal(decemberSheet.alumnos[0].inasistencias, 0);
     assert.equal(decemberSheet.alumnos[0].marcasPorDia[21], '');
+    const refreshedFebruary = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 2);
+    assert.equal(refreshedFebruary.fechaInicioClases, '2026-02-25');
+    assert.equal(refreshedFebruary.alumnos[0].observacion, '');
     await assert.rejects(calendar.obtenerConfiguracion(cycle.id, 1), error => error.status === 400);
     if (process.env.EXPORT_ATTENDANCE_SCHEMA === '1') {
       const actual = await admin.collections.getFullList();
