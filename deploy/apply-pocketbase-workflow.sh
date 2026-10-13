@@ -38,6 +38,7 @@ test -f "$stage_dir/1790901000_created_attendance_management_collections.js"
 test -f "$stage_dir/1791468903_updated_meses_calendario.js"
 test -f "$stage_dir/1791470000_attendance_transactional_writes.js"
 test -f "$stage_dir/1791549000_attendance_non_class_days.js"
+test -f "$stage_dir/1791555000_added_ciclos_fecha_inicio_clases.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -126,6 +127,7 @@ install -m 0644 "$stage_dir/1790901000_created_attendance_management_collections
 install -m 0644 "$stage_dir/1791468903_updated_meses_calendario.js" /root/pb/pb_migrations/1791468903_updated_meses_calendario.js
 install -m 0644 "$stage_dir/1791470000_attendance_transactional_writes.js" /root/pb/pb_migrations/1791470000_attendance_transactional_writes.js
 install -m 0644 "$stage_dir/1791549000_attendance_non_class_days.js" /root/pb/pb_migrations/1791549000_attendance_non_class_days.js
+install -m 0644 "$stage_dir/1791555000_added_ciclos_fecha_inicio_clases.js" /root/pb/pb_migrations/1791555000_added_ciclos_fecha_inicio_clases.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 
