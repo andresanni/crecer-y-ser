@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Typography, Tag } from 'antd';
+import { Row, Col, Typography } from 'antd';
 import {
   ArrowRightOutlined,
   BookOutlined,
   CheckCircleOutlined,
   InstagramOutlined,
-  StarOutlined,
 } from '@ant-design/icons';
 import { landingData } from '../data/landingData';
 
@@ -66,21 +65,50 @@ export const LandingHero: React.FC<LandingHeroProps> = () => {
 
       <div className="hero-bleed-backdrop" aria-hidden="true">
         <img
-          src="/colegio-fachada.jpg"
-          alt=""
+          src="/Fachada-real.jpg"
+          alt="Fachada del Colegio Crecer y Ser"
           className="hero-bleed-img"
           fetchPriority="high"
         />
-        <div className="hero-bleed-gradient" />
       </div>
 
       <div className="landing-section-inner hero-content">
+
         <Row gutter={[48, 40]} align="middle">
           <Col xs={24} lg={13}>
             <div className="hero-text-block">
-              <Tag className="hero-pill-badge" icon={<StarOutlined style={{ color: '#fbbf24' }} />}>
-                {landingData.badgeText}
-              </Tag>
+              <a
+                href="#contacto"
+                className="hero-pill-badge"
+                aria-label={`${landingData.badgeText}. Ir al formulario de contacto.`}
+              >
+                <span className="hero-badge-beacon" aria-hidden="true">
+                  <span className="hero-badge-beacon-ping" />
+                  <span className="hero-badge-beacon-dot" />
+                </span>
+                <span className="hero-badge-text">{landingData.badgeText}</span>
+                <ArrowRightOutlined className="hero-badge-arrow" aria-hidden="true" />
+              </a>
+
+              <div className="hero-identity-header">
+                <img
+                  src="/escudo-circular.png"
+                  alt={`Escudo Oficial del ${landingData.schoolName}`}
+                  className="hero-escudo-compact"
+                  width="72"
+                  height="72"
+                />
+                <div className="hero-escudo-badge hero-escudo-badge-compact">
+                  <div className="hero-metric-figure">
+                    <BookOutlined />
+                  </div>
+                  <div className="hero-metric-meta">
+                    <span className="hero-metric-label">Nivel Inicial y Primario</span>
+                    <span className="hero-metric-sub">{landingData.schoolCode} · Educación Oficial</span>
+                  </div>
+                </div>
+              </div>
+
               <Title level={1} className="hero-title">
                 <span className="hero-title-institution">{landingData.heroTitle.institution}</span>
                 <span className="hero-title-motto" aria-label={`${landingData.heroTitle.prefix}${landingData.heroTitle.gradient}`}>
@@ -157,30 +185,7 @@ export const LandingHero: React.FC<LandingHeroProps> = () => {
             </div>
           </Col>
 
-          <Col xs={24} lg={11}>
-            <div className="hero-escudo-showcase">
-              <div className="hero-escudo-wrapper">
-                <div className="hero-escudo-halo" />
-                <img
-                  src="/escudo-circular.png"
-                  alt={`Escudo Oficial del ${landingData.schoolName}`}
-                  className="hero-escudo-img"
-                  width="270"
-                  height="270"
-                />
-              </div>
-
-              <div className="hero-escudo-badge">
-                <div className="hero-metric-figure">
-                  <BookOutlined />
-                </div>
-                <div className="hero-metric-meta">
-                  <span className="hero-metric-label">Nivel Inicial y Primario</span>
-                  <span className="hero-metric-sub">{landingData.schoolCode} · Educación Oficial</span>
-                </div>
-              </div>
-            </div>
-          </Col>
+          <Col xs={24} lg={11} className="hero-facade-spacer" aria-hidden="true" />
         </Row>
       </div>
     </section>

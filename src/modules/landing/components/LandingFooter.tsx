@@ -22,7 +22,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = () => {
           <ul className="footer-links-minimal">
             <li><a href="#propuesta">Propuesta</a></li>
             <li><a href="#niveles">Niveles</a></li>
-            <li><a href="#novedades">Novedades</a></li>
+            {landingData.novedades.length > 0 && <li><a href="#novedades">Novedades</a></li>}
             <li><a href="#contacto">Contacto</a></li>
           </ul>
         </div>

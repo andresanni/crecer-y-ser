@@ -146,7 +146,7 @@ export const landingData: LandingData = {
       description:
         'Espacio lúdico y afectivo destinado a estimular la curiosidad natural, el lenguaje y la sociabilización inicial.',
       features: [
-        'Salas de 3, 4 y 5 años',
+        'Salas de 2, 3, 4 y 5 años',
         'Iniciación al inglés y a la música',
         'Desarrollo de la autonomía',
       ],
@@ -161,41 +161,13 @@ export const landingData: LandingData = {
         'Consolidación de competencias fundamentales en un ambiente estructurado, dinámico y participativo.',
       features: [
         'Aprendizaje basado en proyectos',
-        'Inglés intensivo y tecnología',
+        'Inglés, tecnología y robótica',
         'Acompañamiento psicopedagógico',
       ],
     },
     
   ],
-  novedades: [
-    {
-      id: 'reunion-familias',
-      tag: 'Institucional',
-      tagColor: 'blue',
-      date: '10 de Marzo, 2026',
-      title: 'Reunión General de Familias Ciclo Lectivo 2026',
-      excerpt:
-        'Invitamos a todas las familias a la presentación del plan pedagógico y la introducción a la nueva Plataforma Web.',
-    },
-    {
-      id: 'talleres-inscripcion',
-      tag: 'Talleres',
-      tagColor: 'green',
-      date: '15 de Marzo, 2026',
-      title: 'Apertura de Inscripciones a Talleres Extracurriculares',
-      excerpt:
-        'Robótica, Teatro, Deportes e Inglés Avanzado. Consultá la grilla de horarios e inscribite a través de la App.',
-    },
-    {
-      id: 'feria-ciencias',
-      tag: 'Proyectos',
-      tagColor: 'gold',
-      date: '22 de Abril, 2026',
-      title: 'Feria Anual de Ciencias, Arte e Innovación Digital',
-      excerpt:
-        'Nuestros alumnos presentarán trabajos de investigación y creatividad abiertos a toda la comunidad escolar.',
-    },
-  ],
+  novedades: [],
   contacto: {
     direccion: 'Av Olivera 1536, CABA',
     telefonos: '3221-1789 / 3221-3306',
