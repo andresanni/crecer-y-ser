@@ -31,7 +31,7 @@ El contenido estructurado continúa centralizado en `src/modules/landing/data/la
 - enlaces del header, footer y llamados a la acción;
 - métricas o afirmaciones cuantitativas, aunque no sean visibles.
 
-No se incorporan placeholders ni afirmaciones inventadas a `master`.
+No se incorporan placeholders ni afirmaciones inventadas a `master`. La sección de novedades está condicionada a la existencia de elementos en `landingData.novedades`; si el arreglo está vacío, tanto la sección como sus enlaces en el header y footer se omiten para evitar enlaces rotos y datos simulados en producción.
 
 ## Contrato visual
 
@@ -41,8 +41,9 @@ La landing respeta `frontend_guidelines.md` y `docs/ux-modernization.md`:
 - usa exclusivamente el tema claro;
 - evita duplicar estilos compartidos o ampliar selectores globales sin necesidad;
 - prioriza componentes y propiedades nativas de Ant Design;
-- conserva soporte móvil y validación en anchos representativos de móvil, 1366, 1440 y 1920 px;
+- conserva soporte móvil y validación en anchos representativos de móvil, 1366, 1440 y 1920 px, implementando un diseño asimétrico donde el bloque de texto izquierdo respeta el contenedor centrado (`max-width: 1260px; margin: 0 auto;`), la fotografía de fachada se extiende hacia el borde derecho (`right: 0; width: 54%`) con encuadre en `object-position: 35% center` para visualizar la puerta de acceso completa, y cuenta con un difuminado sutil en los bordes superior, derecho e inferior manteniendo la integración suave hacia la izquierda;
 - mantiene navegación por teclado, foco visible, contraste, etiquetas y textos alternativos útiles;
+- la integración de la fotografía de fachada en el Hero prescinde de capas de degradado superpuestas artificiales y utiliza máscaras CSS directas a transparencia (desvanecimiento amplio hacia el texto y micro-viñeta de integración perimetral) para fundirse de forma continua sobre el fondo tonal del Hero, evitando cortes o marcos rígidos;
 - no agrega dependencias de producción sin una necesidad concreta y validada.
 
 ## Formulario de consultas
