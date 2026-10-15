@@ -6,6 +6,10 @@ import { landingData } from '../data/landingData';
 const { Title, Paragraph } = Typography;
 
 export const NovedadesSection: React.FC = () => {
+  if (landingData.novedades.length === 0) {
+    return null;
+  }
+
   return (
     <section id="novedades" className="landing-section">
       <div className="landing-section-inner">
