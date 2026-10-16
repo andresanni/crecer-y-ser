@@ -11,7 +11,8 @@ La landing productiva está disponible en `https://www.creceryser.edu.ar/`. Este
 ## Resultado consolidado
 
 - Contenido institucional y recursos visuales actualizados.
-- Hero, propuesta, niveles, footer y acceso institucional adaptados a móvil.
+- Hero, niveles educativos, propuesta, footer y acceso institucional adaptados a móvil.
+- Secuencia de secciones orientada a presentar primero los niveles educativos inmediatamente tras el hero, seguidos por los pilares de la propuesta pedagógica, manteniendo coherencia de navegación en header y footer.
 - Navegación, enlaces externos y recursos verificados.
 - Formulario conectado a PocketBase y SMTP institucional.
 - Scripts de despliegue ampliados para incluir los hooks de contacto.
@@ -44,6 +45,7 @@ La landing respeta `frontend_guidelines.md` y `docs/ux-modernization.md`:
 - conserva soporte móvil y validación en anchos representativos de móvil, 1366, 1440 y 1920 px, implementando un diseño asimétrico donde el bloque de texto izquierdo respeta el contenedor centrado (`max-width: 1260px; margin: 0 auto;`), la fotografía de fachada se extiende hacia el borde derecho (`right: 0; width: 54%`) con encuadre en `object-position: 35% center` para visualizar la puerta de acceso completa, y cuenta con un difuminado sutil en los bordes superior, derecho e inferior manteniendo la integración suave hacia la izquierda;
 - mantiene navegación por teclado, foco visible, contraste, etiquetas y textos alternativos útiles;
 - la integración de la fotografía de fachada en el Hero prescinde de capas de degradado superpuestas artificiales y utiliza máscaras CSS directas a transparencia (desvanecimiento amplio hacia el texto y micro-viñeta de integración perimetral) para fundirse de forma continua sobre el fondo tonal del Hero, evitando cortes o marcos rígidos;
+- las tarjetas de Niveles Educativos integran fotografías institucionales de actividades (`/JARDIN.jpg` y `/PRIMARIA.jpg`) en el área superior, combinando un degradado suave de disolución perimetral hacia la tonalidad base de cada nivel con un icono institucional squircle flotante centrado sobre la transición, manteniendo limpieza visual sin divisores artificiales; incorpora además un encuadre y escala diferenciados (encuadre bajo y proporción compacta para Inicial; encuadre elevado y escala magnificada para Primaria) que acentúa simpática y visualmente la progresión de estatura y edad de los estudiantes;
 - no agrega dependencias de producción sin una necesidad concreta y validada.
 
 ## Formulario de consultas
