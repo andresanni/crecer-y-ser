@@ -1,19 +1,19 @@
 # Cierre de preparación productiva de la landing
 
-Actualizado: 23 de septiembre de 2026.
+Actualizado: 16 de octubre de 2026.
 
 ## Estado
 
-El trabajo iniciado en `codex/landing-production-ready` fue aprobado, fusionado en `master` mediante el commit de merge `dc865ee` y desplegado en producción. La rama temporal fue eliminada después de comprobar que todo su historial quedó contenido en `master`.
+El trabajo iniciado en `codex/landing-production-ready` fue aprobado, fusionado en `master` mediante el commit de merge `dc865ee` y desplegado en producción. Posteriormente, en la rama `landing_urgent_update` se ejecutó el rediseño estético e institucional completo de la landing pública para consolidar la identidad visual oficial del **Colegio Crecer y Ser (A-1134)**.
 
-La landing productiva está disponible en `https://www.creceryser.edu.ar/`. Este documento conserva el alcance aprobado y las condiciones que deben mantenerse en cambios futuros; ya no describe una rama activa ni una entrega pendiente.
+La landing productiva está disponible en `https://www.creceryser.edu.ar/`. Este documento conserva el alcance aprobado y las condiciones que deben mantenerse en cambios futuros.
 
 ## Resultado consolidado
 
-- Contenido institucional y recursos visuales actualizados.
-- Hero, niveles educativos, propuesta, footer y acceso institucional adaptados a móvil.
-- Secuencia de secciones orientada a presentar primero los niveles educativos inmediatamente tras el hero, seguidos por los pilares de la propuesta pedagógica, manteniendo coherencia de navegación en header y footer.
-- Navegación, enlaces externos y recursos verificados.
+- Identidad visual institucional unificada en torno al escudo circular oficial (`/escudo-circular.png`), la denominación `Instituto Incorporado a la Enseñanza Oficial · Colegio A-1134` y la paleta azul marino (`#1e3a8a`), azul real (`#1d4ed8`), celeste (`#0284c7`), rojo escudo (`#dc2626`) y ámbar cálido (`#d97706`).
+- Header, Hero, Niveles Educativos, Propuesta Pedagógica, Admisiones/Contacto y Footer rediseñados y adaptados a pantallas móviles y de escritorio.
+- Secuencia de secciones orientada a presentar primero los niveles educativos inmediatamente tras el hero, seguidos por los pilares de la propuesta pedagógica y la sección de admisiones/contacto, manteniendo coherencia de navegación en header y footer.
+- Navegación, enlaces externos (`Acadeu`, `Instagram`, `Google Maps`, `mailto:`) y recursos verificados.
 - Formulario conectado a PocketBase y SMTP institucional.
 - Scripts de despliegue ampliados para incluir los hooks de contacto.
 - Lint, build y comprobaciones productivas superadas antes del merge.
@@ -38,14 +38,15 @@ No se incorporan placeholders ni afirmaciones inventadas a `master`. La sección
 
 La landing respeta `frontend_guidelines.md` y `docs/ux-modernization.md`:
 
-- reutiliza los tokens, tipografías y paleta existentes;
-- usa exclusivamente el tema claro;
-- evita duplicar estilos compartidos o ampliar selectores globales sin necesidad;
-- prioriza componentes y propiedades nativas de Ant Design;
-- conserva soporte móvil y validación en anchos representativos de móvil, 1366, 1440 y 1920 px, implementando un diseño asimétrico donde el bloque de texto izquierdo respeta el contenedor centrado (`max-width: 1260px; margin: 0 auto;`), la fotografía de fachada se extiende hacia el borde derecho (`right: 0; width: 54%`) con encuadre en `object-position: 35% center` para visualizar la puerta de acceso completa, y cuenta con un difuminado sutil en los bordes superior, derecho e inferior manteniendo la integración suave hacia la izquierda;
-- mantiene navegación por teclado, foco visible, contraste, etiquetas y textos alternativos útiles;
-- la integración de la fotografía de fachada en el Hero prescinde de capas de degradado superpuestas artificiales y utiliza máscaras CSS directas a transparencia (desvanecimiento amplio hacia el texto y micro-viñeta de integración perimetral) para fundirse de forma continua sobre el fondo tonal del Hero, evitando cortes o marcos rígidos;
-- las tarjetas de Niveles Educativos integran fotografías institucionales de actividades (`/JARDIN.jpg` y `/PRIMARIA.jpg`) en el área superior, combinando un degradado suave de disolución perimetral hacia la tonalidad base de cada nivel con un icono institucional squircle flotante centrado sobre la transición, manteniendo limpieza visual sin divisores artificiales; incorpora además un encuadre y escala diferenciados (encuadre bajo y proporción compacta para Inicial; encuadre elevado y escala magnificada para Primaria) que acentúa simpática y visualmente la progresión de estatura y edad de los estudiantes;
+- reutiliza los tokens, tipografías (`Manrope` e `Inter`) y paleta institucional;
+- usa exclusivamente el tema claro en las secciones de contenido y un cierre institucional en azul marino profundo (`#0b132b -> #070c1b`) para el footer;
+- **Header (`LandingHeader.tsx`)**: incorpora borde superior institucional `#1e3a8a`, lockup con `/escudo-circular.png` sin contenedor artificial + nombre y código `Colegio A-1134`, enlaces con subrayado progresivo y separación clara entre el acceso familiar (`Acadeu`) y el botón secundario de personal (`Gestión Directiva`);
+- **Hero (`LandingHero.tsx`)**: presenta píldora de admisiones con punto indicador rojo (`#dc2626`), encabezado de identidad con escudo circular y leyenda oficial (`Instituto Incorporado a la Enseñanza Oficial · Colegio A-1134`), jerarquía de llamados a la acción (CTA primario sólido hacia `#contacto`, CTA secundario transparente estructurado hacia `#niveles` y barra de chips para `Plataforma Acadeu` y `@colegiocreceryser`), y franja inferior editorial con trayectoria (`+35 años`), niveles y ubicación (`Av Olivera 1536, CABA`). La fotografía de fachada se extiende hacia la derecha (`width: 55%`) con encuadre en `object-position: 0% center` y máscara CSS gradual (alcanzando opacidad plena al `38%`) para liberar la puerta de entrada del sangrado izquierdo;
+- **Títulos de sección**: prescinden de subtítulos superiores redundantes y emplean el tono azul institucional `#1e3a8a` combinado con palabras clave en degradado (`.section-title-accent`) y un filete inferior de `52px`;
+- **Niveles Educativos (`NivelesSection.tsx`)**: las tarjetas integran `/JARDIN.jpg` (encuadre en `center 42%` y `scale(0.98)` para que se aprecie el escudo en la espalda de los uniformes manteniendo el contraste de estatura) y `/PRIMARIA.jpg` (`scale(1.4)`), píldora superior de nivel, iconos vectoriales propios a dos tonos (`InicialLevelIcon` y `PrimariaLevelIcon`) en contenedor squircle flotante, subtítulo de edades/ciclos, caja tonal de características y botón tonal inferior de consulta de vacantes;
+- **Propuesta Pedagógica (`PropuestaSection.tsx`)**: tarjetas con borde superior de acento en degradado, icono en contenedor squircle y etiqueta de dominio (`Proyecto Curricular`, `Competencias Digitales`, `Convivencia y Valores`, `Vida Estudiantil`);
+- **Admisiones y Contacto (`ContactoSection.tsx`)**: tarjetas atómicas para dirección (con enlace a Google Maps), teléfonos, correo (`mailto:`) y horario en la columna izquierda, sin párrafos ni pasos intermedios redundantes; tarjeta de formulario a la derecha con filete superior tricolor institucional, badge de inscripciones abiertas y subtítulo único bajo el encabezado;
+- **Footer (`LandingFooter.tsx`)**: diseño atómico en tres columnas con lockup del escudo circular, accesos a `Acadeu` e `Instagram`, navegación de secciones con acceso discreto a `Gestión Directiva`, y resumen de secretaría;
 - no agrega dependencias de producción sin una necesidad concreta y validada.
 
 ## Formulario de consultas
