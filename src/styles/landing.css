@@ -921,94 +921,138 @@ html {
 
 
 .level-card {
-  border-radius: 24px !important;
+  border-radius: 28px !important;
   height: 100%;
   position: relative;
   overflow: hidden;
   transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
-.level-card .ant-card-body {
-  padding: 32px 32px 34px 32px !important;
+.level-card .ant-card-cover {
+  position: relative;
+  margin: 0 !important;
+  overflow: hidden;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+}
+
+.level-card-media {
+  position: relative;
+  width: 100%;
+  height: 260px;
+  overflow: hidden;
+}
+
+.level-card-img {
+  width: 100%;
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-mask-image: linear-gradient(180deg, #000000 78%, rgba(0, 0, 0, 0.35) 93%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000000 78%, rgba(0, 0, 0, 0.35) 93%, transparent 100%);
 }
 
-.level-accent-bar {
+.level-card-inicial .level-card-img {
+  object-position: center 0%;
+  transform-origin: center center;
+}
+
+.level-card-inicial:hover .level-card-img {
+  transform: scale(1.04);
+}
+
+.level-card-primario .level-card-img {
+  object-position: center 65%;
+  transform: scale(1.4);
+  transform-origin: center 15%;
+}
+
+.level-card-primario:hover .level-card-img {
+  transform: scale(1.45);
+}
+
+.level-card-fade {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 5px;
+  inset: 0;
+  pointer-events: none;
 }
 
-.level-accent-inicial {
-  background: linear-gradient(90deg, #f59e0b, #fbbf24, #f97316);
+.level-fade-inicial {
+  background: linear-gradient(180deg, transparent 75%, rgba(254, 243, 199, 0.25) 88%, rgba(254, 243, 199, 0.9) 97%, #fffbeb 100%);
 }
 
-.level-accent-primario {
-  background: linear-gradient(90deg, #1d4ed8, #2563eb, #38bdf8);
+.level-fade-primario {
+  background: linear-gradient(180deg, transparent 75%, rgba(219, 234, 254, 0.25) 88%, rgba(219, 234, 254, 0.9) 97%, #eff6ff 100%);
 }
 
 .level-card.level-card-inicial {
-  background: linear-gradient(180deg, rgba(254, 243, 199, 0.45) 0%, rgba(255, 255, 255, 0) 150px), #ffffff !important;
-  border: 1.5px solid rgba(245, 158, 11, 0.3) !important;
-  box-shadow: 0 10px 30px -5px rgba(245, 158, 11, 0.1), 0 4px 12px rgba(15, 23, 42, 0.03) !important;
+  background: linear-gradient(180deg, #fffbeb 0%, #ffffff 320px) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.42) !important;
+  box-shadow: 0 14px 34px -8px rgba(245, 158, 11, 0.16), 0 4px 14px rgba(15, 23, 42, 0.04) !important;
 }
 
 .level-card.level-card-inicial:hover {
   transform: translateY(-6px);
-  border-color: rgba(245, 158, 11, 0.65) !important;
-  box-shadow: 0 20px 42px -8px rgba(245, 158, 11, 0.22), 0 8px 18px rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(245, 158, 11, 0.75) !important;
+  box-shadow: 0 22px 46px -8px rgba(245, 158, 11, 0.26), 0 8px 20px rgba(15, 23, 42, 0.06) !important;
 }
 
 .level-card.level-card-primario {
-  background: linear-gradient(180deg, rgba(219, 234, 254, 0.45) 0%, rgba(255, 255, 255, 0) 150px), #ffffff !important;
-  border: 1.5px solid rgba(37, 99, 235, 0.25) !important;
-  box-shadow: 0 10px 30px -5px rgba(37, 99, 235, 0.1), 0 4px 12px rgba(15, 23, 42, 0.03) !important;
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 320px) !important;
+  border: 1.5px solid rgba(37, 99, 235, 0.35) !important;
+  box-shadow: 0 14px 34px -8px rgba(37, 99, 235, 0.16), 0 4px 14px rgba(15, 23, 42, 0.04) !important;
 }
 
 .level-card.level-card-primario:hover {
   transform: translateY(-6px);
-  border-color: rgba(37, 99, 235, 0.65) !important;
-  box-shadow: 0 20px 42px -8px rgba(37, 99, 235, 0.22), 0 8px 18px rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(37, 99, 235, 0.75) !important;
+  box-shadow: 0 22px 46px -8px rgba(37, 99, 235, 0.26), 0 8px 20px rgba(15, 23, 42, 0.06) !important;
+}
+
+.level-card .ant-card-body {
+  padding: 0 32px 34px 32px !important;
+  height: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .level-icon {
-  width: 76px;
-  height: 76px;
-  border-radius: 24px;
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 38px;
-  margin: 6px auto 22px auto;
+  font-size: 32px;
+  margin: -36px auto 20px auto;
+  position: relative;
+  z-index: 3;
   transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease;
 }
 
 .level-icon.level-icon-inicial {
   background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
   color: #d97706;
-  border: 1.5px solid #fde68a;
-  box-shadow: 0 10px 22px -4px rgba(245, 158, 11, 0.26);
+  border: 2px solid #fde68a;
+  box-shadow: 0 10px 24px -4px rgba(245, 158, 11, 0.3);
 }
 
 .level-card-inicial:hover .level-icon-inicial {
-  transform: scale(1.1) rotate(-4deg);
-  box-shadow: 0 14px 28px -4px rgba(245, 158, 11, 0.36);
+  transform: scale(1.08) rotate(-3deg);
+  box-shadow: 0 14px 28px -4px rgba(245, 158, 11, 0.4);
 }
 
 .level-icon.level-icon-primario {
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
   color: #1d4ed8;
-  border: 1.5px solid #bfdbfe;
-  box-shadow: 0 10px 22px -4px rgba(37, 99, 235, 0.26);
+  border: 2px solid #bfdbfe;
+  box-shadow: 0 10px 24px -4px rgba(37, 99, 235, 0.3);
 }
 
 .level-card-primario:hover .level-icon-primario {
-  transform: scale(1.1) rotate(4deg);
-  box-shadow: 0 14px 28px -4px rgba(37, 99, 235, 0.36);
+  transform: scale(1.08) rotate(3deg);
+  box-shadow: 0 14px 28px -4px rgba(37, 99, 235, 0.4);
 }
 
 .level-card-title {
@@ -1024,22 +1068,8 @@ html {
   color: #64748b !important;
   font-size: 15px !important;
   line-height: 1.6 !important;
-  margin-bottom: 24px !important;
+  margin-bottom: 26px !important;
   text-align: center;
-}
-
-.level-card-divider {
-  height: 1.5px;
-  margin: 0 0 24px 0;
-  width: 100%;
-}
-
-.level-divider-inicial {
-  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.3), transparent);
-}
-
-.level-divider-primario {
-  background: linear-gradient(90deg, transparent, rgba(37, 99, 235, 0.25), transparent);
 }
 
 .level-list {
@@ -1366,6 +1396,12 @@ html {
   }
   .propuesta-section {
     padding: 50px 16px 60px 16px;
+  }
+  .level-card-media {
+    height: 200px;
+  }
+  .level-card .ant-card-body {
+    padding: 0 20px 28px 20px !important;
   }
   .feature-card .ant-card-body {
     padding: 22px 18px 18px 18px !important;

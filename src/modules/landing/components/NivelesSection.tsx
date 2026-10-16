@@ -13,7 +13,7 @@ const levelIconMap = {
 
 export const NivelesSection: React.FC = () => {
   return (
-    <section id="niveles" className="landing-section niveles-section alt-bg">
+    <section id="niveles" className="landing-section niveles-section">
       <div className="landing-section-inner">
         <div className="section-header text-center">
           <Tag className="section-tag">OFERTA ACADÉMICA</Tag>
@@ -25,9 +25,24 @@ export const NivelesSection: React.FC = () => {
 
         <Row gutter={[32, 28]} justify="center">
           {landingData.niveles.map((nivel) => (
-            <Col key={nivel.id} xs={24} sm={18} md={11} lg={10}>
-              <Card className={`level-card level-card-${nivel.id}`} bordered={false}>
-                <div className={`level-accent-bar level-accent-${nivel.id}`} />
+            <Col key={nivel.id} xs={24} sm={18} md={12} lg={10}>
+              <Card
+                className={`level-card level-card-${nivel.id}`}
+                bordered={false}
+                cover={
+                  nivel.image ? (
+                    <div className="level-card-media">
+                      <img
+                        src={nivel.image}
+                        alt={nivel.imageAlt || nivel.title}
+                        className="level-card-img"
+                        loading="lazy"
+                      />
+                      <div className={`level-card-fade level-fade-${nivel.id}`} />
+                    </div>
+                  ) : undefined
+                }
+              >
                 <div className={`level-icon level-icon-${nivel.id}`}>
                   {levelIconMap[nivel.iconName]}
                 </div>
@@ -35,7 +50,6 @@ export const NivelesSection: React.FC = () => {
                 <Paragraph className="level-card-text">
                   {nivel.description}
                 </Paragraph>
-                <div className={`level-card-divider level-divider-${nivel.id}`} />
                 <ul className="level-list">
                   {nivel.features.map((feature, i) => (
                     <li key={i}>
