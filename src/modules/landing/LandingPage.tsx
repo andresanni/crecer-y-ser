@@ -19,8 +19,8 @@ export const LandingPage: React.FC = () => {
     <div className="landing-container">
       <LandingHeader onGoToApp={handleGoToApp} />
       <LandingHero onGoToApp={handleGoToApp} />
-      <PropuestaSection />
       <NivelesSection />
+      <PropuestaSection />
       <NovedadesSection />
       <ContactoSection />
       <LandingFooter onGoToApp={handleGoToApp} />

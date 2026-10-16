@@ -10,6 +10,8 @@ export interface NivelEducativo {
   id: string;
   badge: string;
   isFeatured?: boolean;
+  image?: string;
+  imageAlt?: string;
   iconName: 'smile' | 'team' | 'global';
   title: string;
   description: string;
@@ -141,6 +143,8 @@ export const landingData: LandingData = {
     {
       id: 'inicial',
       badge: 'Nivel Inicial',
+      image: '/JARDIN.jpg',
+      imageAlt: 'Alumnos de Nivel Inicial en actividades al aire libre',
       iconName: 'smile',
       title: 'Jardín de Infantes',
       description:
@@ -155,6 +159,8 @@ export const landingData: LandingData = {
       id: 'primario',
       badge: 'Nivel Primario',
       isFeatured: true,
+      image: '/PRIMARIA.jpg',
+      imageAlt: 'Alumnos de Nivel Primario compartiendo en el colegio',
       iconName: 'team',
       title: 'Educación Primaria',
       description:
@@ -165,7 +171,6 @@ export const landingData: LandingData = {
         'Acompañamiento psicopedagógico',
       ],
     },
-    
   ],
   novedades: [],
   contacto: {
