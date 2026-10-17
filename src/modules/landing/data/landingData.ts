@@ -105,40 +105,7 @@ export const landingData: LandingData = {
     label: 'Instagram Institucional',
     handle: '@colegiocreceryser',
   },
-  propuestas: [
-    {
-      id: 'excelencia',
-      iconName: 'book',
-      colorTheme: 'blue',
-      title: 'Excelencia Académica',
-      description:
-        'Planes de estudio integradores con foco en la lectura comprensiva, razonamiento matemático e idiomas.',
-    },
-    {
-      id: 'innovacion',
-      iconName: 'rocket',
-      colorTheme: 'sky',
-      title: 'Innovación y Tecnología',
-      description:
-        'Incorporación de herramientas digitales, robótica y pensamiento computacional desde etapas tempranas.',
-    },
-    {
-      id: 'emocional',
-      iconName: 'heart',
-      colorTheme: 'red',
-      title: 'Educación Emocional',
-      description:
-        'Desarrollo de habilidades socioafectivas, empatía y convivencia armónica en un ámbito contenedor.',
-    },
-    {
-      id: 'deportes',
-      iconName: 'trophy',
-      colorTheme: 'amber',
-      title: 'Talleres & Deportes',
-      description:
-        'Actividades extracurriculares de expresión artística, música, educación física y trabajo en equipo.',
-    },
-  ],
+  propuestas: [],
   niveles: [
     {
       id: 'inicial',
@@ -146,7 +113,7 @@ export const landingData: LandingData = {
       image: '/JARDIN.jpg',
       imageAlt: 'Alumnos de Nivel Inicial en actividades al aire libre',
       iconName: 'smile',
-      title: 'Jardín de Infantes',
+      title: 'Nivel Inicial',
       description:
         'Espacio lúdico y afectivo destinado a estimular la curiosidad natural, el lenguaje y la sociabilización inicial.',
       features: [
@@ -180,3 +147,39 @@ export const landingData: LandingData = {
     horario: 'Lunes a Viernes de 08:00 a 16:30 hs',
   },
 };
+
+export const draftPropuestas: PropuestaPilar[] = [
+  {
+    id: 'excelencia',
+    iconName: 'book',
+    colorTheme: 'blue',
+    title: 'Excelencia Académica',
+    description:
+      'Planes de estudio integradores con foco en la lectura comprensiva, razonamiento matemático e idiomas.',
+  },
+  {
+    id: 'innovacion',
+    iconName: 'rocket',
+    colorTheme: 'sky',
+    title: 'Innovación y Tecnología',
+    description:
+      'Incorporación de herramientas digitales, robótica y pensamiento computacional desde etapas tempranas.',
+  },
+  {
+    id: 'emocional',
+    iconName: 'heart',
+    colorTheme: 'red',
+    title: 'Educación Emocional',
+    description:
+      'Desarrollo de habilidades socioafectivas, empatía y convivencia armónica en un ámbito contenedor.',
+  },
+  {
+    id: 'deportes',
+    iconName: 'trophy',
+    colorTheme: 'amber',
+    title: 'Talleres & Deportes',
+    description:
+      'Actividades extracurriculares de expresión artística, música, educación física y trabajo en equipo.',
+  },
+];
+

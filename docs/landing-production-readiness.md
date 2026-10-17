@@ -1,6 +1,6 @@
 # Cierre de preparación productiva de la landing
 
-Actualizado: 16 de octubre de 2026.
+Actualizado: 17 de octubre de 2026.
 
 ## Estado
 
@@ -32,7 +32,7 @@ El contenido estructurado continúa centralizado en `src/modules/landing/data/la
 - enlaces del header, footer y llamados a la acción;
 - métricas o afirmaciones cuantitativas, aunque no sean visibles.
 
-No se incorporan placeholders ni afirmaciones inventadas a `master`. La sección de novedades está condicionada a la existencia de elementos en `landingData.novedades`; si el arreglo está vacío, tanto la sección como sus enlaces en el header y footer se omiten para evitar enlaces rotos y datos simulados en producción.
+No se incorporan placeholders ni afirmaciones inventadas a `master`. Las secciones de **Últimas Novedades** y **Propuesta Pedagógica** están estrictamente condicionadas a la existencia de elementos en `landingData.novedades` y `landingData.propuestas`. Al estar ambos arreglos vacíos (`[]`), tanto sus componentes (`NovedadesSection.tsx`, `PropuestaSection.tsx`) como sus enlaces en el menú de navegación (`LandingHeader.tsx`), drawer móvil, llamado secundario del hero (`LandingHero.tsx`) y el pie de página (`LandingFooter.tsx`) se omiten automáticamente para evitar mostrar información provisional o falsa a familias y clientes finales mientras el dominio se encuentra activo. La estructura modular, tipada y de estilos permanece 100% armada e intacta (con `draftPropuestas` preservado en `src/modules/landing/data/landingData.ts`) para un reflote inmediato cuando la dirección proporcione la redacción final aprobada.
 
 ## Contrato visual
 
@@ -40,13 +40,13 @@ La landing respeta `frontend_guidelines.md` y `docs/ux-modernization.md`:
 
 - reutiliza los tokens, tipografías (`Manrope` e `Inter`) y paleta institucional;
 - usa exclusivamente el tema claro en las secciones de contenido y un cierre institucional en azul marino profundo (`#0b132b -> #070c1b`) para el footer;
-- **Header (`LandingHeader.tsx`)**: incorpora borde superior institucional `#1e3a8a`, lockup con `/escudo-circular.png` sin contenedor artificial + nombre y código `Colegio A-1134`, enlaces con subrayado progresivo y separación clara entre el acceso familiar (`Acadeu`) y el botón secundario de personal (`Gestión Directiva`);
-- **Hero (`LandingHero.tsx`)**: presenta píldora de admisiones con punto indicador rojo (`#dc2626`), encabezado de identidad con escudo circular y leyenda oficial (`Instituto Incorporado a la Enseñanza Oficial · Colegio A-1134`), jerarquía de llamados a la acción (CTA primario sólido hacia `#contacto`, CTA secundario transparente estructurado hacia `#niveles` y barra de chips para `Plataforma Acadeu` y `@colegiocreceryser`), y franja inferior editorial con trayectoria (`+35 años`), niveles y ubicación (`Av Olivera 1536, CABA`). La fotografía de fachada se extiende hacia la derecha (`width: 55%`) con encuadre en `object-position: 0% center` y máscara CSS gradual (alcanzando opacidad plena al `38%`) para liberar la puerta de entrada del sangrado izquierdo;
+- **Header (`LandingHeader.tsx`)**: incorpora borde superior institucional `#1e3a8a`, lockup con `/escudo-circular.png` sin contenedor artificial + nombre y código `Colegio A-1134`, enlaces con subrayado progresivo y separación clara entre el acceso familiar (`Acadeu`) y el botón secundario de personal (`Gestión Directiva`), dejando visibles únicamente las secciones activas (`Niveles Educativos` y `Admisiones y Contacto`);
+- **Hero (`LandingHero.tsx`)**: presenta píldora de admisiones con punto indicador rojo (`#dc2626`), encabezado de identidad con escudo circular y leyenda oficial (`Instituto Incorporado a la Enseñanza Oficial · Colegio A-1134`), jerarquía de llamados a la acción (CTA primario sólido hacia `#contacto`, CTA secundario adaptativo hacia `#niveles` y barra de chips para `Plataforma Acadeu` y `@colegiocreceryser`), y franja inferior editorial con trayectoria (`+35 años`), niveles y ubicación (`Av Olivera 1536, CABA`). La fotografía de fachada se extiende hacia la derecha (`width: 55%`) con encuadre en `object-position: 0% center` y máscara CSS gradual (alcanzando opacidad plena al `38%`) para liberar la puerta de entrada del sangrado izquierdo;
 - **Títulos de sección**: prescinden de subtítulos superiores redundantes y emplean el tono azul institucional `#1e3a8a` combinado con palabras clave en degradado (`.section-title-accent`) y un filete inferior de `52px`;
-- **Niveles Educativos (`NivelesSection.tsx`)**: las tarjetas integran `/JARDIN.jpg` (encuadre en `center 42%` y `scale(0.98)` para que se aprecie el escudo en la espalda de los uniformes manteniendo el contraste de estatura) y `/PRIMARIA.jpg` (`scale(1.4)`), píldora superior de nivel, iconos vectoriales propios a dos tonos (`InicialLevelIcon` y `PrimariaLevelIcon`) en contenedor squircle flotante, subtítulo de edades/ciclos, caja tonal de características y botón tonal inferior de consulta de vacantes;
-- **Propuesta Pedagógica (`PropuestaSection.tsx`)**: tarjetas con borde superior de acento en degradado, icono en contenedor squircle y etiqueta de dominio (`Proyecto Curricular`, `Competencias Digitales`, `Convivencia y Valores`, `Vida Estudiantil`);
+- **Niveles Educativos (`NivelesSection.tsx`)**: las tarjetas integran `/JARDIN.jpg` (encuadre en `center 42%`) y `/PRIMARIA.jpg` (`scale(1.4)`), encabezadas directamente por el icono vectorial propio a dos tonos (`InicialLevelIcon` y `PrimariaLevelIcon`) en contenedor squircle flotante, título del nivel (`Nivel Inicial` y `Educación Primaria`), breve descripción pedagógica, caja tonal de tres características clave y botón tonal de consulta de vacantes;
+- **Propuesta Pedagógica (`PropuestaSection.tsx`)**: temporalmente archivada / oculta bajo la misma convención de novedades (`landingData.propuestas = []`) para evitar volcar textos mockeados en producción; su arquitectura visual mantiene tarjetas con borde superior de acento en degradado, icono en contenedor squircle y etiqueta de dominio (`Proyecto Curricular`, `Competencias Digitales`, `Convivencia y Valores`, `Vida Estudiantil`);
 - **Admisiones y Contacto (`ContactoSection.tsx`)**: tarjetas atómicas para dirección (con enlace a Google Maps), teléfonos, correo (`mailto:`) y horario en la columna izquierda, sin párrafos ni pasos intermedios redundantes; tarjeta de formulario a la derecha con filete superior tricolor institucional, badge de inscripciones abiertas y subtítulo único bajo el encabezado;
-- **Footer (`LandingFooter.tsx`)**: diseño atómico en tres columnas con lockup del escudo circular, accesos a `Acadeu` e `Instagram`, navegación de secciones con acceso discreto a `Gestión Directiva`, y resumen de secretaría;
+- **Footer (`LandingFooter.tsx`)**: diseño atómico en tres columnas con lockup del escudo circular, accesos a `Acadeu` e `Instagram`, navegación que refleja únicamente las secciones activas del sitio (`Inicio Institucional`, `Niveles Educativos`, `Admisiones y Contacto`) con acceso discreto a `Gestión Directiva`, y resumen de secretaría;
 - no agrega dependencias de producción sin una necesidad concreta y validada.
 
 ## Formulario de consultas

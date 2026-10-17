@@ -1045,12 +1045,10 @@ html {
 
 .level-card-inicial .level-card-img {
   object-position: center 42%;
-  transform: scale(0.98);
-  transform-origin: center 55%;
 }
 
 .level-card-inicial:hover .level-card-img {
-  transform: scale(1.02);
+  transform: scale(1.03);
 }
 
 .level-card-primario .level-card-img {
@@ -1075,36 +1073,6 @@ html {
 
 .level-fade-primario {
   background: linear-gradient(180deg, transparent 75%, rgba(219, 234, 254, 0.25) 88%, rgba(219, 234, 254, 0.9) 97%, #eff6ff 100%);
-}
-
-.level-stage-pill {
-  position: absolute;
-  top: 16px;
-  left: 18px;
-  z-index: 3;
-  display: inline-flex;
-  align-items: center;
-  padding: 5px 13px;
-  border-radius: 999px;
-  font-family: var(--font-heading);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
-}
-
-.level-stage-inicial {
-  background: rgba(255, 251, 235, 0.94);
-  color: #b45309;
-  border: 1px solid rgba(251, 191, 36, 0.55);
-}
-
-.level-stage-primario {
-  background: rgba(239, 246, 255, 0.94);
-  color: #1e3a8a;
-  border: 1px solid rgba(147, 197, 253, 0.65);
 }
 
 .level-card.level-card-inicial {
@@ -1179,23 +1147,6 @@ html {
 .level-card-header-block {
   text-align: center;
   margin-bottom: 20px;
-}
-
-.level-age-meta {
-  display: inline-block;
-  font-family: var(--font-heading);
-  font-size: 12.5px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  letter-spacing: 0.01em;
-}
-
-.level-age-inicial {
-  color: #b45309;
-}
-
-.level-age-primario {
-  color: #1d4ed8;
 }
 
 .level-card-title {
