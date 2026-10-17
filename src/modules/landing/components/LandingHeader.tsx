@@ -39,7 +39,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoToApp }) => {
 
           <nav className="landing-desktop-nav" aria-label="Navegación principal">
             <a href="#niveles">Niveles Educativos</a>
-            <a href="#propuesta">Propuesta Pedagógica</a>
+            {landingData.propuestas.length > 0 && <a href="#propuesta">Propuesta Pedagógica</a>}
             {landingData.novedades.length > 0 && <a href="#novedades">Novedades</a>}
             <a href="#contacto">Admisiones y Contacto</a>
           </nav>
@@ -91,7 +91,9 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({ onGoToApp }) => {
       >
         <div className="landing-mobile-nav">
           <a href="#niveles" onClick={() => setMobileMenuOpen(false)}>Niveles Educativos</a>
-          <a href="#propuesta" onClick={() => setMobileMenuOpen(false)}>Propuesta Pedagógica</a>
+          {landingData.propuestas.length > 0 && (
+            <a href="#propuesta" onClick={() => setMobileMenuOpen(false)}>Propuesta Pedagógica</a>
+          )}
           {landingData.novedades.length > 0 && (
             <a href="#novedades" onClick={() => setMobileMenuOpen(false)}>Novedades</a>
           )}

@@ -141,7 +141,9 @@ export const LandingHero: React.FC<LandingHeroProps> = () => {
 
                   <a href="#niveles" className="hero-secondary-cta">
                     <CompassOutlined className="hero-secondary-cta-icon" />
-                    <span>Conocer Niveles y Propuesta</span>
+                    <span>
+                      {landingData.propuestas.length > 0 ? 'Conocer Niveles y Propuesta' : 'Conocer Niveles Educativos'}
+                    </span>
                   </a>
                 </div>
 

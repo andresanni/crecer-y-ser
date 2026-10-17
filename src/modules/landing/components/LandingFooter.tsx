@@ -67,7 +67,7 @@ export const LandingFooter: React.FC<LandingFooterProps> = ({ onGoToApp }) => {
             <ul className="footer-nav-list">
               <li><a href="#inicio">Inicio Institucional</a></li>
               <li><a href="#niveles">Niveles Educativos</a></li>
-              <li><a href="#propuesta">Propuesta Pedagógica</a></li>
+              {landingData.propuestas.length > 0 && <li><a href="#propuesta">Propuesta Pedagógica</a></li>}
               {landingData.novedades.length > 0 && <li><a href="#novedades">Novedades</a></li>}
               <li><a href="#contacto">Admisiones y Contacto</a></li>
             </ul>
