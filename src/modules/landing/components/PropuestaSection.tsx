@@ -20,6 +20,10 @@ const pillarSubtitleMap: Record<string, string> = {
 };
 
 export const PropuestaSection: React.FC = () => {
+  if (landingData.propuestas.length === 0) {
+    return null;
+  }
+
   return (
     <section id="propuesta" className="landing-section propuesta-section">
       <div className="propuesta-backdrop" aria-hidden="true" />

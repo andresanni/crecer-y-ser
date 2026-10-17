@@ -94,9 +94,6 @@ export const NivelesSection: React.FC = () => {
                         loading="lazy"
                       />
                       <div className={`level-card-fade level-fade-${nivel.id}`} />
-                      <span className={`level-stage-pill level-stage-${nivel.id}`}>
-                        {nivel.badge}
-                      </span>
                     </div>
                   ) : undefined
                 }
@@ -106,9 +103,6 @@ export const NivelesSection: React.FC = () => {
                 </div>
 
                 <div className="level-card-header-block">
-                  <span className={`level-age-meta level-age-${nivel.id}`}>
-                    {nivel.id === 'inicial' ? 'Salas de 2 a 5 años' : '1.º a 7.º Grado · Primer y Segundo Ciclo'}
-                  </span>
                   <Title level={3} className="level-card-title">{nivel.title}</Title>
                   <Paragraph className="level-card-text">
                     {nivel.description}
