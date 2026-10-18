@@ -90,7 +90,7 @@ export const landingData: LandingData = {
     'Comunidad Comprometida',
   ],
   metrics: {
-    historyYears: '+35',
+    historyYears: '35',
     levelsCount: '2',
     commitmentPercentage: '100%',
     platformVersion: '2.0',
