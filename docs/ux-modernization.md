@@ -112,3 +112,60 @@ El flujo de carga docente accesible mediante enlaces mágicos (`/carga`) está o
 - **Tarjetas y criterios pedagógicos**: Los criterios de evaluación se apilan verticalmente en pantallas móviles (≤ 575 px), presentando la descripción en la parte superior y el selector de notas debajo a ancho completo con altura táctil accesible (40 px). Los criterios ya calificados muestran un resumen con acceso cómodo de modificación. La Calificación General adopta idéntico comportamiento de apilamiento vertical.
 - **Barra de guardado y panel de monitoreo**: La barra flotante de cambios pendientes se fija inferiormente con botones táctiles de ancho completo, y el drawer lateral de la guía del curso aprovecha la totalidad del ancho móvil.
 
+## Sistema de identidad institucional y primitivas visuales (Convergencia Landing -> App)
+
+El rediseño institucional de la landing (`landing_urgent_update`, octubre de 2026) estableció un lenguaje visual propio del **Colegio Crecer y Ser (A-1134)**. Para que la futura evolución visual de `/app` y `/carga` comparta la misma identidad sin duplicar reglas por módulo, las siguientes primitivas constituyen la referencia canónica al centralizar tokens en `src/theme/colors.ts`, `src/theme/tokens.ts`, `src/theme/themeConfig.ts` y `src/shared/styles/ui.module.css`:
+
+### 1. Paleta cromática institucional
+
+| Rol | Valor / Rango | Uso canónico |
+| --- | --- | --- |
+| **Azul Marino Institucional** | `#1e3a8a` (hover `#172554`) | Autoridad institucional, títulos principales, bordes superiores de identidad, base de botones primarios e iconos principales. |
+| **Azul Real de Acción** | `#1d4ed8` / `#2563eb` | Foco interactivo, parada final en degradados primarios, bordes activos en hover y enlaces destacados. |
+| **Celeste Académico** | `#0284c7` / `#eff6ff` / `#dbeafe` | Superficies suaves de tarjetas e iconos, acentos tipográficos en degradado (`#1d4ed8 -> #0284c7`) y contenedores de resumen. |
+| **Rojo Escarlata del Escudo** | `#dc2626` / `#fff1f2` / `#be123c` | Indicadores puntuales de vigencia/atención (beacons), remate tricolor institucional y estados críticos o socioemocionales. |
+| **Ámbar Cálido** | `#d97706` / `#fffbeb` / `#fde68a` | Identidad cálida (Nivel Inicial) y advertencias operativas constructivas. |
+| **Neutros Pizarra** | `#0f172a` (títulos), `#1e293b` (controles), `#475569` (cuerpo), `#64748b` (metadatos), `#e2e8f0` / `#cbd5e1` (bordes), `#f8fafc` / `#f1f5f9` (fondos) | Estructura limpia en tema claro, evitando grises puros desaturados. |
+
+### 2. Familia de botones y controles interactivos
+
+1. **Botón Primario Institucional (Sólido con degradado marino)**:
+   - **Fondo**: `linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)` (hover `linear-gradient(135deg, #172554 0%, #1e40af 100%)`).
+   - **Geometría y tipografía**: radio `10px–12px`, fuente `Manrope` (`font-weight: 700`), texto `#ffffff`.
+   - **Elevación**: `box-shadow: 0 8px 20px -4px rgba(30, 58, 138, 0.35)` con micro-elevación `translateY(-1px / -2px)` en hover.
+   - **Aplicación en `/app`**: Acción principal única por pantalla o modal (`Guardar`, `Emitir`, `Generar PDFs`, `Confirmar`).
+
+2. **Botón Secundario Transparente / Outline Estructurado**:
+   - **Fondo**: `#ffffff` o `rgba(255, 255, 255, 0.92)`, borde `1px–1.5px solid #cbd5e1`, color `#1e293b` (`#334155` en variantes compactas de barra superior).
+   - **Hover**: borde `#1d4ed8` o `#93c5fd`, texto `#1e3a8a` / `#1d4ed8`, fondo `#f8fafc` / `#ffffff`, sombra sutil `0 4px 12px rgba(29, 78, 216, 0.08)`.
+   - **Aplicación en `/app`**: Acciones secundarias de cabecera (`PageHeader`), filtros, navegación entre alumnos (`Anterior` / `Siguiente`) y accesos administrativos.
+
+3. **Botón Tonal Contextual**:
+   - **Fondo**: superficie tintada de baja saturación (`#eff6ff` con borde `rgba(59, 130, 246, 0.38)` y texto `#1e3a8a`; o `#fffbeb` con borde `rgba(245, 158, 11, 0.45)` y texto `#b45309`).
+   - **Hover**: incremento suave de saturación del fondo (`#dbeafe` o `#fef3c7`) sin competir con el botón primario sólido.
+   - **Aplicación en `/app`**: Acciones dentro de tarjetas de curso, filas de tabla o paneles laterales (`Editar`, `Revisar apoyos`, `Completar ficha`).
+
+4. **Píldoras de Acceso y Chips (Pill Controls)**:
+   - **Geometría**: `border-radius: 999px`, altura compacta (`34px–36px`), fondo blanco o translúcido con borde `#e2e8f0`, icono a la izquierda e indicador direccional o de estado a la derecha.
+   - **Aplicación en `/app`**: Accesos rápidos, filtros rápidos de estado y enlaces externos o entre módulos.
+
+### 3. Superficies, tarjetas y contenedores
+
+- **Tarjetas con filete superior de identidad**:
+  - Fondo `#ffffff`, radio `16px–24px` (según jerarquía entre tarjeta operativa y contenedor principal), borde `1px solid rgba(226, 232, 240, 0.95)` y sombra suave `0 12px 30px -8px rgba(15, 23, 42, 0.06)`.
+  - Filete superior (`::before` de `3px–5px`) en degradado institucional (`#1e3a8a -> #2563eb`) o tricolor institucional (`#1e3a8a -> #2563eb -> #dc2626`) para destacar contenedores principales, modales o formularios.
+- **Filas / Tarjetas Atómicas Interactivas**:
+  - Contenedores horizontales compactos (`border-radius: 14px–16px`, `padding: 14px 18px`, `border: 1px solid #e2e8f0`) con icono izquierdo en squircle (`44px x 44px`, radio `12px`, fondo `linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)`, borde `rgba(191, 219, 254, 0.8)`, color `#1e3a8a`), etiqueta superior `11.5px` en `#64748b`, valor principal en `Manrope 800` `#0f172a` y metadato inferior.
+- **Cajas Tonales de Agrupación**:
+  - Bloques internos con fondo `rgba(239, 246, 255, 0.65)` y borde `1px solid rgba(191, 219, 254, 0.65)` (o su equivalente ámbar/escarlata según contexto) y radio `14px–16px` para agrupar listas de verificación, requisitos o resúmenes sin recargar con bordes grises pesados.
+
+### 4. Identidad institucional, encabezados y badges
+
+- **Lockup con Escudo Circular**:
+  - Usar siempre `/escudo-circular.png` libre de recuadros blancos artificiales, acompañado por tipografía `Manrope` (`800` para el nombre del colegio, `600` para el código `Colegio A-1134` o rol del sistema) y filete divisor vertical (`2px solid #cbd5e1`) o borde superior (`3px solid #1e3a8a`) en barras de navegación y shells (`MainLayout`, `/login`, `/carga`).
+- **Títulos con Acento Institucional y Economía de Texto**:
+  - Priorizar un único título expresivo en `#1e3a8a` con palabra clave en degradado (`linear-gradient(135deg, #1d4ed8 0%, #2563eb 52%, #0284c7 100%)`) antes que acumular subtítulos, etiquetas superiores o párrafos instructivos redundantes.
+- **Badges con Punto Indicador (Beacon Pills)**:
+  - Píldoras `border-radius: 999px` con fondo `#eff6ff`, borde `#bfdbfe`, texto `#1e3a8a` (`Manrope 700`) y punto circular de `7px–8px` en color semántico (`#dc2626` atención/vigencia, `#16a34a` completado/visado, `#d97706` pendiente).
+
+

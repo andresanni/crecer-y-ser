@@ -10,6 +10,8 @@ export interface NivelEducativo {
   id: string;
   badge: string;
   isFeatured?: boolean;
+  image?: string;
+  imageAlt?: string;
   iconName: 'smile' | 'team' | 'global';
   title: string;
   description: string;
@@ -88,7 +90,7 @@ export const landingData: LandingData = {
     'Comunidad Comprometida',
   ],
   metrics: {
-    historyYears: '+35',
+    historyYears: '35',
     levelsCount: '2',
     commitmentPercentage: '100%',
     platformVersion: '2.0',
@@ -103,46 +105,15 @@ export const landingData: LandingData = {
     label: 'Instagram Institucional',
     handle: '@colegiocreceryser',
   },
-  propuestas: [
-    {
-      id: 'excelencia',
-      iconName: 'book',
-      colorTheme: 'blue',
-      title: 'Excelencia Académica',
-      description:
-        'Planes de estudio integradores con foco en la lectura comprensiva, razonamiento matemático e idiomas.',
-    },
-    {
-      id: 'innovacion',
-      iconName: 'rocket',
-      colorTheme: 'sky',
-      title: 'Innovación y Tecnología',
-      description:
-        'Incorporación de herramientas digitales, robótica y pensamiento computacional desde etapas tempranas.',
-    },
-    {
-      id: 'emocional',
-      iconName: 'heart',
-      colorTheme: 'red',
-      title: 'Educación Emocional',
-      description:
-        'Desarrollo de habilidades socioafectivas, empatía y convivencia armónica en un ámbito contenedor.',
-    },
-    {
-      id: 'deportes',
-      iconName: 'trophy',
-      colorTheme: 'amber',
-      title: 'Talleres & Deportes',
-      description:
-        'Actividades extracurriculares de expresión artística, música, educación física y trabajo en equipo.',
-    },
-  ],
+  propuestas: [],
   niveles: [
     {
       id: 'inicial',
       badge: 'Nivel Inicial',
+      image: '/JARDIN.jpg',
+      imageAlt: 'Alumnos de Nivel Inicial en actividades al aire libre',
       iconName: 'smile',
-      title: 'Jardín de Infantes',
+      title: 'Nivel Inicial',
       description:
         'Espacio lúdico y afectivo destinado a estimular la curiosidad natural, el lenguaje y la sociabilización inicial.',
       features: [
@@ -155,6 +126,8 @@ export const landingData: LandingData = {
       id: 'primario',
       badge: 'Nivel Primario',
       isFeatured: true,
+      image: '/PRIMARIA.jpg',
+      imageAlt: 'Alumnos de Nivel Primario compartiendo en el colegio',
       iconName: 'team',
       title: 'Educación Primaria',
       description:
@@ -165,7 +138,6 @@ export const landingData: LandingData = {
         'Acompañamiento psicopedagógico',
       ],
     },
-    
   ],
   novedades: [],
   contacto: {
@@ -175,3 +147,39 @@ export const landingData: LandingData = {
     horario: 'Lunes a Viernes de 08:00 a 16:30 hs',
   },
 };
+
+export const draftPropuestas: PropuestaPilar[] = [
+  {
+    id: 'excelencia',
+    iconName: 'book',
+    colorTheme: 'blue',
+    title: 'Excelencia Académica',
+    description:
+      'Planes de estudio integradores con foco en la lectura comprensiva, razonamiento matemático e idiomas.',
+  },
+  {
+    id: 'innovacion',
+    iconName: 'rocket',
+    colorTheme: 'sky',
+    title: 'Innovación y Tecnología',
+    description:
+      'Incorporación de herramientas digitales, robótica y pensamiento computacional desde etapas tempranas.',
+  },
+  {
+    id: 'emocional',
+    iconName: 'heart',
+    colorTheme: 'red',
+    title: 'Educación Emocional',
+    description:
+      'Desarrollo de habilidades socioafectivas, empatía y convivencia armónica en un ámbito contenedor.',
+  },
+  {
+    id: 'deportes',
+    iconName: 'trophy',
+    colorTheme: 'amber',
+    title: 'Talleres & Deportes',
+    description:
+      'Actividades extracurriculares de expresión artística, música, educación física y trabajo en equipo.',
+  },
+];
+
