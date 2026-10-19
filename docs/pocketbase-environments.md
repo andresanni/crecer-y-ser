@@ -346,3 +346,24 @@ Las notas de B1/B2 son ficticias por autorización del usuario. Se escribieron 6
 Respaldo previo confirmado: `C:/pocketbase/pb_data/backups/attendance-reset-1791548176193.zip`. Reporte sin identidades personales: `C:/pocketbase/audits/attendance-local-1791548179254.json`. La preparación no es una transacción global: si falla después de empezar, conservar ese respaldo y revisar el estado antes de repetir `--execute`, que vuelve a limpiar la base. No ejecutarlo después de comenzar pruebas manuales si se desea conservarlas.
 
 La verificación leyó los cuatro registros mediante el servicio TypeScript real: nóminas de 11/19, ocho/nueve notas curriculares por alumno, criterios completos y cero novedades persistidas. Mayo de 4.º refleja 17 alumnos al inicio y 19 al cierre. Se conservaron los calendarios existentes de mayo, julio, septiembre y octubre. La ausencia de novedades se presenta como Presente por la regla del dominio; no implica datos de asistencia cargados. `npm run lint` y `npm run build` finalizaron correctamente, con el warning de bundle conocido. No hubo solicitudes a producción ni modificaciones del seed.
+
+## Promoción a producción de registros administrativos y asistencias — 19 de octubre de 2026
+
+PocketBase productivo recibió las 7 migraciones de soporte administrativo y asistencias:
+- `1790860000_school_transfer_and_administrative_records.js`
+- `1790900000_added_enrollment_attendance_fields.js`
+- `1790901000_created_attendance_management_collections.js`
+- `1791468903_updated_meses_calendario.js`
+- `1791470000_attendance_transactional_writes.js`
+- `1791549000_attendance_non_class_days.js`
+- `1791555000_added_ciclos_fecha_inicio_clases.js`
+
+Junto con los hooks `attendance.pb.js`, `lib/attendance.js` y la actualización de `lib/teacherAccess.js`.
+
+Respaldo consistente previo confirmado: `/root/pb/deploy_backups/20261019-174920` (incluye `data.db` de 8.4 MB, `pb_hooks`, `pb_migrations` y `storage`).
+Verificaciones post-despliegue automáticas y remotas aprobadas:
+- Health check PocketBase `200` y DNS operativo.
+- Worker PDF operativo `204`.
+- Endpoints directivos y transaccionales de asistencia y calendario protegidos con `401` ante solicitudes anónimas.
+- Journal de systemd limpio sin fallas al arrancar.
+
