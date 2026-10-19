@@ -1,10 +1,24 @@
 # Registros de Asistencia de Primaria
 
-Actualizado: 9 de octubre de 2026.
+Actualizado: 19 de octubre de 2026.
 
 ## Propósito
 
 Centralizar y automatizar la gestión mensual de los registros oficiales de asistencia y seguimiento pedagógico para los cursos de nivel primario, reemplazando la gestión manual previa en Google Sheets y permitiendo la emisión e impresión directa en formato A4 apaisado conforme a la normativa escolar.
+
+## Salvaguarda institucional: traspaso condicionado a visado directivo — 19 de octubre de 2026
+
+Para garantizar que el registro mensual y la impresión A4 reflejen exclusivamente calificaciones válidas y ratificadas por el equipo de conducción:
+
+1. **Gating estricto por Visado**: Las calificaciones curriculares (`evaluaciones_materia`) y criterios pedagógicos (`evaluaciones_criterios`) persistidos en la base de datos **solo** se traspasan y proyectan en el registro de asistencia del curso y en la hoja A4 para aquellos alumnos cuyo boletín cuente con visado directivo aprobado y no desfasado (`visados_boletin.estado === 'VISADO'` y `revision_visada === revision_contenido`).
+2. **Estados no consolidados**: Mientras el curso permanezca en borrador docente (`BORRADOR_DOCENTE`), en control directivo pendiente (`CONTROL_DIRECTIVO` con `estado: 'PENDIENTE_REVISION'`), o cuando una modificación docente posterior haya incrementado `revision_contenido` por encima de `revision_visada`, las calificaciones de dichos alumnos se conservan en blanco tanto en la proyección de la grilla como en la impresión.
+3. **Operatividad desacoplada**: El módulo de asistencias permanece 100% operativo con independencia del estado de las notas. Los docentes y secretaría pueden registrar y guardar asistencia diaria, computar porcentajes de asistencia, procesar altas/bajas y gestionar observaciones sin bloqueos.
+4. **Indicador de estado en grilla**: En los meses bimestrales evaluativos (Mayo, Julio, Octubre, Diciembre), la barra de estado superior muestra un Tag con el recuento de visados: `Calificaciones (Bimestre N): X/Y visados` (color verde si está 100% visado, o naranja de advertencia si existen pendientes).
+5. **Interceptación de impresión A4**: Al presionar «Imprimir A4» en un mes con calificaciones incompletas, se intercepta la acción mediante un modal interactivo (`modal.confirm`) que informa:
+   - Los alumnos no visados se imprimirán con casilleros en blanco.
+   - Opción «Ir a visar a Boletines», que redirige directamente a `/app/boletines?periodo={periodo_id}`.
+   - Opción «Continuar e imprimir», que habilita la vista previa A4 mostrando un banner de alerta visible.
+   - Opción «Cancelar», que mantiene al usuario en la edición de asistencia.
 
 ## Inicio, fin de cursada y días sin clases — 9 de octubre de 2026
 
@@ -61,8 +75,8 @@ El registro mensual se emite por curso y mes (ej. Mayo, Julio, Octubre) en una s
      - **Octubre**: 3.° Bimestre
      - **Diciembre**: 4.° Bimestre
    - En los demás meses, estas columnas permanecen vacías.
-   - Materias curriculares: Muestran la calificación general de la materia registrada en el boletín. Escala solo conceptual en 1.° ciclo (`AL`, `AV`, `DE`, `EP`, `NA`) y concepto + número en 2.° ciclo (`AL7`, `AV9`, `DE10`).
-   - Trabajo en el aula y Convivencia: Al no poseer calificación general, informan los 5 criterios evaluativos detallados al pie.
+   - Materias curriculares: Muestran la calificación general de la materia registrada en el boletín únicamente si el alumno cuenta con visado directivo aprobado (`visados_boletin.estado === 'VISADO'`) y con versión sincronizada (`revision_visada === revision_contenido`). Escala solo conceptual en 1.° ciclo (`AL`, `AV`, `DE`, `EP`, `NA`) y concepto + número en 2.° ciclo (`AL7`, `AV9`, `DE10`). Si el visado está pendiente o desfasado, la celda queda en blanco.
+   - Trabajo en el aula y Convivencia: Al no poseer calificación general, informan los 5 criterios evaluativos detallados al pie bajo la misma condición de visado directivo aprobado.
    - Columna `OBSERV`: Resoluciones de apoyo pedagógico (ej. `Res. 311/16`) provenientes del legajo y/o novedades de alta/baja (ej. `ALTA 18/5`).
 
 4. **Resumen estadístico al pie**:
@@ -169,7 +183,7 @@ Validación reproducible: `npm run lint`, `npm run build` y `node deploy/test-at
 
 ## Lógica de dominio y persistencia
 
-El servicio consulta calificaciones exclusivamente en mayo, julio, octubre y diciembre. El período se busca siempre por ciclo y número de bimestre, sin utilizar vínculos manuales legados. Si no existe todavía, las calificaciones quedan vacías. Si existe sin evaluaciones o con evaluaciones aún sin nota, los campos también quedan vacíos; al actualizar o abrir la impresión se consultan nuevamente y se incorporan las notas disponibles sin reconfigurar el mes. Los errores de conexión, permisos y servidor se propagan; únicamente un 404 representa la ausencia de un registro. La interfaz diferencia un mes sin abrir de una carga fallida y descarta respuestas de solicitudes anteriores al cambiar la selección.
+El servicio consulta calificaciones exclusivamente en mayo, julio, octubre y diciembre. El período se busca siempre por ciclo y número de bimestre, sin utilizar vínculos manuales legados. Si no existe todavía, las calificaciones quedan vacías. Si existe el bimestre pero el alumno no cuenta con visado directivo aprobado (`visados_boletin`) o la versión visada está desfasada (`revision_visada !== revision_contenido`), las notas curriculares y criterios se conservan en blanco. Únicamente tras el visado formal de Dirección se transfieren las calificaciones al registro de asistencia. Los errores de conexión, permisos y servidor se propagan; únicamente un 404 representa la ausencia de un registro. La interfaz diferencia un mes sin abrir de una carga fallida y descarta respuestas de solicitudes anteriores al cambiar la selección.
 
 Edades y nacionalidad usan las inscripciones que quedan al último día, por decisión confirmada del usuario: incluyen altas hasta ese día, excluyen ingresos futuros y bajas hasta ese día inclusive. La matrícula también excluye ingresos futuros. Las inscripciones confirmadas SIN_CURSADA quedan fuera de la nómina y de los cálculos. La fecha de egreso continúa siendo inclusiva para la asistencia del día; la baja se resta del resumen de matrícula al cierre.
 

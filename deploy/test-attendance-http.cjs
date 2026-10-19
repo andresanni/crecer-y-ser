@@ -74,12 +74,31 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     assert.equal(june.mes.dias_habiles_acumulados, 42);
     const initial = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 5);
     assert.equal(initial.revision, 0);
+    assert.equal(initial.alumnos[0].calificacionesMaterias[material.id], undefined);
+    assert.equal(initial.alumnos[0].visado, false);
+    assert.equal(initial.resumenVisado.alumnosVisados, 0);
+    assert.equal(initial.resumenVisado.completo, false);
+    const instanceB1 = await create('instancias_carga_boletin', {
+      curso_id: course.id,
+      periodo_id: period.id,
+      estado: 'CONTROL_DIRECTIVO',
+      revision: 1,
+    });
+    await create('visados_boletin', {
+      instancia_id: instanceB1.id,
+      inscripcion_id: enrollments[0].id,
+      estado: 'VISADO',
+      revision_contenido: 1,
+      revision_visada: 1,
+    });
     await monthly.guardarCambios(initial, [{ inscripcionId: enrollments[0].id, fecha: '2026-05-04', estado: 'IT' }, { inscripcionId: enrollments[0].id, fecha: '2026-05-05', estado: 'A' }], 'Nota sintética');
     const record = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 5);
     assert.equal(record.alumnos.length, 3);
     assert.equal(record.alumnos[0].llegadasTarde, 1);
     assert.equal(record.alumnos[0].inasistencias, 1);
+    assert.equal(record.alumnos[0].visado, true);
     assert.equal(record.alumnos[0].calificacionesMaterias[material.id], 'AL7');
+    assert.equal(record.resumenVisado.alumnosVisados, 1);
     assert.equal(record.edades.total.t, 2);
     assert.equal(record.nacionalidad.total.t, 2);
     assert.equal(record.inscripcion.quedanUltimoDia.t, 2);
@@ -148,11 +167,26 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     assert.equal(Object.keys(waitingForGrades.alumnos[0].calificacionesMaterias).length, 0);
     const pendingEvaluation = await create('evaluaciones_materia', { inscripcion_id: enrollments[0].id, periodo_id: secondPeriod.id, curso_materia_id: material.id });
     const ungraded = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 7);
-    assert.equal(ungraded.alumnos[0].calificacionesMaterias[material.id], '');
+    assert.equal(ungraded.alumnos[0].calificacionesMaterias[material.id], undefined);
+    assert.equal(ungraded.alumnos[0].visado, false);
     await admin.collection('evaluaciones_materia').update(pendingEvaluation.id, { calificacion_general_id: note.id });
+    const instanceB2 = await create('instancias_carga_boletin', {
+      curso_id: course.id,
+      periodo_id: secondPeriod.id,
+      estado: 'CONTROL_DIRECTIVO',
+      revision: 1,
+    });
+    await create('visados_boletin', {
+      instancia_id: instanceB2.id,
+      inscripcion_id: enrollments[0].id,
+      estado: 'VISADO',
+      revision_contenido: 1,
+      revision_visada: 1,
+    });
     const completedGrades = await monthly.obtenerHojaAsistenciaCompleta(course.id, cycle.id, 7);
     assert.equal(completedGrades.alumnos.length, 4);
     assert.equal(completedGrades.alumnos[0].calificacionesMaterias[material.id], 'AL7');
+    assert.equal(completedGrades.alumnos[0].visado, true);
     assert.equal(completedGrades.alumnos[0].marcasPorDia[1], 'A');
     assert.equal(completedGrades.observacionesAdicionales, 'A la espera de notas');
     assert.equal((await calendar.obtenerConfiguracion(cycle.id, 7)).revision, julyCalendar.revision);

@@ -28,6 +28,7 @@ import type {
   MateriaCalificada,
   RegistroMensualCompleto,
   ResumenAsistenciaAlumno,
+  ResumenVisadoBoletin,
 } from '../models/estadisticasAsistencia.model';
 import {
   calcularDistribucionEdades,
@@ -46,6 +47,25 @@ const COLLECTION_PERIODOS = 'periodos';
 const COLLECTION_CURSO_MATERIAS = 'curso_materias';
 const COLLECTION_EVALUACIONES_MATERIA = 'evaluaciones_materia';
 const COLLECTION_EVALUACIONES_CRITERIOS = 'evaluaciones_criterios';
+const COLLECTION_INSTANCIAS_BOLETIN = 'instancias_carga_boletin';
+const COLLECTION_VISADOS_BOLETIN = 'visados_boletin';
+
+interface InstanciaCargaBoletinRecord {
+  id: string;
+  curso_id: string;
+  periodo_id: string;
+  estado: 'BORRADOR_DOCENTE' | 'CONTROL_DIRECTIVO';
+  revision: number;
+}
+
+interface VisadoBoletinRecord {
+  id: string;
+  instancia_id: string;
+  inscripcion_id: string;
+  estado: 'PENDIENTE_REVISION' | 'VISADO';
+  revision_contenido: number;
+  revision_visada: number | null;
+}
 
 export class MesNoConfiguradoError extends Error {
   constructor(mes: number) {
@@ -129,6 +149,7 @@ export const registroAsistenciaCursoService = {
 
     const numeroPeriodoBoletin = MESES_ENTREGA_BOLETIN[mes];
     let periodoIdBoletin: string | undefined;
+    let nombrePeriodoBoletin = '';
 
     if (numeroPeriodoBoletin) {
       try {
@@ -139,8 +160,42 @@ export const registroAsistenciaCursoService = {
           throw new Error('El período de boletines no corresponde al ciclo y mes seleccionados.');
         }
         periodoIdBoletin = perRecord.id;
+        nombrePeriodoBoletin = perRecord.nombre;
       } catch (error) {
         if (!(error instanceof ClientResponseError && error.status === 404)) throw error;
+      }
+    }
+
+    let instanciaBoletin: InstanciaCargaBoletinRecord | null = null;
+    const visadosValidosSet = new Set<string>();
+
+    if (periodoIdBoletin) {
+      try {
+        instanciaBoletin = await pb.collection(COLLECTION_INSTANCIAS_BOLETIN).getFirstListItem<InstanciaCargaBoletinRecord>(
+          `curso_id = "${cursoId}" && periodo_id = "${periodoIdBoletin}"`
+        );
+      } catch (error) {
+        if (!(error instanceof ClientResponseError && error.status === 404)) throw error;
+      }
+
+      if (instanciaBoletin) {
+        try {
+          const visadosRecords = await pb.collection(COLLECTION_VISADOS_BOLETIN).getFullList<VisadoBoletinRecord>({
+            filter: `instancia_id = "${instanciaBoletin.id}"`,
+          });
+          for (const vis of visadosRecords) {
+            if (
+              vis.estado === 'VISADO' &&
+              vis.revision_visada !== null &&
+              vis.revision_visada !== undefined &&
+              vis.revision_visada === vis.revision_contenido
+            ) {
+              visadosValidosSet.add(vis.inscripcion_id);
+            }
+          }
+        } catch (error) {
+          if (!(error instanceof ClientResponseError && error.status === 404)) throw error;
+        }
       }
     }
 
@@ -192,6 +247,7 @@ export const registroAsistenciaCursoService = {
           const inscripcionEvaluada = inscripcionesRecords.find(inscripcion => inscripcion.id === ev.inscripcion_id);
           if (inscripcionEvaluada?.cursada_estado === 'CONFIRMADA' && numeroPeriodoBoletin
             && (numeroPeriodoBoletin < (inscripcionEvaluada.bimestre_desde || 1) || numeroPeriodoBoletin > (inscripcionEvaluada.bimestre_hasta || 4))) continue;
+          if (!visadosValidosSet.has(ev.inscripcion_id)) continue;
           const etiqueta = ev.expand?.calificacion_general_id?.etiqueta || '';
           if (!evaluacionesPorInscripcion.has(ev.inscripcion_id)) {
             evaluacionesPorInscripcion.set(ev.inscripcion_id, new Map());
@@ -328,21 +384,22 @@ export const registroAsistenciaCursoService = {
         novedadesAltasBajasObservaciones.push(`${diaEgreso}. Baja : ${apellidoYNombre}`);
       }
 
+      const estaVisado = visadosValidosSet.has(insc.id);
       const califsMateria: Record<string, string> = {};
-      const evalMap = evaluacionesPorInscripcion.get(insc.id);
+      const evalMap = estaVisado ? evaluacionesPorInscripcion.get(insc.id) : undefined;
       if (evalMap) {
         for (const mat of materiasCalificadas) {
           califsMateria[mat.cursoMateriaId] = evalMap.get(mat.cursoMateriaId) || '';
         }
       }
 
-      const trabAulaMap = trabajoAulaPorInscripcion.get(insc.id);
+      const trabAulaMap = estaVisado ? trabajoAulaPorInscripcion.get(insc.id) : undefined;
       const trabajoEnElAula: Record<number, string> = {};
       for (let i = 1; i <= 5; i++) {
         trabajoEnElAula[i] = trabAulaMap?.get(i) || '';
       }
 
-      const convMap = convivenciaPorInscripcion.get(insc.id);
+      const convMap = estaVisado ? convivenciaPorInscripcion.get(insc.id) : undefined;
       const convivencia: Record<number, string> = {};
       for (let i = 1; i <= 5; i++) {
         convivencia[i] = convMap?.get(i) || '';
@@ -369,6 +426,7 @@ export const registroAsistenciaCursoService = {
         calificacionesMaterias: califsMateria,
         trabajoEnElAula,
         convivencia,
+        visado: estaVisado,
       });
     }
 
@@ -412,6 +470,35 @@ export const registroAsistenciaCursoService = {
       observacionesDelMes.push(observacionesAdicionales.trim());
     }
 
+    let resumenVisado: ResumenVisadoBoletin | undefined;
+    if (numeroPeriodoBoletin) {
+      const alumnosEvaluables = inscripcionesRecords.filter(insc => {
+        if (insc.cursada_estado === 'CONFIRMADA') {
+          const desde = insc.bimestre_desde || 1;
+          const hasta = insc.bimestre_hasta || 4;
+          if (numeroPeriodoBoletin < desde || numeroPeriodoBoletin > hasta) return false;
+        }
+        return true;
+      });
+
+      const totalEvaluables = alumnosEvaluables.length;
+      let alumnosVisadosCount = 0;
+      for (const alu of alumnosEvaluables) {
+        if (visadosValidosSet.has(alu.id)) {
+          alumnosVisadosCount++;
+        }
+      }
+
+      resumenVisado = {
+        numeroPeriodo: numeroPeriodoBoletin,
+        nombrePeriodo: nombrePeriodoBoletin || `${numeroPeriodoBoletin}° Bimestre`,
+        totalAlumnosEvaluables: totalEvaluables,
+        alumnosVisados: alumnosVisadosCount,
+        completo: totalEvaluables > 0 && alumnosVisadosCount === totalEvaluables,
+        estadoInstancia: instanciaBoletin?.estado || 'SIN_INSTANCIA',
+      };
+    }
+
     return {
       revision: snapshot.revision,
       versionFuentes: snapshot.versionFuentes,
@@ -427,6 +514,7 @@ export const registroAsistenciaCursoService = {
       asistenciaGeneral,
       observacionesDelMes,
       observacionesAdicionales,
+      resumenVisado,
     };
   },
 };

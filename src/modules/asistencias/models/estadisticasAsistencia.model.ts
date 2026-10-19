@@ -58,6 +58,15 @@ export interface MateriaCalificada {
   ordenVisual: number;
 }
 
+export interface ResumenVisadoBoletin {
+  numeroPeriodo: number;
+  nombrePeriodo: string;
+  totalAlumnosEvaluables: number;
+  alumnosVisados: number;
+  completo: boolean;
+  estadoInstancia: 'SIN_INSTANCIA' | 'BORRADOR_DOCENTE' | 'CONTROL_DIRECTIVO';
+}
+
 export interface ResumenAsistenciaAlumno {
   inscripcionId: string;
   alumnoId: string;
@@ -77,6 +86,7 @@ export interface ResumenAsistenciaAlumno {
   calificacionesMaterias: Record<string, string>;
   trabajoEnElAula: Record<number, string>;
   convivencia: Record<number, string>;
+  visado?: boolean;
 }
 
 export interface RegistroMensualCompleto extends VersionRegistroAsistencia {
@@ -92,4 +102,5 @@ export interface RegistroMensualCompleto extends VersionRegistroAsistencia {
   asistenciaGeneral: ResumenAsistenciaGeneral;
   observacionesDelMes: string[];
   observacionesAdicionales: string;
+  resumenVisado?: ResumenVisadoBoletin;
 }

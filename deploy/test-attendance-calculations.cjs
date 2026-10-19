@@ -23,6 +23,8 @@ function fixture({ month = 5, linked = 'period', periodNumber = 1, periodCycle =
     evaluaciones_materia: [{ id: 'grade', inscripcion_id: 'regular', curso_materia_id: 'language', expand: { calificacion_general_id: { etiqueta: 'AL-7' } } }, { id: 'criteria-evaluation', inscripcion_id: 'regular', curso_materia_id: 'classroom' }],
     evaluaciones_criterios: [{ id: 'criterion-grade', evaluacion_materia_id: 'criteria-evaluation', expand: { criterio_id: { orden_visual: 4 }, valor_escala_id: { etiqueta: 'AV9' } } }],
     registros_asistencia_curso: [],
+    instancias_carga_boletin: [{ id: 'workflow', curso_id: 'course', periodo_id: 'period', estado: 'CONTROL_DIRECTIVO' }],
+    visados_boletin: [{ id: 'approval-regular', instancia_id: 'workflow', inscripcion_id: 'regular', estado: 'VISADO', revision_contenido: 0, revision_visada: 0 }],
   };
   const pb = { send: async () => ({ revision: 0, versionFuentes: 'synthetic-version', mes: records.meses_calendario[0], curso: records.cursos[0],
     fechaInicioClases: records.ciclos_lectivos[0].fecha_inicio_clases,
@@ -312,3 +314,33 @@ test('Las altas tardías no integran la nómina en meses previos a su incorporac
   assert.equal(mayRecord.alumnos[1].inscripcionId, 'mayEntry');
   assert.equal(mayRecord.alumnos[1].observacion, 'ALTA 4/5');
 });
+
+test('Las calificaciones curriculares y criterios solo se proyectan para alumnos con visado directivo vigente', async () => {
+  const f = fixture({ month: 5, periodNumber: 1 });
+  f.records.visados_boletin = [];
+  const noApproval = await f.read();
+  const regularNoApproval = noApproval.alumnos.find(a => a.inscripcionId === 'regular');
+  assert.equal(regularNoApproval.visado, false);
+  assert.deepEqual(plain(regularNoApproval.calificacionesMaterias), {});
+  assert.equal(regularNoApproval.trabajoEnElAula[4], '');
+  assert.equal(noApproval.resumenVisado.alumnosVisados, 0);
+  assert.equal(noApproval.resumenVisado.completo, false);
+
+  f.records.visados_boletin = [{ id: 'app', instancia_id: 'workflow', inscripcion_id: 'regular', estado: 'VISADO', revision_contenido: 1, revision_visada: 1 }];
+  const withApproval = await f.read();
+  const regularApproved = withApproval.alumnos.find(a => a.inscripcionId === 'regular');
+  assert.equal(regularApproved.visado, true);
+  assert.equal(regularApproved.calificacionesMaterias.language, 'AL-7');
+  assert.equal(regularApproved.trabajoEnElAula[4], 'AV9');
+  assert.equal(withApproval.resumenVisado.alumnosVisados, 1);
+});
+
+test('El visado desfasado por modificación posterior (revision_visada !== revision_contenido) no proyecta notas', async () => {
+  const f = fixture({ month: 5, periodNumber: 1 });
+  f.records.visados_boletin = [{ id: 'app', instancia_id: 'workflow', inscripcion_id: 'regular', estado: 'VISADO', revision_contenido: 2, revision_visada: 1 }];
+  const record = await f.read();
+  const regular = record.alumnos.find(a => a.inscripcionId === 'regular');
+  assert.equal(regular.visado, false);
+  assert.deepEqual(plain(regular.calificacionesMaterias), {});
+});
+

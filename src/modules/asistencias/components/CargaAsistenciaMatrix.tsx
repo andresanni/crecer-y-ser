@@ -308,6 +308,17 @@ export const CargaAsistenciaMatrix = ({
             Días hábiles: <strong>{mesCalendario.totalDiasHabiles}</strong> (Acumulados:{' '}
             {mesCalendario.diasHabilesAcumulados})
           </Tag>
+          {registro.resumenVisado && (
+            <Tag
+              color={registro.resumenVisado.completo ? 'success' : 'warning'}
+              style={{ fontSize: 14, padding: '4px 10px' }}
+            >
+              Calificaciones ({registro.resumenVisado.nombrePeriodo}):{' '}
+              <strong>
+                {registro.resumenVisado.alumnosVisados}/{registro.resumenVisado.totalAlumnosEvaluables} visados
+              </strong>
+            </Tag>
+          )}
         </Space>
 
         <Space wrap>

@@ -21,7 +21,7 @@ import {
   RightOutlined,
   CheckCircleOutlined,
 } from '@ant-design/icons';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
 import { NavigationCard, NavigationCardGrid } from '../../../shared/components/NavigationCard';
 import ui from '../../../shared/styles/ui.module.css';
@@ -41,6 +41,7 @@ export const AsistenciasPage = () => {
   const { cicloActual } = useAppStore();
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { token } = theme.useToken();
   const rutaSolicitada = searchParams.toString();
   const [rutaActual, setRutaActual] = useState(rutaSolicitada);
@@ -116,13 +117,13 @@ export const AsistenciasPage = () => {
     return () => window.removeEventListener('beforeunload', advertirSalida);
   }, [cambiosPendientes]);
 
-  const cargarRegistro = useCallback(async () => {
+  const cargarRegistro = useCallback(async (): Promise<RegistroMensualCompleto | null> => {
     const solicitud = ++solicitudRegistro.current;
     if (!cursoSeleccionadoId || !cicloActual) {
       setLoading(false);
       setRegistroCompleto(null);
       setErrorCarga(null);
-      return false;
+      return null;
     }
 
     setLoading(true);
@@ -135,16 +136,16 @@ export const AsistenciasPage = () => {
         cicloActual.id,
         mesSeleccionado
       );
-      if (solicitud !== solicitudRegistro.current) return false;
+      if (solicitud !== solicitudRegistro.current) return null;
       setRegistroCompleto(data);
-      return true;
+      return data;
     } catch (err: unknown) {
-      if (solicitud !== solicitudRegistro.current) return false;
+      if (solicitud !== solicitudRegistro.current) return null;
       setRegistroCompleto(null);
       setMesSinConfigurar(err instanceof MesNoConfiguradoError);
       const msg = err instanceof Error ? err.message : 'Error desconocido al cargar asistencias.';
       setErrorCarga(msg);
-      return false;
+      return null;
     } finally {
       if (solicitud === solicitudRegistro.current) setLoading(false);
     }
@@ -152,7 +153,54 @@ export const AsistenciasPage = () => {
 
   const abrirImpresion = async () => {
     if (cambiosPendientes) return;
-    if (await cargarRegistro()) setModalImpresionOpen(true);
+    const data = await cargarRegistro();
+    if (!data) return;
+
+    if (data.resumenVisado && !data.resumenVisado.completo) {
+      const faltantes = data.resumenVisado.totalAlumnosEvaluables - data.resumenVisado.alumnosVisados;
+      const periodoNum = data.resumenVisado.numeroPeriodo;
+      const periodoNombre = data.resumenVisado.nombrePeriodo;
+
+      modal.confirm({
+        title: 'Calificaciones pendientes de visado',
+        content: (
+          <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Typography.Text>
+              En este mes de entrega ({nombreMes} · {periodoNombre}), hay{' '}
+              <strong>
+                {faltantes} de {data.resumenVisado.totalAlumnosEvaluables} alumnos
+              </strong>{' '}
+              cuyas calificaciones aún no fueron visadas por Dirección en el módulo de Boletines.
+            </Typography.Text>
+            <Typography.Text type="secondary">
+              En la hoja oficial A4, los casilleros de materias de los alumnos no visados se imprimirán en blanco.
+            </Typography.Text>
+          </Space>
+        ),
+        okText: 'Continuar e imprimir',
+        cancelText: 'Cancelar',
+        footer: (_, { OkBtn, CancelBtn }) => (
+          <Space wrap style={{ marginTop: 16 }}>
+            <Button
+              onClick={() => {
+                Modal.destroyAll();
+                navigate(`/app/boletines?periodo=${periodoNum}`);
+              }}
+            >
+              Ir a visar a Boletines
+            </Button>
+            <CancelBtn />
+            <OkBtn />
+          </Space>
+        ),
+        onOk: () => {
+          setModalImpresionOpen(true);
+        },
+      });
+      return;
+    }
+
+    setModalImpresionOpen(true);
   };
 
   useEffect(() => {
@@ -298,12 +346,17 @@ export const AsistenciasPage = () => {
           },
         }}
         title={
-          <Space>
+          <Space wrap>
             <PrinterOutlined />
             <span>Registro Oficial Mensual A4</span>
             {registroCompleto && (
               <Tag color="blue">
                 {registroCompleto.curso.nombre} - {NOMBRES_MESES[registroCompleto.mesCalendario.mes]} {registroCompleto.mesCalendario.ano}
+              </Tag>
+            )}
+            {registroCompleto?.resumenVisado && (
+              <Tag color={registroCompleto.resumenVisado.completo ? 'success' : 'warning'}>
+                {registroCompleto.resumenVisado.nombrePeriodo}: {registroCompleto.resumenVisado.alumnosVisados}/{registroCompleto.resumenVisado.totalAlumnosEvaluables} visados
               </Tag>
             )}
           </Space>
@@ -323,6 +376,14 @@ export const AsistenciasPage = () => {
         ]}
         destroyOnHidden
       >
+        {registroCompleto?.resumenVisado && !registroCompleto.resumenVisado.completo && (
+          <Alert
+            type="warning"
+            showIcon
+            banner
+            message={`Calificaciones no visadas: ${registroCompleto.resumenVisado.totalAlumnosEvaluables - registroCompleto.resumenVisado.alumnosVisados} alumnos figuran con calificaciones en blanco por falta de visado directivo.`}
+          />
+        )}
         {registroCompleto && <HojaRegistroA4Printable registro={registroCompleto} />}
       </Modal>
     </SectionLayout>
