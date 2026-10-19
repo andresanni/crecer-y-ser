@@ -152,3 +152,43 @@ test('La falta de historial requiere alcance confirmado y no permite excluir dat
   f.datos.periodos.push({ ...f.datos.periodos[0], bimestre: 1 });
   assert.equal(adapt(f, institution).documento, null);
 });
+
+test('Registro administrativo mapea escuela inicial, fechas y cambios de escuela limpios', () => {
+  const f = fixture();
+  f.datos.administrativo = {
+    escuelaInicial: 'Escuela N° 18 D.E 13',
+    fechaIngresoInicial: '2026-02-25',
+    fechaEgresoInicial: '2026-05-15',
+    cambiosEscuela: [
+      { fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }
+    ],
+    cambioDomicilio: '',
+    domicilio: 'Calle Falsa 123',
+    telefono: '1122334455',
+  };
+  const result = adapt(f, institution);
+  assert.equal(result.bloqueos.length, 0);
+  const admin = result.documento.registroAdministrativo;
+  assert.equal(admin.escuelaInicial.texto, 'Escuela N° 18 D.E 13');
+  assert.equal(admin.fechaIngreso.texto, '25/02/2026');
+  assert.equal(admin.fechaEgreso.texto, '15/05/2026');
+  assert.equal(admin.cambiosEscuela[0].fecha.texto, '18/05/2026');
+  assert.equal(admin.cambiosEscuela[0].causa.texto, 'Motivos particulares');
+  assert.equal(admin.cambiosEscuela[0].escuelaDestino.texto, 'Colegio Crecer y Ser');
+  assert.equal(admin.cambiosEscuela[1].fecha.texto, '---');
+  assert.equal(admin.cambiosEscuela[1].causa.texto, '---');
+  assert.equal(admin.cambiosEscuela[1].escuelaDestino.texto, '---');
+  assert.equal(admin.domicilio.texto, 'Calle Falsa 123');
+  assert.equal(admin.telefono.texto, '1122334455');
+  assert.equal(admin.cambioDomicilio.texto, '---');
+
+  const regular = fixture();
+  const regResult = adapt(regular, institution);
+  assert.equal(regResult.documento.registroAdministrativo.escuelaInicial.texto, '---');
+  assert.equal(regResult.documento.registroAdministrativo.fechaIngreso.texto, '---');
+  assert.equal(regResult.documento.registroAdministrativo.fechaEgreso.texto, '---');
+  assert.equal(regResult.documento.registroAdministrativo.cambiosEscuela[0].fecha.texto, '---');
+  assert.equal(regResult.documento.registroAdministrativo.domicilio.texto, '---');
+  assert.equal(regResult.documento.registroAdministrativo.telefono.texto, '---');
+  assert.equal(regResult.documento.registroAdministrativo.cambioDomicilio.texto, '---');
+});

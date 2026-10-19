@@ -4,7 +4,10 @@ import { ScaleLegend } from './EvaluationTable';
 import styles from './BoletinDocument.module.css';
 
 export function TermClosingPage({ cierre }: { cierre: CierreBimestralDocumental }) {
-  const sinObservaciones = cierre.observaciones.estado === 'confirmado' && !cierre.observaciones.texto.trim();
+  const esGuiones = cierre.observaciones.estado === 'futuro'
+    || cierre.observaciones.estado === 'sinDato'
+    || (cierre.observaciones.estado === 'confirmado' && (!cierre.observaciones.texto || !cierre.observaciones.texto.trim() || cierre.observaciones.texto.trim() === '---'));
+  const centrado = esGuiones || cierre.observaciones.estado === 'anteriorIngreso';
   const asistencias = [
     { etiqueta: 'Asistencias', valor: cierre.asistencias },
     { etiqueta: 'Inasistencias', valor: cierre.inasistencias },
@@ -24,7 +27,7 @@ export function TermClosingPage({ cierre }: { cierre: CierreBimestralDocumental 
         </tr>)}
         <tr><th colSpan={2} id={`observaciones-bimestre-${cierre.bimestre}`} className={styles.tituloObservaciones}>Observaciones</th></tr>
         <tr><td colSpan={2} headers={`observaciones-bimestre-${cierre.bimestre}`}>
-          <div className={`${styles.observacionesCierre} ${sinObservaciones || cierre.observaciones.estado === 'anteriorIngreso' ? styles.observacionesVacias : ''}`} data-dynamic-field={`Observaciones, bimestre ${cierre.bimestre}`}>{sinObservaciones ? '---' : <ValorCelda valor={cierre.observaciones} />}</div>
+          <div className={`${styles.observacionesCierre} ${centrado ? styles.observacionesVacias : ''}`} data-dynamic-field={`Observaciones, bimestre ${cierre.bimestre}`}>{esGuiones ? '---' : <ValorCelda valor={cierre.observaciones} />}</div>
         </td></tr>
       </tbody>
     </table>

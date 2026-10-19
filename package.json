@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/start-dev.mjs",
     "build": "tsc -b && vite build",
     "build:vercel": "node scripts/validate-vercel-environment.mjs && npm run build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:vps": "node scripts/check-vps-status.mjs"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.2",

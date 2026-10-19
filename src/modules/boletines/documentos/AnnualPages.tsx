@@ -3,9 +3,15 @@ import { ValorCelda } from './DocumentCells';
 import styles from './BoletinDocument.module.css';
 
 function CampoAnual({ titulo, valor, extenso = false }: { titulo: string; valor: ValorDocumental; extenso?: boolean }) {
+  const esGuiones = valor.estado === 'futuro'
+    || valor.estado === 'sinDato'
+    || (valor.estado === 'confirmado' && (!valor.texto || !valor.texto.trim() || valor.texto.trim() === '---'));
+  const className = extenso
+    ? `${styles.sintesisAnual} ${esGuiones ? styles.observacionesVacias : ''}`
+    : styles.valorAnual;
   return <table className={styles.tablaAnual} aria-label={titulo}>
     <thead><tr><th scope="col">{titulo}</th></tr></thead>
-    <tbody><tr><td><div className={extenso ? styles.sintesisAnual : styles.valorAnual} data-dynamic-field={titulo}><ValorCelda valor={valor} /></div></td></tr></tbody>
+    <tbody><tr><td><div className={className} data-dynamic-field={titulo}>{esGuiones && extenso ? '---' : <ValorCelda valor={valor} />}</div></td></tr></tbody>
   </table>;
 }
 

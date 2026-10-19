@@ -106,14 +106,14 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.equal((await saveScope(enrollment.id, { desde: 3, hasta: 2 })).status, 400);
     assert.equal((await saveScope(enrollment.id, { sinCursada: true })).status, 409);
     assert.equal((await saveScope(enrollment.id, { hasta: 1 })).status, 409);
-    const withdrawal = await saveScope(enrollment.id, { hasta: 2, registrarBaja: true, fechaEgreso: '2026-06-01' });
+    const withdrawal = await saveScope(enrollment.id, { hasta: 2, registrarBaja: true, fechaEgreso: '2026-06-01', cambiosEscuela: [{ fecha: '2026-06-01', causa: 'Mudanza', escuelaDestino: 'Colegio San Martín' }] });
     assert.equal(withdrawal.status, 200, JSON.stringify(withdrawal.body));
     assert.equal(withdrawal.body.estadoAdministrativo, 'Baja');
     assert.equal((await saveScope(enrollment.id, { hasta: 2 }, old)).status, 409);
     assert.equal((await teacher(1, 'enviar', 'POST', {})).body.cursadasPendientes.length, 1);
     assert.equal((await saveScope(oldBaja.id, { sinCursada: true })).status, 200);
     const late = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular' });
-    assert.equal((await saveScope(late.id, { desde: 2, hasta: 4 })).status, 200);
+    assert.equal((await saveScope(late.id, { desde: 2, hasta: 4, escuelaInicial: 'Escuela N° 18 D.E 13', cambiosEscuela: [{ fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }] })).status, 200);
     assert.equal((await teacher(1, 'contexto')).body.alumnos.length, 1);
     assert.equal((await teacher(2, 'contexto')).body.alumnos.length, 2);
     assert.equal((await teacher(3, 'contexto')).body.alumnos.length, 1);

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRightOutlined, CalendarOutlined } from '@ant-design/icons';
-import { Alert, Card, Col, Empty, Row, Spin, Typography } from 'antd';
+import { CalendarOutlined } from '@ant-design/icons';
+import { Alert, Card, Empty, Spin } from 'antd';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
+import { NavigationCard, NavigationCardGrid } from '../../../shared/components/NavigationCard';
 import { useAppStore } from '../../../store/appStore';
 import { boletinService } from '../services/boletin.service';
 import type { Periodo } from '../models/boletin.model';
-import styles from './SeleccionBimestrePage.module.css';
+import ui from '../../../shared/styles/ui.module.css';
 
 interface SeleccionBimestrePageProps {
   onSelectPeriod: (periodoId: string) => void;
@@ -55,35 +56,24 @@ export const SeleccionBimestrePage: React.FC<SeleccionBimestrePageProps> = ({
           description="Actualizá la página para volver a intentarlo."
         />
       ) : loading || isCicloLoading ? (
-        <Card className={styles.loadingPanel}>
+        <Card className={ui.loadingPanel}>
           <Spin description="Cargando bimestres..." />
         </Card>
       ) : periodos.length === 0 ? (
-        <Card className={styles.loadingPanel}>
+        <Card className={ui.emptyPanel}>
           <Empty description="No hay bimestres configurados para el ciclo lectivo actual." />
         </Card>
       ) : (
-        <Row gutter={[16, 16]} className={styles.grid}>
+        <NavigationCardGrid>
           {periodos.map((periodo) => (
-            <Col xs={12} sm={12} lg={6} key={periodo.id}>
-              <button
-                type="button"
-                className={styles.periodCard}
-                onClick={() => onSelectPeriod(periodo.id)}
-              >
-                <div className={styles.cardTop}>
-                  <span className={styles.periodNumber}>{periodo.numeroPeriodo}</span>
-                  <ArrowRightOutlined className={styles.arrow} />
-                </div>
-                <div className={styles.cardBottom}>
-                  <Typography.Text strong className={styles.periodName}>
-                    {periodo.nombre}
-                  </Typography.Text>
-                </div>
-              </button>
-            </Col>
+            <NavigationCard
+              key={periodo.id}
+              title={periodo.nombre}
+              marker={periodo.numeroPeriodo}
+              onClick={() => onSelectPeriod(periodo.id)}
+            />
           ))}
-        </Row>
+        </NavigationCardGrid>
       )}
     </SectionLayout>
   );

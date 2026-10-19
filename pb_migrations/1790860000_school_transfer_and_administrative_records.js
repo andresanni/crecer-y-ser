@@ -1,0 +1,15 @@
+migrate((db) => {
+  const dao = new Dao(db)
+  const collection = dao.findCollectionByNameOrId("inscripciones")
+  collection.schema.addField(new SchemaField({ id: "cysinitsc000001", name: "escuela_inicial", type: "text", options: { min: null, max: null, pattern: "" } }))
+  collection.schema.addField(new SchemaField({ id: "cysinitin000001", name: "fecha_ingreso_inicial", type: "date", options: { min: "", max: "" } }))
+  collection.schema.addField(new SchemaField({ id: "cysinitout00001", name: "fecha_egreso_inicial", type: "date", options: { min: "", max: "" } }))
+  collection.schema.addField(new SchemaField({ id: "cystransf000001", name: "cambios_escuela", type: "json", options: { maxSize: 2000000 } }))
+  collection.schema.addField(new SchemaField({ id: "cysaddreschg001", name: "cambio_domicilio", type: "text", options: { min: null, max: null, pattern: "" } }))
+  dao.saveCollection(collection)
+}, (db) => {
+  const dao = new Dao(db)
+  const collection = dao.findCollectionByNameOrId("inscripciones")
+  ;["cysinitsc000001", "cysinitin000001", "cysinitout00001", "cystransf000001", "cysaddreschg001"].forEach((id) => collection.schema.removeField(id))
+  dao.saveCollection(collection)
+})

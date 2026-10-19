@@ -1,6 +1,16 @@
 # Contexto actual de Crecer y Ser
 
-Actualizado: 4 de octubre de 2026.
+## Febrero y días sin clases — 9 de octubre de 2026
+
+El registro incorpora febrero y calcula acumulados desde ese mes. Calendario agrega `SIN_CLASES` con selección de un día o rango, compartido por todos los cursos del ciclo. Sus fechas quedan sin marcas ni texto impreso, no generan observaciones y no cuentan en días hábiles, presencias, ausencias ni tardanzas. Permite inicio tardío de febrero, cierre anticipado de diciembre y receso invernal sin inventar fechas. La migración `1791549000_attendance_non_class_days.js` y el esquema se validaron en PocketBase temporal con datos sintéticos; 20 pruebas de dominio/HTTP, navegación y presentación pasaron. La aplicación a la base habitual sigue pendiente: revisión automática rechazó detener/migrar/reiniciar la instancia local con «blocked by policy». No se modificó su contenido ni se accedió al VPS. Procedimiento en `docs/primary-attendance-records.md`.
+
+## Dataset local para registros de asistencia — 9 de octubre de 2026
+
+Por autorización expresa del usuario, la base habitual de `127.0.0.1:8090` se limpió y repobló desde un CSV externo con 30 alumnos reales del ciclo 2026: 11 de 3.º y 19 de 4.º, 29 responsables y 30 vínculos e inscripciones. Esta autorización reemplaza la indicación anterior de conservar intacta la base habitual. Se mantienen catálogos y calendarios; asistencia diaria, registros de curso y cierres bimestrales quedan vacíos. Las notas de B1/B2 son de prueba reproducibles, guardadas por gateway docente en cuatro borradores sin enlaces vigentes, entregas ni visados. Se preservan las altas de mayo y se confirma el rango evaluable 1..4 para este ensayo. No se accedió al VPS. Respaldo, límites y procedimiento en `docs/pocketbase-environments.md`; los datos reales no forman parte de Git ni del seed sintético.
+
+## Registros de asistencia de primaria — integración en dev, 8 de octubre de 2026
+
+La feature se integra en `dev` por autorización del usuario, con navegación mes → cursos → registro y calendarios contextuales. La plantilla SVG de ambos ciclos emite una sola página A4 horizontal; es la única presentación vigente del registro. Las bajas permanecen todo el año con su número de orden; la asistencia cuenta hasta el egreso inclusive y edades/nacionalidad reflejan quienes quedan al último día. Las notas se consultan automáticamente por ciclo y bimestre del mes y pueden aparecer después de abrir el calendario. Los días hábiles son informativos; el acumulado incluye el mes actual y se identifica como provisorio si faltan meses anteriores. Los gateways guardan agregados transaccionalmente y rechazan revisiones vencidas, preservando borradores locales ante conflictos. La validación comprende 19 pruebas de dominio/HTTP y pruebas de navegación, presentación y PDFs con datos sintéticos. El contrato, operación y límites están en `docs/primary-attendance-records.md`. Integrar el código no aplica las migraciones a la base habitual ni despliega en producción.
 
 ## Salvaguardas documentales y cursadas parciales publicadas
 
@@ -49,7 +59,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 | `/login` | Acceso institucional |
 | `/carga` | Carga pública mediante token docente |
 | `/app/alumnos` | Directorio y gestión de alumnos |
-| `/app/boletines` | Accesos a Bimestres y Constructor |
+| `/app/boletines` | Redirección de compatibilidad a Bimestres |
 | `/app/boletines/calificaciones` | Bimestres: selección, tablero de carga y revisión |
 | `/app/boletines/constructor` | Constructor de la malla curricular |
 
@@ -104,13 +114,17 @@ Los secretos nuevos conservan SHA-256 para autenticación y una copia AES-256-GC
 
 ## Arquitectura UX/UI
 
+La selección de bimestres y meses de asistencia comparte las tarjetas y grilla adaptables de `src/shared/components/NavigationCard`, con estilos basados en el tema. Cada dominio aporta sus datos, acción y estado opcional; los meses abiertos se distinguen mediante una etiqueta con texto y verificación. Es el primer paso de centralización gradual de la zona operativa, documentado en `docs/ux-modernization.md`.
+
+El marco aprobado el 9 de octubre de 2026 comparte un fondo azul muy claro entre sidebar y topbar, con textos oscuros y sin borde exterior. La franja del logo y la topbar comparten altura de 64 px en escritorio. Boletines funciona exclusivamente como desplegable; sólo sus subsecciones cambian el contenido operativo.
+
 `MainLayout` contiene la navegación, barra superior, breadcrumbs y el `Outlet` de las rutas privadas. Cada pantalla operativa usa `SectionLayout`, que encapsula `PageHeader` y el ritmo vertical con el contenido.
 
 La tipografía de títulos y navegación es Manrope; Inter se reserva para lectura y controles. Los colores, radios y familias tipográficas se centralizan en `src/theme` y las variables globales. Las reglas específicas viven en CSS Modules próximos al componente; `src/index.css` conserva estilos heredados que deben reducirse gradualmente, no ampliarse.
 
 El producto es desktop first para equipos escolares, con validación prioritaria en 1366, 1440 y 1920 px. El soporte móvil sigue siendo obligatorio para navegación, modales y tareas compatibles.
 
-La sección institucional `Bimestres` concentra la selección del período, el seguimiento y la operación por curso. La portada `Boletines` sólo ofrece accesos a `Bimestres` y `Constructor`, sin estadísticas ni consultas propias. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
+La sección institucional `Bimestres` concentra la selección del período, el seguimiento y la operación por curso. `Boletines` es sólo un desplegable de la barra lateral que conserva el área de trabajo hasta elegir `Bimestres` o `Constructor`. Se retiró la portada de atajos; `/app/boletines` redirige a Bimestres por compatibilidad. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
 
 El tablero distingue el avance académico del control operativo. Las etapas `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF` provienen del servidor. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
 
@@ -216,3 +230,15 @@ El frontend principal es https://www.creceryser.edu.ar; el dominio raíz redirig
 ## Continuación operativa del 4 de octubre
 
 La inscripción de alta tardía de segundo grado ya está confirmada B2–B4 y la nómina de B2 tiene diez alumnos; B1 conserva diez visados y B2 sigue sin evaluaciones. El fallo de preservación de datos en el formulario segmentado de alumnos (`AlumnoFormModal.tsx` y `AlumnoList.tsx`) fue resuelto: montaje garantizado con `forceRender: true` en todas las pestañas, fusión completa de campos y salvaguarda estricta de preservación de valores preexistentes ante campos omitidos. Se expuso el estado de cursada evaluable en el modelo `Alumno` y se incorporaron insignias de estado en el listado y fichas de estudiantes. Todas las suites automatizadas de pruebas (`test-evaluable-scope-http.cjs`, `test-document-adapter.cjs`, `test-batch-modal.cjs`, `test-school-calendar-dates.cjs`) fueron verificadas con éxito. Detalle canónico en `docs/salvaguardas-continuacion.md`.
+
+## Registro administrativo y cambios de escuela (Página 14 del boletín) — 6 de octubre de 2026
+
+Se implementó el soporte completo de registro administrativo y cambios de escuela en la cursada del alumno:
+- Migración `pb_migrations/1790860000_school_transfer_and_administrative_records.js` añade en `inscripciones` los campos: `escuela_inicial` (text), `fecha_ingreso_inicial` (date), `fecha_egreso_inicial` (date), `cambios_escuela` (json) y `cambio_domicilio` (text). El esquema canónico `pb_schema.json` fue actualizado.
+- El gateway de PocketBase (`pb_hooks/lib/teacherAccess.js`) gestiona la serialización y persistencia de pases (`transferRecords`), incluye los campos en la instantánea documental y en la consulta de cursada, e invalida la caché de PDFs emitidos al modificarse los datos de cursada.
+- Guarda de integridad para PDF (`documentDataIssues`): los alumnos con cursadas parciales (`desde > 1` o `hasta < 4`) exigen escuela de origen y registro de pase válido antes de permitir la emisión del boletín, previniendo documentos impresos incompletos.
+- Adaptador y render de plantilla (`documentSnapshot.adapter.ts`, `TermClosingPage.tsx`, `AnnualPages.tsx`):
+  - Observaciones bimestrales: unifica el renderizado de `---` de forma centrada (horizontal y verticalmente) tanto para bimestres futuros por plantilla como para cierres confirmados con observaciones vacías.
+  - Síntesis Conceptual: centra `---` vertical y horizontalmente cuando el campo no posee texto confirmado.
+  - Registro administrativo (Página 14): rellena sistemáticamente con `---` todos los campos no informados (escuela inicial, fechas, pases, domicilio, teléfono) para resguardar la integridad del documento oficial e impedir agregados manuales en papel.
+- Experiencia directiva: `CursadaModal` incorpora campos administrativos y lista dinámica de pases (hasta 4) con panel desplegable reactivo. `DocumentReadinessAlert` provee el botón de acceso directo "Completar cursada y pases" para editar y resolver faltantes sin salir de la revisión del boletín. `AlumnoDetailModal` visualiza el resumen de pases y escuela de origen en la pestaña de cursada.

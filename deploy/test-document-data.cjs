@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const context = vm.createContext({ module: { exports: {} } });
 vm.runInContext(readFileSync('pb_hooks/lib/teacherAccess.js', 'utf8'), context);
 const validate = vm.runInContext('documentDataIssues', context);
-const record = data => ({ getString: key => data[key] || '' });
+const record = data => ({ getString: key => data[key] || '', getInt: key => data[key] !== undefined ? data[key] : (key === 'bimestre_desde' ? 1 : key === 'bimestre_hasta' ? 4 : 0) });
 const student = { apellidos: 'Prueba', nombres: 'Ejemplo', dni: '00000000' };
 const guardian = { apellidos: 'Prueba', nombres: 'Tutor' };
 const enrollment = { posee_apoyos: 'NO', cuales_apoyos: '', promociono_con_acompanamiento: '-' };
@@ -96,4 +96,25 @@ test('Un PDF guardado pierde acceso si la nueva instantánea tiene datos incompl
   assert.equal(result.status, 409);
   assert.equal(data.estado, 'INVALIDADO');
   assert.equal(data.instantanea, null);
+});
+
+test('Cursadas parciales exigen datos de procedencia y pases', () => {
+  const lateIssues = issues({ bimestre_desde: 2 });
+  assert.ok(lateIssues.some(item => item.campo === 'administrativo.escuelaInicial' && item.origen === 'cursada'));
+  assert.ok(lateIssues.some(item => item.campo === 'administrativo.cambiosEscuela' && item.origen === 'cursada'));
+
+  const validTransfers = JSON.stringify([{ fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }]);
+  assert.equal(issues({
+    bimestre_desde: 2,
+    escuela_inicial: 'Escuela N° 18 D.E 13',
+    cambios_escuela: validTransfers,
+  }).length, 0);
+
+  const earlyExitIssues = issues({ bimestre_hasta: 2 });
+  assert.ok(earlyExitIssues.some(item => item.campo === 'administrativo.cambiosEscuela' && item.origen === 'cursada'));
+
+  assert.equal(issues({
+    bimestre_hasta: 2,
+    cambios_escuela: JSON.stringify([{ fecha: '2026-06-30', causa: 'Mudanza', escuelaDestino: 'Colegio San Martín' }]),
+  }).length, 0);
 });

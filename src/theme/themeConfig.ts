@@ -3,6 +3,27 @@ import type { ThemeConfig } from 'antd';
 import { lightTokens } from './tokens';
 import { BRAND_COLORS } from './colors';
 
+export const shellHeaderTheme: ThemeConfig = {
+  components: {
+    Breadcrumb: {
+      itemColor: BRAND_COLORS.slate[700],
+      lastItemColor: BRAND_COLORS.slate[900],
+      linkColor: BRAND_COLORS.slate[700],
+      linkHoverColor: BRAND_COLORS.royalBlue.primary,
+      separatorColor: BRAND_COLORS.slate[500],
+      colorBgTextHover: 'rgba(37, 99, 235, 0.08)',
+    },
+    Button: {
+      textTextColor: BRAND_COLORS.slate[900],
+      textTextHoverColor: BRAND_COLORS.royalBlue.primary,
+      textTextActiveColor: BRAND_COLORS.royalBlue.dark,
+      textHoverBg: 'rgba(37, 99, 235, 0.08)',
+      colorBgTextActive: 'rgba(37, 99, 235, 0.12)',
+    },
+    Spin: { colorPrimary: BRAND_COLORS.royalBlue.primary },
+  },
+};
+
 export const getAntdTheme = (): ThemeConfig => {
   return {
     algorithm: antdTheme.defaultAlgorithm,
@@ -65,6 +86,9 @@ export const getAntdTheme = (): ThemeConfig => {
         headerBg: BRAND_COLORS.slate[50],
       },
       Menu: {
+        itemBg: 'transparent',
+        subMenuItemBg: 'transparent',
+        itemSelectedBg: '#ffffff',
         itemBorderRadius: 10,
         itemHeight: 44,
         itemMarginInline: 8,

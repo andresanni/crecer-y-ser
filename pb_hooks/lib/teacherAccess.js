@@ -32,6 +32,17 @@ function pendingEnrollmentScopes(dao, access) {
     })
 }
 
+function transferRecords(enrollment) {
+  var raw = enrollment.getString("cambios_escuela")
+  if (!raw || raw === "null" || raw === "[]") return []
+  try {
+    var parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch (_) {
+    return []
+  }
+}
+
 function scopeSnapshot(dao, enrollment) {
   var student = requireRecord(dao, "alumnos", enrollment.getString("alumno_id"))
   var course = requireRecord(dao, "cursos", enrollment.getString("curso_id"))
@@ -54,7 +65,12 @@ function scopeSnapshot(dao, enrollment) {
     curso: course.getString("nombre"), ciclo: cycle.getInt("ano"),
     cursada: enrollmentScope(enrollment), updated: enrollment.getString("updated"),
     estadoAdministrativo: enrollment.getString("estado"), fechaEgreso: enrollment.getString("fecha_egreso"),
-    bimestresConDatos: Object.keys(evidence).map(Number).sort()
+    bimestresConDatos: Object.keys(evidence).map(Number).sort(),
+    escuelaInicial: enrollment.getString("escuela_inicial"),
+    fechaIngresoInicial: enrollment.getString("fecha_ingreso_inicial"),
+    fechaEgresoInicial: enrollment.getString("fecha_egreso_inicial"),
+    cambiosEscuela: transferRecords(enrollment),
+    cambioDomicilio: enrollment.getString("cambio_domicilio")
   }
 }
 
@@ -67,12 +83,14 @@ function staffEnrollmentScope(c) {
 
 function saveEnrollmentScope(c) {
   noStore(c)
-  var body = new DynamicModel({ expectedRevision: -1, expectedUpdated: "", desde: 0, hasta: 0, sinCursada: false, registrarBaja: false, fechaEgreso: "" })
+  var body = new DynamicModel({ expectedRevision: -1, expectedUpdated: "", desde: 0, hasta: 0, sinCursada: false, registrarBaja: false, fechaEgreso: "", escuelaInicial: "", fechaIngresoInicial: "", fechaEgresoInicial: "", cambiosEscuela: [], cambioDomicilio: "" })
   c.bind(body)
   var data = JSON.parse(JSON.stringify(body))
   if (!Number.isInteger(data.expectedRevision) || data.expectedRevision < 0 || !data.expectedUpdated) throw new BadRequestError("Volvé a leer la cursada antes de guardar.")
   if (!data.sinCursada && (!Number.isInteger(data.desde) || !Number.isInteger(data.hasta) || data.desde < 1 || data.hasta > 4 || data.desde > data.hasta)) throw new BadRequestError("Indicá un rango válido entre el primer y el cuarto bimestre.")
   if (data.registrarBaja && (!/^\d{4}-\d{2}-\d{2}$/.test(data.fechaEgreso) || isNaN(Date.parse(data.fechaEgreso)) || new Date(data.fechaEgreso).toISOString().slice(0, 10) !== data.fechaEgreso)) throw new BadRequestError("Indicá una fecha de baja válida.")
+  if (data.fechaIngresoInicial && (!/^\d{4}-\d{2}-\d{2}$/.test(data.fechaIngresoInicial) || isNaN(Date.parse(data.fechaIngresoInicial)) || new Date(data.fechaIngresoInicial).toISOString().slice(0, 10) !== data.fechaIngresoInicial)) throw new BadRequestError("Indicá una fecha de ingreso inicial válida.")
+  if (data.fechaEgresoInicial && (!/^\d{4}-\d{2}-\d{2}$/.test(data.fechaEgresoInicial) || isNaN(Date.parse(data.fechaEgresoInicial)) || new Date(data.fechaEgresoInicial).toISOString().slice(0, 10) !== data.fechaEgresoInicial)) throw new BadRequestError("Indicá una fecha de egreso inicial válida.")
   var status = 200
   var result
   $app.dao().runInTransaction((dao) => {
@@ -97,6 +115,11 @@ function saveEnrollmentScope(c) {
       enrollment.set("estado", "Baja")
       enrollment.set("fecha_egreso", data.fechaEgreso + " 00:00:00.000Z")
     }
+    if (typeof data.escuelaInicial === "string") enrollment.set("escuela_inicial", data.escuelaInicial.trim())
+    if (typeof data.fechaIngresoInicial === "string") enrollment.set("fecha_ingreso_inicial", data.fechaIngresoInicial ? data.fechaIngresoInicial + " 00:00:00.000Z" : "")
+    if (typeof data.fechaEgresoInicial === "string") enrollment.set("fecha_egreso_inicial", data.fechaEgresoInicial ? data.fechaEgresoInicial + " 00:00:00.000Z" : "")
+    if (Array.isArray(data.cambiosEscuela)) enrollment.set("cambios_escuela", JSON.stringify(data.cambiosEscuela))
+    if (typeof data.cambioDomicilio === "string") enrollment.set("cambio_domicilio", data.cambioDomicilio.trim())
     dao.saveRecord(enrollment)
     require("./pdfEmissions.js").invalidate(dao, enrollment.getId(), 1, "CAMBIO_CURSADA")
     findByFilter(dao, "instancias_carga_boletin", "curso_id = {:course} && periodo_id.ciclo_id = {:cycle}", "", { course: enrollment.getString("curso_id"), cycle: enrollment.getString("ciclo_id") }).forEach((workflow) => {
@@ -1105,7 +1128,7 @@ function staffWorkflow(c) {
 function documentGuardians(dao, studentId) {
   var guardians = findByFilter(dao, "alumno_responable", "alumno_id = {:id}", "id", { id: studentId }).map((link) => {
     var guardian = requireRecord(dao, "responsables", link.getString("responsable_id"))
-    return { id: guardian.getId(), apellidos: guardian.getString("apellidos"), nombres: guardian.getString("nombres"), vinculo: link.getString("vinculo") }
+    return { id: guardian.getId(), apellidos: guardian.getString("apellidos"), nombres: guardian.getString("nombres"), vinculo: link.getString("vinculo"), telefono: guardian.getString("telefono") }
   })
   return guardians.filter((guardian, index) => guardians.findIndex((candidate) => candidate.id === guardian.id) === index)
 }
@@ -1140,6 +1163,23 @@ function documentDataIssues(student, guardian, enrollment, cutoff) {
   }
   if (cutoff === 4 && ["SI", "NO"].indexOf(enrollment.getString("promociono_con_acompanamiento")) === -1) {
     issues.push({ campo: "apoyos.promocionoConAcompanamiento", mensaje: "Indicar la promoción con acompañamiento en Integración Escolar del cuarto bimestre.", origen: "apoyos", bimestre: 4 })
+  }
+  var desde = (enrollment.getInt ? enrollment.getInt("bimestre_desde") : 1) || 1
+  var hasta = (enrollment.getInt ? enrollment.getInt("bimestre_hasta") : 4) || 4
+  if (desde > 1) {
+    required(enrollment.getString("escuela_inicial"), "administrativo.escuelaInicial", "Completar la escuela de origen en los datos de cursada.", "cursada")
+    var transfers = transferRecords(enrollment)
+    var validTransfer = transfers.length > 0 && hasText(transfers[0].fecha) && hasText(transfers[0].escuelaDestino)
+    if (!validTransfer) {
+      issues.push({ campo: "administrativo.cambiosEscuela", mensaje: "Completar el registro de pase en los datos de cursada.", origen: "cursada", bimestre: null })
+    }
+  }
+  if (hasta < 4 && !issues.some((issue) => issue.campo === "administrativo.cambiosEscuela")) {
+    var transfers = transferRecords(enrollment)
+    var validTransfer = transfers.length > 0 && hasText(transfers[0].fecha) && hasText(transfers[0].escuelaDestino)
+    if (!validTransfer) {
+      issues.push({ campo: "administrativo.cambiosEscuela", mensaje: "Completar el registro de pase o egreso en los datos de cursada.", origen: "cursada", bimestre: null })
+    }
   }
   return issues
 }
@@ -1205,7 +1245,17 @@ function buildDocumentSnapshot(dao, enrollmentId, periodId) {
         cualesApoyos: enrollment.getString("cuales_apoyos"),
         promocionoConAcompanamiento: period.getInt("numero_periodo") === 4 ? enrollment.getString("promociono_con_acompanamiento") : null
       },
-      administrativo: { domicilio: student.getString("domicilio"), telefono: student.getString("telefono"), fechaIngreso: enrollment.getString("fecha_ingreso"), fechaEgreso: enrollment.getString("fecha_egreso") },
+      administrativo: {
+        domicilio: "",
+        telefono: "",
+        escuelaInicial: enrollment.getString("escuela_inicial"),
+        fechaIngresoInicial: enrollment.getString("fecha_ingreso_inicial"),
+        fechaEgresoInicial: enrollment.getString("fecha_egreso_inicial"),
+        cambiosEscuela: transferRecords(enrollment),
+        cambioDomicilio: enrollment.getString("cambio_domicilio"),
+        fechaIngreso: enrollment.getString("fecha_ingreso"),
+        fechaEgreso: enrollment.getString("fecha_egreso")
+      },
       dependencias: eligibility.dependencias,
       pendientesDeIntegracion: ["MAPEO_ESCALA", "CIERRE_ANUAL", "HISTORIAL_ADMINISTRATIVO"]
     }
