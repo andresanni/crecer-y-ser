@@ -13,6 +13,7 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
 } from 'antd';
 import {
@@ -62,13 +63,10 @@ interface VistaInformePorAlumnoProps {
   onPendingChangesChange?: (hasChanges: boolean) => void;
 }
 
-interface PageItemGroup {
-  pagina: number;
-  rows: Array<{
-    item: ItemPlantillaInforme;
-    showBlockCell: boolean;
-    blockRowSpan: number;
-  }>;
+interface TableItemRow {
+  item: ItemPlantillaInforme;
+  showBlockCell: boolean;
+  blockRowSpan: number;
 }
 
 export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
@@ -265,36 +263,24 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
     [items],
   );
 
-  const pageGroups = useMemo<PageItemGroup[]>(() => {
-    const pages = new Map<number, ItemPlantillaInforme[]>();
-    for (const item of items) {
-      const pageNum = item.pagina || 1;
-      const list = pages.get(pageNum) || [];
-      list.push(item);
-      pages.set(pageNum, list);
-    }
-    const sortedPageNumbers = Array.from(pages.keys()).sort((a, b) => a - b);
-    return sortedPageNumbers.map((pagina) => {
-      const pageItems = pages.get(pagina) || [];
-      const rows = pageItems.map((item, idx) => {
-        if (!hasBlocks) {
-          return { item, showBlockCell: false, blockRowSpan: 1 };
-        }
-        const blockName = item.bloqueNombre || '';
-        const prevBlock = idx > 0 ? pageItems[idx - 1].bloqueNombre || '' : null;
-        if (idx > 0 && blockName === prevBlock) {
-          return { item, showBlockCell: false, blockRowSpan: 0 };
-        }
-        let span = 1;
-        while (
-          idx + span < pageItems.length &&
-          (pageItems[idx + span].bloqueNombre || '') === blockName
-        ) {
-          span += 1;
-        }
-        return { item, showBlockCell: true, blockRowSpan: span };
-      });
-      return { pagina, rows };
+  const tableRows = useMemo<TableItemRow[]>(() => {
+    return items.map((item, idx) => {
+      if (!hasBlocks) {
+        return { item, showBlockCell: false, blockRowSpan: 1 };
+      }
+      const blockName = item.bloqueNombre || '';
+      const prevBlock = idx > 0 ? items[idx - 1].bloqueNombre || '' : null;
+      if (idx > 0 && blockName === prevBlock) {
+        return { item, showBlockCell: false, blockRowSpan: 0 };
+      }
+      let span = 1;
+      while (
+        idx + span < items.length &&
+        (items[idx + span].bloqueNombre || '') === blockName
+      ) {
+        span += 1;
+      }
+      return { item, showBlockCell: true, blockRowSpan: span };
     });
   }, [hasBlocks, items]);
 
@@ -324,6 +310,8 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
     () => alumnos.filter((a) => studentStatusMap[a.inscripcionId]?.completo).length,
     [alumnos, studentStatusMap],
   );
+  const pendingStudentsCount = alumnos.length - completedStudentsCount;
+  const allStudentsComplete = alumnos.length > 0 && completedStudentsCount === alumnos.length;
 
   useEffect(() => {
     onCompletedCountChange?.(completedStudentsCount);
@@ -490,24 +478,40 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
               }}
               aria-label="Alumno anterior"
             />
-            <span className={styles.orderBadge}>
-              {currentAlumno?.numeroOrden ?? (currentIndex >= 0 ? currentIndex + 1 : '•')}
-            </span>
             <Select
               showSearch
-              optionFilterProp="label"
+              filterOption={(input, option) => {
+                const search = (option as { searchValue?: string })?.searchValue;
+                return Boolean(search && search.toLowerCase().includes(input.toLowerCase()));
+              }}
+              dropdownStyle={{ minWidth: 420 }}
               className={styles.studentSelect}
               value={selectedInscripcionId}
               disabled={studentNavigationDisabled || saving}
               onChange={(val) => switchStudent(val)}
               options={alumnos.map((a, idx) => {
                 const st = studentStatusMap[a.inscripcionId];
-                const suffix = st?.completo
-                  ? '✓ Completo'
+                const isComplete = Boolean(st?.completo);
+                const order = a.numeroOrden ?? idx + 1;
+                const statusLabel = isComplete
+                  ? 'Completo'
                   : `${st?.itemsRespondidos ?? 0}/${items.length}`;
                 return {
                   value: a.inscripcionId,
-                  label: `${a.numeroOrden ?? idx + 1}. ${a.nombreCompleto} (${suffix})`,
+                  searchValue: `${order}. ${a.nombreCompleto} ${statusLabel}`,
+                  label: (
+                    <div className={styles.studentOptionRow}>
+                      <span className={styles.studentOptionName}>
+                        {order}. {a.nombreCompleto}
+                      </span>
+                      <Tag
+                        color={isComplete ? 'success' : 'warning'}
+                        className={styles.studentOptionTag}
+                      >
+                        {statusLabel}
+                      </Tag>
+                    </div>
+                  ),
                 };
               })}
             />
@@ -527,20 +531,33 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
             {!readOnly && (
               <>
                 <Button
-                  icon={<UnorderedListOutlined />}
+                  icon={allStudentsComplete ? <CheckCircleOutlined style={{ color: 'var(--cys-color-success-text)' }} /> : <UnorderedListOutlined />}
                   onClick={() => setDrawerOpen(true)}
                 >
                   Progreso ({completedStudentsCount}/{alumnos.length})
                 </Button>
                 {access.canSubmitReport && (
-                  <Button
-                    type="primary"
-                    icon={<SendOutlined />}
-                    loading={submitting}
-                    onClick={handleSubmitReport}
+                  <Tooltip
+                    title={
+                      hasChanges
+                        ? 'Guardá los cambios pendientes del alumno actual antes de enviar'
+                        : !allStudentsComplete
+                          ? `Faltan completar ${pendingStudentsCount} alumno(s) para poder enviar a Dirección`
+                          : undefined
+                    }
                   >
-                    {cursoNombre ? `Enviar ${cursoNombre} a Dirección` : 'Enviar informe a Dirección'}
-                  </Button>
+                    <span>
+                      <Button
+                        type="primary"
+                        icon={<SendOutlined />}
+                        loading={submitting}
+                        disabled={!allStudentsComplete || hasChanges || saving}
+                        onClick={handleSubmitReport}
+                      >
+                        {cursoNombre ? `Enviar ${cursoNombre} a Dirección` : 'Enviar informe a Dirección'}
+                      </Button>
+                    </span>
+                  </Tooltip>
                 )}
               </>
             )}
@@ -659,62 +676,50 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {pageGroups.map((pageGroup) => (
-                  <React.Fragment key={pageGroup.pagina}>
-                    {pageGroups.length > 1 && (
-                      <tr>
-                        <td
-                          colSpan={hasBlocks ? 4 : 3}
-                          className={styles.pageDivider}
-                        >
-                          Hoja {pageGroup.pagina} del documento A4
+                {tableRows.map(({ item, showBlockCell, blockRowSpan }) => {
+                  const currentCode = draftRespuestas[item.id] || '';
+                  return (
+                    <tr key={item.id}>
+                      {hasBlocks && showBlockCell && (
+                        <td rowSpan={blockRowSpan} className={styles.blockCell}>
+                          {item.bloqueNombre || 'General'}
                         </td>
-                      </tr>
-                    )}
-                    {pageGroup.rows.map(({ item, showBlockCell, blockRowSpan }) => {
-                      const currentCode = draftRespuestas[item.id] || '';
-                      return (
-                        <tr key={item.id}>
-                          {hasBlocks && showBlockCell && (
-                            <td rowSpan={blockRowSpan} className={styles.blockCell}>
-                              {item.bloqueNombre || 'General'}
-                            </td>
-                          )}
-                          <td className={styles.orderCell}>{item.ordenVisual}</td>
-                          <th scope="row" className={styles.promptHeaderCell}>
-                            {item.texto}
-                          </th>
-                          <td className={styles.valueCell}>
-                            {isEditable ? (
-                              <div className={styles.scaleOptionsGroup}>
-                                {plantilla.escalaItems.map((opt) => {
-                                  const selected = currentCode === opt.codigo;
-                                  return (
-                                    <Button
-                                      key={opt.codigo}
-                                      size="small"
-                                      type={selected ? 'primary' : 'default'}
-                                      className={styles.scaleOptionButton}
-                                      onClick={() => handleSelectItemValue(item.id, opt.codigo)}
-                                    >
-                                      {opt.etiqueta}
-                                    </Button>
-                                  );
-                                })}
-                              </div>
-                            ) : currentCode ? (
-                              <Tag color="blue" style={{ fontWeight: 700, fontSize: 13, padding: '2px 10px' }}>
-                                {escalaItemLabelByCode.get(currentCode) || currentCode}
-                              </Tag>
-                            ) : (
-                              <Text type="secondary">Sin calificar</Text>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
+                      )}
+                      <td className={styles.orderCell}>
+                        <span className={styles.itemIndexBadge}>{item.ordenVisual}</span>
+                      </td>
+                      <th scope="row" className={styles.promptHeaderCell}>
+                        {item.texto}
+                      </th>
+                      <td className={styles.valueCell}>
+                        {isEditable ? (
+                          <div className={styles.scaleOptionsGroup}>
+                            {plantilla.escalaItems.map((opt) => {
+                              const selected = currentCode === opt.codigo;
+                              return (
+                                <Button
+                                  key={opt.codigo}
+                                  size="small"
+                                  type={selected ? 'primary' : 'default'}
+                                  className={styles.scaleOptionButton}
+                                  onClick={() => handleSelectItemValue(item.id, opt.codigo)}
+                                >
+                                  {opt.etiqueta}
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        ) : currentCode ? (
+                          <Tag color="blue" style={{ fontWeight: 700, fontSize: 13, padding: '2px 10px' }}>
+                            {escalaItemLabelByCode.get(currentCode) || currentCode}
+                          </Tag>
+                        ) : (
+                          <Text type="secondary">Sin calificar</Text>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -734,7 +739,7 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
               </div>
 
               {isEditable ? (
-                <div className={styles.scaleOptionsGroup}>
+                <div className={styles.generalScaleOptionsGroup}>
                   {plantilla.escalaDesempenoGeneral.map((opt) => {
                     const selected = draftDesempeno === opt.codigo;
                     return (
@@ -768,7 +773,7 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
             <div className={styles.generalSection}>
               <div className={styles.generalHeader}>
                 <Text strong style={{ fontSize: 14 }}>
-                  Observaciones (Hoja 2)
+                  Observaciones
                 </Text>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                   Si se deja vacío se imprimirá &quot;-&quot;
@@ -788,30 +793,39 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
               )}
             </div>
           )}
-
-          {!readOnly && (
-            <div className={styles.footerBar}>
-              <Space size={8} wrap>
-                <Button
-                  disabled={!hasChanges || saving}
-                  onClick={handleDiscardChanges}
-                >
-                  Descartar cambios
-                </Button>
-              </Space>
-              <Space size={10} wrap>
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  loading={saving}
-                  onClick={() => void handleSaveCurrentStudent()}
-                >
-                  Guardar avance del alumno
-                </Button>
-              </Space>
-            </div>
-          )}
         </Card>
+      )}
+
+      {hasChanges && isEditable && (
+        <div className={`cys-floating-action-bar ${styles.floatingActionBar}`}>
+          <Space size={8}>
+            <ExclamationCircleOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 18 }} />
+            <Text strong style={{ fontSize: 13.5, color: 'var(--cys-color-text)' }}>
+              Cambios sin guardar
+              {currentAlumno ? ` · ${currentAlumno.nombreCompleto}` : ''}
+            </Text>
+          </Space>
+
+          <Space size={10}>
+            <Button
+              onClick={handleDiscardChanges}
+              disabled={saving}
+              style={{ borderRadius: 8, fontWeight: 600 }}
+            >
+              Descartar
+            </Button>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={() => void handleSaveCurrentStudent()}
+              loading={saving}
+              className="btn-primary-gradient"
+              style={{ borderRadius: 8, fontWeight: 600, paddingInline: 20 }}
+            >
+              {readOnly ? 'Guardar corrección' : 'Guardar Cambios'}
+            </Button>
+          </Space>
+        </div>
       )}
 
       <Drawer

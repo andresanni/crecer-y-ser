@@ -106,33 +106,28 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
     : undefined;
   const fallbackCourseId = activeCursoId || cursos[0]?.id || '';
 
-  const initialCell = useMemo(
-    () => celdas.find(
-      (cell) => cell.cursoId === fallbackCourseId && (cell.materiaId || '') === (initialSubjectId || ''),
-    ),
-    [celdas, fallbackCourseId, initialSubjectId],
-  );
-
   const initialCourseIds = useMemo(() => {
-    if (initialCell?.enlace?.cursoIds && initialCell.enlace.cursoIds.length > 0) {
-      return initialCell.enlace.cursoIds;
-    }
-    if (fallbackCourseId && initialCell && !isDeliveredStage(initialCell.etapa)) {
+    const isAvailable = (cId: string) => {
+      const cell = celdas.find(
+        (candidate) => (
+          candidate.cursoId === cId &&
+          (candidate.materiaId || '') === (requiresSubject ? (initialSubjectId || '') : '')
+        ),
+      );
+      const hasActiveLink = Boolean(cell?.enlace);
+      return Boolean(cell && !hasActiveLink && !isDeliveredStage(cell.etapa) && cell.etapa !== 'PENDIENTE_CONFIGURACION');
+    };
+
+    if (fallbackCourseId && isAvailable(fallbackCourseId)) {
       return [fallbackCourseId];
     }
+
     const availableForInitialSubject = cursos
-      .filter((c) => {
-        const cell = celdas.find(
-          (candidate) => (
-            candidate.cursoId === c.id &&
-            (candidate.materiaId || '') === (requiresSubject ? (initialSubjectId || '') : '')
-          ),
-        );
-        return cell && !isDeliveredStage(cell.etapa) && cell.etapa !== 'PENDIENTE_CONFIGURACION';
-      })
+      .filter((c) => isAvailable(c.id))
       .map((c) => c.id);
+
     return availableForInitialSubject.slice(0, 1);
-  }, [celdas, cursos, fallbackCourseId, initialCell, initialSubjectId, requiresSubject]);
+  }, [celdas, cursos, fallbackCourseId, initialSubjectId, requiresSubject]);
 
   const watchedMateriaId = Form.useWatch('materiaId', form) ?? initialSubjectId;
   const watchedCursoIds = Form.useWatch('cursoIds', form) ?? initialCourseIds;
@@ -157,13 +152,15 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
     return map;
   }, [celdas, requiresSubject, watchedMateriaId]);
 
-  const editableCoursesForSubject = useMemo(
-    () => cursos.filter((c) => {
-      const cell = cellsForCurrentSubject.get(c.id);
-      return cell && !isDeliveredStage(cell.etapa) && cell.etapa !== 'PENDIENTE_CONFIGURACION';
-    }),
-    [cellsForCurrentSubject, cursos],
-  );
+  const hasAnyUnavailableCourse = useMemo(() => {
+    if (!watchedCursoIds || watchedCursoIds.length === 0) return false;
+    return watchedCursoIds.some((cId) => {
+      const cell = cellsForCurrentSubject.get(cId);
+      return !cell || Boolean(cell.enlace) || isDeliveredStage(cell.etapa) || cell.etapa === 'PENDIENTE_CONFIGURACION';
+    });
+  }, [cellsForCurrentSubject, watchedCursoIds]);
+
+  const isSubmitDisabled = !watchedCursoIds || watchedCursoIds.length === 0 || hasAnyUnavailableCourse;
 
   const tokens = useMemo<EnlaceInformeRow[]>(() => {
     const byId = new Map<string, EnlaceInformeRow>();
@@ -209,12 +206,6 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
     }
   };
 
-  const applyCoursePreset = (filterFn: (curso: CursoInformeResumen) => boolean) => {
-    const matchingIds = editableCoursesForSubject.filter(filterFn).map((c) => c.id);
-    form.setFieldsValue({ cursoIds: matchingIds });
-    syncTeacherFromSelection(matchingIds, watchedMateriaId);
-  };
-
   const showIssuedLink = (secret: string, title: string) => {
     const url = informesService.buildMagicLinkUrl(secret);
     modal.success({
@@ -247,6 +238,11 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
         ...current,
         [issued.enlace.id]: issued.secreto,
       }));
+      form.setFieldsValue({
+        cursoIds: [],
+        docenteNombre: '',
+        docenteApellido: '',
+      });
       onChanged();
       const count = values.cursoIds.length;
       showIssuedLink(
@@ -289,33 +285,15 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
     }
   };
 
-  const handleRotateToken = async (record: EnlaceInformeRow) => {
-    try {
-      setBusyTokenId(record.id);
-      const rotated = await informesService.rotateEnlace(record.id);
-      setCachedSecrets((current) => ({
-        ...current,
-        [rotated.enlace.id]: rotated.secreto,
-      }));
-      onChanged();
-      showIssuedLink(rotated.secreto, 'Enlace regenerado con éxito');
-    } catch (err) {
-      console.error(err);
-      message.error('No se pudo regenerar el enlace');
-    } finally {
-      setBusyTokenId(null);
-    }
-  };
-
   const handleDeleteToken = async (tokenId: string) => {
     try {
       setBusyTokenId(tokenId);
       await informesService.deleteEnlace(tokenId);
-      message.success('Enlace pausado');
+      message.success('Enlace eliminado');
       onChanged();
     } catch (err) {
       console.error(err);
-      message.error('No se pudo pausar el enlace');
+      message.error('No se pudo eliminar el enlace');
     } finally {
       setBusyTokenId(null);
     }
@@ -360,7 +338,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
     {
       title: 'Acciones',
       key: 'acciones',
-      width: 150,
+      width: 100,
       align: 'center',
       render: (_, record) => (
         <Space size={6}>
@@ -374,36 +352,22 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
             />
           </Tooltip>
           <Popconfirm
-            title="¿Regenerar este enlace?"
-            description="El enlace anterior dejará de funcionar y se generará uno nuevo para todo el set de grados."
-            onConfirm={() => void handleRotateToken(record)}
-            okText="Regenerar"
-            cancelText="Cancelar"
-          >
-            <Tooltip title="Regenerar enlace">
-              <Button
-                size="small"
-                icon={<LinkOutlined />}
-                loading={busyTokenId === record.id}
-                aria-label={`Regenerar enlace de ${record.docenteApellido}, ${record.docenteNombre}`}
-              />
-            </Tooltip>
-          </Popconfirm>
-          <Popconfirm
-            title="¿Pausar este enlace?"
+            title="¿Eliminar este enlace?"
             description="El acceso docente se deshabilitará para los grados incluidos, pero el borrador guardado quedará intacto."
             onConfirm={() => void handleDeleteToken(record.id)}
-            okText="Pausar enlace"
+            okText="Eliminar enlace"
             cancelText="Cancelar"
             okButtonProps={{ danger: true }}
           >
-            <Button
-              size="small"
-              danger
-              icon={<DeleteOutlined />}
-              loading={busyTokenId === record.id}
-              aria-label={`Pausar enlace de ${record.docenteApellido}, ${record.docenteNombre}`}
-            />
+            <Tooltip title="Eliminar enlace">
+              <Button
+                size="small"
+                danger
+                icon={<DeleteOutlined />}
+                loading={busyTokenId === record.id}
+                aria-label={`Eliminar enlace de ${record.docenteApellido}, ${record.docenteNombre}`}
+              />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -429,34 +393,6 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
               Emitir enlace docente por set de grados
             </span>
           }
-          extra={
-            <Space size={6} wrap>
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                Selección rápida:
-              </Typography.Text>
-              <Button
-                size="small"
-                onClick={() => applyCoursePreset(() => true)}
-                disabled={editableCoursesForSubject.length === 0}
-              >
-                Todos ({editableCoursesForSubject.length})
-              </Button>
-              <Button
-                size="small"
-                onClick={() => applyCoursePreset((c) => c.gradoNumero >= 1 && c.gradoNumero <= 3)}
-                disabled={editableCoursesForSubject.every((c) => c.gradoNumero > 3)}
-              >
-                1.er Ciclo (1.° a 3.°)
-              </Button>
-              <Button
-                size="small"
-                onClick={() => applyCoursePreset((c) => c.gradoNumero >= 4 && c.gradoNumero <= 7)}
-                disabled={editableCoursesForSubject.every((c) => c.gradoNumero < 4)}
-              >
-                2.° Ciclo (4.° a 7.°)
-              </Button>
-            </Space>
-          }
         >
           <Form<EnlaceInformeFormValues>
             form={form}
@@ -465,8 +401,12 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
             initialValues={{
               cursoIds: initialCourseIds,
               materiaId: initialSubjectId,
-              docenteNombre: initialCell?.docenteNombre || '',
-              docenteApellido: initialCell?.docenteApellido || '',
+              docenteNombre: initialCourseIds[0]
+                ? cellsForCurrentSubject.get(initialCourseIds[0])?.docenteNombre || ''
+                : '',
+              docenteApellido: initialCourseIds[0]
+                ? cellsForCurrentSubject.get(initialCourseIds[0])?.docenteApellido || ''
+                : '',
             }}
             onValuesChange={(changed, allValues) => {
               if ('materiaId' in changed) {
@@ -478,7 +418,8 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                       (candidate.materiaId || '') === (requiresSubject ? (newSubjectId || '') : '')
                     ),
                   );
-                  return cell && !isDeliveredStage(cell.etapa) && cell.etapa !== 'PENDIENTE_CONFIGURACION';
+                  const hasActiveLink = Boolean(cell?.enlace);
+                  return Boolean(cell && !hasActiveLink && !isDeliveredStage(cell.etapa) && cell.etapa !== 'PENDIENTE_CONFIGURACION');
                 });
                 form.setFieldsValue({ cursoIds: validCourseIds });
                 syncTeacherFromSelection(validCourseIds, newSubjectId);
@@ -491,7 +432,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
           >
             <Row gutter={[14, 0]}>
               {requiresSubject && (
-                <Col xs={24} sm={12} md={6}>
+                <Col xs={24} sm={10} md={9}>
                   <Form.Item
                     label="Materia especial"
                     name="materiaId"
@@ -508,7 +449,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                 </Col>
               )}
 
-              <Col xs={24} sm={12} md={requiresSubject ? 7 : 10}>
+              <Col xs={24} sm={requiresSubject ? 14 : 24} md={requiresSubject ? 15 : 24}>
                 <Form.Item
                   label="Set de grados a incluir en el enlace"
                   name="cursoIds"
@@ -520,23 +461,38 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                     placeholder="Seleccionar uno o más grados"
                     options={cursos.map((c) => {
                       const cell = cellsForCurrentSubject.get(c.id);
+                      const hasActiveLink = Boolean(cell?.enlace);
                       const delivered = cell ? isDeliveredStage(cell.etapa) : false;
                       const unconfigured = !cell || cell.etapa === 'PENDIENTE_CONFIGURACION';
+
+                      let label = `${c.nombre} (${c.turno})`;
+                      if (delivered) {
+                        label = `${c.nombre} (Ya entregado)`;
+                      } else if (unconfigured) {
+                        label = `${c.nombre} (Sin plantilla)`;
+                      } else if (hasActiveLink) {
+                        const teacher = [
+                          cell?.docenteApellido || cell?.enlace?.docenteApellido,
+                          cell?.docenteNombre || cell?.enlace?.docenteNombre,
+                        ]
+                          .filter(Boolean)
+                          .join(', ');
+                        label = teacher
+                          ? `${c.nombre} (Con enlace activo - ${teacher})`
+                          : `${c.nombre} (Con enlace activo)`;
+                      }
+
                       return {
                         value: c.id,
-                        disabled: delivered || unconfigured,
-                        label: delivered
-                          ? `${c.nombre} (Ya entregado)`
-                          : unconfigured
-                            ? `${c.nombre} (Sin plantilla)`
-                            : `${c.nombre} (${c.turno})`,
+                        disabled: delivered || unconfigured || hasActiveLink,
+                        label,
                       };
                     })}
                   />
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={requiresSubject ? 3 : 4}>
+              <Col xs={24} sm={12} md={8}>
                 <Form.Item
                   label="Nombre(s) docente"
                   name="docenteNombre"
@@ -546,7 +502,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={requiresSubject ? 3 : 4}>
+              <Col xs={24} sm={12} md={8}>
                 <Form.Item
                   label="Apellido(s) docente"
                   name="docenteApellido"
@@ -556,13 +512,14 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={requiresSubject ? 5 : 6} className={styles.submitColumn}>
+              <Col xs={24} sm={24} md={8} className={styles.submitColumn}>
                 <Form.Item className={ui.fullWidth}>
                   <Button
                     type="primary"
                     htmlType="submit"
                     icon={<LinkOutlined />}
                     loading={creating}
+                    disabled={isSubmitDisabled}
                     className={`btn-primary-gradient ${styles.submitButton}`}
                   >
                     {watchedCursoIds && watchedCursoIds.length > 1

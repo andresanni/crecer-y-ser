@@ -30,34 +30,59 @@
   margin: 0;
 }
 
-.metadataContainer {
+.headerSubtitle {
+  color: #e0e7ff;
+  font-size: 13.5px;
+}
+
+.scopeContainer {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   justify-content: flex-end;
   width: 100%;
 }
 
-.courseCard {
-  align-items: center;
-  background: rgba(15, 23, 42, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  border-radius: 10px;
+.scopeCard {
   display: flex;
-  gap: 9px;
-  min-width: 176px;
-  padding: 10px 14px;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  padding: 10px 16px;
+  backdrop-filter: blur(6px);
+  min-width: 240px;
 }
 
-.periodCard {
-  align-items: center;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 10px;
+.scopeItem {
   display: flex;
-  gap: 9px;
-  min-width: 152px;
-  padding: 10px 14px;
+  align-items: center;
+  gap: 10px;
+}
+
+.scopeIcon {
+  font-size: 16px;
+  color: #bfdbfe;
+  flex-shrink: 0;
+}
+
+.scopeMainText {
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.scopeDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  width: 100%;
+}
+
+.scopeSecondaryText {
+  color: #e0e7ff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 @media (max-width: 767px) {
@@ -81,23 +106,13 @@
     font-size: 19px;
   }
 
-  .metadataContainer {
-    display: grid;
-    gap: 8px;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .scopeContainer {
     justify-content: stretch;
   }
 
-  .courseCard,
-  .periodCard {
+  .scopeCard {
     min-width: 0;
-    padding: 8px 10px;
-  }
-}
-
-@media (max-width: 480px) {
-  .metadataContainer {
-    grid-template-columns: 1fr;
+    width: 100%;
   }
 }
 

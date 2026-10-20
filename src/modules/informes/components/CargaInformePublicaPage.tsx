@@ -15,9 +15,7 @@ import {
 import {
   AppstoreOutlined,
   BookOutlined,
-  CheckCircleFilled,
   CheckCircleOutlined,
-  FileTextOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import ui from '../../../shared/styles/ui.module.css';
@@ -194,10 +192,10 @@ export const CargaInformePublicaPage: React.FC = () => {
     <div className={ui.publicPage}>
       <Card
         className={`${ui.operationalContent} ${styles.publicHeaderCard}`}
-        styles={{ body: { padding: '18px 24px' } }}
+        styles={{ body: { padding: '16px 22px' } }}
       >
-        <Row justify="space-between" align="middle" gutter={[16, 16]}>
-          <Col xs={24} lg={13}>
+        <Row justify="space-between" align="middle" gutter={[20, 14]}>
+          <Col xs={24} md={13} lg={14}>
             <div className={styles.teacherContainer}>
               <div className={styles.schoolLogo}>
                 <img
@@ -207,79 +205,32 @@ export const CargaInformePublicaPage: React.FC = () => {
                 />
               </div>
               <div>
-                <Space size={6} align="center">
-                  <CheckCircleFilled style={{ color: '#6ee7b7' }} />
-                  <Text style={{ color: '#bfdbfe', fontSize: 12, fontWeight: 700 }}>
-                    COLEGIO CRECER Y SER · ACCESO DOCENTE
-                  </Text>
-                </Space>
                 <Title level={3} className={styles.teacherTitle}>
                   {teacherFullName}
                 </Title>
-                <Text style={{ color: '#e0e7ff' }}>
-                  {tipoMeta?.titulo || 'Carga de informe'} · Ciclo {ciclo.ano}
+                <Text className={styles.headerSubtitle}>
+                  {tipoMeta?.titulo || 'Informe pedagógico'} · Ciclo {ciclo.ano}
                 </Text>
               </div>
             </div>
           </Col>
-          <Col xs={24} lg={11}>
-            <div className={styles.metadataContainer}>
-              <div className={styles.courseCard}>
-                <UserOutlined style={{ fontSize: 18, color: '#bfdbfe' }} />
-                <div>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: '#bfdbfe',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    GRADO ACTIVO
-                  </Text>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: '#ffffff',
-                      fontSize: 16,
-                      fontWeight: 800,
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {curso.nombre} · {curso.turno}
-                  </Text>
-                </div>
-              </div>
-              <div className={styles.periodCard}>
-                {materia ? (
-                  <BookOutlined style={{ fontSize: 18, color: '#dbeafe' }} />
-                ) : (
-                  <FileTextOutlined style={{ fontSize: 18, color: '#dbeafe' }} />
+          <Col xs={24} md={11} lg={10}>
+            <div className={styles.scopeContainer}>
+              <div className={styles.scopeCard}>
+                {materia && (
+                  <>
+                    <div className={styles.scopeItem}>
+                      <BookOutlined className={styles.scopeIcon} />
+                      <span className={styles.scopeMainText}>{materia.nombre}</span>
+                    </div>
+                    <div className={styles.scopeDivider} />
+                  </>
                 )}
-                <div>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: '#dbeafe',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: 0.5,
-                    }}
-                  >
-                    {materia ? 'ÁREA ESPECIAL' : 'ALCANCE'}
-                  </Text>
-                  <Text
-                    style={{
-                      display: 'block',
-                      color: '#ffffff',
-                      fontSize: 16,
-                      fontWeight: 800,
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {materia ? materia.nombre : tipoMeta?.tituloCorto}
-                  </Text>
+                <div className={styles.scopeItem}>
+                  <UserOutlined className={styles.scopeIcon} />
+                  <span className={materia ? styles.scopeSecondaryText : styles.scopeMainText}>
+                    {curso.nombre} · {curso.turno}
+                  </span>
                 </div>
               </div>
             </div>
@@ -289,6 +240,7 @@ export const CargaInformePublicaPage: React.FC = () => {
 
       {lastDeliveredBanner && (
         <Alert
+          className={ui.operationalContent}
           type="success"
           showIcon
           closable
@@ -342,6 +294,7 @@ export const CargaInformePublicaPage: React.FC = () => {
 
       {!!context.cursadasPendientes.length && (
         <Alert
+          className={ui.operationalContent}
           type="warning"
           showIcon
           title="Cursadas por confirmar"
@@ -350,7 +303,7 @@ export const CargaInformePublicaPage: React.FC = () => {
       )}
 
       {alumnos.length === 0 ? (
-        <Card className={ui.emptyPanel}>
+        <Card className={`${ui.operationalContent} ${ui.emptyPanel}`}>
           <Text type="secondary">No hay estudiantes evaluables en este informe.</Text>
         </Card>
       ) : (
