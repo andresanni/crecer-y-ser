@@ -55,17 +55,20 @@ interface GestorEnlacesInformesModalProps {
 }
 
 interface EnlaceInformeFormValues {
-  cursoId: string;
+  cursoIds: string[];
   materiaId?: string;
   docenteNombre: string;
   docenteApellido: string;
 }
 
 interface EnlaceInformeRow extends TokenAccesoInforme {
-  cursoNombre: string;
-  cursoTurno: string;
+  cursosDetalle: Array<{ id: string; nombre: string; turno: string }>;
   materiaNombre: string | null;
 }
+
+const isDeliveredStage = (etapa: CeldaEtapaInforme['etapa']) => (
+  etapa === 'REVISION_DIRECTIVA' || etapa === 'LISTO_PARA_PDF'
+);
 
 export const GestorEnlacesInformesModal: React.FC<GestorEnlacesInformesModalProps> = (props) => {
   const sessionKey = useModalSessionKey(props.open);
@@ -98,17 +101,41 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
   const meta = TIPOS_INFORME_META[tipoInforme];
   const requiresSubject = meta.requiereMateriaEspecial;
 
-  const initialCourseId = activeCursoId || cursos[0]?.id || '';
   const initialSubjectId = requiresSubject
     ? activeMateriaId || materiasEspeciales[0]?.id || ''
     : undefined;
+  const fallbackCourseId = activeCursoId || cursos[0]?.id || '';
 
   const initialCell = useMemo(
     () => celdas.find(
-      (cell) => cell.cursoId === initialCourseId && (cell.materiaId || '') === (initialSubjectId || ''),
+      (cell) => cell.cursoId === fallbackCourseId && (cell.materiaId || '') === (initialSubjectId || ''),
     ),
-    [celdas, initialCourseId, initialSubjectId],
+    [celdas, fallbackCourseId, initialSubjectId],
   );
+
+  const initialCourseIds = useMemo(() => {
+    if (initialCell?.enlace?.cursoIds && initialCell.enlace.cursoIds.length > 0) {
+      return initialCell.enlace.cursoIds;
+    }
+    if (fallbackCourseId && initialCell && !isDeliveredStage(initialCell.etapa)) {
+      return [fallbackCourseId];
+    }
+    const availableForInitialSubject = cursos
+      .filter((c) => {
+        const cell = celdas.find(
+          (candidate) => (
+            candidate.cursoId === c.id &&
+            (candidate.materiaId || '') === (requiresSubject ? (initialSubjectId || '') : '')
+          ),
+        );
+        return cell && !isDeliveredStage(cell.etapa) && cell.etapa !== 'PENDIENTE_CONFIGURACION';
+      })
+      .map((c) => c.id);
+    return availableForInitialSubject.slice(0, 1);
+  }, [celdas, cursos, fallbackCourseId, initialCell, initialSubjectId, requiresSubject]);
+
+  const watchedMateriaId = Form.useWatch('materiaId', form) ?? initialSubjectId;
+  const watchedCursoIds = Form.useWatch('cursoIds', form) ?? initialCourseIds;
 
   const cursosById = useMemo(
     () => new Map(cursos.map((curso) => [curso.id, curso])),
@@ -119,38 +146,73 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
     [materiasEspeciales],
   );
 
+  const cellsForCurrentSubject = useMemo(() => {
+    const targetSubject = requiresSubject ? (watchedMateriaId || '') : '';
+    const map = new Map<string, CeldaEtapaInforme>();
+    for (const cell of celdas) {
+      if ((cell.materiaId || '') === targetSubject) {
+        map.set(cell.cursoId, cell);
+      }
+    }
+    return map;
+  }, [celdas, requiresSubject, watchedMateriaId]);
+
+  const editableCoursesForSubject = useMemo(
+    () => cursos.filter((c) => {
+      const cell = cellsForCurrentSubject.get(c.id);
+      return cell && !isDeliveredStage(cell.etapa) && cell.etapa !== 'PENDIENTE_CONFIGURACION';
+    }),
+    [cellsForCurrentSubject, cursos],
+  );
+
   const tokens = useMemo<EnlaceInformeRow[]>(() => {
-    const list: EnlaceInformeRow[] = [];
+    const byId = new Map<string, EnlaceInformeRow>();
     for (const cell of celdas) {
       if (!cell.enlace) continue;
-      const curso = cursosById.get(cell.cursoId);
+      const existing = byId.get(cell.enlace.id);
+      if (existing) continue;
+
+      const courseIdsList = cell.enlace.cursoIds && cell.enlace.cursoIds.length > 0
+        ? cell.enlace.cursoIds
+        : [cell.cursoId];
+
+      const cursosDetalle = courseIdsList
+        .map((id) => cursosById.get(id))
+        .filter((c): c is CursoInformeResumen => Boolean(c))
+        .sort((a, b) => a.gradoNumero - b.gradoNumero)
+        .map((c) => ({ id: c.id, nombre: c.nombre, turno: c.turno }));
+
       const materia = cell.materiaId ? materiasById.get(cell.materiaId) : undefined;
-      list.push({
+      byId.set(cell.enlace.id, {
         ...cell.enlace,
         secreto: cachedSecrets[cell.enlace.id] || cell.enlace.secreto,
-        cursoNombre: curso?.nombre || 'Curso',
-        cursoTurno: curso?.turno || '',
+        cursosDetalle,
         materiaNombre: materia?.nombre || null,
       });
     }
-    return list;
+    return Array.from(byId.values());
   }, [cachedSecrets, celdas, cursosById, materiasById]);
 
-  const handleScopeSelectionChange = () => {
-    const selectedCourseId = form.getFieldValue('cursoId') as string | undefined;
-    const selectedSubjectId = form.getFieldValue('materiaId') as string | undefined;
-    const cell = celdas.find(
-      (candidate) => (
-        candidate.cursoId === selectedCourseId &&
-        (candidate.materiaId || '') === (requiresSubject ? (selectedSubjectId || '') : '')
-      ),
-    );
-    if (cell?.docenteNombre || cell?.docenteApellido) {
-      form.setFieldsValue({
-        docenteNombre: cell.docenteNombre || '',
-        docenteApellido: cell.docenteApellido || '',
-      });
+  const syncTeacherFromSelection = (nextCourseIds: string[], nextSubjectId?: string) => {
+    const subjectKey = requiresSubject ? (nextSubjectId || '') : '';
+    for (const cId of nextCourseIds) {
+      const cell = celdas.find(
+        (candidate) => candidate.cursoId === cId && (candidate.materiaId || '') === subjectKey,
+      );
+      if (cell?.docenteNombre || cell?.docenteApellido) {
+        form.setFieldsValue({
+          docenteNombre: cell.docenteNombre || '',
+          docenteApellido: cell.docenteApellido || '',
+        });
+        return;
+      }
     }
+  };
+
+  const applyCoursePreset = (filterFn: (curso: CursoInformeResumen) => boolean) => {
+    const matchingIds = editableCoursesForSubject.filter(filterFn).map((c) => c.id);
+    form.setFieldsValue({ cursoIds: matchingIds });
+    syncTeacherFromSelection(matchingIds, watchedMateriaId);
   };
 
   const showIssuedLink = (secret: string, title: string) => {
@@ -175,7 +237,8 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
       const issued = await informesService.createEnlace({
         cicloId,
         tipoInforme,
-        cursoId: values.cursoId,
+        cursoId: values.cursoIds[0],
+        cursoIds: values.cursoIds,
         materiaId: requiresSubject ? values.materiaId : undefined,
         docenteNombre: values.docenteNombre.trim(),
         docenteApellido: values.docenteApellido.trim(),
@@ -185,7 +248,13 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
         [issued.enlace.id]: issued.secreto,
       }));
       onChanged();
-      showIssuedLink(issued.secreto, 'Enlace de informe generado con éxito');
+      const count = values.cursoIds.length;
+      showIssuedLink(
+        issued.secreto,
+        count > 1
+          ? `Enlace generado para ${count} grados con éxito`
+          : 'Enlace de informe generado con éxito',
+      );
     } catch (err) {
       console.error(err);
       const msg = err && typeof err === 'object' && 'message' in err && typeof err.message === 'string'
@@ -256,6 +325,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
     {
       title: 'Docente / Referencia',
       key: 'docente',
+      width: '28%',
       render: (_, record) => (
         <div>
           <Typography.Text strong className={styles.teacherName}>
@@ -269,25 +339,28 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
       ),
     },
     {
-      title: requiresSubject ? 'Grado y Materia Especial' : 'Grado',
+      title: requiresSubject ? 'Materia Especial y Set de Grados' : 'Set de Grados',
       key: 'alcance',
       render: (_, record) => (
-        <Space size={8} wrap>
-          <Tag color="blue" className={styles.courseTag}>
-            {record.cursoNombre} {record.cursoTurno ? `(${record.cursoTurno})` : ''}
-          </Tag>
+        <Space size={[6, 6]} wrap>
           {record.materiaNombre && (
             <Tag color="purple" className={styles.subjectTag}>
               <BookOutlined className={styles.tagIcon} />
               {record.materiaNombre}
             </Tag>
           )}
+          {record.cursosDetalle.map((c) => (
+            <Tag key={c.id} color="blue" className={styles.courseTag}>
+              {c.nombre}
+            </Tag>
+          ))}
         </Space>
       ),
     },
     {
       title: 'Acciones',
       key: 'acciones',
+      width: 150,
       align: 'center',
       render: (_, record) => (
         <Space size={6}>
@@ -302,7 +375,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
           </Tooltip>
           <Popconfirm
             title="¿Regenerar este enlace?"
-            description="El enlace anterior dejará de funcionar y se generará uno nuevo."
+            description="El enlace anterior dejará de funcionar y se generará uno nuevo para todo el set de grados."
             onConfirm={() => void handleRotateToken(record)}
             okText="Regenerar"
             cancelText="Cancelar"
@@ -318,7 +391,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
           </Popconfirm>
           <Popconfirm
             title="¿Pausar este enlace?"
-            description="El acceso docente se deshabilitará, pero el borrador guardado quedará intacto y podrá retomarse generando un nuevo enlace."
+            description="El acceso docente se deshabilitará para los grados incluidos, pero el borrador guardado quedará intacto."
             onConfirm={() => void handleDeleteToken(record.id)}
             okText="Pausar enlace"
             cancelText="Cancelar"
@@ -353,8 +426,36 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
           title={
             <span className={styles.cardTitle}>
               <PlusCircleOutlined className={ui.primary} />
-              Emitir o actualizar enlace docente
+              Emitir enlace docente por set de grados
             </span>
+          }
+          extra={
+            <Space size={6} wrap>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                Selección rápida:
+              </Typography.Text>
+              <Button
+                size="small"
+                onClick={() => applyCoursePreset(() => true)}
+                disabled={editableCoursesForSubject.length === 0}
+              >
+                Todos ({editableCoursesForSubject.length})
+              </Button>
+              <Button
+                size="small"
+                onClick={() => applyCoursePreset((c) => c.gradoNumero >= 1 && c.gradoNumero <= 3)}
+                disabled={editableCoursesForSubject.every((c) => c.gradoNumero > 3)}
+              >
+                1.er Ciclo (1.° a 3.°)
+              </Button>
+              <Button
+                size="small"
+                onClick={() => applyCoursePreset((c) => c.gradoNumero >= 4 && c.gradoNumero <= 7)}
+                disabled={editableCoursesForSubject.every((c) => c.gradoNumero < 4)}
+              >
+                2.° Ciclo (4.° a 7.°)
+              </Button>
+            </Space>
           }
         >
           <Form<EnlaceInformeFormValues>
@@ -362,36 +463,33 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
             layout="vertical"
             requiredMark
             initialValues={{
-              cursoId: initialCourseId,
+              cursoIds: initialCourseIds,
               materiaId: initialSubjectId,
               docenteNombre: initialCell?.docenteNombre || '',
               docenteApellido: initialCell?.docenteApellido || '',
             }}
-            onValuesChange={(changed) => {
-              if ('cursoId' in changed || 'materiaId' in changed) {
-                handleScopeSelectionChange();
+            onValuesChange={(changed, allValues) => {
+              if ('materiaId' in changed) {
+                const newSubjectId = allValues.materiaId;
+                const validCourseIds = (allValues.cursoIds || []).filter((cId) => {
+                  const cell = celdas.find(
+                    (candidate) => (
+                      candidate.cursoId === cId &&
+                      (candidate.materiaId || '') === (requiresSubject ? (newSubjectId || '') : '')
+                    ),
+                  );
+                  return cell && !isDeliveredStage(cell.etapa) && cell.etapa !== 'PENDIENTE_CONFIGURACION';
+                });
+                form.setFieldsValue({ cursoIds: validCourseIds });
+                syncTeacherFromSelection(validCourseIds, newSubjectId);
+              } else if ('cursoIds' in changed) {
+                syncTeacherFromSelection(allValues.cursoIds || [], allValues.materiaId);
               }
             }}
             onFinish={handleCreateToken}
             onFinishFailed={(error) => focusFirstFormError(form, error)}
           >
             <Row gutter={[14, 0]}>
-              <Col xs={24} sm={12} md={requiresSubject ? 5 : 6}>
-                <Form.Item
-                  label="Grado"
-                  name="cursoId"
-                  rules={[{ required: true, message: 'Seleccione un grado' }]}
-                >
-                  <Select
-                    placeholder="Seleccionar grado"
-                    options={cursos.map((c) => ({
-                      value: c.id,
-                      label: `${c.nombre} (${c.turno})`,
-                    }))}
-                  />
-                </Form.Item>
-              </Col>
-
               {requiresSubject && (
                 <Col xs={24} sm={12} md={6}>
                   <Form.Item
@@ -410,17 +508,45 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                 </Col>
               )}
 
-              <Col xs={24} sm={12} md={requiresSubject ? 4 : 6}>
+              <Col xs={24} sm={12} md={requiresSubject ? 7 : 10}>
+                <Form.Item
+                  label="Set de grados a incluir en el enlace"
+                  name="cursoIds"
+                  rules={[{ required: true, type: 'array', min: 1, message: 'Seleccione al menos un grado' }]}
+                >
+                  <Select
+                    mode="multiple"
+                    maxTagCount="responsive"
+                    placeholder="Seleccionar uno o más grados"
+                    options={cursos.map((c) => {
+                      const cell = cellsForCurrentSubject.get(c.id);
+                      const delivered = cell ? isDeliveredStage(cell.etapa) : false;
+                      const unconfigured = !cell || cell.etapa === 'PENDIENTE_CONFIGURACION';
+                      return {
+                        value: c.id,
+                        disabled: delivered || unconfigured,
+                        label: delivered
+                          ? `${c.nombre} (Ya entregado)`
+                          : unconfigured
+                            ? `${c.nombre} (Sin plantilla)`
+                            : `${c.nombre} (${c.turno})`,
+                      };
+                    })}
+                  />
+                </Form.Item>
+              </Col>
+
+              <Col xs={24} sm={12} md={requiresSubject ? 3 : 4}>
                 <Form.Item
                   label="Nombre(s) docente"
                   name="docenteNombre"
                   rules={[{ required: true, whitespace: true, message: 'Ingrese el nombre' }]}
                 >
-                  <Input prefix={<UserOutlined />} placeholder="Ej. María Florencia" />
+                  <Input prefix={<UserOutlined />} placeholder="Ej. María" />
                 </Form.Item>
               </Col>
 
-              <Col xs={24} sm={12} md={requiresSubject ? 4 : 6}>
+              <Col xs={24} sm={12} md={requiresSubject ? 3 : 4}>
                 <Form.Item
                   label="Apellido(s) docente"
                   name="docenteApellido"
@@ -439,7 +565,9 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                     loading={creating}
                     className={`btn-primary-gradient ${styles.submitButton}`}
                   >
-                    Generar enlace
+                    {watchedCursoIds && watchedCursoIds.length > 1
+                      ? `Generar enlace (${watchedCursoIds.length} grados)`
+                      : 'Generar enlace'}
                   </Button>
                 </Form.Item>
               </Col>

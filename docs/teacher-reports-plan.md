@@ -44,8 +44,10 @@ El módulo de **Informes de Maestras** gestiona la carga docente, entrega atómi
 7. **Navegación y Tablero Institucional (`/app/informes`)**:
    - Sección principal propia en el menú lateral de `MainLayout`: **Informes** (`/app/informes`), independiente de `Boletines`.
    - En las instancias de Áreas Especiales (`CICLO_FINAL` y `PRIMER_CUATRIMESTRE`), el tablero permite alternar entre **«Ver por Grado»** (selecciona de 1.° a 7.° y lista sus 5 materias especiales) y **«Ver por Materia Especial»** (selecciona la materia y lista los 7 grados).
-8. **Ruta pública docente (`/carga-informe`) y Editor Único**:
+8. **Ruta pública docente (`/carga-informe`), Set de Grados por Enlace y Editor Único**:
    - Los enlaces mágicos de informes utilizan la ruta pública dedicada `/carga-informe`.
+   - **Enlaces mágicos enriquecidos por set de grados (`instancia_ids`)**: un mismo enlace mágico puede abarcar de 1 a N grados de una materia especial (por ejemplo, todos los grados `1.° a 7.°` para un profesor especial que dicta en todo el colegio, o un subconjunto como `1.° a 3.°` y `4.° a 7.°` en Educación Física).
+   - Dentro de `/carga-informe`, el docente dispone de un selector de grado con indicador de progreso por curso, que carga dinámicamente la plantilla y escala correspondientes a ese grado, y permite **entregar cada grado de forma independiente** a Dirección a medida que lo completa, manteniendo activo el mismo enlace para los grados restantes del set hasta completar el último.
    - La carga docente y la revisión directiva comparten un único componente editor (`VistaInformePorAlumno`), diferenciando permisos y origen de datos mediante `InformeAccessPolicy` e `InformeDataSource`.
 9. **Elegibilidad y Reactividad del PDF**:
    - Cada informe es documentalmente independiente: para emitir o descargar su PDF sólo se exige que ese informe puntual del alumno esté en estado `VISADO` y que estén completos `nombres` y `apellidos` del alumno y `docente_nombre` y `docente_apellido` de la instancia (sin bloqueos por DNI, tutor único ni visados de otros períodos).
@@ -209,6 +211,11 @@ erDiagram
 
 #### Paso 1.5: Completitud del Catálogo de Plantillas de Ciclo Final (Completado — 20 de octubre de 2026)
 1. Incorporadas mediante migración (`pb_migrations/1792440100_updated_teacher_reports_templates_catalog.js`) las grillas oficiales definitivas de las 5 materias especiales de `CICLO_FINAL`: los 3 bloques de grados de Educación Física (`1-3`, `4-5`, `6-7`), las grillas unificadas `1-7` de Artes Visuales, Inglés, Educación Musical y Tecnología, la resolución automática de la escala de `Desempeño General` según 1.er o 2.° Ciclo y el campo opcional de libre escritura `observaciones`.
+
+#### Paso 1.6: Enlaces Mágicos por Set de Grados (Completado — 20 de octubre de 2026)
+1. Incorporada la migración `pb_migrations/1792440200_multi_course_teacher_report_links.js` agregando `instancia_ids` (multirrelación a `instancias_informe`) en `tokens_acceso_informe`.
+2. Actualizados los gateways de emisión, rotación, recuperación y revocación de enlaces para asociar sets de grados (`cursoIds`) a un único enlace mágico por docente y materia, desvinculando automáticamente cualquier grado reasignado de enlaces previos.
+3. Incorporados atajos de selección rápida en `GestorEnlacesInformesModal` (`Todos`, `1.er Ciclo (1.° a 3.°)`, `2.° Ciclo (4.° a 7.°)`) y selector de grado activo con entrega independiente por grado en `CargaInformePublicaPage`.
 
 > [!IMPORTANT]
 > **Hito actual (20 de octubre de 2026 — Etapa de Pruebas y Feedback sobre Fase 1)**:

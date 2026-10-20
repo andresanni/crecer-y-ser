@@ -48,6 +48,15 @@ function findFirstByFilter(dao, collection, filter, params) {
   }
 }
 
+function findById(dao, collection, id) {
+  if (!id || !/^[a-z0-9]{15}$/.test(id)) return null
+  try {
+    return dao.findRecordById(collection, id)
+  } catch (error) {
+    return null
+  }
+}
+
 function requireRecord(dao, collection, id) {
   if (!id || !/^[a-z0-9]{15}$/.test(id)) {
     throw new BadRequestError("La referencia recibida no es válida.")
@@ -335,16 +344,66 @@ function workflowDto(record) {
   }
 }
 
-function tokenDto(record, workflow) {
+function tokenInstanceIds(record) {
+  if (!record) return []
+  var ids = []
+  var seen = {}
+  var pushId = function (id) {
+    if (typeof id !== "string") return
+    var trimmed = id.trim()
+    if (!trimmed || seen[trimmed]) return
+    seen[trimmed] = true
+    ids.push(trimmed)
+  }
+  try {
+    var slice = record.getStringSlice("instancia_ids")
+    if (Array.isArray(slice)) {
+      slice.forEach(pushId)
+    }
+  } catch (_) {}
+  var parsed = parseJsonArray(record, "instancia_ids")
+  parsed.forEach(pushId)
+  pushId(record.getString("instancia_id"))
+  return ids
+}
+
+function tokenWorkflows(dao, record) {
+  var ids = tokenInstanceIds(record)
+  var workflows = []
+  ids.forEach((id) => {
+    var wf = findById(dao, "instancias_informe", id)
+    if (wf && wf.getString("estado") === "BORRADOR_DOCENTE") {
+      workflows.push(wf)
+    }
+  })
+  workflows.sort((a, b) => {
+    var courseA = findById(dao, "cursos", a.getString("curso_id"))
+    var courseB = findById(dao, "cursos", b.getString("curso_id"))
+    var gradeDiff = (courseA ? courseGradeNumber(courseA) : 99) - (courseB ? courseGradeNumber(courseB) : 99)
+    if (gradeDiff !== 0) return gradeDiff
+    return a.getId().localeCompare(b.getId())
+  })
+  return workflows
+}
+
+function tokenDto(record, workflowsOrSingle, activeWorkflow) {
+  var workflows = Array.isArray(workflowsOrSingle)
+    ? workflowsOrSingle
+    : workflowsOrSingle
+      ? [workflowsOrSingle]
+      : []
+  var primary = activeWorkflow || workflows[0]
   return {
     id: record.getId(),
-    instanciaId: record.getString("instancia_id"),
-    cicloId: workflow.getString("ciclo_id"),
-    tipoInforme: workflow.getString("tipo_informe"),
-    cursoId: workflow.getString("curso_id"),
-    materiaId: workflow.getString("materia_id") || null,
-    docenteNombre: workflow.getString("docente_nombre"),
-    docenteApellido: workflow.getString("docente_apellido"),
+    instanciaId: primary ? primary.getId() : record.getString("instancia_id"),
+    instanciaIds: workflows.length > 0 ? workflows.map((w) => w.getId()) : tokenInstanceIds(record),
+    cicloId: primary ? primary.getString("ciclo_id") : "",
+    tipoInforme: primary ? primary.getString("tipo_informe") : "",
+    cursoId: primary ? primary.getString("curso_id") : "",
+    cursoIds: workflows.map((w) => w.getString("curso_id")),
+    materiaId: primary ? primary.getString("materia_id") || null : null,
+    docenteNombre: primary ? primary.getString("docente_nombre") : "",
+    docenteApellido: primary ? primary.getString("docente_apellido") : "",
     tokenPrefijo: record.getString("token_prefijo"),
     recuperable: Boolean(record.getString("token_cifrado"))
   }
@@ -373,22 +432,32 @@ function assignSecret(record) {
   return secret
 }
 
-function deleteTokensForInstance(dao, instanciaId, exceptId) {
-  var tokens = findByFilter(
-    dao,
-    "tokens_acceso_informe",
-    "instancia_id = {:instanciaId}",
-    "",
-    { instanciaId: instanciaId }
-  )
-  tokens.forEach((token) => {
-    if (token.getId() === exceptId) return
-    dao.deleteRecord(token)
+function detachInstancesFromTokens(dao, instanciaIds, exceptId) {
+  var removeSet = {}
+  ;(Array.isArray(instanciaIds) ? instanciaIds : [instanciaIds]).forEach((id) => {
+    if (typeof id === "string" && id.trim() !== "") {
+      removeSet[id.trim()] = true
+    }
+  })
+  var allTokens = findByFilter(dao, "tokens_acceso_informe", "id != ''", "", {})
+  allTokens.forEach((token) => {
+    if (exceptId && token.getId() === exceptId) return
+    var currentIds = tokenInstanceIds(token)
+    var hasRemoved = currentIds.some((id) => Boolean(removeSet[id]))
+    if (!hasRemoved) return
+    var remaining = currentIds.filter((id) => !removeSet[id])
+    if (remaining.length === 0) {
+      dao.deleteRecord(token)
+    } else {
+      token.set("instancia_id", remaining[0])
+      token.set("instancia_ids", remaining)
+      dao.saveRecord(token)
+    }
   })
 }
 
 function validateAccessRecord(record) {
-  if (!record || !record.getString("instancia_id")) {
+  if (!record || tokenInstanceIds(record).length === 0) {
     throw new UnauthorizedError("El enlace no es válido o ya no está disponible.")
   }
   return record
@@ -405,12 +474,51 @@ function requireAccess(c) {
   return validateAccessRecord(record)
 }
 
-function requireDraftWorkflow(dao, access) {
-  var workflow = requireRecord(dao, "instancias_informe", access.getString("instancia_id"))
-  if (workflow.getString("estado") !== "BORRADOR_DOCENTE") {
+function requireDraftWorkflows(dao, access) {
+  var workflows = tokenWorkflows(dao, access)
+  if (workflows.length === 0) {
     throw new ForbiddenError("La carga docente ya no admite modificaciones.")
   }
-  return workflow
+  return workflows
+}
+
+function resolveRequestedDraftWorkflow(dao, access, requestedInstanciaId, requestedCursoId) {
+  var workflows = requireDraftWorkflows(dao, access)
+  var instId = stringValue(requestedInstanciaId, 15)
+  if (instId) {
+    var byId = workflows.find((w) => w.getId() === instId)
+    if (!byId) {
+      throw new ForbiddenError("El curso solicitado no pertenece a este enlace o ya fue enviado.")
+    }
+    return { active: byId, all: workflows }
+  }
+  var cId = stringValue(requestedCursoId, 15)
+  if (cId) {
+    var byCourse = workflows.find((w) => w.getString("curso_id") === cId)
+    if (!byCourse) {
+      throw new ForbiddenError("El curso solicitado no pertenece a este enlace o ya fue enviado.")
+    }
+    return { active: byCourse, all: workflows }
+  }
+  return { active: workflows[0], all: workflows }
+}
+
+function requireDraftWorkflowForEnrollment(dao, access, enrollmentId) {
+  var enrollment = requireRecord(dao, "inscripciones", enrollmentId)
+  var workflows = requireDraftWorkflows(dao, access)
+  var workflow = workflows.find(
+    (w) =>
+      w.getString("curso_id") === enrollment.getString("curso_id") &&
+      w.getString("ciclo_id") === enrollment.getString("ciclo_id")
+  )
+  if (!workflow) {
+    throw new ForbiddenError("El alumno no pertenece al alcance activo de este enlace.")
+  }
+  var cutoff = cutoffTermForReportType(workflow.getString("tipo_informe"))
+  if (!enrollmentParticipates(enrollment, cutoff)) {
+    throw new ForbiddenError("El alumno no pertenece al alcance evaluable de este informe.")
+  }
+  return { workflow: workflow, enrollment: enrollment }
 }
 
 function requireStaffWorkflowById(dao, instanciaId) {
@@ -685,6 +793,7 @@ function issue(c) {
     cicloId: "",
     tipoInforme: "",
     cursoId: "",
+    cursoIds: [],
     materiaId: "",
     docenteNombre: "",
     docenteApellido: ""
@@ -696,10 +805,35 @@ function issue(c) {
   var cycle = requireRecord(dao, "ciclos_lectivos", stringValue(data.cicloId, 15))
   var tipoInforme = stringValue(data.tipoInforme, 30)
   var needSubject = requiresSpecialSubject(tipoInforme)
-  var course = requireRecord(dao, "cursos", stringValue(data.cursoId, 15))
   var materiaId = stringValue(data.materiaId, 15)
   var teacherFirstName = stringValue(data.docenteNombre, 120)
   var teacherLastName = stringValue(data.docenteApellido, 120)
+
+  var rawCourseIds = []
+  if (Array.isArray(data.cursoIds)) {
+    data.cursoIds.forEach((entry) => {
+      var id = stringValue(entry, 15)
+      if (id && rawCourseIds.indexOf(id) === -1) rawCourseIds.push(id)
+    })
+  }
+  var singleCourseId = stringValue(data.cursoId, 15)
+  if (singleCourseId && rawCourseIds.indexOf(singleCourseId) === -1) {
+    rawCourseIds.push(singleCourseId)
+  }
+
+  if (rawCourseIds.length === 0) {
+    throw new BadRequestError("Seleccioná al menos un curso para emitir el enlace.")
+  }
+  if (rawCourseIds.length > 15) {
+    throw new BadRequestError("Se seleccionaron demasiados cursos para un mismo enlace.")
+  }
+
+  var selectedCourses = rawCourseIds.map((cId) => requireRecord(dao, "cursos", cId))
+  selectedCourses.sort((a, b) => {
+    var gradeDiff = courseGradeNumber(a) - courseGradeNumber(b)
+    if (gradeDiff !== 0) return gradeDiff
+    return a.getString("nombre").localeCompare(b.getString("nombre"))
+  })
 
   if (!teacherFirstName || !teacherLastName) {
     throw new BadRequestError("El nombre y el apellido de la docente son obligatorios.")
@@ -716,43 +850,56 @@ function issue(c) {
 
   var response
   $app.dao().runInTransaction((txDao) => {
-    var template = resolveTemplate(txDao, tipoInforme, course, materiaId)
-    if (!template || templateItems(txDao, template.getId()).length === 0) {
-      throw new BadRequestError("No existe una plantilla configurada para el informe seleccionado.")
-    }
+    var workflows = []
+    var workflowIds = []
 
-    var workflow = findWorkflow(txDao, cycle.getId(), tipoInforme, course.getId(), materiaId)
-    if (workflow) {
-      if (workflow.getString("estado") !== "BORRADOR_DOCENTE") {
-        throw new BadRequestError("El informe ya se encuentra bajo control directivo.")
+    selectedCourses.forEach((course) => {
+      var template = resolveTemplate(txDao, tipoInforme, course, materiaId)
+      if (!template || templateItems(txDao, template.getId()).length === 0) {
+        throw new BadRequestError(
+          "No existe una plantilla configurada para " + course.getString("nombre") + "."
+        )
       }
-      workflow.set("plantilla_id", template.getId())
-      workflow.set("docente_nombre", teacherFirstName)
-      workflow.set("docente_apellido", teacherLastName)
-      txDao.saveRecord(workflow)
-    } else {
-      workflow = new Record(txDao.findCollectionByNameOrId("instancias_informe"))
-      workflow.set("ciclo_id", cycle.getId())
-      workflow.set("tipo_informe", tipoInforme)
-      workflow.set("curso_id", course.getId())
-      workflow.set("materia_id", materiaId || "")
-      workflow.set("plantilla_id", template.getId())
-      workflow.set("estado", "BORRADOR_DOCENTE")
-      workflow.set("docente_nombre", teacherFirstName)
-      workflow.set("docente_apellido", teacherLastName)
-      workflow.set("revision", 0)
-      txDao.saveRecord(workflow)
-    }
 
-    deleteTokensForInstance(txDao, workflow.getId(), "")
+      var workflow = findWorkflow(txDao, cycle.getId(), tipoInforme, course.getId(), materiaId)
+      if (workflow) {
+        if (workflow.getString("estado") !== "BORRADOR_DOCENTE") {
+          throw new BadRequestError(
+            "El informe de " + course.getString("nombre") + " ya se encuentra bajo control directivo."
+          )
+        }
+        workflow.set("plantilla_id", template.getId())
+        workflow.set("docente_nombre", teacherFirstName)
+        workflow.set("docente_apellido", teacherLastName)
+        txDao.saveRecord(workflow)
+      } else {
+        workflow = new Record(txDao.findCollectionByNameOrId("instancias_informe"))
+        workflow.set("ciclo_id", cycle.getId())
+        workflow.set("tipo_informe", tipoInforme)
+        workflow.set("curso_id", course.getId())
+        workflow.set("materia_id", materiaId || "")
+        workflow.set("plantilla_id", template.getId())
+        workflow.set("estado", "BORRADOR_DOCENTE")
+        workflow.set("docente_nombre", teacherFirstName)
+        workflow.set("docente_apellido", teacherLastName)
+        workflow.set("revision", 0)
+        txDao.saveRecord(workflow)
+      }
+      workflows.push(workflow)
+      workflowIds.push(workflow.getId())
+    })
+
+    detachInstancesFromTokens(txDao, workflowIds, "")
     var tokenRecord = new Record(txDao.findCollectionByNameOrId("tokens_acceso_informe"))
     var secret = assignSecret(tokenRecord)
-    tokenRecord.set("instancia_id", workflow.getId())
+    tokenRecord.set("instancia_id", workflows[0].getId())
+    tokenRecord.set("instancia_ids", workflowIds)
     txDao.saveRecord(tokenRecord)
 
     response = {
-      instancia: workflowDto(workflow),
-      enlace: tokenDto(tokenRecord, workflow),
+      instancia: workflowDto(workflows[0]),
+      instancias: workflows.map(workflowDto),
+      enlace: tokenDto(tokenRecord, workflows, workflows[0]),
       tokenPrefijo: tokenRecord.getString("token_prefijo"),
       secreto: secret
     }
@@ -777,18 +924,24 @@ function rotate(c) {
   var response
   $app.dao().runInTransaction((txDao) => {
     var record = requireRecord(txDao, "tokens_acceso_informe", c.pathParam("tokenId"))
-    var workflow = requireDraftWorkflow(txDao, record)
+    var workflows = requireDraftWorkflows(txDao, record)
     if (teacherFirstName && teacherLastName) {
-      workflow.set("docente_nombre", teacherFirstName)
-      workflow.set("docente_apellido", teacherLastName)
-      txDao.saveRecord(workflow)
+      workflows.forEach((workflow) => {
+        workflow.set("docente_nombre", teacherFirstName)
+        workflow.set("docente_apellido", teacherLastName)
+        txDao.saveRecord(workflow)
+      })
     }
-    deleteTokensForInstance(txDao, workflow.getId(), record.getId())
+    var wfIds = workflows.map((w) => w.getId())
+    detachInstancesFromTokens(txDao, wfIds, record.getId())
+    record.set("instancia_id", wfIds[0])
+    record.set("instancia_ids", wfIds)
     var secret = assignSecret(record)
     txDao.saveRecord(record)
     response = {
-      instancia: workflowDto(workflow),
-      enlace: tokenDto(record, workflow),
+      instancia: workflowDto(workflows[0]),
+      instancias: workflows.map(workflowDto),
+      enlace: tokenDto(record, workflows, workflows[0]),
       tokenPrefijo: record.getString("token_prefijo"),
       secreto: secret
     }
@@ -801,7 +954,7 @@ function recover(c) {
   var dao = $app.dao()
   var record = requireRecord(dao, "tokens_acceso_informe", c.pathParam("tokenId"))
   validateAccessRecord(record)
-  var workflow = requireDraftWorkflow(dao, record)
+  var workflows = requireDraftWorkflows(dao, record)
   var cipherText = record.getString("token_cifrado")
   if (!cipherText) {
     throw new BadRequestError("Este enlace debe regenerarse una vez antes de poder copiarlo.")
@@ -813,8 +966,9 @@ function recover(c) {
   return c.json(200, {
     secreto: secret,
     tokenPrefijo: record.getString("token_prefijo"),
-    enlace: tokenDto(record, workflow),
-    instancia: workflowDto(workflow)
+    enlace: tokenDto(record, workflows, workflows[0]),
+    instancia: workflowDto(workflows[0]),
+    instancias: workflows.map(workflowDto)
   })
 }
 
@@ -823,10 +977,11 @@ function revoke(c) {
   var response
   $app.dao().runInTransaction((txDao) => {
     var record = requireRecord(txDao, "tokens_acceso_informe", c.pathParam("tokenId"))
-    var workflow = requireDraftWorkflow(txDao, record)
+    var workflows = requireDraftWorkflows(txDao, record)
     txDao.deleteRecord(record)
     response = {
-      instancia: workflowDto(workflow),
+      instancia: workflowDto(workflows[0]),
+      instancias: workflows.map(workflowDto),
       eliminado: true
     }
   })
@@ -836,7 +991,14 @@ function revoke(c) {
 function context(c) {
   var access = requireAccess(c)
   var dao = $app.dao()
-  var workflow = requireDraftWorkflow(dao, access)
+  var resolved = resolveRequestedDraftWorkflow(
+    dao,
+    access,
+    c.queryParam("instanciaId"),
+    c.queryParam("cursoId")
+  )
+  var workflow = resolved.active
+  var draftWorkflows = resolved.all
   var cycle = requireRecord(dao, "ciclos_lectivos", workflow.getString("ciclo_id"))
   var course = requireRecord(dao, "cursos", workflow.getString("curso_id"))
   var subject = workflow.getString("materia_id")
@@ -867,9 +1029,29 @@ function context(c) {
     }
   })
 
+  var cursosAsignados = draftWorkflows.map((wf) => {
+    var wfCourse = requireRecord(dao, "cursos", wf.getString("curso_id"))
+    var wfTemplate = requireRecord(dao, "plantillas_informe", wf.getString("plantilla_id"))
+    var wfItems = templateItems(dao, wfTemplate.getId())
+    var wfCompleteness = reportCompleteness(dao, wf, wfTemplate, wfItems)
+    return {
+      instanciaId: wf.getId(),
+      cursoId: wfCourse.getId(),
+      cursoNombre: wfCourse.getString("nombre"),
+      grado: wfCourse.getString("grado"),
+      turno: wfCourse.getString("turno"),
+      plantillaCodigo: wfTemplate.getString("codigo"),
+      totalAlumnos: wfCompleteness.totalAlumnos,
+      alumnosCompletos: wfCompleteness.alumnosCompletos,
+      completa: wfCompleteness.completa,
+      revision: wf.getInt("revision")
+    }
+  })
+
   return c.json(200, {
-    acceso: tokenDto(access, workflow),
+    acceso: tokenDto(access, draftWorkflows, workflow),
     instancia: workflowDto(workflow),
+    cursosAsignados: cursosAsignados,
     ciclo: {
       id: cycle.getId(),
       nombre: cycle.getString("nombre"),
@@ -905,8 +1087,9 @@ function context(c) {
 function student(c) {
   var access = requireAccess(c)
   var dao = $app.dao()
-  var workflow = requireDraftWorkflow(dao, access)
-  var enrollment = requireEnrollmentForWorkflow(dao, workflow, c.pathParam("inscripcionId"))
+  var resolved = requireDraftWorkflowForEnrollment(dao, access, c.pathParam("inscripcionId"))
+  var workflow = resolved.workflow
+  var enrollment = resolved.enrollment
   var template = requireRecord(dao, "plantillas_informe", workflow.getString("plantilla_id"))
   var items = templateItems(dao, template.getId())
   return c.json(200, studentEvaluationSnapshot(dao, workflow, template, items, enrollment))
@@ -916,8 +1099,7 @@ function saveStudent(c) {
   var access = requireAccess(c)
   var dao = $app.dao()
   var enrollmentId = c.pathParam("inscripcionId")
-  var workflowCheck = requireDraftWorkflow(dao, access)
-  requireEnrollmentForWorkflow(dao, workflowCheck, enrollmentId)
+  requireDraftWorkflowForEnrollment(dao, access, enrollmentId)
 
   var body = new DynamicModel({
     desempenoGeneralValor: "",
@@ -932,8 +1114,9 @@ function saveStudent(c) {
     var transactionalAccess = validateAccessRecord(
       requireRecord(txDao, "tokens_acceso_informe", access.getId())
     )
-    var workflow = requireDraftWorkflow(txDao, transactionalAccess)
-    var enrollment = requireEnrollmentForWorkflow(txDao, workflow, enrollmentId)
+    var resolved = requireDraftWorkflowForEnrollment(txDao, transactionalAccess, enrollmentId)
+    var workflow = resolved.workflow
+    var enrollment = resolved.enrollment
     var template = requireRecord(txDao, "plantillas_informe", workflow.getString("plantilla_id"))
     var items = templateItems(txDao, template.getId())
     saveStudentEvaluation(txDao, workflow, template, items, enrollment, data, false)
@@ -948,6 +1131,17 @@ function saveStudent(c) {
 
 function submitReport(c) {
   var access = requireAccess(c)
+  var body = new DynamicModel({
+    instanciaId: "",
+    cursoId: ""
+  })
+  try {
+    c.bind(body)
+  } catch (_) {}
+  var data = JSON.parse(JSON.stringify(body))
+  var requestedInstanciaId = stringValue(data.instanciaId, 15) || stringValue(c.queryParam("instanciaId"), 15)
+  var requestedCursoId = stringValue(data.cursoId, 15) || stringValue(c.queryParam("cursoId"), 15)
+
   var status = 200
   var response
 
@@ -955,7 +1149,14 @@ function submitReport(c) {
     var transactionalAccess = validateAccessRecord(
       requireRecord(txDao, "tokens_acceso_informe", access.getId())
     )
-    var workflow = requireDraftWorkflow(txDao, transactionalAccess)
+    var resolved = resolveRequestedDraftWorkflow(
+      txDao,
+      transactionalAccess,
+      requestedInstanciaId,
+      requestedCursoId
+    )
+    var workflow = resolved.active
+    var draftWorkflows = resolved.all
     var template = requireRecord(txDao, "plantillas_informe", workflow.getString("plantilla_id"))
     var items = templateItems(txDao, template.getId())
     var completeness = reportCompleteness(txDao, workflow, template, items)
@@ -990,12 +1191,16 @@ function submitReport(c) {
       (workflow.getString("docente_apellido") + ", " + workflow.getString("docente_nombre")).trim()
     )
     txDao.saveRecord(workflow)
-    deleteTokensForInstance(txDao, workflow.getId(), "")
+    detachInstancesFromTokens(txDao, [workflow.getId()], "")
+
+    var remainingWorkflows = draftWorkflows.filter((w) => w.getId() !== workflow.getId())
 
     response = {
       instancia: workflowDto(workflow),
       totalAlumnos: completeness.totalAlumnos,
-      totalItems: completeness.totalItems
+      totalItems: completeness.totalItems,
+      cursosRestantes: remainingWorkflows.length,
+      siguienteInstanciaId: remainingWorkflows.length > 0 ? remainingWorkflows[0].getId() : null
     }
   })
 
@@ -1088,6 +1293,16 @@ function staffStages(c) {
     })
     var specialSubjects = listSpecialSubjects(txDao)
 
+    var allTokens = findByFilter(txDao, "tokens_acceso_informe", "id != ''", "", {})
+    var tokenDtoByInstanciaId = {}
+    allTokens.forEach((tokenRecord) => {
+      var wfList = tokenWorkflows(txDao, tokenRecord)
+      if (wfList.length === 0) return
+      wfList.forEach((wf) => {
+        tokenDtoByInstanciaId[wf.getId()] = tokenDto(tokenRecord, wfList, wf)
+      })
+    })
+
     var scopes = []
     courses.forEach((course) => {
       if (needSubject) {
@@ -1105,14 +1320,7 @@ function staffStages(c) {
       var template = resolveTemplate(txDao, tipoInforme, course, materiaId)
       var items = template ? templateItems(txDao, template.getId()) : []
       var workflow = findWorkflow(txDao, cycle.getId(), tipoInforme, course.getId(), materiaId)
-      var token = workflow
-        ? findFirstByFilter(
-            txDao,
-            "tokens_acceso_informe",
-            "instancia_id = {:instanciaId}",
-            { instanciaId: workflow.getId() }
-          )
-        : null
+      var linkDto = workflow ? tokenDtoByInstanciaId[workflow.getId()] || null : null
 
       var evaluable = evaluableEnrollmentsForScope(txDao, course.getId(), cycle.getId(), tipoInforme)
       var pendingScopes = pendingEnrollmentScopesForCourse(txDao, course.getId(), cycle.getId())
@@ -1134,7 +1342,7 @@ function staffStages(c) {
           stage = "PENDIENTE_EMISION"
         }
       } else if (workflow.getString("estado") === "BORRADOR_DOCENTE") {
-        stage = token ? "CARGA_DOCENTE" : "CARGA_PAUSADA"
+        stage = linkDto ? "CARGA_DOCENTE" : "CARGA_PAUSADA"
       } else {
         approvals = findByFilter(
           txDao,
@@ -1163,7 +1371,7 @@ function staffStages(c) {
         revision: workflow ? workflow.getInt("revision") : null,
         docenteNombre: workflow ? workflow.getString("docente_nombre") : null,
         docenteApellido: workflow ? workflow.getString("docente_apellido") : null,
-        enlace: token && workflow ? tokenDto(token, workflow) : null,
+        enlace: linkDto,
         inscripcionesEvaluables: evaluable.map((enrollment) => enrollment.getId()),
         alumnosCompletos: completeStudentsCount,
         totalInformes: approvals.length,

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  App,
   Button,
   Card,
   Col,
@@ -8,11 +9,14 @@ import {
   Row,
   Space,
   Spin,
+  Tag,
   Typography,
 } from 'antd';
 import {
+  AppstoreOutlined,
   BookOutlined,
   CheckCircleFilled,
+  CheckCircleOutlined,
   FileTextOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -31,7 +35,9 @@ import styles from './CargaInformePublicaPage.module.css';
 const { Title, Text } = Typography;
 
 export const CargaInformePublicaPage: React.FC = () => {
+  const { message, modal } = App.useApp();
   const [token] = useState(() => informesService.readTokenFromLocation());
+  const [requestedInstanciaId, setRequestedInstanciaId] = useState<string | undefined>(undefined);
   const [context, setContext] = useState<TeacherInformeContext | null>(null);
   const [loading, setLoading] = useState(Boolean(token));
   const [error, setError] = useState<string | null>(
@@ -39,24 +45,43 @@ export const CargaInformePublicaPage: React.FC = () => {
   );
   const [reloadCount, setReloadCount] = useState(0);
   const [submission, setSubmission] = useState<InformeSubmissionResult | null>(null);
+  const [lastDeliveredBanner, setLastDeliveredBanner] = useState<string | null>(null);
+  const [hasPendingStudentChanges, setHasPendingStudentChanges] = useState(false);
+  const [activeCompletedOverride, setActiveCompletedOverride] = useState<number | null>(null);
 
   const handleAccessDenied = useCallback(() => {
     setContext(null);
     setError('El enlace ya no está disponible.');
   }, []);
 
-  const handleReportSubmitted = useCallback((result: InformeSubmissionResult) => {
-    setSubmission(result);
-  }, []);
+  const handleReportSubmitted = useCallback(
+    (result: InformeSubmissionResult) => {
+      if ((result.cursosRestantes ?? 0) > 0 && result.siguienteInstanciaId) {
+        const deliveredCourseName = context?.curso.nombre || 'el grado';
+        const bannerText = `¡El informe de ${deliveredCourseName} (${result.totalAlumnos} estudiantes) fue enviado a Dirección! Continuá con el siguiente grado asignado.`;
+        setLastDeliveredBanner(bannerText);
+        message.success(`Informe de ${deliveredCourseName} enviado a Dirección`);
+        setHasPendingStudentChanges(false);
+        setActiveCompletedOverride(null);
+        setLoading(true);
+        setRequestedInstanciaId(result.siguienteInstanciaId);
+        setReloadCount((current) => current + 1);
+        return;
+      }
+      setSubmission(result);
+    },
+    [context?.curso.nombre, message],
+  );
 
   useEffect(() => {
     if (!token) return;
     let active = true;
     informesService
-      .getTeacherContext(token)
+      .getTeacherContext(token, requestedInstanciaId)
       .then((result) => {
         if (!active) return;
         setContext(result);
+        setActiveCompletedOverride(null);
         setError(null);
       })
       .catch((requestError: unknown) => {
@@ -75,7 +100,7 @@ export const CargaInformePublicaPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [reloadCount, token]);
+  }, [reloadCount, requestedInstanciaId, token]);
 
   const reloadContext = () => {
     setLoading(true);
@@ -83,9 +108,11 @@ export const CargaInformePublicaPage: React.FC = () => {
     setReloadCount((current) => current + 1);
   };
 
+  const activeInstanciaId = context?.instancia.id;
+
   const dataSource = useMemo(
-    () => (token ? informesService.createTeacherDataSource(token) : null),
-    [token],
+    () => (token ? informesService.createTeacherDataSource(token, activeInstanciaId) : null),
+    [activeInstanciaId, token],
   );
 
   const access = useMemo(
@@ -96,6 +123,28 @@ export const CargaInformePublicaPage: React.FC = () => {
     ),
     [context, dataSource, handleAccessDenied, handleReportSubmitted],
   );
+
+  const handleSelectCourse = (nextInstanciaId: string) => {
+    if (!context || nextInstanciaId === context.instancia.id) return;
+    const performSwitch = () => {
+      setHasPendingStudentChanges(false);
+      setActiveCompletedOverride(null);
+      setLoading(true);
+      setRequestedInstanciaId(nextInstanciaId);
+    };
+    if (hasPendingStudentChanges) {
+      modal.confirm({
+        title: 'Cambios sin guardar',
+        content: 'Tenés cambios sin guardar en el alumno actual. ¿Querés descartarlos y cambiar de grado?',
+        okText: 'Descartar y cambiar de grado',
+        cancelText: 'Seguir editando',
+        okButtonProps: { danger: true },
+        onOk: performSwitch,
+      });
+      return;
+    }
+    performSwitch();
+  };
 
   if (loading) {
     return (
@@ -113,8 +162,8 @@ export const CargaInformePublicaPage: React.FC = () => {
         <Card className={ui.emptyPanel}>
           <Result
             status="success"
-            title="Informe enviado correctamente"
-            subTitle={`La entrega de ${submission.totalAlumnos} estudiantes quedó bajo control del equipo directivo. Ya no necesitás realizar más cambios.`}
+            title="Informes enviados correctamente"
+            subTitle={`La entrega de ${submission.totalAlumnos} estudiantes quedó bajo control del equipo directivo. Ya completaste todos los grados asignados a este enlace.`}
           />
         </Card>
       </div>
@@ -136,9 +185,10 @@ export const CargaInformePublicaPage: React.FC = () => {
     );
   }
 
-  const { instancia, curso, materia, plantilla, items, alumnos, ciclo } = context;
+  const { instancia, curso, materia, plantilla, items, alumnos, ciclo, cursosAsignados = [] } = context;
   const tipoMeta = TIPOS_INFORME_META[instancia.tipoInforme];
   const teacherFullName = `${instancia.docenteNombre} ${instancia.docenteApellido}`.trim();
+  const hasMultipleCourses = cursosAsignados.length > 1;
 
   return (
     <div className={ui.publicPage}>
@@ -186,7 +236,7 @@ export const CargaInformePublicaPage: React.FC = () => {
                       letterSpacing: 0.5,
                     }}
                   >
-                    GRADO Y TURNO
+                    GRADO ACTIVO
                   </Text>
                   <Text
                     style={{
@@ -237,6 +287,59 @@ export const CargaInformePublicaPage: React.FC = () => {
         </Row>
       </Card>
 
+      {lastDeliveredBanner && (
+        <Alert
+          type="success"
+          showIcon
+          closable
+          onClose={() => setLastDeliveredBanner(null)}
+          title={lastDeliveredBanner}
+        />
+      )}
+
+      {hasMultipleCourses && (
+        <Card
+          className={`${ui.operationalContent} ${styles.coursesSwitcherCard}`}
+          styles={{ body: { padding: '12px 18px' } }}
+        >
+          <div className={styles.coursesSwitcherRow}>
+            <Space size={8}>
+              <AppstoreOutlined style={{ color: 'var(--cys-color-primary-text)' }} />
+              <Text strong>
+                Grados asignados en este enlace ({cursosAsignados.length}):
+              </Text>
+            </Space>
+            <div className={styles.coursesSwitcherPills}>
+              {cursosAsignados.map((item) => {
+                const isActive = item.instanciaId === instancia.id;
+                const completedCount = isActive && activeCompletedOverride !== null
+                  ? activeCompletedOverride
+                  : item.alumnosCompletos;
+                const isCourseComplete = item.totalAlumnos > 0 && completedCount === item.totalAlumnos;
+                return (
+                  <Button
+                    key={item.instanciaId}
+                    type={isActive ? 'primary' : 'default'}
+                    onClick={() => handleSelectCourse(item.instanciaId)}
+                  >
+                    <Space size={6}>
+                      <span>{item.cursoNombre}</span>
+                      <Tag
+                        color={isCourseComplete ? 'success' : isActive ? 'processing' : 'default'}
+                        style={{ margin: 0 }}
+                      >
+                        {isCourseComplete && <CheckCircleOutlined style={{ marginRight: 3 }} />}
+                        {completedCount}/{item.totalAlumnos}
+                      </Tag>
+                    </Space>
+                  </Button>
+                );
+              })}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {!!context.cursadasPendientes.length && (
         <Alert
           type="warning"
@@ -252,11 +355,16 @@ export const CargaInformePublicaPage: React.FC = () => {
         </Card>
       ) : (
         <VistaInformePorAlumno
+          key={instancia.id}
           plantilla={plantilla}
           items={items}
           alumnos={alumnos}
           access={access}
           workflowRevision={instancia.revision}
+          cursoNombre={curso.nombre}
+          tieneOtrosCursosAsignados={hasMultipleCourses}
+          onCompletedCountChange={setActiveCompletedOverride}
+          onPendingChangesChange={setHasPendingStudentChanges}
         />
       )}
     </div>

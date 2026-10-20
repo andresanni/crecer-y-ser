@@ -120,15 +120,30 @@ export interface InstanciaInforme {
 export interface TokenAccesoInforme {
   id: string;
   instanciaId: string;
+  instanciaIds?: string[];
   cicloId: string;
   tipoInforme: TipoInforme;
   cursoId: string;
+  cursoIds?: string[];
   materiaId: string | null;
   docenteNombre: string;
   docenteApellido: string;
   tokenPrefijo: string;
   recuperable: boolean;
   secreto?: string;
+}
+
+export interface CursoAsignadoDocenteInforme {
+  instanciaId: string;
+  cursoId: string;
+  cursoNombre: string;
+  grado: string;
+  turno: string;
+  plantillaCodigo: string;
+  totalAlumnos: number;
+  alumnosCompletos: number;
+  completa: boolean;
+  revision: number;
 }
 
 export interface MateriaEspecialInforme {

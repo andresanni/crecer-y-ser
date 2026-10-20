@@ -709,23 +709,65 @@ test('Flujo HTTP completo de Informes de Maestras: enlaces, carga progresiva, en
       turno: 'Mañana',
       ano: 2026,
     });
-    const issueCourse4 = await jsonRequest(origin, '/api/cys/enlaces-informes', {
+    const course6 = await admin.collection('cursos').create({
+      nombre: '6.° Grado',
+      grado: '6',
+      division: 'A',
+      turno: 'Mañana',
+      ano: 2026,
+    });
+    const student4 = await admin.collection('alumnos').create({
+      nombres: 'TOMAS',
+      apellidos: 'PEREZ',
+      dni_tipo: 'DNI',
+      dni_numero: '50111222',
+      fecha_nacimiento: '2016-03-10 00:00:00.000Z',
+      genero: 'Masculino',
+      domicilio: 'Calle 4',
+      localidad: 'CABA',
+      nacionalidad: 'Argentina',
+      activo: true,
+    });
+    const enrollment4 = await admin.collection('inscripciones').create({
+      alumno_id: student4.id,
+      curso_id: course4.id,
+      ciclo_id: cycle.id,
+      estado: 'Regular',
+      cursada_estado: 'CONFIRMADA',
+      bimestre_desde: 1,
+      bimestre_hasta: 4,
+      revision_cursada: 1,
+      numero_orden: 1,
+    });
+
+    const issueMulti = await jsonRequest(origin, '/api/cys/enlaces-informes', {
       method: 'POST',
       headers: staffHeaders,
       body: {
         cicloId: cycle.id,
         tipoInforme: 'CICLO_FINAL',
-        cursoId: course4.id,
+        cursoIds: [course6.id, course4.id],
         materiaId: edFisica.id,
         docenteNombre: 'GIMENA',
         docenteApellido: 'CRUZADO ZEVALLOS',
       },
     });
-    assert.equal(issueCourse4.status, 201);
+    assert.equal(issueMulti.status, 201);
+    assert.equal(issueMulti.body.instancias.length, 2);
+    assert.equal(issueMulti.body.enlace.cursoIds.length, 2);
+    assert.equal(issueMulti.body.enlace.cursoIds[0], course4.id);
+    assert.equal(issueMulti.body.enlace.cursoIds[1], course6.id);
+
+    const inst4Id = issueMulti.body.instancias[0].id;
+    const inst6Id = issueMulti.body.instancias[1].id;
+    const multiTeacherHeaders = { 'X-CYS-Teacher-Token': issueMulti.body.secreto };
+
     const ctxCourse4 = await jsonRequest(origin, '/api/cys/docente-informes/contexto', {
-      headers: { 'X-CYS-Teacher-Token': issueCourse4.body.secreto },
+      headers: multiTeacherHeaders,
     });
     assert.equal(ctxCourse4.status, 200);
+    assert.equal(ctxCourse4.body.instancia.id, inst4Id);
+    assert.equal(ctxCourse4.body.cursosAsignados.length, 2);
     assert.equal(ctxCourse4.body.plantilla.codigo, 'FINAL_ED_FISICA_G4_5');
     assert.equal(ctxCourse4.body.items.length, 20);
     assert.ok(
@@ -733,6 +775,52 @@ test('Flujo HTTP completo de Informes de Maestras: enlaces, carga progresiva, en
         (opt) => opt.codigo === 'ALCANZADO_6' && opt.etiqueta === 'Alcanzado 6'
       )
     );
+
+    const ctxCourse6 = await jsonRequest(
+      origin,
+      `/api/cys/docente-informes/contexto?instanciaId=${inst6Id}`,
+      { headers: multiTeacherHeaders }
+    );
+    assert.equal(ctxCourse6.status, 200);
+    assert.equal(ctxCourse6.body.instancia.id, inst6Id);
+    assert.equal(ctxCourse6.body.plantilla.codigo, 'FINAL_ED_FISICA_G6_7');
+    assert.equal(ctxCourse6.body.items.length, 22);
+
+    const saveStudent4 = await jsonRequest(
+      origin,
+      `/api/cys/docente-informes/alumnos/${enrollment4.id}`,
+      {
+        method: 'PUT',
+        headers: multiTeacherHeaders,
+        body: {
+          desempenoGeneralValor: 'DESTACADO_10',
+          observaciones: '',
+          respuestas: ctxCourse4.body.items.map((item) => ({
+            itemId: item.id,
+            valorCodigo: 'C',
+          })),
+        },
+      }
+    );
+    assert.equal(saveStudent4.status, 200);
+    assert.equal(saveStudent4.body.completo, true);
+
+    const submitCourse4 = await jsonRequest(origin, '/api/cys/docente-informes/enviar', {
+      method: 'POST',
+      headers: multiTeacherHeaders,
+      body: { instanciaId: inst4Id },
+    });
+    assert.equal(submitCourse4.status, 200);
+    assert.equal(submitCourse4.body.instancia.estado, 'CONTROL_DIRECTIVO');
+    assert.equal(submitCourse4.body.cursosRestantes, 1);
+    assert.equal(submitCourse4.body.siguienteInstanciaId, inst6Id);
+
+    const ctxAfterSubmit4 = await jsonRequest(origin, '/api/cys/docente-informes/contexto', {
+      headers: multiTeacherHeaders,
+    });
+    assert.equal(ctxAfterSubmit4.status, 200);
+    assert.equal(ctxAfterSubmit4.body.instancia.id, inst6Id);
+    assert.equal(ctxAfterSubmit4.body.cursosAsignados.length, 1);
   } finally {
     if (server) {
       server.kill();

@@ -2936,14 +2936,30 @@
         "id": "rpttok_inst0001",
         "name": "instancia_id",
         "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrptinst00001",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttok_insts001",
+        "name": "instancia_ids",
+        "type": "relation",
         "required": true,
         "presentable": false,
         "unique": false,
         "options": {
           "collectionId": "cysrptinst00001",
-          "cascadeDelete": true,
+          "cascadeDelete": false,
           "minSelect": 1,
-          "maxSelect": 1,
+          "maxSelect": 15,
           "displayFields": null
         }
       },
@@ -3005,7 +3021,6 @@
       }
     ],
     "indexes": [
-      "CREATE UNIQUE INDEX `idx_tokens_acceso_informe_instancia` ON `tokens_acceso_informe` (`instancia_id`)",
       "CREATE UNIQUE INDEX `idx_tokens_acceso_informe_hash` ON `tokens_acceso_informe` (`token_hash`) WHERE `token_hash` != ''"
     ],
     "listRule": "@request.auth.id != \"\"",

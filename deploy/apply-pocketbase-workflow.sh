@@ -43,6 +43,7 @@ test -f "$stage_dir/1791549000_attendance_non_class_days.js"
 test -f "$stage_dir/1791555000_added_ciclos_fecha_inicio_clases.js"
 test -f "$stage_dir/1792440000_created_teacher_reports_collections_and_seed.js"
 test -f "$stage_dir/1792440100_updated_teacher_reports_templates_catalog.js"
+test -f "$stage_dir/1792440200_multi_course_teacher_report_links.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -136,6 +137,7 @@ install -m 0644 "$stage_dir/1791549000_attendance_non_class_days.js" /root/pb/pb
 install -m 0644 "$stage_dir/1791555000_added_ciclos_fecha_inicio_clases.js" /root/pb/pb_migrations/1791555000_added_ciclos_fecha_inicio_clases.js
 install -m 0644 "$stage_dir/1792440000_created_teacher_reports_collections_and_seed.js" /root/pb/pb_migrations/1792440000_created_teacher_reports_collections_and_seed.js
 install -m 0644 "$stage_dir/1792440100_updated_teacher_reports_templates_catalog.js" /root/pb/pb_migrations/1792440100_updated_teacher_reports_templates_catalog.js
+install -m 0644 "$stage_dir/1792440200_multi_course_teacher_report_links.js" /root/pb/pb_migrations/1792440200_multi_course_teacher_report_links.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 

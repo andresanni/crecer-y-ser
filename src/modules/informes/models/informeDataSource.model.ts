@@ -39,6 +39,8 @@ export interface InformeSubmissionResult {
   instancia: InstanciaInforme;
   totalAlumnos: number;
   totalItems: number;
+  cursosRestantes?: number;
+  siguienteInstanciaId?: string | null;
 }
 
 export interface InformeSubmissionPendingStudent {

@@ -2,6 +2,7 @@ import pb from '../../../core/pocketbase';
 import type {
   AlumnoInformeRow,
   CursadaPendienteInforme,
+  CursoAsignadoDocenteInforme,
   EtapasInformeData,
   EvaluacionInformeData,
   InstanciaInforme,
@@ -26,7 +27,8 @@ const TEACHER_TOKEN_HEADER = 'X-CYS-Teacher-Token';
 export interface CreateEnlaceInformeInput {
   cicloId: string;
   tipoInforme: TipoInforme;
-  cursoId: string;
+  cursoId?: string;
+  cursoIds?: string[];
   materiaId?: string;
   docenteNombre: string;
   docenteApellido: string;
@@ -34,6 +36,7 @@ export interface CreateEnlaceInformeInput {
 
 export interface IssuedEnlaceInformeDto {
   instancia: InstanciaInforme;
+  instancias?: InstanciaInforme[];
   enlace: TokenAccesoInforme;
   tokenPrefijo: string;
   secreto: string;
@@ -44,11 +47,13 @@ export interface RecoveredEnlaceInformeDto {
   tokenPrefijo: string;
   enlace: TokenAccesoInforme;
   instancia: InstanciaInforme;
+  instancias?: InstanciaInforme[];
 }
 
 export interface TeacherInformeContext {
   acceso: TokenAccesoInforme;
   instancia: InstanciaInforme;
+  cursosAsignados?: CursoAsignadoDocenteInforme[];
   ciclo: {
     id: string;
     nombre: string;
@@ -274,11 +279,12 @@ export const informesService = {
     },
   }),
 
-  getTeacherContext: async (token: string): Promise<TeacherInformeContext> => (
-    teacherRequest<TeacherInformeContext>(token, '/api/cys/docente-informes/contexto')
-  ),
+  getTeacherContext: async (token: string, instanciaId?: string): Promise<TeacherInformeContext> => {
+    const query = instanciaId ? `?instanciaId=${encodeURIComponent(instanciaId)}` : '';
+    return teacherRequest<TeacherInformeContext>(token, `/api/cys/docente-informes/contexto${query}`);
+  },
 
-  createTeacherDataSource: (token: string): InformeDataSource => ({
+  createTeacherDataSource: (token: string, instanciaId?: string): InformeDataSource => ({
     getAlumno: async (inscripcionId: string): Promise<InformeStudentSnapshot> => (
       teacherRequest<InformeStudentSnapshot>(
         token,
@@ -312,7 +318,7 @@ export const informesService = {
         return await teacherRequest<InformeSubmissionResult>(
           token,
           '/api/cys/docente-informes/enviar',
-          { method: 'POST', body: {} },
+          { method: 'POST', body: { instanciaId: instanciaId || '' } },
         );
       } catch (error) {
         if (getErrorStatus(error) === 422) {

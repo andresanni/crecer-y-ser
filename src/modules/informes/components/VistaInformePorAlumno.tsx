@@ -51,6 +51,9 @@ interface VistaInformePorAlumnoProps {
   access: InformeAccessPolicy;
   readOnly?: boolean;
   workflowRevision?: number;
+  cursoNombre?: string;
+  tieneOtrosCursosAsignados?: boolean;
+  onCompletedCountChange?: (completedCount: number) => void;
   onSaveSuccess?: (result: InformeStudentSaveResult) => void;
   initialInscripcionId?: string | null;
   onStudentChange?: (inscripcionId: string) => void;
@@ -75,6 +78,9 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
   access,
   readOnly = false,
   workflowRevision,
+  cursoNombre,
+  tieneOtrosCursosAsignados = false,
+  onCompletedCountChange,
   onSaveSuccess,
   initialInscripcionId,
   onStudentChange,
@@ -319,6 +325,10 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
     [alumnos, studentStatusMap],
   );
 
+  useEffect(() => {
+    onCompletedCountChange?.(completedStudentsCount);
+  }, [completedStudentsCount, onCompletedCountChange]);
+
   const handleSelectItemValue = (itemId: string, codigo: string) => {
     if (!isEditable) return;
     setDraftRespuestas((current) => ({
@@ -413,10 +423,14 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
       message.warning('Guardá los cambios pendientes del alumno actual antes de enviar el informe.');
       return;
     }
+    const targetCourseLabel = cursoNombre || 'el curso';
     modal.confirm({
-      title: '¿Enviar el informe completo a Dirección?',
-      content:
-        'Al confirmar la entrega, el curso pasará a Revisión Directiva y este enlace de carga dejará de estar habilitado para modificaciones.',
+      title: cursoNombre
+        ? `¿Enviar el informe de ${cursoNombre} a Dirección?`
+        : '¿Enviar el informe completo a Dirección?',
+      content: tieneOtrosCursosAsignados
+        ? `Al confirmar la entrega, ${targetCourseLabel} pasará a Revisión Directiva. Este enlace seguirá habilitado para los demás grados pendientes de tu asignación.`
+        : 'Al confirmar la entrega, el curso pasará a Revisión Directiva y este enlace de carga dejará de estar habilitado para modificaciones.',
       okText: 'Confirmar y enviar',
       cancelText: 'Cancelar',
       onOk: async () => {
@@ -525,7 +539,7 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
                     loading={submitting}
                     onClick={handleSubmitReport}
                   >
-                    Enviar informe a Dirección
+                    {cursoNombre ? `Enviar ${cursoNombre} a Dirección` : 'Enviar informe a Dirección'}
                   </Button>
                 )}
               </>
