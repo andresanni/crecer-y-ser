@@ -2477,5 +2477,997 @@
     "updateRule": null,
     "deleteRule": null,
     "options": {}
+  },
+  {
+    "id": "cysrpttpl000001",
+    "name": "plantillas_informe",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rpttpl_codigo01",
+        "name": "codigo",
+        "type": "text",
+        "required": true,
+        "presentable": true,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 120,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttpl_tipo0001",
+        "name": "tipo_informe",
+        "type": "select",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "PRIMER_BIMESTRE",
+            "PRIMER_CUATRIMESTRE",
+            "CICLO_FINAL"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttpl_mat00001",
+        "name": "materia_id",
+        "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "mat_col_0000001",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttpl_gdesde01",
+        "name": "grado_desde",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": 7,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttpl_ghasta01",
+        "name": "grado_hasta",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": 7,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttpl_titulo01",
+        "name": "titulo_tabla",
+        "type": "text",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 200,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttpl_escitm01",
+        "name": "escala_items",
+        "type": "json",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSize": 2000000
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttpl_leyend01",
+        "name": "mostrar_leyenda_escala",
+        "type": "bool",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {}
+      },
+      {
+        "system": false,
+        "id": "rpttpl_reqdg001",
+        "name": "requiere_desempeno_general",
+        "type": "bool",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {}
+      },
+      {
+        "system": false,
+        "id": "rpttpl_escdg001",
+        "name": "escala_desempeno_general",
+        "type": "json",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSize": 2000000
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttpl_permob01",
+        "name": "permite_observaciones",
+        "type": "bool",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {}
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_plantillas_informe_codigo` ON `plantillas_informe` (`codigo`)",
+      "CREATE INDEX `idx_plantillas_informe_lookup` ON `plantillas_informe` (`tipo_informe`, `materia_id`, `grado_desde`, `grado_hasta`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cysrptitem00001",
+    "name": "items_plantilla_informe",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rptitm_tpl00001",
+        "name": "plantilla_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrpttpl000001",
+          "cascadeDelete": true,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptitm_blqnom01",
+        "name": "bloque_nombre",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 200,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptitm_blqord01",
+        "name": "bloque_orden",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rptitm_orden001",
+        "name": "orden_visual",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": null,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rptitm_pagina01",
+        "name": "pagina",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 1,
+          "max": 2,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rptitm_texto001",
+        "name": "texto",
+        "type": "text",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 500,
+          "pattern": ""
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_items_plantilla_orden` ON `items_plantilla_informe` (`plantilla_id`, `orden_visual`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cysrptinst00001",
+    "name": "instancias_informe",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rptins_ciclo001",
+        "name": "ciclo_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "qkdgtlebf3lt3mw",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_tipo0001",
+        "name": "tipo_informe",
+        "type": "select",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "PRIMER_BIMESTRE",
+            "PRIMER_CUATRIMESTRE",
+            "CICLO_FINAL"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_curso001",
+        "name": "curso_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "vqrxx07qeuos8oo",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_mat00001",
+        "name": "materia_id",
+        "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "mat_col_0000001",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_tpl00001",
+        "name": "plantilla_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrpttpl000001",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_estado01",
+        "name": "estado",
+        "type": "select",
+        "required": true,
+        "presentable": true,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "BORRADOR_DOCENTE",
+            "CONTROL_DIRECTIVO"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_docnom01",
+        "name": "docente_nombre",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 120,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_docape01",
+        "name": "docente_apellido",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 120,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_rev00001",
+        "name": "revision",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_envat001",
+        "name": "enviado_at",
+        "type": "date",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptins_envpor01",
+        "name": "enviado_por",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 120,
+          "pattern": ""
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_instancias_informe_scope` ON `instancias_informe` (`ciclo_id`, `tipo_informe`, `curso_id`, `materia_id`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cysrpttok000001",
+    "name": "tokens_acceso_informe",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rpttok_inst0001",
+        "name": "instancia_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrptinst00001",
+          "cascadeDelete": true,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttok_token001",
+        "name": "token",
+        "type": "text",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttok_hash0001",
+        "name": "token_hash",
+        "type": "text",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 64,
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttok_pref0001",
+        "name": "token_prefijo",
+        "type": "text",
+        "required": false,
+        "presentable": true,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 16,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rpttok_ciph0001",
+        "name": "token_cifrado",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1024,
+          "pattern": ""
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_tokens_acceso_informe_instancia` ON `tokens_acceso_informe` (`instancia_id`)",
+      "CREATE UNIQUE INDEX `idx_tokens_acceso_informe_hash` ON `tokens_acceso_informe` (`token_hash`) WHERE `token_hash` != ''"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cysrpteval00001",
+    "name": "evaluaciones_informe",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rptevl_inst0001",
+        "name": "instancia_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrptinst00001",
+          "cascadeDelete": true,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptevl_insc0001",
+        "name": "inscripcion_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "wnp87hpjzmztwyk",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptevl_dgval001",
+        "name": "desempeno_general_valor",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 120,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptevl_observ01",
+        "name": "observaciones",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 2000,
+          "pattern": ""
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_evaluaciones_informe_scope` ON `evaluaciones_informe` (`instancia_id`, `inscripcion_id`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cysrptresp00001",
+    "name": "respuestas_item_informe",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rptrsp_eval0001",
+        "name": "evaluacion_informe_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrpteval00001",
+          "cascadeDelete": true,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptrsp_item0001",
+        "name": "item_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrptitem00001",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptrsp_valcod01",
+        "name": "valor_codigo",
+        "type": "text",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 120,
+          "pattern": ""
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_respuestas_item_informe_scope` ON `respuestas_item_informe` (`evaluacion_informe_id`, `item_id`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cysrptvis000001",
+    "name": "visados_informe",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rptvis_inst0001",
+        "name": "instancia_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrptinst00001",
+          "cascadeDelete": true,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptvis_insc0001",
+        "name": "inscripcion_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "wnp87hpjzmztwyk",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptvis_estado01",
+        "name": "estado",
+        "type": "select",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "PENDIENTE_REVISION",
+            "VISADO"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "rptvis_revcon01",
+        "name": "revision_contenido",
+        "type": "number",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rptvis_revvis01",
+        "name": "revision_visada",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rptvis_genvis01",
+        "name": "generacion_visado",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
+      },
+      {
+        "system": false,
+        "id": "rptvis_visat001",
+        "name": "visado_at",
+        "type": "date",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": "",
+          "max": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptvis_vispor01",
+        "name": "visado_por",
+        "type": "relation",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": false,
+          "minSelect": 0,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_visados_informe_scope` ON `visados_informe` (`instancia_id`, `inscripcion_id`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "cysrptemis00001",
+    "name": "emisiones_informe",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rptemi_inst0001",
+        "name": "instancia_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "cysrptinst00001",
+          "cascadeDelete": true,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_insc0001",
+        "name": "inscripcion_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "wnp87hpjzmztwyk",
+          "cascadeDelete": false,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_huella01",
+        "name": "huella",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1000,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_vers0001",
+        "name": "version",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1000,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_estado01",
+        "name": "estado",
+        "type": "select",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "VIGENTE",
+            "INVALIDADA"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_nombre01",
+        "name": "nombre",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1000,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_emisor01",
+        "name": "emisor",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1000,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_motivo01",
+        "name": "motivo",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1000,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_sha25601",
+        "name": "archivo_sha256",
+        "type": "text",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": null,
+          "max": 1000,
+          "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_snap0001",
+        "name": "instantanea",
+        "type": "json",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSize": 2000000
+        }
+      },
+      {
+        "system": false,
+        "id": "rptemi_archiv01",
+        "name": "archivo",
+        "type": "file",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "mimeTypes": [
+            "application/pdf"
+          ],
+          "thumbs": [],
+          "maxSelect": 1,
+          "maxSize": 10000000,
+          "protected": true
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE INDEX `idx_emisiones_informe_scope` ON `emisiones_informe` (`instancia_id`, `inscripcion_id`, `estado`)"
+    ],
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
   }
 ]

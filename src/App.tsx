@@ -9,6 +9,7 @@ import { CargaNotasPage } from './modules/boletines/components/CargaNotasPage';
 import { BoletinConfigPage } from './modules/boletines/components/BoletinConfigPage';
 import { CargaDocentePublicaPage } from './modules/boletines/components/CargaDocentePublicaPage';
 import { AsistenciasPage } from './modules/asistencias';
+import { InformesPage, CargaInformePublicaPage } from './modules/informes';
 import { Login } from './modules/auth/components/Login';
 import { ProtectedRoute } from './shared/components/ProtectedRoute';
 import { LandingPage } from './modules/landing/LandingPage';
@@ -26,6 +27,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/carga" element={<CargaDocentePublicaPage />} />
+            <Route path="/carga-informe" element={<CargaInformePublicaPage />} />
             <Route path="/app" element={<ProtectedRoute />}>
               <Route element={<MainLayout />}>
                 <Route index element={<Navigate replace to="/app/alumnos" />} />
@@ -35,6 +37,7 @@ function App() {
                 <Route path="boletines/monitoreo" element={<Navigate replace to="/app/boletines/calificaciones" />} />
                 <Route path="boletines/constructor" element={<BoletinConfigPage />} />
                 <Route path="asistencias" element={<AsistenciasPage />} />
+                <Route path="informes" element={<InformesPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate replace to="/" />} />
@@ -46,4 +49,3 @@ function App() {
 }
 
 export default App;
-

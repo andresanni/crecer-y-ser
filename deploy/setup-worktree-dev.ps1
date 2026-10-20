@@ -28,7 +28,7 @@ $targetNodeModules = Join-Path $currentDir "node_modules"
 
 if (-not (Test-Path -LiteralPath $targetNodeModules)) {
   if (Test-Path -LiteralPath $mainNodeModules) {
-    cmd /c mklink /J "$targetNodeModules" "$mainNodeModules" | Out-Null
+    New-Item -ItemType Junction -Path $targetNodeModules -Target $mainNodeModules | Out-Null
     Write-Host "node_modules enlazado mediante junction desde $mainNodeModules"
   } else {
     Write-Warning "No se encontro node_modules en $mainNodeModules. Ejecute npm install en el repo principal."

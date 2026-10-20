@@ -59,6 +59,15 @@ function scopeSnapshot(dao, enrollment) {
     var period = requireRecord(dao, "periodos", workflow.getString("periodo_id"))
     evidence[period.getInt("numero_periodo")] = true
   })
+  try {
+    var reportsModule = require("./teacherReports.js")
+    ;["evaluaciones_informe", "visados_informe"].forEach((collection) => {
+      findByFilter(dao, collection, "inscripcion_id = {:id}", "", { id: enrollment.getId() }).forEach((record) => {
+        var reportWorkflow = requireRecord(dao, "instancias_informe", record.getString("instancia_id"))
+        evidence[reportsModule.cutoffTermForReportType(reportWorkflow.getString("tipo_informe"))] = true
+      })
+    })
+  } catch (_) {}
   return {
     inscripcionId: enrollment.getId(),
     nombreCompleto: student.getString("apellidos") + ", " + student.getString("nombres"),
@@ -126,6 +135,13 @@ function saveEnrollmentScope(c) {
       workflow.set("revision", workflow.getInt("revision") + 1)
       dao.saveRecord(workflow)
     })
+    try {
+      require("./teacherReports.js").invalidateStudentReportEmissions(dao, enrollment.getId(), "CAMBIO_CURSADA")
+      findByFilter(dao, "instancias_informe", "curso_id = {:course} && ciclo_id = {:cycle}", "", { course: enrollment.getString("curso_id"), cycle: enrollment.getString("ciclo_id") }).forEach((reportWorkflow) => {
+        reportWorkflow.set("revision", reportWorkflow.getInt("revision") + 1)
+        dao.saveRecord(reportWorkflow)
+      })
+    } catch (_) {}
     result = scopeSnapshot(dao, enrollment)
   })
   return c.json(status, result)

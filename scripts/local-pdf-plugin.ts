@@ -5,9 +5,10 @@ import { PDFDocument } from 'pdf-lib';
 import type { AddressInfo } from 'node:net';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { DocumentSnapshot } from '../src/modules/boletines/documentos/documentSnapshot.model.ts';
+import type { InformeDocumentSnapshot } from '../src/modules/informes/documentos/informeSnapshot.model.ts';
 
 class PdfError extends Error {
   readonly status: number;
@@ -22,11 +23,31 @@ interface PdfRuntime {
   chromium?: boolean;
 }
 
+const REPORT_ROUTES = [
+  '/__cys/pdf-informe',
+  '/__cys/pdf-informe-lote',
+  '/api/cys/pdf-informe/generar',
+  '/api/cys/pdf-informe/lote',
+];
+
+const BOLETIN_ROUTES = [
+  '/__cys/pdf-prueba',
+  '/__cys/pdf-lote',
+  '/api/cys/pdf/generar',
+  '/api/cys/pdf/lote',
+];
+
 export function createPdfMiddleware(pocketBaseUrl: string, workerKey: string, runtime: PdfRuntime) {
   let busy = false;
   return async (request: IncomingMessage, response: ServerResponse, next: () => void) => {
-        if (!['/__cys/pdf-prueba', '/__cys/pdf-lote', '/api/cys/pdf/generar', '/api/cys/pdf/lote'].includes(request.url || '')) return next();
-        const batch = request.url === '/__cys/pdf-lote' || request.url === '/api/cys/pdf/lote';
+        const reqUrl = request.url || '';
+        const isReportRoute = REPORT_ROUTES.includes(reqUrl);
+        if (!isReportRoute && !BOLETIN_ROUTES.includes(reqUrl)) return next();
+        const batch =
+          reqUrl === '/__cys/pdf-lote' ||
+          reqUrl === '/api/cys/pdf/lote' ||
+          reqUrl === '/__cys/pdf-informe-lote' ||
+          reqUrl === '/api/cys/pdf-informe/lote';
         response.setHeader('Cache-Control', 'no-store');
         response.setHeader('X-Content-Type-Options', 'nosniff');
         let acquired = false;
@@ -55,8 +76,205 @@ export function createPdfMiddleware(pocketBaseUrl: string, workerKey: string, ru
             body += chunk.toString();
             if (body.length > (batch ? 32000 : 4096)) throw new PdfError('Solicitud demasiado grande.', 413);
           }
-          let input: { inscripcionId?: string; periodoId?: string; huella?: string; cursoId?: string; emisiones?: Array<{ inscripcionId: string; huella: string; emisionId: string }> };
+          let input: {
+            inscripcionId?: string;
+            periodoId?: string;
+            instanciaId?: string;
+            huella?: string;
+            cursoId?: string;
+            emisiones?: Array<{ inscripcionId: string; huella: string; emisionId: string }>;
+          };
           try { input = JSON.parse(body); } catch { throw new PdfError('Solicitud inválida.', 400); }
+          const safe = (name: string) => [...name].map(char => char.charCodeAt(0) < 32 || '<>:"/\\|?*'.includes(char) ? '_' : char).join('').slice(0, 180);
+
+          if (isReportRoute) {
+            const reportTemplateVersion = () => {
+              const hash = createHash('sha256');
+              const scan = (directory: string) => {
+                if (!existsSync(directory)) return;
+                for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+                  const file = join(directory, entry.name);
+                  if (entry.isDirectory()) scan(file);
+                  else { hash.update(file); hash.update(readFileSync(file)); }
+                }
+              };
+              scan(join(runtime.root, 'src/modules/informes/documentos'));
+              return hash.digest('hex');
+            };
+            const reportFilename = (datos: InformeDocumentSnapshot['datos']) => {
+              const prefix =
+                datos.tipoInforme === 'CICLO_FINAL'
+                  ? 'INFORME FINAL'
+                  : datos.tipoInforme === 'PRIMER_CUATRIMESTRE'
+                    ? 'INFORME 1 CUATRIMESTRE'
+                    : 'INFORME 1 BIMESTRE';
+              const suffix = datos.materia?.etiquetaPdf
+                ? ` - ${datos.materia.etiquetaPdf.toUpperCase()}`
+                : '';
+              return safe(`${datos.alumno.apellidos}, ${datos.alumno.nombres} - ${prefix}${suffix}`);
+            };
+            const validId = (value: unknown) => typeof value === 'string' && /^[a-z0-9]{15}$/.test(value);
+
+            if (batch) {
+              if (!input || !validId(input.instanciaId) || !Array.isArray(input.emisiones) || !input.emisiones.length || input.emisiones.length > 100 || input.emisiones.some(item => !item || !validId(item.inscripcionId) || !validId(item.emisionId) || !/^[a-f0-9]{64}$/.test(item.huella)) || new Set(input.emisiones.map(item => item.inscripcionId)).size !== input.emisiones.length) {
+                throw new PdfError('Lote de informes inválido (máximo 100 informes).', 400);
+              }
+              if (!workerKey) throw new PdfError('Configurá el almacenamiento de emisiones antes de descargar lotes.', 503);
+              if (busy) throw new PdfError('Hay otro PDF o ZIP en preparación. Volvé a intentarlo.', 429);
+              busy = true;
+              acquired = true;
+              const version = reportTemplateVersion();
+              const headers = { Authorization: authorization };
+              const read = async (path: string) => {
+                if (response.destroyed) throw new PdfError('Descarga cancelada.', 409);
+                const result = await fetch(new URL(path, pb), { headers, signal: AbortSignal.timeout(15000) });
+                if (!result.ok) throw new PdfError('Un informe del lote cambió o dejó de estar disponible. Volvé a preparar el lote.', result.status);
+                return result;
+              };
+              const validate = async (item: NonNullable<typeof input.emisiones>[number]) => {
+                const snapshot = await (await read(`/api/cys/directivo/informes/${input.instanciaId}/alumnos/${item.inscripcionId}/instantanea`)).json() as InformeDocumentSnapshot;
+                if (snapshot.huella !== item.huella || snapshot.datos.instanciaId !== input.instanciaId) {
+                  throw new PdfError('Cambió un informe o no pertenece a la instancia seleccionada.', 409);
+                }
+                const lookup = await (await read(`/api/cys/directivo/informes/${input.instanciaId}/alumnos/${item.inscripcionId}/emisiones?version=${version}`)).json() as { emision: { id: string; huella: string } | null };
+                if (lookup.emision?.id !== item.emisionId || lookup.emision.huella !== item.huella) {
+                  throw new PdfError('Una emisión de informe ya no corresponde a la versión vigente.', 409);
+                }
+                return snapshot;
+              };
+              const files: Record<string, Uint8Array> = Object.create(null);
+              const names = new Set<string>();
+              let size = 0;
+              let zipName = 'INFORMES.zip';
+              for (const item of input.emisiones) {
+                const { datos } = await validate(item);
+                const pdf = await read(`/api/cys/directivo/emisiones-informe/${item.emisionId}/archivo?download=1`);
+                if (!pdf.headers.get('content-type')?.includes('application/pdf')) throw new PdfError('Una emisión no devolvió un PDF.', 502);
+                const bytes = new Uint8Array(await pdf.arrayBuffer());
+                size += bytes.byteLength;
+                if (size > 100 * 1024 * 1024) throw new PdfError('El lote supera el límite de 100 MB.', 413);
+                const base = reportFilename(datos);
+                let name = `${base}.pdf`;
+                let duplicate = 2;
+                while (names.has(name.normalize('NFC').toLocaleLowerCase('es'))) name = `${base} (${duplicate++}).pdf`;
+                names.add(name.normalize('NFC').toLocaleLowerCase('es'));
+                files[name] = bytes;
+                const subjLabel = datos.materia?.etiquetaPdf ? ` - ${datos.materia.etiquetaPdf.toUpperCase()}` : '';
+                zipName = `${safe(`${datos.curso.nombre}${subjLabel} - INFORMES ${datos.ciclo.ano}`)}.zip`;
+              }
+              for (const item of input.emisiones) await validate(item);
+              if (reportTemplateVersion() !== version) throw new PdfError('Cambió la plantilla. Volvé a preparar el lote.', 409);
+              const zip = zipSync(files, { level: 0 });
+              response.setHeader('Content-Type', 'application/zip');
+              response.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(zipName)}`);
+              response.end(Buffer.from(zip));
+              return;
+            }
+
+            if (!input || !validId(input.instanciaId) || !validId(input.inscripcionId) || !/^[a-f0-9]{64}$/.test(input.huella || '')) {
+              throw new PdfError('Solicitud de informe inválida.', 400);
+            }
+            if (busy) throw new PdfError('Hay otro PDF en preparación. Volvé a intentarlo en unos segundos.', 429);
+            busy = true;
+            acquired = true;
+            const readSnapshot = async (): Promise<InformeDocumentSnapshot> => {
+              const result = await fetch(new URL(`/api/cys/directivo/informes/${input.instanciaId}/alumnos/${input.inscripcionId}/instantanea`, pb), {
+                headers: { Authorization: authorization },
+                signal: AbortSignal.timeout(15000),
+              });
+              if (!result.ok) {
+                const payload = await result.json().catch(() => ({})) as { message?: string };
+                throw new PdfError(payload.message || 'No se pudieron validar los datos y el visado del informe.', result.status);
+              }
+              return result.json() as Promise<InformeDocumentSnapshot>;
+            };
+            const snapshot = await readSnapshot();
+            if (snapshot.huella !== input.huella) {
+              throw new PdfError('El informe cambió. Actualizá los datos y volvé a descargar el PDF.', 409);
+            }
+            const version = reportTemplateVersion();
+            const deliver = async (id: string, result: 'generated' | 'reused' | 'unknown') => {
+              const stored = await fetch(new URL(`/api/cys/directivo/emisiones-informe/${id}/archivo?download=1`, pb), {
+                headers: { Authorization: authorization },
+                signal: AbortSignal.timeout(15000),
+              });
+              if (!stored.ok) throw new PdfError('La emisión ya no está vigente. Volvé a generar el informe.', stored.status);
+              response.setHeader('Content-Type', 'application/pdf');
+              const filename = `${reportFilename(snapshot.datos)}.pdf`;
+              response.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+              response.setHeader('X-CYS-Emission-Id', id);
+              response.setHeader('X-CYS-PDF-Result', result);
+              response.end(Buffer.from(await stored.arrayBuffer()));
+            };
+            if (workerKey) {
+              const prior = await fetch(new URL(`/api/cys/directivo/informes/${input.instanciaId}/alumnos/${input.inscripcionId}/emisiones?version=${version}`, pb), {
+                headers: { Authorization: authorization },
+                signal: AbortSignal.timeout(15000),
+              });
+              if (!prior.ok) throw new PdfError('No se pudo consultar la emisión guardada.', prior.status);
+              const value = await prior.json() as { emision: { id: string; huella: string } | null };
+              if (value.emision?.huella === snapshot.huella) { await deliver(value.emision.id, 'reused'); return; }
+            }
+            const browser = await chromium.launch({ ...(runtime.chromium ? { chromiumSandbox: true } : { channel: 'msedge' }), headless: true, timeout: 20000 });
+            let pdf: Buffer;
+            try {
+              const context = await browser.newContext();
+              const page = await context.newPage();
+              await page.route('**/*', async route => {
+                const url = new URL(route.request().url());
+                if (url.origin !== renderOrigin) return route.abort();
+                if (url.pathname === '/__cys/render-informe-input') return route.fulfill({ json: snapshot });
+                return route.continue();
+              });
+              await page.emulateMedia({ media: 'print' });
+              await page.goto(`${renderOrigin}/informe-render.html`, { timeout: 30000 });
+              await page.locator('body[data-render-state]').waitFor({ state: 'attached', timeout: 30000 });
+              const failure = await page.locator('body').getAttribute('data-render-error');
+              if (failure) throw new PdfError(failure, 422);
+              pdf = await page.pdf({ preferCSSPageSize: true, printBackground: true, displayHeaderFooter: false });
+            } finally { await browser.close(); }
+            const parsed = await PDFDocument.load(pdf);
+            const itemPages = new Set(snapshot.datos.items.map(it => it.pagina || 1)).size;
+            const expectedPages = (!snapshot.datos.plantilla.requiereDesempenoGeneral && snapshot.datos.plantilla.permiteObservaciones)
+              ? itemPages + 1
+              : itemPages;
+            if (parsed.getPageCount() !== expectedPages || parsed.getPages().some(page => Math.abs(page.getWidth() - 595) > 2 || Math.abs(page.getHeight() - 842) > 2)) {
+              throw new PdfError('La paginación del PDF de informe requiere revisión.', 422);
+            }
+            const current = await readSnapshot();
+            if (current.huella !== snapshot.huella) {
+              throw new PdfError('Los datos o el visado del informe cambiaron durante la generación. Actualizá los datos y volvé a descargar el PDF.', 409);
+            }
+            if (reportTemplateVersion() !== version) {
+              throw new PdfError('Cambió la plantilla durante la generación. Volvé a intentarlo.', 409);
+            }
+            if (workerKey) {
+              const form = new FormData();
+              form.set('huella', snapshot.huella);
+              form.set('version', version);
+              form.set('archivoSha256', createHash('sha256').update(pdf).digest('hex'));
+              form.set('archivo', new Blob([new Uint8Array(pdf)], { type: 'application/pdf' }), 'informe.pdf');
+              const published = await fetch(new URL(`/api/cys/directivo/informes/${input.instanciaId}/alumnos/${input.inscripcionId}/emisiones`, pb), {
+                method: 'POST',
+                headers: { Authorization: authorization, 'X-CYS-PDF-Worker': workerKey },
+                body: form,
+                signal: AbortSignal.timeout(30000),
+              });
+              if (!published.ok) throw new PdfError(published.status === 403
+                ? 'No se pudo generar el PDF porque el servicio no está disponible. Volvé a intentarlo más tarde.'
+                : 'No se pudo guardar la emisión del informe; verificá el visado y volvé a intentarlo.', published.status);
+              const saved = await published.json() as { id: string; created?: boolean };
+              await deliver(saved.id, saved.created === true ? 'generated' : saved.created === false ? 'reused' : 'unknown');
+              return;
+            }
+            const name = `${reportFilename(snapshot.datos)}.pdf`;
+            response.setHeader('Content-Type', 'application/pdf');
+            response.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
+            response.setHeader('X-CYS-PDF-Result', 'generated');
+            response.end(pdf);
+            return;
+          }
+
           const templateVersion = () => {
             const hash = createHash('sha256');
             const scan = (directory: string) => {
@@ -96,7 +314,6 @@ export function createPdfMiddleware(pocketBaseUrl: string, workerKey: string, ru
             const names = new Set<string>();
             let size = 0;
             let zipName = 'BOLETINES.zip';
-            const safe = (name: string) => [...name].map(char => char.charCodeAt(0) < 32 || '<>:"/\\|?*'.includes(char) ? '_' : char).join('').slice(0, 180);
             for (const item of input.emisiones) {
               const { datos } = await validate(item);
               const pdf = await read(`/api/cys/directivo/emisiones/${item.emisionId}/archivo?download=1`);

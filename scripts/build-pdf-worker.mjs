@@ -5,5 +5,13 @@ await build({
   configFile: false,
   plugins: [react()],
   define: { 'import.meta.env.VITE_DOCUMENT_RENDER': JSON.stringify('true') },
-  build: { outDir: 'dist-render', rollupOptions: { input: 'boletin-render.html' } },
+  build: {
+    outDir: 'dist-render',
+    rollupOptions: {
+      input: {
+        'boletin-render': 'boletin-render.html',
+        'informe-render': 'informe-render.html',
+      },
+    },
+  },
 });

@@ -33,4 +33,5 @@ backups/
 dist-render/
 *.csv
 plantillas_notas/
+plantillas_informes/
 temp_alumnos_2026.csv

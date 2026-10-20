@@ -1,0 +1,396 @@
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+:global(html),
+:global(body) {
+  margin: 0;
+  padding: 0;
+  background: #ffffff;
+  color: #111827;
+  font-family: Arial, Helvetica, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.documentRoot {
+  width: 210mm;
+  margin: 0 auto;
+  background: #ffffff;
+}
+
+.page {
+  box-sizing: border-box;
+  width: 210mm;
+  height: 297mm;
+  padding: 8mm 10mm 8mm 10mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  page-break-after: always;
+  break-after: page;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.page:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+.topSection {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+  flex: 1;
+}
+
+.headerBanner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 2.2mm solid #3b82f6;
+  padding-bottom: 2.5mm;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+}
+
+.informeTitle {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 27pt;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  color: #000000;
+  margin: 0;
+  padding-left: 16mm;
+}
+
+.informeSubRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6mm;
+  border-top: 1.8mm solid #3b82f6;
+  padding-top: 1.5mm;
+}
+
+.badgeCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 11mm;
+  height: 11mm;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19pt;
+  font-weight: 700;
+  margin-right: 1mm;
+}
+
+.categoryLabel {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 19pt;
+  font-weight: 700;
+  color: #000000;
+}
+
+.instanceLabel {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 16pt;
+  font-weight: 700;
+  color: #000000;
+}
+
+.yearLabel {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 20pt;
+  font-weight: 400;
+  color: #000000;
+  margin-left: 4mm;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+}
+
+.brandLogo {
+  height: 20mm;
+  width: auto;
+  object-fit: contain;
+}
+
+.studentAndSubjectBar {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 5mm;
+  align-items: center;
+  margin-top: 1mm;
+}
+
+.studentGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5mm;
+}
+
+.studentRow {
+  display: grid;
+  grid-template-columns: 1.35fr 0.85fr;
+  border-bottom: 0.35mm solid #111827;
+  padding-bottom: 1mm;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: #000000;
+}
+
+.subjectBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.subjectTitle {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18pt;
+  font-weight: 700;
+  color: #000000;
+  line-height: 1.1;
+}
+
+.subjectUnderlineRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  margin-top: 1mm;
+}
+
+.subjectLine {
+  flex: 1;
+  height: 1mm;
+  background: #3b82f6;
+}
+
+.subjectEp {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12pt;
+  font-weight: 700;
+  color: #000000;
+}
+
+.bodyArea {
+  display: flex;
+  flex-direction: column;
+  gap: 3mm;
+  flex: 1;
+}
+
+.legendTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 0.35mm solid #111827;
+  font-size: 8.5pt;
+}
+
+.legendTable td,
+.legendTable th {
+  border: 0.35mm solid #111827;
+  padding: 1.2mm 2.5mm;
+}
+
+.legendTitleCell {
+  width: 26mm;
+  background: #0d4f8b;
+  color: #ffffff;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11pt;
+  font-weight: 700;
+  text-align: center;
+}
+
+.legendCodeCell {
+  width: 12mm;
+  background: #0d4f8b;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+}
+
+.itemsTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 0.35mm solid #111827;
+  font-size: 9pt;
+}
+
+.itemsTable th {
+  background: #0d4f8b;
+  color: #ffffff;
+  border: 0.35mm solid #111827;
+  padding: 2mm 2.5mm;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+}
+
+.itemsHeaderTitle {
+  font-size: 13pt;
+  text-align: center;
+}
+
+.itemsHeaderOption {
+  width: 22mm;
+  font-size: 9.5pt;
+  text-align: center;
+  line-height: 1.15;
+}
+
+.itemsHeaderOptionCompact {
+  width: 14mm;
+  font-size: 11pt;
+  text-align: center;
+}
+
+.itemsTable td {
+  border: 0.35mm solid #111827;
+  padding: 1.4mm 2.2mm;
+  vertical-align: middle;
+}
+
+.blockCell {
+  width: 31mm;
+  background: #f3f4f6;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11pt;
+  font-weight: 700;
+  text-align: center;
+  color: #000000;
+}
+
+.itemTextCell {
+  color: #111827;
+  line-height: 1.22;
+}
+
+.itemMarkCell {
+  text-align: center;
+  font-weight: 700;
+  font-size: 9.5pt;
+  color: #000000;
+}
+
+.desempenoBox {
+  border: 0.3mm solid #9ca3af;
+  padding: 3mm 5mm;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4mm;
+  margin-top: auto;
+}
+
+.desempenoCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.8mm;
+}
+
+.desempenoHeading {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12pt;
+  font-weight: 700;
+  color: #000000;
+}
+
+.desempenoSub {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+.desempenoValue {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 15pt;
+  font-weight: 700;
+  color: #000000;
+}
+
+.sealLogo {
+  width: 15mm;
+  height: 15mm;
+  object-fit: contain;
+}
+
+.observacionesNote {
+  font-size: 8.5pt;
+  line-height: 1.3;
+  color: #111827;
+  margin: 0;
+  padding: 0 1mm;
+}
+
+.observacionesSheet {
+  border: 0.35mm solid #111827;
+  padding: 4mm;
+  min-height: 60mm;
+  font-size: 10pt;
+  line-height: 1.4;
+}
+
+.signaturesTable {
+  width: 100%;
+  border-collapse: collapse;
+  border: 0.35mm solid #111827;
+  margin-top: 2.5mm;
+  font-size: 8.5pt;
+}
+
+.signaturesTable th {
+  background: #0d3b7a;
+  color: #ffffff;
+  border: 0.35mm solid #111827;
+  padding: 1.4mm 2mm;
+  font-weight: 700;
+  text-align: center;
+  width: 50%;
+}
+
+.signaturesTable td {
+  border: 0.35mm solid #111827;
+  padding: 0;
+  width: 50%;
+}
+
+.sigPartyGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  text-align: center;
+  align-items: center;
+}
+
+.sigValuesRow {
+  min-height: 10mm;
+  border-bottom: 0.35mm solid #111827;
+  font-size: 8.5pt;
+  padding: 1.2mm 1mm;
+}
+
+.sigLabelsRow {
+  min-height: 5.5mm;
+  font-size: 8.5pt;
+  padding: 0.8mm 1mm;
+}

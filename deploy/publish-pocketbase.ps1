@@ -37,6 +37,8 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_hooks\attendance.pb.js"; Target = "attendance.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\contactService.js"; Target = "contactService.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\contacto.pb.js"; Target = "contacto.pb.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\teacherReports.js"; Target = "teacherReports.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\teacher_reports.pb.js"; Target = "teacher_reports.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789330000_created_initial_collections.js"; Target = "1789330000_created_initial_collections.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789334557_hardened_teacher_access_tokens.js"; Target = "1789334557_hardened_teacher_access_tokens.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789338120_close_public_gradebook_rules.js"; Target = "1789338120_close_public_gradebook_rules.js" },
@@ -59,6 +61,8 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1791470000_attendance_transactional_writes.js"; Target = "1791470000_attendance_transactional_writes.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1791549000_attendance_non_class_days.js"; Target = "1791549000_attendance_non_class_days.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1791555000_added_ciclos_fecha_inicio_clases.js"; Target = "1791555000_added_ciclos_fecha_inicio_clases.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1792440000_created_teacher_reports_collections_and_seed.js"; Target = "1792440000_created_teacher_reports_collections_and_seed.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1792440100_updated_teacher_reports_templates_catalog.js"; Target = "1792440100_updated_teacher_reports_templates_catalog.js" },
   @{ Source = Join-Path $PSScriptRoot "pocketbase.service"; Target = "pocketbase.service" },
   @{ Source = Join-Path $PSScriptRoot "apply-pocketbase-workflow.sh"; Target = "apply-pocketbase-workflow.sh" }
 )

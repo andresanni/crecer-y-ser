@@ -1,0 +1,309 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.studentToolbar {
+  border-radius: 14px;
+  border: 1px solid var(--cys-color-border-secondary);
+  background: var(--cys-color-bg-container);
+}
+
+.toolbarRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.studentNavGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.orderBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: var(--cys-color-primary-bg);
+  color: var(--cys-color-primary-text);
+  border: 1px solid var(--cys-color-primary-border);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.studentSelect {
+  min-width: 270px;
+  max-width: 100%;
+}
+
+.toolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.legendCard {
+  border-radius: 12px;
+  border: 1px solid var(--cys-color-primary-border);
+  background: var(--cys-color-primary-bg);
+}
+
+.legendTitle {
+  font-family: var(--font-heading);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--cys-color-primary-text);
+  margin-bottom: 8px;
+  display: block;
+}
+
+.legendGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.legendCode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: var(--cys-color-bg-container);
+  border: 1px solid var(--cys-color-primary-border);
+  color: var(--cys-color-primary-text);
+  font-weight: 800;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.itemsCard {
+  border-radius: 14px;
+  border: 1px solid var(--cys-color-border-secondary);
+}
+
+.cardHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cardTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tableRegion {
+  overflow: auto;
+  max-inline-size: 100%;
+  container-type: inline-size;
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: 10px;
+}
+
+.itemsTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+}
+
+.itemsTable thead {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 2;
+  background: var(--cys-color-fill-quaternary);
+}
+
+.itemsTable th,
+.itemsTable td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--cys-color-border-secondary);
+  vertical-align: middle;
+  text-align: left;
+}
+
+.itemsTable thead th {
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--cys-color-text-secondary);
+  background: var(--cys-color-fill-quaternary);
+}
+
+.itemsTable tbody tr:last-child th,
+.itemsTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.blockCell {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--cys-color-primary-text);
+  background: var(--cys-color-fill-quaternary);
+  border-right: 1px solid var(--cys-color-border-secondary);
+  width: 160px;
+}
+
+.orderCell {
+  width: 46px;
+  color: var(--cys-color-text-secondary);
+  font-weight: 600;
+  text-align: center;
+}
+
+.promptHeaderCell {
+  position: sticky;
+  inset-inline-start: 0;
+  background: var(--cys-color-bg-container);
+  font-weight: 500;
+  color: var(--cys-color-text);
+}
+
+.valueCell {
+  width: 42%;
+  min-width: 260px;
+}
+
+.pageDivider {
+  padding: 8px 14px;
+  background: var(--cys-color-fill-tertiary);
+  border-bottom: 1px solid var(--cys-color-border-secondary);
+  font-family: var(--font-heading);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cys-color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scaleOptionsGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.scaleOptionButton {
+  border-radius: 7px;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.generalSection {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--cys-color-border-secondary);
+  background: var(--cys-color-fill-quaternary);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.generalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.footerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--cys-color-border-secondary);
+}
+
+.drawerStudentButton {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--cys-color-border-secondary);
+  background: var(--cys-color-bg-container);
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 8px;
+}
+
+.drawerStudentButtonActive {
+  border-color: var(--cys-color-primary-border);
+  background: var(--cys-color-primary-bg);
+}
+
+@container (width < 640px) {
+  .itemsTable,
+  .itemsTable thead,
+  .itemsTable tbody,
+  .itemsTable tr,
+  .itemsTable th,
+  .itemsTable td {
+    display: block;
+    width: 100%;
+  }
+
+  .itemsTable thead {
+    display: none;
+  }
+
+  .itemsTable tbody tr {
+    border-bottom: 1px solid var(--cys-color-border-secondary);
+    padding: 8px 0;
+  }
+
+  .blockCell {
+    border-right: none;
+    width: 100%;
+    padding: 6px 12px;
+  }
+
+  .orderCell {
+    display: none;
+  }
+
+  .promptHeaderCell {
+    position: static;
+    padding: 6px 12px;
+    font-weight: 600;
+  }
+
+  .valueCell {
+    min-width: 0;
+    padding: 6px 12px 10px;
+  }
+}

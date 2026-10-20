@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Layout, Menu, Tag, Spin, Space, Dropdown, Avatar, Breadcrumb, Button, Drawer, Grid, Alert, Badge, ConfigProvider } from 'antd';
-import { TeamOutlined, LogoutOutlined, CalendarOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, SettingOutlined, CheckSquareOutlined } from '@ant-design/icons';
+import { TeamOutlined, LogoutOutlined, CalendarOutlined, MenuOutlined, MenuFoldOutlined, MenuUnfoldOutlined, GlobalOutlined, ScheduleOutlined, SettingOutlined, CheckSquareOutlined, FileTextOutlined } from '@ant-design/icons';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import pb from '../../core/pocketbase';
@@ -15,6 +15,7 @@ const sections = [
   { key: '/app/boletines/calificaciones', label: 'Bimestres', icon: <CalendarOutlined /> },
   { key: '/app/boletines/constructor', label: 'Constructor', icon: <SettingOutlined /> },
   { key: '/app/asistencias', label: 'Asistencias', icon: <CheckSquareOutlined /> },
+  { key: '/app/informes', label: 'Informes', icon: <FileTextOutlined /> },
 ];
 
 export const MainLayout = () => {
@@ -60,6 +61,7 @@ export const MainLayout = () => {
             children: sections.slice(2, 4),
           },
           sections[4],
+          sections[5],
         ]}
         onClick={({ key }) => { navigate(key); setMobileOpen(false); }}
       />
