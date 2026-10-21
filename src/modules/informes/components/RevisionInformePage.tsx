@@ -29,6 +29,7 @@ import { ClientResponseError } from 'pocketbase';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
 import ui from '../../../shared/styles/ui.module.css';
 import {
+  formatMateriaNombreUI,
   TIPOS_INFORME_META,
   type AlumnoInformeRow,
   type RevisionInformeData,
@@ -288,7 +289,7 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
               <div className={styles.headerTextGroup}>
                 <Typography.Title level={4} className={styles.title}>
                   {review.curso.nombre} · {review.curso.turno}
-                  {review.materia ? ` — ${review.materia.nombre}` : ''}
+                  {review.materia ? ` — ${formatMateriaNombreUI(review.materia.nombre)}` : ''}
                 </Typography.Title>
                 <Typography.Text type="secondary" className={styles.subtitle}>
                   {tipoMeta?.tituloCorto || review.instancia.tipoInforme} · Ciclo {review.ciclo.ano}
@@ -494,7 +495,7 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
             <React.Suspense fallback={null}>
               <BatchInformeModal
                 instanciaId={review.instancia.id}
-                scopeTitle={`${review.curso.nombre}${review.materia ? ` — ${review.materia.nombre}` : ''}`}
+                scopeTitle={`${review.curso.nombre}${review.materia ? ` — ${formatMateriaNombreUI(review.materia.nombre)}` : ''}`}
                 onClose={() => setBatchModalOpen(false)}
                 onReview={(inscripcionId) => onSelectInscripcion(inscripcionId)}
               />

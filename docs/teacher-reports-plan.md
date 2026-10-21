@@ -210,6 +210,7 @@ erDiagram
    - Alineación vertical y separación visual de insignias numéricas de consigna.
    - Exclusión canónica de la opción «No corresponde» de las escalas de desempeño general y contenidos en todos los ciclos.
    - Integración de contadores de progreso en el modal de alumnos (`X/Y completos` en carga docente, `X/Y visados` en supervisión directiva) y remoción del botón redundante de progreso en la barra móvil.
+   - Formato simplificado de materias especiales en la interfaz de usuario (`Artes Visuales`, `Música`, `Inglés` y `Tecnología` a través de `formatMateriaNombreUI`), preservando la denominación oficial de base de datos para la emisión de PDF.
 
 #### Paso 1.4: Plantilla Documental A4 y Emisión Reactiva de PDFs (`CICLO_FINAL`) (Completado — 20 de octubre de 2026)
 1. Implementados los endpoints `GET /api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionId/instantanea`, `GET/POST /api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionId/emisiones` y `GET /api/cys/directivo/emisiones-informe/:emisionId/archivo`, junto con el hook de invalidación reactiva ante cambios en `alumnos` y verificación transaccional de `huella`.

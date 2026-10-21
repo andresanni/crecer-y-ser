@@ -92,6 +92,46 @@ export const isNoCorrespondeOption = (codigo?: string, etiqueta?: string): boole
   );
 };
 
+export const formatMateriaNombreUI = (nombre?: string | null): string => {
+  if (!nombre) return '';
+  const trimmed = nombre.trim();
+  const normalized = trimmed
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (
+    normalized.includes('artes visuales') ||
+    normalized === 'educacion artistica - artes visuales' ||
+    normalized === 'artistica - artes visuales'
+  ) {
+    return 'Artes Visuales';
+  }
+
+  if (
+    (normalized.includes('musica') || normalized.includes('musical')) &&
+    (normalized.includes('artistica') || normalized.includes('educacion artistica'))
+  ) {
+    return 'Música';
+  }
+
+  if (
+    normalized.includes('ingles') ||
+    normalized.includes('lenguas adicionales')
+  ) {
+    return 'Inglés';
+  }
+
+  if (
+    normalized.includes('tecnologia') ||
+    normalized.includes('diseno y programacion')
+  ) {
+    return 'Tecnología';
+  }
+
+  return trimmed;
+};
+
 export interface PlantillaInforme {
   id: string;
   codigo: string;

@@ -35,6 +35,7 @@ import { useAppStore } from '../../../store/appStore';
 import { getGradeColorConfig } from '../../alumnos/utils/gradeColors';
 import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 import {
+  formatMateriaNombreUI,
   TIPOS_INFORME_META,
   type CeldaEtapaInforme,
   type EtapasInformeData,
@@ -173,7 +174,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
         rowKey: `${cell.cursoId}:${cell.materiaId || 'grado'}`,
         cursoNombre: curso?.nombre || 'Curso',
         cursoTurno: curso?.turno || '',
-        materiaNombre: materia?.nombre || null,
+        materiaNombre: formatMateriaNombreUI(materia?.nombre) || null,
       };
     });
   }, [cursosById, data, materiasById, selectedMateriaId]);
@@ -448,7 +449,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
                   type={selectedMateriaId === mat.id ? 'primary' : 'default'}
                   onClick={() => setSelectedMateriaId(mat.id)}
                 >
-                  {mat.nombre}
+                  {formatMateriaNombreUI(mat.nombre)}
                 </Button>
               ))}
             </div>

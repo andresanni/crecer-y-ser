@@ -31,6 +31,7 @@ import { FormModal } from '../../../shared/components/FormModal';
 import { focusFirstFormError } from '../../../shared/utils/formValidation';
 import ui from '../../../shared/styles/ui.module.css';
 import {
+  formatMateriaNombreUI,
   TIPOS_INFORME_META,
   type CeldaEtapaInforme,
   type CursoInformeResumen,
@@ -184,7 +185,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
         ...cell.enlace,
         secreto: cachedSecrets[cell.enlace.id] || cell.enlace.secreto,
         cursosDetalle,
-        materiaNombre: materia?.nombre || null,
+        materiaNombre: formatMateriaNombreUI(materia?.nombre) || null,
       });
     }
     return Array.from(byId.values());
@@ -442,7 +443,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                       placeholder="Seleccionar materia"
                       options={materiasEspeciales.map((m) => ({
                         value: m.id,
-                        label: m.nombre,
+                        label: formatMateriaNombreUI(m.nombre),
                       }))}
                     />
                   </Form.Item>

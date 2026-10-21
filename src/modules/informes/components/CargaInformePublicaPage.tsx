@@ -23,7 +23,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import ui from '../../../shared/styles/ui.module.css';
-import { TIPOS_INFORME_META } from '../models/informe.model';
+import { formatMateriaNombreUI, TIPOS_INFORME_META } from '../models/informe.model';
 import { createMagicLinkInformeAccess } from '../models/informeAccess.model';
 import type { InformeSubmissionResult } from '../models/informeDataSource.model';
 import {
@@ -234,7 +234,7 @@ export const CargaInformePublicaPage: React.FC = () => {
                   <>
                     <div className={styles.scopeItem}>
                       <BookOutlined className={styles.scopeIcon} />
-                      <span className={styles.scopeMainText}>{materia.nombre}</span>
+                      <span className={styles.scopeMainText}>{formatMateriaNombreUI(materia.nombre)}</span>
                     </div>
                     <div className={styles.scopeDivider} />
                   </>
