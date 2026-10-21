@@ -43,7 +43,7 @@ El módulo de **Informes de Maestras** gestiona la carga docente, entrega atómi
    - El bloque derecho de firma (`DIRECCIÓN`) imprime `MYRIAM GRACIELA` (`NOMBRE`) y `ADDUCCI` (`APELLIDO`).
 7. **Navegación y Tablero Institucional (`/app/informes`)**:
    - Sección principal propia en el menú lateral de `MainLayout`: **Informes** (`/app/informes`), independiente de `Boletines`.
-   - En las instancias de Áreas Especiales (`CICLO_FINAL` y `PRIMER_CUATRIMESTRE`), el tablero permite alternar entre **«Ver por Grado»** (selecciona de 1.° a 7.° y lista sus 5 materias especiales) y **«Ver por Materia Especial»** (selecciona la materia y lista los 7 grados).
+   - En las instancias de Áreas Especiales (`CICLO_FINAL` y `PRIMER_CUATRIMESTRE`), el tablero organiza la supervisión institucional **por Materia Especial**, seleccionando la materia y listando sus grados de 1.° a 7.° con sus estados de carga y visado.
 8. **Ruta pública docente (`/carga-informe`), Set de Grados por Enlace y Editor Único**:
    - Los enlaces mágicos de informes utilizan la ruta pública dedicada `/carga-informe`.
    - **Enlaces mágicos enriquecidos por set de grados (`instancia_ids`)**: un mismo enlace mágico puede abarcar de 1 a N grados de una materia especial (por ejemplo, todos los grados `1.° a 7.°` para un profesor especial que dicta en todo el colegio, o un subconjunto como `1.° a 3.°` y `4.° a 7.°` en Educación Física).
@@ -202,7 +202,14 @@ erDiagram
 
 #### Paso 1.3: Módulo Frontend `/app/informes` y Ruta Docente `/carga-informe` (Completado — 20 de octubre de 2026)
 1. Incorporados `/app/informes` en `MainLayout` y `App.tsx`, y `/carga-informe` (`CargaInformePublicaPage`) en el router público.
-2. Construido el módulo vertical `src/modules/informes` con selector de instancia, tablero conmutable **«Ver por Grado»** / **«Ver por Materia Especial»**, modales de enlaces y docente, editor único compartido `VistaInformePorAlumno` y revisión institucional `RevisionInformePage`.
+2. Construido el módulo vertical `src/modules/informes` con selector de instancia, tablero institucional organizado permanentemente por Asignatura, modales de enlaces y docente, editor único compartido `VistaInformePorAlumno` y revisión institucional `RevisionInformePage`.
+3. Incorporada experiencia responsive móvil integral en `/carga-informe` y `VistaInformePorAlumno`:
+   - Barra sticky minimalista de navegación de alumnos con selector modal táctil con búsqueda inmediata y bloqueo de scroll de fondo, eliminando conflictos de desplazamiento con la página.
+   - Selector compacto de navegación entre grados asignados para enlaces multigrado con modal dedicado en mobile, preservando el panel de pastillas horizontal en desktop.
+   - Botones de valoración con distribución flex equilibrada y envoltorio multilínea de etiquetas legibles.
+   - Alineación vertical y separación visual de insignias numéricas de consigna.
+   - Exclusión canónica de la opción «No corresponde» de las escalas de desempeño general y contenidos en todos los ciclos.
+   - Integración de contadores de progreso en el modal de alumnos (`X/Y completos` en carga docente, `X/Y visados` en supervisión directiva) y remoción del botón redundante de progreso en la barra móvil.
 
 #### Paso 1.4: Plantilla Documental A4 y Emisión Reactiva de PDFs (`CICLO_FINAL`) (Completado — 20 de octubre de 2026)
 1. Implementados los endpoints `GET /api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionId/instantanea`, `GET/POST /api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionId/emisiones` y `GET /api/cys/directivo/emisiones-informe/:emisionId/archivo`, junto con el hook de invalidación reactiva ante cambios en `alumnos` y verificación transaccional de `huella`.

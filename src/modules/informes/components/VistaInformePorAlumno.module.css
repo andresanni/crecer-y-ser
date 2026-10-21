@@ -17,6 +17,10 @@
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
 }
 
+.studentToolbar :global(.ant-card-body) {
+  padding: 14px 18px;
+}
+
 .toolbarRow {
   display: flex;
   flex-wrap: wrap;
@@ -32,6 +36,10 @@
   flex: 1 1 450px;
   max-width: 650px;
   min-width: 0;
+}
+
+.navArrowButton {
+  flex-shrink: 0;
 }
 
 .studentSelect {
@@ -61,6 +69,8 @@
   white-space: nowrap;
   font-weight: 600;
   color: var(--cys-color-text);
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .studentOptionTag {
@@ -71,17 +81,115 @@
   flex-shrink: 0;
 }
 
-.toolbarActions {
+.desktopToolbarActions {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
 
+.mobileActionsBar {
+  display: none;
+}
+
+.mobileStudentTrigger {
+  display: none;
+}
+
+.studentDropdown {
+  min-width: 380px;
+}
+
+.modalStudentSearchInput {
+  margin-bottom: 12px;
+}
+
+.modalStudentSearchInput :global(.ant-input) {
+  font-size: 14px;
+}
+
+.modalStudentList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 55vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 4px;
+}
+
+.modalStudentItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: 8px;
+  background: var(--cys-color-bg-container);
+  color: var(--cys-color-text);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.modalStudentItem:hover,
+.modalStudentItem:active {
+  background: var(--cys-color-fill-secondary);
+}
+
+.modalStudentItemSelected {
+  background: var(--cys-color-primary-bg, #eff6ff) !important;
+  border-color: var(--cys-color-primary, #1677ff) !important;
+}
+
+.modalStudentItemLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.modalStudentItemCheck {
+  color: var(--cys-color-primary, #1677ff);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.modalStudentItemName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--cys-color-text);
+}
+
+.modalStudentItemSelected .modalStudentItemName {
+  color: var(--cys-color-primary-text, #1d4ed8);
+  font-weight: 700;
+}
+
+.modalStudentItemTag {
+  margin: 0 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  flex-shrink: 0;
+}
+
 .legendCard {
   border-radius: 12px;
   border: 1px solid var(--cys-color-primary-border);
   background: var(--cys-color-primary-bg);
+}
+
+.legendCard :global(.ant-card-body) {
+  padding: 12px 18px;
 }
 
 .legendTitle {
@@ -282,6 +390,12 @@
   gap: 10px;
 }
 
+.generalSection :global(.ant-input) {
+  font-size: 14px;
+  line-height: 1.5;
+  border-radius: 8px;
+}
+
 .generalHeader {
   display: flex;
   align-items: center;
@@ -307,16 +421,36 @@
   width: 100%;
 }
 
-@media (max-width: 575px) {
-  .studentToolbar {
-    top: 6px;
-  }
+.floatingActionStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 
-  .floatingActionBar {
-    bottom: 10px;
-    padding: 8px 12px;
-    gap: 10px;
-  }
+.floatingActionText {
+  font-size: 13.5px;
+  color: var(--cys-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.floatingActionButtons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.floatingActionDiscardBtn {
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.floatingActionSaveBtn {
+  border-radius: 8px;
+  font-weight: 600;
+  padding-inline: 20px;
 }
 
 .drawerStudentButton {
@@ -339,13 +473,23 @@
   background: var(--cys-color-primary-bg);
 }
 
+.drawerStudentButton span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @container (max-width: 767px) {
+  .tableRegion {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+  }
+
   .itemsTable,
   .itemsTable thead,
-  .itemsTable tbody,
-  .itemsTable tr,
-  .itemsTable th,
-  .itemsTable td {
+  .itemsTable tbody {
     display: block;
     width: 100%;
   }
@@ -355,39 +499,503 @@
   }
 
   .itemsTable tbody tr {
-    border-bottom: 1px solid var(--cys-color-border-secondary);
-    padding: 10px 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    border: 1px solid var(--cys-color-border-secondary);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background-color: var(--cys-color-bg-container, #ffffff) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    transition: none;
+  }
+
+  .itemsTable tbody tr:hover,
+  .itemsTable tbody tr:focus-within {
+    background-color: var(--cys-color-bg-container, #ffffff) !important;
+  }
+
+  .itemsTable tbody tr:hover .itemIndexBadge,
+  .itemsTable tbody tr:focus-within .itemIndexBadge {
+    background: var(--cys-color-fill-secondary) !important;
+    color: var(--cys-color-text-secondary) !important;
+  }
+
+  .itemsTable tbody tr:nth-child(even) {
+    background-color: var(--cys-color-bg-container, #ffffff) !important;
+  }
+
+  .itemsTable th,
+  .itemsTable td {
+    border-bottom: none !important;
+    padding: 0 !important;
   }
 
   .blockCell {
     border-right: none;
     width: 100%;
-    padding: 6px 12px;
+    margin-bottom: 8px;
+    padding: 8px 12px !important;
+    background: var(--cys-color-primary-bg, #eff6ff);
+    color: var(--cys-color-primary-text, #1d4ed8);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border-radius: 8px;
+    border: 1px solid var(--cys-color-primary-border, #bfdbfe);
   }
 
   .orderCell {
-    display: inline-block;
-    width: auto;
-    padding: 6px 4px 6px 12px;
-    vertical-align: middle;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    padding: 0 !important;
+    margin: 1px 12px 0 0 !important;
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .itemIndexBadge {
+    min-width: 22px !important;
+    height: 22px !important;
+    line-height: 22px !important;
+    padding: 0 5px !important;
+    font-size: 11.5px !important;
+    border-radius: 6px !important;
   }
 
   .promptHeaderCell {
-    display: inline-block;
-    width: calc(100% - 50px);
-    position: static;
-    padding: 6px 12px 6px 4px;
-    font-weight: 600;
-    vertical-align: middle;
+    display: inline-block !important;
+    flex: 1 1 calc(100% - 46px) !important;
+    min-width: 0 !important;
+    width: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    line-height: 1.45 !important;
+    color: var(--cys-color-text) !important;
+    background: transparent !important;
+    border: none !important;
+    text-align: left !important;
   }
 
   .valueCell {
-    min-width: 0;
-    width: 100%;
-    padding: 8px 12px 10px;
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    padding: 8px 0 0 0 !important;
+    margin: 6px 0 0 0 !important;
+    border: none !important;
+    border-top: none !important;
+    background: transparent !important;
   }
 
   .scaleOptionsGroup {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .scaleOptionButton {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: 0 !important;
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 4px 4px !important;
+    border-radius: 8px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  .scaleOptionButton :global(span) {
+    white-space: normal !important;
+    word-break: normal !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    display: inline-block !important;
+    max-width: 100% !important;
+    font-size: 11.5px !important;
+  }
+
+  .scaleOptionButton:not(:global(.ant-btn-primary)):hover,
+  .scaleOptionButton:not(:global(.ant-btn-primary)):focus {
+    background: #ffffff !important;
+    border-color: var(--cys-color-border-secondary) !important;
+    color: var(--cys-color-text) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .mobileActionsBar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    margin-bottom: 4px;
+  }
+
+  .mobileActionsBar > * {
+    width: 100%;
+  }
+
+  .mobileActionsBar button {
+    width: 100%;
+    min-height: 40px;
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+
+  .desktopToolbarActions {
+    display: none !important;
+  }
+
+  .desktopStudentSelect {
+    display: none !important;
+  }
+
+  .mobileStudentTrigger {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 38px;
+    padding: 6px 10px;
+    border: 1px solid var(--cys-color-border-secondary);
+    border-radius: 8px;
+    background: var(--cys-color-bg-container);
+    color: var(--cys-color-text);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+  }
+
+  .mobileStudentTrigger:active {
+    background: var(--cys-color-fill-secondary);
+    border-color: var(--cys-color-primary);
+  }
+
+  .mobileStudentTrigger:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .mobileStudentTriggerName {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cys-color-text);
+  }
+
+  .mobileStudentTriggerRight {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .mobileStudentTriggerTag {
+    margin: 0 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    padding-inline: 6px !important;
+  }
+
+  .mobileStudentTriggerArrow {
+    font-size: 11px;
+    color: var(--cys-color-text-secondary);
+  }
+
+  .itemsCard :global(.ant-card-body) {
+    padding: 10px 8px !important;
+  }
+
+  .cardHeaderRow {
+    gap: 8px;
+  }
+
+  .generalSection {
+    padding: 12px 10px;
+  }
+
+  .generalScaleOptionsGroup {
+    gap: 8px;
+  }
+
+  .generalScaleOptionsGroup button {
+    flex: 1 1 calc(50% - 6px);
+    min-height: 40px;
+    font-size: 13.5px;
+    font-weight: 600;
+    border-radius: 8px;
+    white-space: normal;
+    height: auto;
+    padding: 6px 8px;
+    line-height: 1.25;
+  }
+
+  .generalScaleOptionsGroup button :global(span) {
+    white-space: normal;
+    text-align: center;
+    word-break: break-word;
+    line-height: 1.25;
+  }
+
+  .tableRegion {
+    border: none;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .itemsTable,
+  .itemsTable thead,
+  .itemsTable tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .itemsTable thead {
+    display: none;
+  }
+
+  .itemsTable tbody tr {
+    display: flex;
     flex-wrap: wrap;
+    align-items: flex-start;
+    border: 1px solid var(--cys-color-border-secondary);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background-color: var(--cys-color-bg-container, #ffffff) !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    transition: none;
+  }
+
+  .itemsTable tbody tr:hover,
+  .itemsTable tbody tr:focus-within {
+    background-color: var(--cys-color-bg-container, #ffffff) !important;
+  }
+
+  .itemsTable tbody tr:hover .itemIndexBadge,
+  .itemsTable tbody tr:focus-within .itemIndexBadge {
+    background: var(--cys-color-fill-secondary) !important;
+    color: var(--cys-color-text-secondary) !important;
+  }
+
+  .itemsTable tbody tr:nth-child(even) {
+    background-color: var(--cys-color-bg-container, #ffffff) !important;
+  }
+
+  .itemsTable th,
+  .itemsTable td {
+    border-bottom: none !important;
+    padding: 0 !important;
+  }
+
+  .blockCell {
+    border-right: none;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 8px 12px !important;
+    background: var(--cys-color-primary-bg, #eff6ff);
+    color: var(--cys-color-primary-text, #1d4ed8);
+    font-family: var(--font-heading);
+    font-weight: 700;
+    font-size: 12.5px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border-radius: 8px;
+    border: 1px solid var(--cys-color-primary-border, #bfdbfe);
+  }
+
+  .orderCell {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    padding: 0 !important;
+    margin: 1px 12px 0 0 !important;
+    background: transparent !important;
+    border: none !important;
+  }
+
+  .itemIndexBadge {
+    min-width: 22px !important;
+    height: 22px !important;
+    line-height: 22px !important;
+    padding: 0 5px !important;
+    font-size: 11.5px !important;
+    border-radius: 6px !important;
+  }
+
+  .promptHeaderCell {
+    display: inline-block !important;
+    flex: 1 1 calc(100% - 46px) !important;
+    min-width: 0 !important;
+    width: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    line-height: 1.45 !important;
+    color: var(--cys-color-text) !important;
+    background: transparent !important;
+    border: none !important;
+    text-align: left !important;
+  }
+
+  .valueCell {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+    padding: 8px 0 0 0 !important;
+    margin: 6px 0 0 0 !important;
+    border: none !important;
+    border-top: none !important;
+    background: transparent !important;
+  }
+
+  .scaleOptionsGroup {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+
+  .scaleOptionButton {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: 0 !important;
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 4px 4px !important;
+    border-radius: 8px !important;
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+
+  .scaleOptionButton :global(span) {
+    white-space: normal !important;
+    word-break: normal !important;
+    text-align: center !important;
+    line-height: 1.2 !important;
+    display: inline-block !important;
+    max-width: 100% !important;
+    font-size: 11.5px !important;
+  }
+
+  .scaleOptionButton:not(:global(.ant-btn-primary)):hover,
+  .scaleOptionButton:not(:global(.ant-btn-primary)):focus {
+    background: #ffffff !important;
+    border-color: var(--cys-color-border-secondary) !important;
+    color: var(--cys-color-text) !important;
+  }
+}
+
+@media (max-width: 575px) {
+  .studentToolbar {
+    top: 6px;
+    border-radius: 12px;
+  }
+
+  .studentToolbar :global(.ant-card-body) {
+    padding: 8px 10px;
+  }
+
+  .toolbarRow {
+    gap: 8px;
+  }
+
+  .studentNavGroup {
+    flex: 1 1 100%;
+    max-width: 100%;
+    gap: 6px;
+  }
+
+  .navArrowButton {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .studentSelect {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .studentSelect :global(.ant-select-selector) {
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+  }
+
+  .legendCard :global(.ant-card-body) {
+    padding: 10px 12px !important;
+  }
+
+  .legendGrid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .floatingActionBar {
+    bottom: 10px;
+    padding: 10px 12px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .floatingActionStatus {
+    width: 100%;
+  }
+
+  .floatingActionButtons {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .floatingActionDiscardBtn {
+    flex: 1 1 0;
+    min-height: 42px;
+  }
+
+  .floatingActionSaveBtn {
+    flex: 2 1 0;
+    min-height: 42px;
+    padding-inline: 12px;
   }
 }

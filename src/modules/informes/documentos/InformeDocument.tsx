@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { ItemPlantillaInforme } from '../models/informe.model';
+import { isNoCorrespondeOption, type ItemPlantillaInforme } from '../models/informe.model';
 import type { InformeDocumentSnapshotDatos } from './informeSnapshot.model';
 import styles from './InformeDocument.module.css';
 
@@ -79,7 +79,11 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({ data }) => {
         : 'Primer Bimestre';
 
   const rightSubjectLabel = materia?.etiquetaPdf || 'Maestras';
-  const compactScaleHeader = plantilla.escalaItems.every((opt) => opt.etiqueta.length <= 2);
+  const visibleEscalaItems = useMemo(
+    () => plantilla.escalaItems.filter((opt) => !isNoCorrespondeOption(opt.codigo, opt.etiqueta)),
+    [plantilla.escalaItems],
+  );
+  const compactScaleHeader = visibleEscalaItems.every((opt) => opt.etiqueta.length <= 2);
 
   const renderHeader = () => (
     <>
@@ -176,11 +180,11 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({ data }) => {
                 {pageIdx === 0 && plantilla.mostrarLeyendaEscala && (
                   <table className={styles.legendTable}>
                     <tbody>
-                      {plantilla.escalaItems.map((opt, idx) => (
+                      {visibleEscalaItems.map((opt, idx) => (
                         <tr key={opt.codigo}>
                           {idx === 0 && (
                             <td
-                              rowSpan={plantilla.escalaItems.length}
+                              rowSpan={visibleEscalaItems.length}
                               className={styles.legendTitleCell}
                             >
                               Contenidos
@@ -203,7 +207,7 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({ data }) => {
                       >
                         {plantilla.tituloTabla}
                       </th>
-                      {plantilla.escalaItems.map((opt) => (
+                      {visibleEscalaItems.map((opt) => (
                         <th
                           key={opt.codigo}
                           className={
@@ -228,7 +232,7 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({ data }) => {
                             </td>
                           )}
                           <td className={styles.itemTextCell}>{item.texto}</td>
-                          {plantilla.escalaItems.map((opt) => (
+                          {visibleEscalaItems.map((opt) => (
                             <td key={opt.codigo} className={styles.itemMarkCell}>
                               {selectedCode === opt.codigo ? 'X' : ''}
                             </td>

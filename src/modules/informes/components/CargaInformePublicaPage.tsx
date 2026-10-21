@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   Col,
+  Modal,
   Result,
   Row,
   Space,
@@ -16,6 +17,9 @@ import {
   AppstoreOutlined,
   BookOutlined,
   CheckCircleOutlined,
+  DownOutlined,
+  LeftOutlined,
+  RightOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import ui from '../../../shared/styles/ui.module.css';
@@ -46,6 +50,7 @@ export const CargaInformePublicaPage: React.FC = () => {
   const [lastDeliveredBanner, setLastDeliveredBanner] = useState<string | null>(null);
   const [hasPendingStudentChanges, setHasPendingStudentChanges] = useState(false);
   const [activeCompletedOverride, setActiveCompletedOverride] = useState<number | null>(null);
+  const [courseModalOpen, setCourseModalOpen] = useState(false);
 
   const handleAccessDenied = useCallback(() => {
     setContext(null);
@@ -188,6 +193,14 @@ export const CargaInformePublicaPage: React.FC = () => {
   const teacherFullName = `${instancia.docenteNombre} ${instancia.docenteApellido}`.trim();
   const hasMultipleCourses = cursosAsignados.length > 1;
 
+  const currentCourseIndex = cursosAsignados.findIndex((c) => c.instanciaId === instancia.id);
+  const currentCourseItem = currentCourseIndex >= 0 ? cursosAsignados[currentCourseIndex] : null;
+  const currentCourseCompletedCount = currentCourseItem && activeCompletedOverride !== null
+    ? activeCompletedOverride
+    : currentCourseItem?.alumnosCompletos ?? 0;
+  const currentCourseTotal = currentCourseItem?.totalAlumnos ?? alumnos.length;
+  const currentCourseIsComplete = currentCourseTotal > 0 && currentCourseCompletedCount === currentCourseTotal;
+
   return (
     <div className={ui.publicPage}>
       <Card
@@ -254,42 +267,149 @@ export const CargaInformePublicaPage: React.FC = () => {
           className={`${ui.operationalContent} ${styles.coursesSwitcherCard}`}
           styles={{ body: { padding: '12px 18px' } }}
         >
-          <div className={styles.coursesSwitcherRow}>
-            <Space size={8}>
-              <AppstoreOutlined style={{ color: 'var(--cys-color-primary-text)' }} />
-              <Text strong>
-                Grados asignados en este enlace ({cursosAsignados.length}):
-              </Text>
-            </Space>
-            <div className={styles.coursesSwitcherPills}>
-              {cursosAsignados.map((item) => {
-                const isActive = item.instanciaId === instancia.id;
-                const completedCount = isActive && activeCompletedOverride !== null
-                  ? activeCompletedOverride
-                  : item.alumnosCompletos;
-                const isCourseComplete = item.totalAlumnos > 0 && completedCount === item.totalAlumnos;
-                return (
-                  <Button
-                    key={item.instanciaId}
-                    type={isActive ? 'primary' : 'default'}
-                    onClick={() => handleSelectCourse(item.instanciaId)}
+          <div className={styles.desktopCoursesSwitcher}>
+            <div className={styles.coursesSwitcherRow}>
+              <Space size={8}>
+                <AppstoreOutlined style={{ color: 'var(--cys-color-primary-text)' }} />
+                <Text strong>
+                  Grados asignados en este enlace ({cursosAsignados.length}):
+                </Text>
+              </Space>
+              <div className={styles.coursesSwitcherPills}>
+                {cursosAsignados.map((item) => {
+                  const isActive = item.instanciaId === instancia.id;
+                  const completedCount = isActive && activeCompletedOverride !== null
+                    ? activeCompletedOverride
+                    : item.alumnosCompletos;
+                  const isCourseComplete = item.totalAlumnos > 0 && completedCount === item.totalAlumnos;
+                  return (
+                    <Button
+                      key={item.instanciaId}
+                      type={isActive ? 'primary' : 'default'}
+                      onClick={() => handleSelectCourse(item.instanciaId)}
+                    >
+                      <Space size={6}>
+                        <span>{item.cursoNombre}</span>
+                        <Tag
+                          color={isCourseComplete ? 'success' : isActive ? 'processing' : 'default'}
+                          style={{ margin: 0 }}
+                        >
+                          {isCourseComplete && <CheckCircleOutlined style={{ marginRight: 3 }} />}
+                          {completedCount}/{item.totalAlumnos}
+                        </Tag>
+                      </Space>
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.mobileCoursesSwitcher}>
+            <div className={styles.courseNavGroup}>
+              <Button
+                icon={<LeftOutlined />}
+                disabled={currentCourseIndex <= 0 || loading}
+                onClick={() => {
+                  if (currentCourseIndex > 0) {
+                    handleSelectCourse(cursosAsignados[currentCourseIndex - 1].instanciaId);
+                  }
+                }}
+                aria-label="Grado anterior"
+                className={styles.courseNavArrowButton}
+              />
+              <button
+                type="button"
+                className={styles.mobileCourseTrigger}
+                onClick={() => setCourseModalOpen(true)}
+                aria-label="Seleccionar grado"
+              >
+                <span className={styles.mobileCourseTriggerLeft}>
+                  <AppstoreOutlined style={{ color: 'var(--cys-color-primary)', fontSize: 14 }} />
+                  <span className={styles.mobileCourseTriggerName}>
+                    {curso.nombre} · {curso.turno}
+                  </span>
+                </span>
+                <span className={styles.mobileCourseTriggerRight}>
+                  <Tag
+                    color={currentCourseIsComplete ? 'success' : 'processing'}
+                    className={styles.mobileCourseTriggerTag}
                   >
-                    <Space size={6}>
-                      <span>{item.cursoNombre}</span>
-                      <Tag
-                        color={isCourseComplete ? 'success' : isActive ? 'processing' : 'default'}
-                        style={{ margin: 0 }}
-                      >
-                        {isCourseComplete && <CheckCircleOutlined style={{ marginRight: 3 }} />}
-                        {completedCount}/{item.totalAlumnos}
-                      </Tag>
-                    </Space>
-                  </Button>
-                );
-              })}
+                    {currentCourseIsComplete && <CheckCircleOutlined style={{ marginRight: 3 }} />}
+                    {currentCourseCompletedCount}/{currentCourseTotal}
+                  </Tag>
+                  <DownOutlined className={styles.mobileCourseTriggerArrow} />
+                </span>
+              </button>
+              <Button
+                icon={<RightOutlined />}
+                disabled={currentCourseIndex < 0 || currentCourseIndex >= cursosAsignados.length - 1 || loading}
+                onClick={() => {
+                  if (currentCourseIndex >= 0 && currentCourseIndex < cursosAsignados.length - 1) {
+                    handleSelectCourse(cursosAsignados[currentCourseIndex + 1].instanciaId);
+                  }
+                }}
+                aria-label="Grado siguiente"
+                className={styles.courseNavArrowButton}
+              />
             </div>
           </div>
         </Card>
+      )}
+
+      {hasMultipleCourses && (
+        <Modal
+          title={`Grados asignados (${cursosAsignados.length})`}
+          open={courseModalOpen}
+          onCancel={() => setCourseModalOpen(false)}
+          footer={null}
+          centered
+          destroyOnHidden
+          width="min(440px, 94vw)"
+          styles={{
+            body: {
+              padding: '12px 14px',
+              maxHeight: '65vh',
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          }}
+        >
+          <div className={styles.modalCourseList}>
+            {cursosAsignados.map((item) => {
+              const isActive = item.instanciaId === instancia.id;
+              const completedCount = isActive && activeCompletedOverride !== null
+                ? activeCompletedOverride
+                : item.alumnosCompletos;
+              const isCourseComplete = item.totalAlumnos > 0 && completedCount === item.totalAlumnos;
+              return (
+                <button
+                  key={item.instanciaId}
+                  type="button"
+                  className={`${styles.modalCourseItem} ${isActive ? styles.modalCourseItemSelected : ''}`}
+                  onClick={() => {
+                    setCourseModalOpen(false);
+                    handleSelectCourse(item.instanciaId);
+                  }}
+                >
+                  <div className={styles.modalCourseItemLeft}>
+                    {isActive && <CheckCircleOutlined className={styles.modalCourseItemCheck} />}
+                    <span className={styles.modalCourseItemName}>
+                      {item.cursoNombre} · {item.turno}
+                    </span>
+                  </div>
+                  <Tag
+                    color={isCourseComplete ? 'success' : isActive ? 'processing' : 'default'}
+                    className={styles.modalCourseItemTag}
+                  >
+                    {isCourseComplete && <CheckCircleOutlined style={{ marginRight: 3 }} />}
+                    {completedCount}/{item.totalAlumnos}
+                  </Tag>
+                </button>
+              );
+            })}
+          </div>
+        </Modal>
       )}
 
       {!!context.cursadasPendientes.length && (

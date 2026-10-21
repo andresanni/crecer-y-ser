@@ -77,6 +77,21 @@ export interface EscalaDesempenoGeneralInforme {
   etiqueta: string;
 }
 
+export const isNoCorrespondeOption = (codigo?: string, etiqueta?: string): boolean => {
+  const normCode = (codigo || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
+  const normLabel = (etiqueta || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  return (
+    normCode === 'NO_CORRESPONDE' ||
+    normCode === 'NC' ||
+    normLabel === 'no corresponde' ||
+    normLabel.startsWith('no corresponde')
+  );
+};
+
 export interface PlantillaInforme {
   id: string;
   codigo: string;
@@ -209,6 +224,7 @@ export interface AlumnoInformeRow {
   itemsRespondidos: number;
   totalItems: number;
   desempenoGeneralCompleto: boolean;
+  estadoVisado?: EstadoVisadoInforme;
 }
 
 export interface RespuestaItemInforme {

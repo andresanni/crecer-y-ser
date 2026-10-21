@@ -8,7 +8,6 @@ import {
   Empty,
   Modal,
   Progress,
-  Segmented,
   Space,
   Spin,
   Table,
@@ -17,7 +16,6 @@ import {
   Typography,
 } from 'antd';
 import {
-  AppstoreOutlined,
   ArrowLeftOutlined,
   BookOutlined,
   CheckCircleOutlined,
@@ -76,8 +74,6 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  const [viewMode, setViewMode] = useState<'GRADO' | 'MATERIA'>('GRADO');
-  const [selectedCursoId, setSelectedCursoId] = useState<string | null>(null);
   const [selectedMateriaId, setSelectedMateriaId] = useState<string | null>(null);
 
   const [gestorOpen, setGestorOpen] = useState(false);
@@ -98,9 +94,6 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
       const res = await informesService.getEtapas(cicloId, tipoInforme);
       setData(res);
       setLoadError(false);
-      setSelectedCursoId((prev) => (
-        prev && res.cursos.some((c) => c.id === prev) ? prev : res.cursos[0]?.id ?? null
-      ));
       setSelectedMateriaId((prev) => (
         prev && res.materiasEspeciales.some((m) => m.id === prev)
           ? prev
@@ -131,9 +124,6 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
         if (!active) return;
         setData(res);
         setLoadError(false);
-        setSelectedCursoId((prev) => (
-          prev && res.cursos.some((c) => c.id === prev) ? prev : res.cursos[0]?.id ?? null
-        ));
         setSelectedMateriaId((prev) => (
           prev && res.materiasEspeciales.some((m) => m.id === prev)
             ? prev
@@ -172,9 +162,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
   const filteredRows = useMemo<TableroRow[]>(() => {
     if (!data) return [];
     const cells = data.requiereMateriaEspecial
-      ? viewMode === 'GRADO'
-        ? data.celdas.filter((c) => c.cursoId === selectedCursoId)
-        : data.celdas.filter((c) => c.materiaId === selectedMateriaId)
+      ? data.celdas.filter((c) => c.materiaId === selectedMateriaId)
       : data.celdas;
 
     return cells.map((cell) => {
@@ -188,7 +176,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
         materiaNombre: materia?.nombre || null,
       };
     });
-  }, [cursosById, data, materiasById, selectedCursoId, selectedMateriaId, viewMode]);
+  }, [cursosById, data, materiasById, selectedMateriaId]);
 
   const pendingCourseScopes = useMemo(() => {
     if (!pendingCourseId || !data) return [];
@@ -196,49 +184,33 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
     return cell?.cursadasPendientes || [];
   }, [data, pendingCourseId]);
 
-  const showingByGrade = Boolean(data?.requiereMateriaEspecial && viewMode === 'GRADO');
-
   const columns: ColumnsType<TableroRow> = [
-    showingByGrade
-      ? {
-          title: 'MATERIA ESPECIAL',
-          key: 'materia',
-          width: '21%',
-          render: (_, row) => (
-            <Space size={8}>
-              <BookOutlined style={{ color: 'var(--cys-color-primary-text)' }} />
-              <Text strong style={{ fontSize: 13.5 }}>
-                {row.materiaNombre || 'Materia especial'}
-              </Text>
-            </Space>
-          ),
-        }
-      : {
-          title: 'GRADO',
-          dataIndex: 'cursoNombre',
-          key: 'grado',
-          width: '13%',
-          className: styles.gradeColumn,
-          render: (cursoNombre: string) => {
-            const gradeConfig = getGradeColorConfig(cursoNombre);
-            return (
-              <Tag
-                style={{
-                  backgroundColor: 'var(--cys-color-primary-bg)',
-                  color: 'var(--cys-color-primary-text)',
-                  border: '1px solid var(--cys-color-primary-border)',
-                  fontWeight: 800,
-                  fontSize: 14,
-                  padding: '3px 10px',
-                  borderRadius: 7,
-                  margin: 0,
-                }}
-              >
-                {gradeConfig.shortLabel}
-              </Tag>
-            );
-          },
-        },
+    {
+      title: 'GRADO',
+      dataIndex: 'cursoNombre',
+      key: 'grado',
+      width: '13%',
+      className: styles.gradeColumn,
+      render: (cursoNombre: string) => {
+        const gradeConfig = getGradeColorConfig(cursoNombre);
+        return (
+          <Tag
+            style={{
+              backgroundColor: 'var(--cys-color-primary-bg)',
+              color: 'var(--cys-color-primary-text)',
+              border: '1px solid var(--cys-color-primary-border)',
+              fontWeight: 800,
+              fontSize: 14,
+              padding: '3px 10px',
+              borderRadius: 7,
+              margin: 0,
+            }}
+          >
+            {gradeConfig.shortLabel}
+          </Tag>
+        );
+      },
+    },
     {
       title: 'LLENADO',
       key: 'llenado',
@@ -426,7 +398,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
           <Button
             icon={<LinkOutlined className={ui.primary} />}
             onClick={() => {
-              setModalCursoId(selectedCursoId);
+              setModalCursoId(null);
               setModalMateriaId(selectedMateriaId);
               setGestorOpen(true);
             }}
@@ -456,9 +428,6 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
             <Typography.Title level={4} className={styles.instanceTitle}>
               {meta.titulo}
             </Typography.Title>
-            <Typography.Text type="secondary" className={styles.instanceSubtitle}>
-              {meta.subtitulo}
-            </Typography.Text>
           </div>
         </div>
       </div>
@@ -466,37 +435,22 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
       {data && data.requiereMateriaEspecial && (
         <Card className={styles.filterCard} styles={{ body: { padding: '14px 18px' } }}>
           <div className={styles.filterRow}>
-            <Segmented
-              value={viewMode}
-              onChange={(val) => setViewMode(val as 'GRADO' | 'MATERIA')}
-              options={[
-                { label: 'Ver por Grado', value: 'GRADO', icon: <AppstoreOutlined /> },
-                { label: 'Ver por Materia Especial', value: 'MATERIA', icon: <BookOutlined /> },
-              ]}
-            />
+            <Space size={8}>
+              <BookOutlined style={{ color: 'var(--cys-color-primary-text)' }} />
+              <Text strong>Asignatura:</Text>
+            </Space>
 
             <div className={styles.pillsRow}>
-              {viewMode === 'GRADO'
-                ? data.cursos.map((curso) => (
-                    <Button
-                      key={curso.id}
-                      size="small"
-                      type={selectedCursoId === curso.id ? 'primary' : 'default'}
-                      onClick={() => setSelectedCursoId(curso.id)}
-                    >
-                      {curso.nombre}
-                    </Button>
-                  ))
-                : data.materiasEspeciales.map((mat) => (
-                    <Button
-                      key={mat.id}
-                      size="small"
-                      type={selectedMateriaId === mat.id ? 'primary' : 'default'}
-                      onClick={() => setSelectedMateriaId(mat.id)}
-                    >
-                      {mat.nombre}
-                    </Button>
-                  ))}
+              {data.materiasEspeciales.map((mat) => (
+                <Button
+                  key={mat.id}
+                  size="small"
+                  type={selectedMateriaId === mat.id ? 'primary' : 'default'}
+                  onClick={() => setSelectedMateriaId(mat.id)}
+                >
+                  {mat.nombre}
+                </Button>
+              ))}
             </div>
           </div>
         </Card>

@@ -68,11 +68,6 @@
   margin: 0 !important;
 }
 
-.instanceSubtitle {
-  color: var(--cys-color-text-secondary);
-  font-size: 14px;
-}
-
 .filterCard {
   border-radius: 12px;
   border: 1px solid var(--cys-color-border-secondary);

@@ -135,6 +135,7 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
       desempenoGeneralCompleto: Boolean(
         !review.plantilla.requiereDesempenoGeneral || inf.desempenoGeneralValor,
       ),
+      estadoVisado: inf.estado,
     }));
   }, [review]);
 
