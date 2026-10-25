@@ -268,9 +268,20 @@ erDiagram
 3. **Previsualización Interactiva y Banco de Pruebas**:
    - `InformePreview.tsx` actualizado con `TECNOLOGIA_ITEMS`, permitiendo alternar dinámicamente entre Tecnología (17 consignas), Educación Musical (19 consignas) y Artes Visuales (18 consignas).
 
+#### Paso 1.10: Adaptación y Validación de Lenguas Adicionales - Inglés (`FINAL_INGLES_BASE`)
+1. **Iconografía Institucional y Tabla de 18 Consignas**:
+   - Contrastado y validado contra el PDF original de referencia (`Informe Final - Ingles - Todos los grados.pdf`). Confirma la utilización de la serie de 8 personajes de Mafalda en columna lateral, título de tabla `Contenidos de Inglés`, rótulo caligráfico `Inglés` en fuente `Pacifico` con curvas decorativas bicolor y subtítulo institucional `EDUCACIÓN PRIMARIA`.
+   - Incorporadas las 18 consignas oficiales catalogadas en PocketBase con tipografía fluida y ajuste de salto de línea en consignas compuestas.
+2. **Geometría Vertical y Salvaguarda Inferior**:
+   - Variante **Sin Observaciones**: tabla de 156.0mm, tarjeta de Desempeño General regular expandida a 24.4mm con gap superior de 13.0mm e inferior de 8.0mm, firmas en 263.9mm a 287.0mm, garantizando un margen de salvaguarda de exactamente `10.0mm` y **1 hoja A4 física**.
+   - Variante **Con Observaciones (PPI)**: tarjeta de Desempeño General extendida a 30.8mm con bloque de texto justificado, firmas en 287.0mm, salvaguarda de `10.0mm` y exactamente **1 hoja A4 física**.
+   - Soporte verificado para escala conceptual (1.° a 3.°) y numérica (4.° a 7.°).
+3. **Previsualización Interactiva y Banco de Pruebas**:
+   - `InformePreview.tsx` actualizado con `INGLES_ITEMS`, permitiendo alternar dinámicamente entre Inglés (18 consignas), Tecnología (17 consignas), Educación Musical (19 consignas) y Artes Visuales (18 consignas).
+
 > [!IMPORTANT]
-> **Hito actual (25 de octubre de 2026 — Tecnología, Diseño y Programación Validada en 1 Página A4)**:
-> La plantilla de Tecnología (`FINAL_TECNOLOGIA_BASE`) quedó implementada, probada y verificada bajo el estándar canónico en 1 sola hoja A4 física. Próximo paso: evaluar feedback del usuario y proceder con Inglés (`FINAL_INGLES_BASE`, 18 consignas) o Educación Física (`FINAL_ED_FISICA_G1`, `G2`, `G3`).
+> **Hito actual (25 de octubre de 2026 — Inglés Validado en 1 Página A4)**:
+> La plantilla de Inglés (`FINAL_INGLES_BASE`) quedó implementada, probada y verificada bajo el estándar canónico en 1 sola hoja A4 física. Próximo paso: evaluar feedback del usuario y proceder con Educación Física (`FINAL_ED_FISICA_G1`, `G2`, `G3`).
 
 ---
 

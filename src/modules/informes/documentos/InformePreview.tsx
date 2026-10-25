@@ -66,6 +66,27 @@ const TECNOLOGIA_ITEMS = [
   'Reflexión sobre procesos tecnológicos y uso de la IA (Inteligencia Artificial).',
 ];
 
+const INGLES_ITEMS = [
+  'Demuestra interés por el aprendizaje de la lengua extranjera',
+  'Manejo de estructuras sencillas en Inglés.',
+  'Comprensión de estructuras sencillas de salutación y cortesía.',
+  'Progreso en el desarrollo de la atención y de la observación del idioma durante el transcurso de la clase.',
+  'Mantiene buena relación con la docente.',
+  'Mantiene buena relación con sus pares.',
+  'Atención en clase.',
+  'Participación en clase.',
+  'Cumple con los materiales para la materia.',
+  'Se expresa oralmente en inglés con coherencia.',
+  'Su pronunciación es clara.',
+  'Respeta los turnos del habla de sus pares y escucha a los mismos',
+  'Utiliza el idioma inglés para narrar, describir y/o pedir.',
+  'Interpreta mensajes orales.',
+  'Adecua sus respuestas orales y escritas al contexto.',
+  'Progresa en escritura.',
+  'Incorpora nuevo vocabulario.',
+  'Comprende consignas de trabajo o narraciones en inglés.',
+];
+
 const ESCALA_TRES_NIVELES = [
   { codigo: 'NO_ALCANZADO', etiqueta: 'No Alcanzado' },
   { codigo: 'EN_PROCESO', etiqueta: 'En proceso de Alcanzar' },
@@ -115,7 +136,7 @@ const EJEMPLOS_OBSERVACIONES = [
 ];
 
 export function InformePreview() {
-  const [materiaCodigo, setMateriaCodigo] = useState<'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA'>('TECNOLOGIA');
+  const [materiaCodigo, setMateriaCodigo] = useState<'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA' | 'INGLES'>('INGLES');
   const [gradoNumero, setGradoNumero] = useState<number>(3);
   const [ejemploObservacionId, setEjemploObservacionId] = useState<string>('ppi');
   const [desempenoCodigo, setDesempenoCodigo] = useState<string>('ALCANZADO');
@@ -141,6 +162,7 @@ export function InformePreview() {
   const rawItemTexts = useMemo(() => {
     if (materiaCodigo === 'MUSICA') return MUSICA_ITEMS;
     if (materiaCodigo === 'TECNOLOGIA') return TECNOLOGIA_ITEMS;
+    if (materiaCodigo === 'INGLES') return INGLES_ITEMS;
     return ARTES_VISUALES_ITEMS;
   }, [materiaCodigo]);
 
@@ -149,14 +171,18 @@ export function InformePreview() {
       ? 'FINAL_MUSICA_BASE'
       : materiaCodigo === 'TECNOLOGIA'
         ? 'FINAL_TECNOLOGIA_BASE'
-        : 'FINAL_ARTES_VISUALES_G2';
+        : materiaCodigo === 'INGLES'
+          ? 'FINAL_INGLES_BASE'
+          : 'FINAL_ARTES_VISUALES_G2';
 
   const tituloTabla =
     materiaCodigo === 'MUSICA'
       ? 'Contenidos de Educación Musical'
       : materiaCodigo === 'TECNOLOGIA'
         ? 'Contenidos de Tecnología'
-        : 'Contenidos de Artes Visuales';
+        : materiaCodigo === 'INGLES'
+          ? 'Contenidos de Inglés'
+          : 'Contenidos de Artes Visuales';
 
   const items = useMemo(
     () =>
@@ -184,16 +210,21 @@ export function InformePreview() {
   const data: InformeDocumentSnapshotDatos = useMemo(() => {
     const isMusica = materiaCodigo === 'MUSICA';
     const isTecnologia = materiaCodigo === 'TECNOLOGIA';
+    const isIngles = materiaCodigo === 'INGLES';
     const nombreMateria = isMusica
       ? 'Educación Artística - Música'
       : isTecnologia
         ? 'Tecnología, Diseño y Programación'
-        : 'Educación Artística - Artes visuales';
+        : isIngles
+          ? 'Lenguas Adicionales - Inglés'
+          : 'Educación Artística - Artes visuales';
     const etiquetaMateria = isMusica
       ? 'Educación Musical'
       : isTecnologia
         ? 'Tecnología'
-        : 'Artes Visuales';
+        : isIngles
+          ? 'Inglés'
+          : 'Artes Visuales';
 
     return {
       instanciaId: `instancia-preview-${materiaCodigo.toLowerCase()}`,
@@ -218,8 +249,8 @@ export function InformePreview() {
         etiquetaPdf: etiquetaMateria,
       },
       docente: {
-        nombre: isMusica ? 'MARIA INES' : 'FLORENCIA',
-        apellido: isMusica ? 'COSTA' : 'BULACIO',
+        nombre: isMusica ? 'MARIA INES' : isIngles ? 'CELESTE' : 'FLORENCIA',
+        apellido: isMusica ? 'COSTA' : isIngles ? 'ARAGÓN' : 'BULACIO',
       },
       direccion: {
         nombre: 'MYRIAM GRACIELA',
@@ -227,8 +258,8 @@ export function InformePreview() {
       },
       alumno: {
         id: 'alumno-preview-1',
-        apellidos: isMusica || isTecnologia ? 'Castillo' : 'Villca Romero',
-        nombres: isMusica || isTecnologia ? 'April Oriana' : 'Malena Abigail',
+        apellidos: isIngles ? 'Camarero' : isMusica || isTecnologia ? 'Castillo' : 'Villca Romero',
+        nombres: isIngles ? 'Ciro Nahuel' : isMusica || isTecnologia ? 'April Oriana' : 'Malena Abigail',
         numeroOrden: 1,
       },
       plantilla: {
@@ -282,8 +313,13 @@ export function InformePreview() {
             <select
               id="preview-materia-select"
               value={materiaCodigo}
-              onChange={(e) => setMateriaCodigo(e.target.value as 'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA')}
+              onChange={(e) =>
+                setMateriaCodigo(
+                  e.target.value as 'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA' | 'INGLES',
+                )
+              }
             >
+              <option value="INGLES">Lenguas Adicionales - Inglés (18 consignas)</option>
               <option value="TECNOLOGIA">Tecnología, Diseño y Programación (17 consignas)</option>
               <option value="MUSICA">Educación Artística - Música (19 consignas)</option>
               <option value="ARTES_VISUALES">Educación Artística - Artes Visuales (18 consignas)</option>
