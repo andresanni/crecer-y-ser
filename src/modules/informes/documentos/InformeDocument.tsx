@@ -15,7 +15,7 @@ interface PageRowEntry {
   blockRowSpan: number;
 }
 
-const ARTES_VISUALES_ILLUSTRATIONS = [
+const ESPECIALES_ILLUSTRATIONS = [
   '/informes/artes-visuales/personaje_01.png',
   '/informes/artes-visuales/personaje_02.png',
   '/informes/artes-visuales/personaje_03.png',
@@ -109,13 +109,11 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
   );
 
   const illustrations = useMemo(() => {
-    const name = materia?.nombre?.toLowerCase() || '';
-    const tag = materia?.etiquetaPdf?.toLowerCase() || '';
-    if (name.includes('visual') || tag.includes('visual')) {
-      return ARTES_VISUALES_ILLUSTRATIONS;
+    if (isSpecialCycleFinal) {
+      return ESPECIALES_ILLUSTRATIONS;
     }
     return [];
-  }, [materia]);
+  }, [isSpecialCycleFinal]);
 
   const renderHeader = () => (
     <>
@@ -331,7 +329,13 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
                 </div>
 
                 {isLastItemsPage && plantilla.requiereDesempenoGeneral && (
-                  <div className={styles.desempenoCard}>
+                  <div
+                    className={`${styles.desempenoCard} ${
+                      hasObservaciones
+                        ? styles.desempenoCardExtended
+                        : styles.desempenoCardRegular
+                    }`}
+                  >
                     <div className={styles.desempenoRow}>
                       <img
                         src="/informes/ninos-lectores.png"

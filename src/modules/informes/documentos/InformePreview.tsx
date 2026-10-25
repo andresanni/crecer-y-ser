@@ -24,6 +24,28 @@ const ARTES_VISUALES_ITEMS = [
   'Utilización de elementos del lenguaje visual en la tridimensión.',
 ];
 
+const MUSICA_ITEMS = [
+  'Demuestra interés por el aprendizaje de la materia.',
+  'Mantiene buena relación con la docente',
+  'Mantiene buena relación con sus pares',
+  'Atención en clase',
+  'Participa activamente de la clase',
+  'Cumple con los materiales',
+  'Entona el canto',
+  'Identifica los instrumentos musicales según su familia',
+  'Es correcto en la ejecución rítmica',
+  'Es correcto en la ejecución melódica',
+  'Lee grafías pertenecientes al lenguaje musical',
+  'Cuida los instrumentos musicales',
+  'Ejecuta correctamente los instrumentos musicales',
+  'Realiza interpretaciones a dos o más voces',
+  'Se interesa por la vida y la música de diferentes compositores',
+  'Muestra interés por distintos estilos musicales',
+  'Tiene una audición activa de acuerdo a su edad',
+  'Distingue y/o ejecuta diferentes parámetros de sonido',
+  'Realiza y se interesa por el registro grabado de las producciones musicales',
+];
+
 const ESCALA_TRES_NIVELES = [
   { codigo: 'NO_ALCANZADO', etiqueta: 'No Alcanzado' },
   { codigo: 'EN_PROCESO', etiqueta: 'En proceso de Alcanzar' },
@@ -73,9 +95,10 @@ const EJEMPLOS_OBSERVACIONES = [
 ];
 
 export function InformePreview() {
-  const [gradoNumero, setGradoNumero] = useState<number>(1);
+  const [materiaCodigo, setMateriaCodigo] = useState<'ARTES_VISUALES' | 'MUSICA'>('MUSICA');
+  const [gradoNumero, setGradoNumero] = useState<number>(3);
   const [ejemploObservacionId, setEjemploObservacionId] = useState<string>('ppi');
-  const [desempenoCodigo, setDesempenoCodigo] = useState<string>('DESTACADO');
+  const [desempenoCodigo, setDesempenoCodigo] = useState<string>('ALCANZADO');
   const [mostrarSubtituloColegio, setMostrarSubtituloColegio] = useState<boolean>(true);
 
   const esSegundoCiclo = gradoNumero >= 4;
@@ -95,18 +118,27 @@ export function InformePreview() {
     return found ? found.texto : '';
   }, [ejemploObservacionId]);
 
+  const rawItemTexts = useMemo(
+    () => (materiaCodigo === 'MUSICA' ? MUSICA_ITEMS : ARTES_VISUALES_ITEMS),
+    [materiaCodigo],
+  );
+
+  const plantillaCodigo = materiaCodigo === 'MUSICA' ? 'FINAL_MUSICA_BASE' : 'FINAL_ARTES_VISUALES_G2';
+  const tituloTabla =
+    materiaCodigo === 'MUSICA' ? 'Contenidos de Educación Musical' : 'Contenidos de Artes Visuales';
+
   const items = useMemo(
     () =>
-      ARTES_VISUALES_ITEMS.map((texto, idx) => ({
-        id: `item-artes-${idx + 1}`,
-        plantillaId: 'plantilla-artes-g2',
+      rawItemTexts.map((texto, idx) => ({
+        id: `item-${materiaCodigo.toLowerCase()}-${idx + 1}`,
+        plantillaId: `plantilla-${materiaCodigo.toLowerCase()}`,
         bloqueNombre: null,
         bloqueOrden: null,
         ordenVisual: idx + 1,
         pagina: 1,
         texto,
       })),
-    [],
+    [rawItemTexts, materiaCodigo],
   );
 
   const respuestas = useMemo(
@@ -118,9 +150,10 @@ export function InformePreview() {
     [items],
   );
 
-  const data: InformeDocumentSnapshotDatos = useMemo(
-    () => ({
-      instanciaId: 'instancia-preview-artes',
+  const data: InformeDocumentSnapshotDatos = useMemo(() => {
+    const isMusica = materiaCodigo === 'MUSICA';
+    return {
+      instanciaId: `instancia-preview-${materiaCodigo.toLowerCase()}`,
       inscripcionId: 'inscripcion-preview-1',
       tipoInforme: 'CICLO_FINAL',
       ciclo: {
@@ -136,14 +169,14 @@ export function InformePreview() {
         turno: 'Mañana',
       },
       materia: {
-        id: 'materia-artes',
-        nombre: 'Educación Artística - Artes visuales',
-        codigoEspecial: 'ARTES_VISUALES',
-        etiquetaPdf: 'Artes Visuales',
+        id: `materia-${materiaCodigo.toLowerCase()}`,
+        nombre: isMusica ? 'Educación Artística - Música' : 'Educación Artística - Artes visuales',
+        codigoEspecial: materiaCodigo,
+        etiquetaPdf: isMusica ? 'Educación Musical' : 'Artes Visuales',
       },
       docente: {
-        nombre: 'FLORENCIA',
-        apellido: 'BULACIO',
+        nombre: isMusica ? 'MARIA INES' : 'FLORENCIA',
+        apellido: isMusica ? 'COSTA' : 'BULACIO',
       },
       direccion: {
         nombre: 'MYRIAM GRACIELA',
@@ -151,18 +184,18 @@ export function InformePreview() {
       },
       alumno: {
         id: 'alumno-preview-1',
-        apellidos: 'Villca Romero',
-        nombres: 'Malena Abigail',
+        apellidos: isMusica ? 'Castillo' : 'Villca Romero',
+        nombres: isMusica ? 'April Oriana' : 'Malena Abigail',
         numeroOrden: 1,
       },
       plantilla: {
-        id: 'plantilla-artes-g2',
-        codigo: 'FINAL_ARTES_VISUALES_G2',
+        id: `plantilla-${materiaCodigo.toLowerCase()}`,
+        codigo: plantillaCodigo,
         tipoInforme: 'CICLO_FINAL',
-        materiaId: 'materia-artes',
+        materiaId: `materia-${materiaCodigo.toLowerCase()}`,
         gradoDesde: 1,
         gradoHasta: 7,
-        tituloTabla: 'Contenidos de Artes Visuales',
+        tituloTabla,
         escalaItems: ESCALA_TRES_NIVELES,
         mostrarLeyendaEscala: false,
         requiereDesempenoGeneral: true,
@@ -182,15 +215,36 @@ export function InformePreview() {
         visadoAt: '2026-11-20T10:00:00.000Z',
         visadoPor: 'Dirección',
       },
-    }),
-    [gradoNumero, escalaDesempeno, desempenoCodigo, selectedDesempenoEtiqueta, selectedObservacionTexto, items, respuestas],
-  );
+    };
+  }, [
+    materiaCodigo,
+    gradoNumero,
+    plantillaCodigo,
+    tituloTabla,
+    escalaDesempeno,
+    desempenoCodigo,
+    selectedDesempenoEtiqueta,
+    selectedObservacionTexto,
+    items,
+    respuestas,
+  ]);
 
   return (
     <div>
       <header className="preview-toolbar">
         <div className="preview-toolbar-left">
           <span className="preview-toolbar-title">Previsualización en vivo · Informe Ciclo Final</span>
+          <div className="preview-toolbar-group">
+            <label htmlFor="preview-materia-select">Materia:</label>
+            <select
+              id="preview-materia-select"
+              value={materiaCodigo}
+              onChange={(e) => setMateriaCodigo(e.target.value as 'ARTES_VISUALES' | 'MUSICA')}
+            >
+              <option value="MUSICA">Educación Artística - Música (19 consignas)</option>
+              <option value="ARTES_VISUALES">Educación Artística - Artes Visuales (18 consignas)</option>
+            </select>
+          </div>
           <div className="preview-toolbar-group">
             <label htmlFor="preview-grado-select">Grado:</label>
             <select

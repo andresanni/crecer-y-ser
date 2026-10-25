@@ -243,9 +243,23 @@ erDiagram
    - Reglas `@page { size: A4 portrait; margin: 0; }` y `break-inside: avoid` en todas las secciones, garantizando estrictamente **1 sola hoja A4** sin desbordes.
    - Se establece como el modelo documental canónico de referencia para la adaptación de las materias restantes de Áreas Especiales.
 
+#### Paso 1.8: Adaptación y Validación de Educación Musical (`FINAL_MUSICA_BASE`)
+1. **Iconografía Institucional Unificada**:
+   - A partir del análisis del PDF original histórico (`Informe Final -Musica - Todos los grados.pdf`), se confirmó que Educación Musical utiliza la misma serie oficial de 8 personajes de Mafalda (Quino) que Artes Visuales, Inglés, Tecnología y Educación Física.
+   - La columna `.illustrationsCol` distribuye automáticamente los 8 personajes a lo largo de la altura de la tabla mediante `justify-content: space-between`.
+2. **Geometría, 19 Consignas y Recalibración de Ritmo Vertical**:
+   - Implementadas las 19 consignas oficiales catalogadas en PocketBase con título de tabla `Contenidos de Educación Musical`.
+   - Recalibración del ritmo vertical: se ampliaron los gaps superiores a `5mm` y el padding de las tarjetas de datos a `2.1mm` para evitar la sensación de compresión superior.
+   - En alumnos sin observaciones, la tarjeta de Desempeño General (`.desempenoCardRegular`) crece a `24.4mm` con ilustración de nenes a `17.5mm`, escudo oficial a `17.5mm`, título a `13.5pt` y nota a `18pt`, absorbiendo el espacio residual y eliminando el vacío inferior.
+   - En alumnos con observaciones (PPI), la tarjeta (`.desempenoCardExtended`) se compacta a `30.8mm` asignando el espacio necesario al texto justificado, manteniendo en todos los casos el margen de salvaguarda inferior de `10.0mm` y exactamente **1 hoja A4**.
+3. **Tarjeta de Materia**:
+   - Rótulo caligráfico en fuente `Pacifico`: `Educación Musical` con curvas decorativas bicolor y subtítulo `EDUCACIÓN PRIMARIA`.
+4. **Previsualización Interactiva**:
+   - Incorporado el selector de Materia en `InformePreview.tsx` (`plantilla-informe.html`) permitiendo alternar en vivo entre Artes Visuales (18 consignas) y Educación Musical (19 consignas).
+
 > [!IMPORTANT]
-> **Hito actual (25 de octubre de 2026 — Modelo Canónico de PDF A4 Cerrado en Artes Visuales)**:
-> El diseño visual, la tipografía, las proporciones y la geometría vertical del PDF A4 han quedado formalmente concluidos y aprobados sobre la materia Artes Visuales. Este diseño actúa como autoridad estética y estructural para las siguientes materias de Ciclo Final (comenzando por Educación Musical), donde únicamente se adaptará la cantidad de consignas, las ilustraciones temáticas laterales y las particularidades de bloque.
+> **Hito actual (25 de octubre de 2026 — Educación Musical Validada en 1 Página A4)**:
+> La plantilla de Educación Musical (`FINAL_MUSICA_BASE`) quedó implementada y verificada bajo el estándar canónico, respetando la geometría vertical, la tipografía institucional y la iconografía unificada. Próximo paso: evaluar feedback del usuario y proceder con Inglés (`FINAL_INGLES_BASE`, 18 consignas) o Tecnología (`FINAL_TECNOLOGIA_BASE`, 13 consignas).
 
 ---
 

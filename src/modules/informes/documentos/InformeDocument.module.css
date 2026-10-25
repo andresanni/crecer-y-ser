@@ -74,7 +74,7 @@
 .topSection {
   display: flex;
   flex-direction: column;
-  gap: 4mm;
+  gap: 5mm;
   flex: 1;
 }
 
@@ -82,7 +82,7 @@
   position: relative;
   overflow: hidden;
   padding: 0;
-  margin-bottom: 1mm;
+  margin-bottom: 0;
 }
 
 .decorationsContainer {
@@ -257,11 +257,11 @@
 .studentCard {
   display: flex;
   flex-direction: column;
-  gap: 1.4mm;
+  gap: 1.6mm;
   background: #f8fafc;
   border: 1.5px solid #1a4480;
   border-radius: 6px;
-  padding: 1.8mm 3.5mm;
+  padding: 2.1mm 3.8mm;
 }
 
 .studentRow {
@@ -314,7 +314,7 @@
   background: #f8fafc;
   border: 1.5px solid #1a4480;
   border-radius: 6px;
-  padding: 1.8mm 3.5mm;
+  padding: 2.1mm 3.8mm;
   min-height: 12mm;
   overflow: hidden;
 }
@@ -365,7 +365,7 @@
 .bodyArea {
   display: flex;
   flex-direction: column;
-  gap: 4mm;
+  gap: 5mm;
   flex: 1;
 }
 
@@ -466,8 +466,8 @@
 }
 
 .itemsHeaderOption {
-  width: 22mm;
-  font-size: 9pt;
+  width: 19.5mm;
+  font-size: 8.8pt;
   font-weight: 800;
   text-align: center;
   line-height: 1.15;
@@ -519,6 +519,7 @@
   font-weight: 700;
   color: #1e293b;
   line-height: 1.22;
+  letter-spacing: -0.1px;
 }
 
 .itemMarkCell {
@@ -540,22 +541,80 @@
   break-inside: avoid;
 }
 
-.desempenoRow {
+.desempenoCardRegular .desempenoRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2mm 4mm;
+  padding: 3.2mm 5mm;
+  gap: 4mm;
+}
+
+.desempenoCardRegular .desempenoKidsIllustration {
+  height: 17.5mm;
+  max-width: 48mm;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.desempenoCardRegular .desempenoCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1mm;
+}
+
+.desempenoCardRegular .desempenoHeading {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 13.5pt;
+  font-weight: 900;
+  color: #1a4480;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+}
+
+.desempenoCardRegular .desempenoSub {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 8.5pt;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.desempenoCardRegular .desempenoValue {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 18pt;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+.desempenoCardRegular .desempenoSeal {
+  height: 17.5mm;
+  width: 17.5mm;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.desempenoCardExtended .desempenoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.8mm 4mm;
   gap: 3.5mm;
 }
 
-.desempenoKidsIllustration {
+.desempenoCardExtended .desempenoKidsIllustration {
   height: 14mm;
   max-width: 40mm;
   object-fit: contain;
   flex-shrink: 0;
 }
 
-.desempenoCenter {
+.desempenoCardExtended .desempenoCenter {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -563,16 +622,16 @@
   gap: 0.8mm;
 }
 
-.desempenoHeading {
+.desempenoCardExtended .desempenoHeading {
   font-family: 'Nunito', Arial, sans-serif;
-  font-size: 12.5pt;
+  font-size: 12pt;
   font-weight: 900;
   color: #1a4480;
   letter-spacing: 0.5px;
   line-height: 1.1;
 }
 
-.desempenoSub {
+.desempenoCardExtended .desempenoSub {
   font-family: 'Nunito', Arial, sans-serif;
   font-size: 8pt;
   font-weight: 800;
@@ -582,7 +641,7 @@
   line-height: 1;
 }
 
-.desempenoValue {
+.desempenoCardExtended .desempenoValue {
   font-family: 'Nunito', Arial, sans-serif;
   font-size: 15.5pt;
   font-weight: 900;
@@ -591,16 +650,16 @@
   text-align: center;
 }
 
-.desempenoSeal {
-  height: 14.5mm;
-  width: 14.5mm;
+.desempenoCardExtended .desempenoSeal {
+  height: 14mm;
+  width: 14mm;
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .observacionesContainer {
   border-top: 1px solid rgba(26, 68, 128, 0.15);
-  padding: 2.2mm 4mm;
+  padding: 2mm 4mm;
   background: #f8fafc;
 }
 
@@ -608,7 +667,7 @@
   font-family: 'Nunito', Arial, sans-serif;
   font-size: 9pt;
   font-weight: 600;
-  line-height: 1.34;
+  line-height: 1.32;
   color: #1e293b;
   margin: 0;
   text-align: justify;
@@ -633,7 +692,7 @@
   border: 1.5px solid #1a4480;
   border-radius: 6px;
   overflow: hidden;
-  margin-top: 2mm;
+  margin-top: 0;
   font-size: 8.5pt;
   page-break-inside: avoid;
   break-inside: avoid;
