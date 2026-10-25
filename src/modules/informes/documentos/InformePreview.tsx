@@ -46,6 +46,26 @@ const MUSICA_ITEMS = [
   'Realiza y se interesa por el registro grabado de las producciones musicales',
 ];
 
+const TECNOLOGIA_ITEMS = [
+  'Relación con la materia.',
+  'Relación con el docente.',
+  'Relación con los compañeros.',
+  'Respeto por las normas de convivencia.',
+  'Atención en clase.',
+  'Aplicación de contenidos.',
+  'Respuesta a pedido de materiales de trabajo.',
+  'Respuesta a consignas de trabajo.',
+  'Comprensión básica del sentido y área de la materia.',
+  'Comprensión de las fases del proceso.',
+  'Cumplimiento con entregas en tiempo y forma.',
+  'Participación en clase.',
+  'Participación en trabajos grupales.',
+  'Proyección de lo aprendido a otras aplicaciones relacionadas.',
+  'Manejo adecuado de herramientas.',
+  'Puede integrar partes para formar un todo.',
+  'Reflexión sobre procesos tecnológicos y uso de la IA (Inteligencia Artificial).',
+];
+
 const ESCALA_TRES_NIVELES = [
   { codigo: 'NO_ALCANZADO', etiqueta: 'No Alcanzado' },
   { codigo: 'EN_PROCESO', etiqueta: 'En proceso de Alcanzar' },
@@ -95,7 +115,7 @@ const EJEMPLOS_OBSERVACIONES = [
 ];
 
 export function InformePreview() {
-  const [materiaCodigo, setMateriaCodigo] = useState<'ARTES_VISUALES' | 'MUSICA'>('MUSICA');
+  const [materiaCodigo, setMateriaCodigo] = useState<'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA'>('TECNOLOGIA');
   const [gradoNumero, setGradoNumero] = useState<number>(3);
   const [ejemploObservacionId, setEjemploObservacionId] = useState<string>('ppi');
   const [desempenoCodigo, setDesempenoCodigo] = useState<string>('ALCANZADO');
@@ -118,14 +138,25 @@ export function InformePreview() {
     return found ? found.texto : '';
   }, [ejemploObservacionId]);
 
-  const rawItemTexts = useMemo(
-    () => (materiaCodigo === 'MUSICA' ? MUSICA_ITEMS : ARTES_VISUALES_ITEMS),
-    [materiaCodigo],
-  );
+  const rawItemTexts = useMemo(() => {
+    if (materiaCodigo === 'MUSICA') return MUSICA_ITEMS;
+    if (materiaCodigo === 'TECNOLOGIA') return TECNOLOGIA_ITEMS;
+    return ARTES_VISUALES_ITEMS;
+  }, [materiaCodigo]);
 
-  const plantillaCodigo = materiaCodigo === 'MUSICA' ? 'FINAL_MUSICA_BASE' : 'FINAL_ARTES_VISUALES_G2';
+  const plantillaCodigo =
+    materiaCodigo === 'MUSICA'
+      ? 'FINAL_MUSICA_BASE'
+      : materiaCodigo === 'TECNOLOGIA'
+        ? 'FINAL_TECNOLOGIA_BASE'
+        : 'FINAL_ARTES_VISUALES_G2';
+
   const tituloTabla =
-    materiaCodigo === 'MUSICA' ? 'Contenidos de Educación Musical' : 'Contenidos de Artes Visuales';
+    materiaCodigo === 'MUSICA'
+      ? 'Contenidos de Educación Musical'
+      : materiaCodigo === 'TECNOLOGIA'
+        ? 'Contenidos de Tecnología'
+        : 'Contenidos de Artes Visuales';
 
   const items = useMemo(
     () =>
@@ -152,6 +183,18 @@ export function InformePreview() {
 
   const data: InformeDocumentSnapshotDatos = useMemo(() => {
     const isMusica = materiaCodigo === 'MUSICA';
+    const isTecnologia = materiaCodigo === 'TECNOLOGIA';
+    const nombreMateria = isMusica
+      ? 'Educación Artística - Música'
+      : isTecnologia
+        ? 'Tecnología, Diseño y Programación'
+        : 'Educación Artística - Artes visuales';
+    const etiquetaMateria = isMusica
+      ? 'Educación Musical'
+      : isTecnologia
+        ? 'Tecnología'
+        : 'Artes Visuales';
+
     return {
       instanciaId: `instancia-preview-${materiaCodigo.toLowerCase()}`,
       inscripcionId: 'inscripcion-preview-1',
@@ -170,9 +213,9 @@ export function InformePreview() {
       },
       materia: {
         id: `materia-${materiaCodigo.toLowerCase()}`,
-        nombre: isMusica ? 'Educación Artística - Música' : 'Educación Artística - Artes visuales',
+        nombre: nombreMateria,
         codigoEspecial: materiaCodigo,
-        etiquetaPdf: isMusica ? 'Educación Musical' : 'Artes Visuales',
+        etiquetaPdf: etiquetaMateria,
       },
       docente: {
         nombre: isMusica ? 'MARIA INES' : 'FLORENCIA',
@@ -184,8 +227,8 @@ export function InformePreview() {
       },
       alumno: {
         id: 'alumno-preview-1',
-        apellidos: isMusica ? 'Castillo' : 'Villca Romero',
-        nombres: isMusica ? 'April Oriana' : 'Malena Abigail',
+        apellidos: isMusica || isTecnologia ? 'Castillo' : 'Villca Romero',
+        nombres: isMusica || isTecnologia ? 'April Oriana' : 'Malena Abigail',
         numeroOrden: 1,
       },
       plantilla: {
@@ -239,8 +282,9 @@ export function InformePreview() {
             <select
               id="preview-materia-select"
               value={materiaCodigo}
-              onChange={(e) => setMateriaCodigo(e.target.value as 'ARTES_VISUALES' | 'MUSICA')}
+              onChange={(e) => setMateriaCodigo(e.target.value as 'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA')}
             >
+              <option value="TECNOLOGIA">Tecnología, Diseño y Programación (17 consignas)</option>
               <option value="MUSICA">Educación Artística - Música (19 consignas)</option>
               <option value="ARTES_VISUALES">Educación Artística - Artes Visuales (18 consignas)</option>
             </select>

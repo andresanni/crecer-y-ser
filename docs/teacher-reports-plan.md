@@ -257,9 +257,20 @@ erDiagram
 4. **Previsualización Interactiva**:
    - Incorporado el selector de Materia en `InformePreview.tsx` (`plantilla-informe.html`) permitiendo alternar en vivo entre Artes Visuales (18 consignas) y Educación Musical (19 consignas).
 
+#### Paso 1.9: Adaptación y Validación de Tecnología, Diseño y Programación (`FINAL_TECNOLOGIA_BASE`)
+1. **Iconografía Institucional y Tabla de 17 Consignas**:
+   - Contrastado y validado contra el PDF original de referencia (`Informe Final -Tecnologia - Todos los grados.pdf`). Confirma la utilización de la serie de 8 personajes de Mafalda en columna lateral, título de tabla `Contenidos de Tecnología`, rótulo caligráfico `Tecnología` en fuente `Pacifico` con curvas decorativas bicolor y subtítulo institucional `EDUCACIÓN PRIMARIA`.
+   - Incorporadas las 17 consignas oficiales catalogadas en PocketBase, incluyendo el tratamiento tipográfico de consignas extensas (ej. `Reflexión sobre procesos tecnológicos y uso de la IA (Inteligencia Artificial).`) que quiebran fluidamente sin desbordar el layout.
+2. **Geometría Vertical y Salvaguarda Inferior**:
+   - Variante **Sin Observaciones**: tabla de 142.8mm, tarjeta de Desempeño General regular expandida a 24.4mm centrada armónicamente en el tercio inferior (gaps de 19.6mm superior y 14.6mm inferior), pie de firmas en 263.9mm a 287.0mm, garantizando un margen de salvaguarda de exactamente `10.0mm` y **1 hoja A4 física**.
+   - Variante **Con Observaciones (PPI)**: tarjeta de Desempeño General extendida a 30.8mm con bloque de texto justificado, firmas en 287.0mm, salvaguarda de `10.0mm` y exactamente **1 hoja A4 física**.
+   - Satisface la escala conceptual en 1.er Ciclo (1.° a 3.°) y numérica en 2.° Ciclo (4.° a 7.°, ej. `Destacado 10`).
+3. **Previsualización Interactiva y Banco de Pruebas**:
+   - `InformePreview.tsx` actualizado con `TECNOLOGIA_ITEMS`, permitiendo alternar dinámicamente entre Tecnología (17 consignas), Educación Musical (19 consignas) y Artes Visuales (18 consignas).
+
 > [!IMPORTANT]
-> **Hito actual (25 de octubre de 2026 — Educación Musical Validada en 1 Página A4)**:
-> La plantilla de Educación Musical (`FINAL_MUSICA_BASE`) quedó implementada y verificada bajo el estándar canónico, respetando la geometría vertical, la tipografía institucional y la iconografía unificada. Próximo paso: evaluar feedback del usuario y proceder con Inglés (`FINAL_INGLES_BASE`, 18 consignas) o Tecnología (`FINAL_TECNOLOGIA_BASE`, 13 consignas).
+> **Hito actual (25 de octubre de 2026 — Tecnología, Diseño y Programación Validada en 1 Página A4)**:
+> La plantilla de Tecnología (`FINAL_TECNOLOGIA_BASE`) quedó implementada, probada y verificada bajo el estándar canónico en 1 sola hoja A4 física. Próximo paso: evaluar feedback del usuario y proceder con Inglés (`FINAL_INGLES_BASE`, 18 consignas) o Educación Física (`FINAL_ED_FISICA_G1`, `G2`, `G3`).
 
 ---
 
