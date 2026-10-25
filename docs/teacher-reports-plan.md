@@ -279,9 +279,39 @@ erDiagram
 3. **Previsualización Interactiva y Banco de Pruebas**:
    - `InformePreview.tsx` actualizado con `INGLES_ITEMS`, permitiendo alternar dinámicamente entre Inglés (18 consignas), Tecnología (17 consignas), Educación Musical (19 consignas) y Artes Visuales (18 consignas).
 
+#### Paso 1.11: Adaptación y Validación de Educación Física (`FINAL_ED_FISICA_G2`, `FINAL_ED_FISICA_G4_5`, `FINAL_ED_FISICA_G6_7`)
+1. **Estructura Documental Multi-página Canónica (Exactamente 2 Hojas A4)**:
+   - Contrastado y validado contra los 3 PDFs históricos originales de referencia (`Informe Final -Ed. Fisica - 1ro a 3ro.pdf`, `Informe Final -Ed. Fisica - 4to y 5to.pdf`, `Informe Final -Ed. Fisica - 6to y 7mo.pdf`).
+   - El informe se compone de exactamente 2 páginas A4 completas e independientes:
+     - **Hoja 1**: Encabezado institucional completo, datos del alumno y materia («Educación Física» en caligrafía `Pacifico`), cuadro superior de referencias `Contenidos` con la escala descriptiva de 4 niveles (`A`, `B`, `C`, `D`), columna de 8 personajes de Mafalda acompañando la altura conjunta de la leyenda y la tabla de consignas de Página 1 (`Desplazamientos` y `Rolidos`), y pie de firmas institucional al pie.
+     - **Hoja 2**: Encabezado institucional completo, datos del alumno y materia, tabla de consignas de Página 2 (`Apoyos` y `Saltos`) acompañada por la columna de 8 personajes de Mafalda, tarjeta de `Desempeño General` (regular o con observaciones/PPI) y pie de firmas institucional al pie.
+2. **Alineación Milimétrica de Cuadro de Referencias (`Contenidos`)**:
+   - En `InformeDocument.module.css`, la clase `.legendTable` se calibró para sincronizar sus anchos de columna con la tabla principal `.itemsTable`:
+     - Celda de título de leyenda (`.legendTitleCell`): `28mm`, idéntica a `.blockCell`.
+     - Celda de código (`.legendCodeCell`): `14mm`, idéntica a las columnas de escala compacta `A`, `B`, `C`, `D`.
+     - Celda de descripción (`.legendDescCell`): tipografía Nunito 8.8pt alineada con la columna de consignas.
+   - Envoltorio flexible `.tablesRightColumn` que alberga la leyenda superior y la tabla de consignas de forma cohesiva al lado de la columna de Mafalda.
+3. **Validación de los 3 Modelos de Consignas por Ciclo**:
+   - **1.° a 3.er Grado (`FINAL_ED_FISICA_G2`, 24 ítems)**: 10 ítems en Hoja 1 (`Desplazamientos` 4, `Rolidos` 6) y 14 ítems en Hoja 2 (`Apoyos` 7, `Saltos` 7).
+   - **4.° y 5.° Grado (`FINAL_ED_FISICA_G4_5`, 20 ítems)**: 9 ítems en Hoja 1 (`Desplazamientos` 4, `Rolidos` 5) y 11 ítems en Hoja 2 (`Apoyos` 6, `Saltos` 5).
+   - **6.° y 7.° Grado (`FINAL_ED_FISICA_G6_7`, 22 ítems)**: 9 ítems en Hoja 1 (`Desplazamientos` 4, `Rolidos` 5) y 13 ítems en Hoja 2 (`Apoyos` 6, `Saltos` 7).
+4. **Geometría Vertical y Salvaguarda Inferior en Ambas Hojas**:
+   - Hoja 1: contenido vertical ~104mm (leyenda + tabla pág. 1), firmas ubicadas exactamente en 287.0mm, margen de salvaguarda de `10.0mm`.
+   - Hoja 2: contenido vertical ~136mm (tabla pág. 2 + Desempeño General), firmas ubicadas exactamente en 287.0mm, margen de salvaguarda de `10.0mm`.
+   - Probado y verificado en Playwright tanto con observaciones (PPI) como sin observaciones: **cero desbordes**, generando exactamente 2 páginas A4 físicas.
+5. **Previsualización Interactiva y Banco de Pruebas**:
+   - `InformePreview.tsx` actualizado con `ED_FISICA_G1_ITEMS`, `ED_FISICA_G2_ITEMS` y `ED_FISICA_G3_ITEMS`, permitiendo seleccionar dinámicamente el grado (1.° a 7.°) con actualización automática de la plantilla, consignas, docente asignado (Gimena Cruzado Zevallos en 1-5, Alan Fisser en 6-7) y alumno modelo.
+
 > [!IMPORTANT]
-> **Hito actual (25 de octubre de 2026 — Inglés Validado en 1 Página A4)**:
-> La plantilla de Inglés (`FINAL_INGLES_BASE`) quedó implementada, probada y verificada bajo el estándar canónico en 1 sola hoja A4 física. Próximo paso: evaluar feedback del usuario y proceder con Educación Física (`FINAL_ED_FISICA_G1`, `G2`, `G3`).
+> **Hito actual (25 de octubre de 2026 — Fase 1 Culminada al 100%)**:
+> Se completaron, auditaron y validaron las 5 materias de Áreas Especiales para Informes de Ciclo Final (`CICLO_FINAL`):
+> - **Artes Visuales** (`FINAL_ARTES_VISUALES_G2`): 1 página A4 física.
+> - **Educación Musical** (`FINAL_MUSICA_BASE`): 1 página A4 física.
+> - **Tecnología, Diseño y Programación** (`FINAL_TECNOLOGIA_BASE`): 1 página A4 física.
+> - **Lenguas Adicionales - Inglés** (`FINAL_INGLES_BASE`): 1 página A4 física.
+> - **Educación Física** (`FINAL_ED_FISICA_G2`, `G4_5`, `G6_7`): 2 páginas A4 físicas con referencias `Contenidos` y 3 variantes de grado.
+> 
+> Próximo paso: Presentar resultados al usuario y proceder con **Fase 2** (`PRIMER_CUATRIMESTRE` — Áreas Especiales sobre plantilla `CONDUCTA_ESTANDAR_26`).
 
 ---
 

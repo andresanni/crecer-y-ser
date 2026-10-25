@@ -248,27 +248,6 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
               {renderHeader()}
 
               <div className={styles.bodyArea}>
-                {pageIdx === 0 && plantilla.mostrarLeyendaEscala && (
-                  <table className={styles.legendTable}>
-                    <tbody>
-                      {visibleEscalaItems.map((opt, idx) => (
-                        <tr key={opt.codigo}>
-                          {idx === 0 && (
-                            <td
-                              rowSpan={visibleEscalaItems.length}
-                              className={styles.legendTitleCell}
-                            >
-                              Contenidos
-                            </td>
-                          )}
-                          <td>{opt.descripcion || opt.etiqueta}</td>
-                          <td className={styles.legendCodeCell}>{opt.codigo}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-
                 <div className={styles.tableAndIllustrationsLayout}>
                   {illustrations.length > 0 && (
                     <div className={styles.illustrationsColumn} aria-hidden="true">
@@ -282,50 +261,72 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
                       ))}
                     </div>
                   )}
-                  <table className={styles.itemsTable}>
-                    <thead>
-                      <tr>
-                        <th
-                          colSpan={hasBlocks ? 2 : 1}
-                          className={styles.itemsHeaderTitle}
-                        >
-                          {plantilla.tituloTabla}
-                        </th>
-                        {visibleEscalaItems.map((opt) => (
+                  <div className={styles.tablesRightColumn}>
+                    {pageIdx === 0 && plantilla.mostrarLeyendaEscala && (
+                      <table className={styles.legendTable}>
+                        <tbody>
+                          {visibleEscalaItems.map((opt, idx) => (
+                            <tr key={opt.codigo}>
+                              {idx === 0 && (
+                                <td
+                                  rowSpan={visibleEscalaItems.length}
+                                  className={styles.legendTitleCell}
+                                >
+                                  Contenidos
+                                </td>
+                              )}
+                              <td className={styles.legendDescCell}>{opt.descripcion || opt.etiqueta}</td>
+                              <td className={styles.legendCodeCell}>{opt.codigo}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    <table className={styles.itemsTable}>
+                      <thead>
+                        <tr>
                           <th
-                            key={opt.codigo}
-                            className={
-                              compactScaleHeader
-                                ? styles.itemsHeaderOptionCompact
-                                : styles.itemsHeaderOption
-                            }
+                            colSpan={hasBlocks ? 2 : 1}
+                            className={styles.itemsHeaderTitle}
                           >
-                            {opt.etiqueta}
+                            {plantilla.tituloTabla}
                           </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {page.rows.map(({ item, showBlockCell, blockRowSpan }) => {
-                        const selectedCode = respuestaByItemId.get(item.id) || '';
-                        return (
-                          <tr key={item.id}>
-                            {hasBlocks && showBlockCell && (
-                              <td rowSpan={blockRowSpan} className={styles.blockCell}>
-                                {item.bloqueNombre}
-                              </td>
-                            )}
-                            <td className={styles.itemTextCell}>{item.texto}</td>
-                            {visibleEscalaItems.map((opt) => (
-                              <td key={opt.codigo} className={styles.itemMarkCell}>
-                                {selectedCode === opt.codigo ? 'X' : ''}
-                              </td>
-                            ))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                          {visibleEscalaItems.map((opt) => (
+                            <th
+                              key={opt.codigo}
+                              className={
+                                compactScaleHeader
+                                  ? styles.itemsHeaderOptionCompact
+                                  : styles.itemsHeaderOption
+                              }
+                            >
+                              {opt.etiqueta}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {page.rows.map(({ item, showBlockCell, blockRowSpan }) => {
+                          const selectedCode = respuestaByItemId.get(item.id) || '';
+                          return (
+                            <tr key={item.id}>
+                              {hasBlocks && showBlockCell && (
+                                <td rowSpan={blockRowSpan} className={styles.blockCell}>
+                                  {item.bloqueNombre}
+                                </td>
+                              )}
+                              <td className={styles.itemTextCell}>{item.texto}</td>
+                              {visibleEscalaItems.map((opt) => (
+                                <td key={opt.codigo} className={styles.itemMarkCell}>
+                                  {selectedCode === opt.codigo ? 'X' : ''}
+                                </td>
+                              ))}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {isLastItemsPage && plantilla.requiereDesempenoGeneral && (

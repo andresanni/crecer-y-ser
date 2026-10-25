@@ -338,6 +338,7 @@
   letter-spacing: 0.5px;
   position: relative;
   z-index: 1;
+  white-space: nowrap;
 }
 
 .subjectLine {
@@ -369,35 +370,67 @@
   flex: 1;
 }
 
+.tablesRightColumn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5mm;
+  min-width: 0;
+}
+
 .legendTable {
   width: 100%;
-  border-collapse: collapse;
-  border: 0.35mm solid #111827;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1.5px solid #1a4480;
+  border-radius: 6px;
+  overflow: hidden;
   font-size: 8.5pt;
+  background: #ffffff;
 }
 
 .legendTable td,
 .legendTable th {
-  border: 0.35mm solid #111827;
-  padding: 1.2mm 2.5mm;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  padding: 1.1mm 2.2mm;
+  vertical-align: middle;
+}
+
+.legendTable tr:last-child td {
+  border-bottom: none;
+}
+
+.legendTable td:last-child {
+  border-right: none;
 }
 
 .legendTitleCell {
-  width: 26mm;
+  width: 28mm;
   background: #1a4480;
   color: #ffffff;
   font-family: 'Nunito', Arial, sans-serif;
-  font-size: 11pt;
+  font-size: 10pt;
   font-weight: 800;
   text-align: center;
+  letter-spacing: -0.2px;
+}
+
+.legendDescCell {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 8.8pt;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.2;
 }
 
 .legendCodeCell {
-  width: 12mm;
+  width: 14mm;
   background: #1a4480;
   color: #ffffff;
   font-family: 'Nunito', Arial, sans-serif;
-  font-weight: 800;
+  font-weight: 900;
+  font-size: 11pt;
   text-align: center;
 }
 
