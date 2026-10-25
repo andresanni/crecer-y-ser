@@ -1,3 +1,35 @@
+@font-face {
+  font-family: 'Bree Serif';
+  src: url('/informes/fonts/BreeSerif-Regular.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Pacifico';
+  src: url('/informes/fonts/Pacifico-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/informes/fonts/Nunito-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Nunito';
+  src: url('/informes/fonts/Nunito-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 @page {
   size: A4 portrait;
   margin: 0;
@@ -24,7 +56,7 @@
   box-sizing: border-box;
   width: 210mm;
   height: 297mm;
-  padding: 8mm 10mm 8mm 10mm;
+  padding: 6mm 10mm 10mm 10mm;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -42,90 +74,176 @@
 .topSection {
   display: flex;
   flex-direction: column;
-  gap: 3mm;
+  gap: 4mm;
   flex: 1;
 }
 
+.headerWrapper {
+  position: relative;
+  overflow: hidden;
+  padding: 0;
+  margin-bottom: 1mm;
+}
+
+.decorationsContainer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.decTopLeft {
+  position: absolute;
+  top: -1mm;
+  left: -2mm;
+  width: 20mm;
+  height: 16mm;
+}
+
 .headerBanner {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  border-bottom: 2.2mm solid #3b82f6;
-  padding-bottom: 2.5mm;
 }
 
 .headerLeft {
   display: flex;
   flex-direction: column;
-  gap: 1.5mm;
+  gap: 2mm;
+  margin-left: 6mm;
+  flex-shrink: 0;
 }
 
 .informeTitle {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 27pt;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 28pt;
+  font-weight: 900;
+  letter-spacing: 2px;
   line-height: 1;
-  color: #000000;
+  color: #1a4480;
   margin: 0;
-  padding-left: 16mm;
+  padding: 0 0 0 10mm;
 }
 
 .informeSubRow {
   display: flex;
-  align-items: baseline;
-  gap: 6mm;
-  border-top: 1.8mm solid #3b82f6;
-  padding-top: 1.5mm;
+  align-items: center;
+  gap: 3mm;
+  padding-top: 0.5mm;
+  white-space: nowrap;
 }
 
-.badgeCircle {
+.categoryBadgeModern {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 11mm;
-  height: 11mm;
-  border-radius: 50%;
-  background: #3b82f6;
+  background: #1a4480;
   color: #ffffff;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 19pt;
-  font-weight: 700;
-  margin-right: 1mm;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 10.5pt;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 12px;
+  border-radius: 9999px;
+  line-height: 1.1;
+  box-shadow: 0 1px 3px rgba(26, 68, 128, 0.25);
 }
 
-.categoryLabel {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 19pt;
-  font-weight: 700;
-  color: #000000;
+.subRowDivider {
+  width: 1.5px;
+  height: 14px;
+  background: #cbd5e1;
+  border-radius: 1px;
 }
 
 .instanceLabel {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 16pt;
-  font-weight: 700;
-  color: #000000;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 14pt;
+  font-weight: 800;
+  color: #0f172a;
 }
 
 .yearLabel {
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 20pt;
-  font-weight: 400;
-  color: #000000;
-  margin-left: 4mm;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 14pt;
+  font-weight: 800;
+  color: #2b6cb0;
+  margin: 0;
 }
 
 .headerRight {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 3mm;
+  gap: 3.5mm;
+  margin-right: 0;
+}
+
+.brandTextLockup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  text-align: right;
+  gap: 1.2mm;
+}
+
+.brandSchoolName {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 13pt;
+  font-weight: 900;
+  color: #1a4480;
+  letter-spacing: 1.4px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.brandSchoolTagline {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 7pt;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .brandLogo {
-  height: 20mm;
-  width: auto;
+  height: 25mm;
+  width: 25mm;
   object-fit: contain;
+  flex-shrink: 0;
+}
+
+.headerDividingBar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2.5mm;
+  width: 100%;
+  margin-top: 1.8mm;
+}
+
+.barBlue {
+  flex: 1;
+  height: 1.8mm;
+  background: #1a4480;
+  border-radius: 9999px;
+}
+
+.barRed {
+  width: 30mm;
+  height: 1.8mm;
+  background: #b91c1c;
+  border-radius: 9999px;
 }
 
 .studentAndSubjectBar {
@@ -133,67 +251,121 @@
   grid-template-columns: 1.55fr 1fr;
   gap: 5mm;
   align-items: center;
-  margin-top: 1mm;
+  margin-top: 0;
 }
 
-.studentGrid {
+.studentCard {
   display: flex;
   flex-direction: column;
-  gap: 1.5mm;
+  gap: 1.4mm;
+  background: #f8fafc;
+  border: 1.5px solid #1a4480;
+  border-radius: 6px;
+  padding: 1.8mm 3.5mm;
 }
 
 .studentRow {
   display: grid;
   grid-template-columns: 1.35fr 0.85fr;
-  border-bottom: 0.35mm solid #111827;
-  padding-bottom: 1mm;
-  font-family: Georgia, "Times New Roman", serif;
+  gap: 3mm;
+  align-items: baseline;
+}
+
+.studentRow:not(:last-child) {
+  border-bottom: 1px solid rgba(26, 68, 128, 0.12);
+  padding-bottom: 1.2mm;
+}
+
+.dataField {
+  display: flex;
+  align-items: baseline;
+  gap: 2mm;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dataLabel {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.dataValue {
+  font-family: 'Nunito', Arial, sans-serif;
   font-size: 10.5pt;
-  font-weight: 700;
-  color: #000000;
+  font-weight: 800;
+  color: #0f172a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .subjectBox {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
+  background: #f8fafc;
+  border: 1.5px solid #1a4480;
+  border-radius: 6px;
+  padding: 1.8mm 3.5mm;
+  min-height: 12mm;
+  overflow: hidden;
 }
 
-.subjectTitle {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 18pt;
-  font-weight: 700;
-  color: #000000;
+.subjectCardDec {
+  position: absolute;
+  top: -1mm;
+  right: -1mm;
+  width: 18mm;
+  height: 12mm;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.subjectTitleScript {
+  font-family: 'Pacifico', cursive;
+  font-size: 17.5pt;
+  font-weight: 400;
+  color: #1a4480;
   line-height: 1.1;
-}
-
-.subjectUnderlineRow {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 2mm;
-  margin-top: 1mm;
+  letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
 }
 
 .subjectLine {
-  flex: 1;
-  height: 1mm;
-  background: #3b82f6;
+  width: 75%;
+  height: 1.5px;
+  background: #1a4480;
+  border-radius: 9999px;
+  margin: 1mm 0 0.8mm;
+  position: relative;
+  z-index: 1;
 }
 
-.subjectEp {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 12pt;
-  font-weight: 700;
-  color: #000000;
+.subjectSubtitle {
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 7pt;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
 }
 
 .bodyArea {
   display: flex;
   flex-direction: column;
-  gap: 3mm;
+  gap: 4mm;
   flex: 1;
 }
 
@@ -212,46 +384,91 @@
 
 .legendTitleCell {
   width: 26mm;
-  background: #0d4f8b;
+  background: #1a4480;
   color: #ffffff;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: 'Nunito', Arial, sans-serif;
   font-size: 11pt;
-  font-weight: 700;
+  font-weight: 800;
   text-align: center;
 }
 
 .legendCodeCell {
   width: 12mm;
-  background: #0d4f8b;
+  background: #1a4480;
   color: #ffffff;
-  font-weight: 700;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-weight: 800;
   text-align: center;
 }
 
-.itemsTable {
+.tableAndIllustrationsLayout {
+  display: flex;
+  align-items: stretch;
+  gap: 3.5mm;
   width: 100%;
-  border-collapse: collapse;
-  border: 0.35mm solid #111827;
+}
+
+.illustrationsColumn {
+  width: 20mm;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border: 1.5px solid #1a4480;
+  border-radius: 6px;
+  padding: 2.2mm 1mm;
+  box-sizing: border-box;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.illustrationImage {
+  width: auto;
+  max-width: 92%;
+  max-height: 14.8mm;
+  object-fit: contain;
+}
+
+.itemsTable {
+  flex: 1;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1.5px solid #1a4480;
+  border-radius: 6px;
+  overflow: hidden;
   font-size: 9pt;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .itemsTable th {
-  background: #0d4f8b;
+  background: #1a4480;
   color: #ffffff;
-  border: 0.35mm solid #111827;
-  padding: 2mm 2.5mm;
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 700;
+  border-bottom: 1.5px solid #1a4480;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.5mm 1.8mm;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.itemsTable th:last-child {
+  border-right: none;
 }
 
 .itemsHeaderTitle {
-  font-size: 13pt;
+  font-size: 10.5pt;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   text-align: center;
 }
 
 .itemsHeaderOption {
   width: 22mm;
-  font-size: 9.5pt;
+  font-size: 9pt;
+  font-weight: 800;
   text-align: center;
   line-height: 1.15;
 }
@@ -259,45 +476,83 @@
 .itemsHeaderOptionCompact {
   width: 14mm;
   font-size: 11pt;
+  font-weight: 800;
   text-align: center;
+}
+
+.itemsTable tbody tr {
+  background: #ffffff;
+}
+
+.itemsTable tbody tr:nth-child(even) {
+  background: #f8fafc;
 }
 
 .itemsTable td {
-  border: 0.35mm solid #111827;
-  padding: 1.4mm 2.2mm;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  padding: 0.94mm 1.8mm;
   vertical-align: middle;
 }
 
+.itemsTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.itemsTable td:last-child {
+  border-right: none;
+}
+
 .blockCell {
-  width: 31mm;
-  background: #f3f4f6;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 11pt;
-  font-weight: 700;
+  width: 28mm;
+  background: #f1f5f9;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 9.5pt;
+  font-weight: 800;
   text-align: center;
-  color: #000000;
+  color: #1a4480;
 }
 
 .itemTextCell {
-  color: #111827;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 9.5pt;
+  font-weight: 700;
+  color: #1e293b;
   line-height: 1.22;
 }
 
 .itemMarkCell {
   text-align: center;
-  font-weight: 700;
-  font-size: 9.5pt;
-  color: #000000;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-weight: 900;
+  font-size: 11.5pt;
+  color: #1a4480;
 }
 
-.desempenoBox {
-  border: 0.3mm solid #9ca3af;
-  padding: 3mm 5mm;
+.desempenoCard {
+  background: #f8fafc;
+  border: 1.5px solid #1a4480;
+  border-radius: 6px;
+  overflow: hidden;
+  box-sizing: border-box;
+  margin: auto 0;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.desempenoRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4mm;
-  margin-top: auto;
+  padding: 2mm 4mm;
+  gap: 3.5mm;
+}
+
+.desempenoKidsIllustration {
+  height: 14mm;
+  max-width: 40mm;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .desempenoCenter {
@@ -309,70 +564,108 @@
 }
 
 .desempenoHeading {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 12pt;
-  font-weight: 700;
-  color: #000000;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 12.5pt;
+  font-weight: 900;
+  color: #1a4480;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
 }
 
 .desempenoSub {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 10.5pt;
-  font-weight: 700;
-  color: #4b5563;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  line-height: 1;
 }
 
 .desempenoValue {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 15pt;
-  font-weight: 700;
-  color: #000000;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 15.5pt;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: 0.5px;
+  text-align: center;
 }
 
-.sealLogo {
-  width: 15mm;
-  height: 15mm;
+.desempenoSeal {
+  height: 14.5mm;
+  width: 14.5mm;
   object-fit: contain;
+  flex-shrink: 0;
+}
+
+.observacionesContainer {
+  border-top: 1px solid rgba(26, 68, 128, 0.15);
+  padding: 2.2mm 4mm;
+  background: #f8fafc;
 }
 
 .observacionesNote {
-  font-size: 8.5pt;
-  line-height: 1.3;
-  color: #111827;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 9pt;
+  font-weight: 600;
+  line-height: 1.34;
+  color: #1e293b;
   margin: 0;
-  padding: 0 1mm;
+  text-align: justify;
 }
 
 .observacionesSheet {
-  border: 0.35mm solid #111827;
+  border: 1.5px solid #1a4480;
+  border-radius: 6px;
   padding: 4mm;
   min-height: 60mm;
+  font-family: 'Nunito', Arial, sans-serif;
   font-size: 10pt;
   line-height: 1.4;
+  color: #1e293b;
+  background: #f8fafc;
 }
 
 .signaturesTable {
   width: 100%;
-  border-collapse: collapse;
-  border: 0.35mm solid #111827;
-  margin-top: 2.5mm;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1.5px solid #1a4480;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 2mm;
   font-size: 8.5pt;
+  page-break-inside: avoid;
+  break-inside: avoid;
 }
 
 .signaturesTable th {
-  background: #0d3b7a;
+  background: #1a4480;
   color: #ffffff;
-  border: 0.35mm solid #111827;
-  padding: 1.4mm 2mm;
-  font-weight: 700;
+  border-bottom: 1.5px solid #1a4480;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 1.2mm 2mm;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-weight: 800;
+  font-size: 8.5pt;
+  letter-spacing: 1px;
   text-align: center;
   width: 50%;
 }
 
+.signaturesTable th:last-child {
+  border-right: none;
+}
+
 .signaturesTable td {
-  border: 0.35mm solid #111827;
+  border-right: 1px solid rgba(26, 68, 128, 0.15);
   padding: 0;
   width: 50%;
+  background: #ffffff;
+}
+
+.signaturesTable td:last-child {
+  border-right: none;
 }
 
 .sigPartyGrid {
@@ -383,14 +676,21 @@
 }
 
 .sigValuesRow {
-  min-height: 10mm;
-  border-bottom: 0.35mm solid #111827;
+  min-height: 8mm;
+  border-bottom: 1px solid rgba(26, 68, 128, 0.12);
+  font-family: 'Nunito', Arial, sans-serif;
+  font-weight: 800;
   font-size: 8.5pt;
-  padding: 1.2mm 1mm;
+  color: #0f172a;
+  padding: 1mm 1mm;
 }
 
 .sigLabelsRow {
-  min-height: 5.5mm;
-  font-size: 8.5pt;
-  padding: 0.8mm 1mm;
+  min-height: 4.5mm;
+  font-family: 'Nunito', Arial, sans-serif;
+  font-size: 7pt;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  padding: 0.6mm 1mm;
 }

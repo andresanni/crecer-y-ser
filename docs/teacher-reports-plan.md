@@ -225,9 +225,27 @@ erDiagram
 2. Actualizados los gateways de emisión, rotación, recuperación y revocación de enlaces para asociar sets de grados (`cursoIds`) a un único enlace mágico por docente y materia, desvinculando automáticamente cualquier grado reasignado de enlaces previos.
 3. Incorporados atajos de selección rápida en `GestorEnlacesInformesModal` (`Todos`, `1.er Ciclo (1.° a 3.°)`, `2.° Ciclo (4.° a 7.°)`) y selector de grado activo con entrega independiente por grado en `CargaInformePublicaPage`.
 
+#### Paso 1.7: Diseño y Calibración del Modelo Canónico de PDF A4 — Artes Visuales (Completado — 25 de octubre de 2026)
+1. **Encabezado Institucional**:
+   - Incorporado el Escudo Oficial Circular (`/escudo-circular.png`, 518×514 con esquinas transparentes) calibrado a `25mm` y lockup tipográfico puro «COLEGIO CRECER Y SER» en `Nunito 900` con subtítulo «EDUCACIÓN INICIAL Y PRIMARIA» en `Nunito 800`.
+   - Barra divisoria bicolor en la base con tramo largo azul institucional (`#1a4480`) y acento carmín terminal (`#b91c1c`).
+2. **Datos de Alumno y Materia**:
+   - Tarjetas simétricas con borde perimetral azul `#1a4480`, fondo `#f8fafc` y radio `6px`. Nombre de materia caligráfico en fuente `Pacifico` con curvas decorativas bicolor SVG.
+3. **Columna de Personajes de Mafalda**:
+   - Extraídos los 8 personajes directamente del documento histórico de Ciclo Final, corregido el canal alfa de Susanita mediante máscara secundaria (`/SMask` descomprimida con `zlib`) y recortados al límite exacto de píxeles visibles (`14.8mm` por personaje).
+   - Enmarcados en una columna lateral unificada con borde azul `#1a4480` que acompaña con precisión la altura de la tabla.
+4. **Desempeño General y Formato Condicional de Observaciones**:
+   - Cuadro `.desempenoCard` unificado con ilustración de los 5 niños con uniforme del colegio (`/informes/ninos-lectores.png`, `14mm`), escala conceptual o numérica según ciclo y escudo secundario a la derecha.
+   - Formato condicional adaptativo: en alumnos regulares sin observaciones, la tarjeta es compacta y se centra verticalmente de forma equidistante en el pie de página; ante devoluciones o PPI, despliega un contenedor justificado con tipografía `9pt`.
+5. **Calibración Vertical y Protección de Impresión**:
+   - Margen superior calibrado a `6.0mm` y separaciones intermedias de `4.0mm` para un ritmo vertical balanceado.
+   - Margen de salvaguarda inferior protegido a `10.0mm` para evitar quemados o cortes en impresoras físicas.
+   - Reglas `@page { size: A4 portrait; margin: 0; }` y `break-inside: avoid` en todas las secciones, garantizando estrictamente **1 sola hoja A4** sin desbordes.
+   - Se establece como el modelo documental canónico de referencia para la adaptación de las materias restantes de Áreas Especiales.
+
 > [!IMPORTANT]
-> **Hito actual (20 de octubre de 2026 — Etapa de Pruebas y Feedback sobre Fase 1)**:
-> Toda la **Fase 1 (`CICLO_FINAL`)** se encuentra implementada y verificada en el worktree `teacher_reports_phase1_migration`. Se realiza un alto deliberado antes de iniciar las Fases 2 y 3 para ejecutar pruebas graduales sobre los Informes Finales (tablero por grado/materia, enlaces mágicos, carga docente, revisión directiva, visado y esqueleto PDF A4), recoger feedback operativo y aplicar los ajustes resultantes como base para las siguientes fases.
+> **Hito actual (25 de octubre de 2026 — Modelo Canónico de PDF A4 Cerrado en Artes Visuales)**:
+> El diseño visual, la tipografía, las proporciones y la geometría vertical del PDF A4 han quedado formalmente concluidos y aprobados sobre la materia Artes Visuales. Este diseño actúa como autoridad estética y estructural para las siguientes materias de Ciclo Final (comenzando por Educación Musical), donde únicamente se adaptará la cantidad de consignas, las ilustraciones temáticas laterales y las particularidades de bloque.
 
 ---
 

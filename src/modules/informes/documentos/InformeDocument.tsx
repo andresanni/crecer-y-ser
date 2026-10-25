@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import { isNoCorrespondeOption, type ItemPlantillaInforme } from '../models/informe.model';
 import type { InformeDocumentSnapshotDatos } from './informeSnapshot.model';
+import { HeaderDecorations } from './HeaderDecorations';
 import styles from './InformeDocument.module.css';
 
 interface InformeDocumentProps {
   data: InformeDocumentSnapshotDatos;
+  mostrarSubtituloColegio?: boolean;
 }
 
 interface PageRowEntry {
@@ -13,7 +15,21 @@ interface PageRowEntry {
   blockRowSpan: number;
 }
 
-export const InformeDocument: React.FC<InformeDocumentProps> = ({ data }) => {
+const ARTES_VISUALES_ILLUSTRATIONS = [
+  '/informes/artes-visuales/personaje_01.png',
+  '/informes/artes-visuales/personaje_02.png',
+  '/informes/artes-visuales/personaje_03.png',
+  '/informes/artes-visuales/personaje_04.png',
+  '/informes/artes-visuales/personaje_05.png',
+  '/informes/artes-visuales/personaje_06.png',
+  '/informes/artes-visuales/personaje_07.png',
+  '/informes/artes-visuales/personaje_08.png',
+];
+
+export const InformeDocument: React.FC<InformeDocumentProps> = ({
+  data,
+  mostrarSubtituloColegio = true,
+}) => {
   const {
     tipoInforme,
     ciclo,
@@ -85,44 +101,101 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({ data }) => {
   );
   const compactScaleHeader = visibleEscalaItems.every((opt) => opt.etiqueta.length <= 2);
 
+  const hasObservaciones = Boolean(
+    evaluacion.observaciones &&
+    evaluacion.observaciones.trim() !== '' &&
+    evaluacion.observaciones.trim() !== '-' &&
+    evaluacion.observaciones.trim() !== '--',
+  );
+
+  const illustrations = useMemo(() => {
+    const name = materia?.nombre?.toLowerCase() || '';
+    const tag = materia?.etiquetaPdf?.toLowerCase() || '';
+    if (name.includes('visual') || tag.includes('visual')) {
+      return ARTES_VISUALES_ILLUSTRATIONS;
+    }
+    return [];
+  }, [materia]);
+
   const renderHeader = () => (
     <>
-      <div className={styles.headerBanner}>
-        <div className={styles.headerLeft}>
-          <h1 className={styles.informeTitle}>INFORME</h1>
-          <div className={styles.informeSubRow}>
-            <span>
-              <span className={styles.badgeCircle}>{isSpecialCycleFinal ? 'E' : 'M'}</span>
-              <span className={styles.categoryLabel}>
-                {isSpecialCycleFinal ? 'speciales' : 'aestras'}
+      <div className={styles.headerWrapper}>
+        <HeaderDecorations />
+        <div className={styles.headerBanner}>
+          <div className={styles.headerLeft}>
+            <h1 className={styles.informeTitle}>INFORME</h1>
+            <div className={styles.informeSubRow}>
+              <span className={styles.categoryBadgeModern}>
+                {isSpecialCycleFinal ? 'ESPECIALES' : 'MAESTRAS'}
               </span>
-            </span>
-            <span className={styles.instanceLabel}>{instanceTitle}</span>
-            <span className={styles.yearLabel}>{ciclo.ano}</span>
+              <span className={styles.subRowDivider} />
+              <span className={styles.instanceLabel}>{instanceTitle}</span>
+              <span className={styles.subRowDivider} />
+              <span className={styles.yearLabel}>{ciclo.ano}</span>
+            </div>
+          </div>
+          <div className={styles.headerRight}>
+            <div className={styles.brandTextLockup}>
+              <span className={styles.brandSchoolName}>COLEGIO CRECER Y SER</span>
+              {mostrarSubtituloColegio && (
+                <span className={styles.brandSchoolTagline}>EDUCACIÓN INICIAL Y PRIMARIA</span>
+              )}
+            </div>
+            <img src="/escudo-circular.png" alt="Escudo del Colegio Crecer y Ser" className={styles.brandLogo} />
           </div>
         </div>
-        <div className={styles.headerRight}>
-          <img src="/logo.png" alt="Colegio Crecer y Ser" className={styles.brandLogo} />
+        <div className={styles.headerDividingBar}>
+          <div className={styles.barBlue} />
+          <div className={styles.barRed} />
         </div>
       </div>
 
       <div className={styles.studentAndSubjectBar}>
-        <div className={styles.studentGrid}>
+        <div className={styles.studentCard}>
           <div className={styles.studentRow}>
-            <span>APELLIDO: {alumno.apellidos}</span>
-            <span>GRADO: {curso.gradoNumero}º</span>
+            <div className={styles.dataField}>
+              <span className={styles.dataLabel}>APELLIDO:</span>
+              <span className={styles.dataValue}>{alumno.apellidos}</span>
+            </div>
+            <div className={styles.dataField}>
+              <span className={styles.dataLabel}>GRADO:</span>
+              <span className={styles.dataValue}>{curso.gradoNumero}º</span>
+            </div>
           </div>
           <div className={styles.studentRow}>
-            <span>NOMBRE: {alumno.nombres}</span>
-            <span>TURNO: {curso.turno}</span>
+            <div className={styles.dataField}>
+              <span className={styles.dataLabel}>NOMBRE:</span>
+              <span className={styles.dataValue}>{alumno.nombres}</span>
+            </div>
+            <div className={styles.dataField}>
+              <span className={styles.dataLabel}>TURNO:</span>
+              <span className={styles.dataValue}>{curso.turno}</span>
+            </div>
           </div>
         </div>
+
         <div className={styles.subjectBox}>
-          <span className={styles.subjectTitle}>{rightSubjectLabel}</span>
-          <div className={styles.subjectUnderlineRow}>
-            <span className={styles.subjectLine} />
-            <span className={styles.subjectEp}>EP</span>
-          </div>
+          <svg viewBox="0 0 60 40" className={styles.subjectCardDec} aria-hidden="true">
+            <path
+              d="M 44,0 C 44,14 50,26 60,32"
+              stroke="#b91c1c"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              fill="none"
+            />
+            <path
+              d="M 52,0 C 52,9 56,18 60,22"
+              stroke="#1a4480"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              fill="none"
+            />
+          </svg>
+          <span className={styles.subjectTitleScript}>
+            {rightSubjectLabel}
+          </span>
+          <div className={styles.subjectLine} />
+          <span className={styles.subjectSubtitle}>EDUCACIÓN PRIMARIA</span>
         </div>
       </div>
     </>
@@ -198,58 +271,77 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({ data }) => {
                   </table>
                 )}
 
-                <table className={styles.itemsTable}>
-                  <thead>
-                    <tr>
-                      <th
-                        colSpan={hasBlocks ? 2 : 1}
-                        className={styles.itemsHeaderTitle}
-                      >
-                        {plantilla.tituloTabla}
-                      </th>
-                      {visibleEscalaItems.map((opt) => (
-                        <th
-                          key={opt.codigo}
-                          className={
-                            compactScaleHeader
-                              ? styles.itemsHeaderOptionCompact
-                              : styles.itemsHeaderOption
-                          }
-                        >
-                          {opt.etiqueta}
-                        </th>
+                <div className={styles.tableAndIllustrationsLayout}>
+                  {illustrations.length > 0 && (
+                    <div className={styles.illustrationsColumn} aria-hidden="true">
+                      {illustrations.map((src) => (
+                        <img
+                          key={src}
+                          src={src}
+                          alt=""
+                          className={styles.illustrationImage}
+                        />
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {page.rows.map(({ item, showBlockCell, blockRowSpan }) => {
-                      const selectedCode = respuestaByItemId.get(item.id) || '';
-                      return (
-                        <tr key={item.id}>
-                          {hasBlocks && showBlockCell && (
-                            <td rowSpan={blockRowSpan} className={styles.blockCell}>
-                              {item.bloqueNombre}
-                            </td>
-                          )}
-                          <td className={styles.itemTextCell}>{item.texto}</td>
-                          {visibleEscalaItems.map((opt) => (
-                            <td key={opt.codigo} className={styles.itemMarkCell}>
-                              {selectedCode === opt.codigo ? 'X' : ''}
-                            </td>
-                          ))}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                    </div>
+                  )}
+                  <table className={styles.itemsTable}>
+                    <thead>
+                      <tr>
+                        <th
+                          colSpan={hasBlocks ? 2 : 1}
+                          className={styles.itemsHeaderTitle}
+                        >
+                          {plantilla.tituloTabla}
+                        </th>
+                        {visibleEscalaItems.map((opt) => (
+                          <th
+                            key={opt.codigo}
+                            className={
+                              compactScaleHeader
+                                ? styles.itemsHeaderOptionCompact
+                                : styles.itemsHeaderOption
+                            }
+                          >
+                            {opt.etiqueta}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {page.rows.map(({ item, showBlockCell, blockRowSpan }) => {
+                        const selectedCode = respuestaByItemId.get(item.id) || '';
+                        return (
+                          <tr key={item.id}>
+                            {hasBlocks && showBlockCell && (
+                              <td rowSpan={blockRowSpan} className={styles.blockCell}>
+                                {item.bloqueNombre}
+                              </td>
+                            )}
+                            <td className={styles.itemTextCell}>{item.texto}</td>
+                            {visibleEscalaItems.map((opt) => (
+                              <td key={opt.codigo} className={styles.itemMarkCell}>
+                                {selectedCode === opt.codigo ? 'X' : ''}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
                 {isLastItemsPage && plantilla.requiereDesempenoGeneral && (
-                  <>
-                    <div className={styles.desempenoBox}>
+                  <div className={styles.desempenoCard}>
+                    <div className={styles.desempenoRow}>
+                      <img
+                        src="/informes/ninos-lectores.png"
+                        alt=""
+                        className={styles.desempenoKidsIllustration}
+                      />
                       <div className={styles.desempenoCenter}>
                         <span className={styles.desempenoHeading}>Desempeño General</span>
                         <span className={styles.desempenoSub}>
-                          E. Primaria &nbsp; {rightSubjectLabel}
+                          E. Primaria &nbsp;&nbsp; {rightSubjectLabel}
                         </span>
                       </div>
                       <span className={styles.desempenoValue}>
@@ -257,12 +349,18 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({ data }) => {
                           evaluacion.desempenoGeneralCodigo ||
                           '-'}
                       </span>
-                      <img src="/isotype.png" alt="" className={styles.sealLogo} />
+                      <img
+                        src="/escudo-circular.png"
+                        alt="Escudo Colegio Crecer y Ser"
+                        className={styles.desempenoSeal}
+                      />
                     </div>
-                    {evaluacion.observaciones.trim() !== '' && (
-                      <p className={styles.observacionesNote}>{evaluacion.observaciones}</p>
+                    {hasObservaciones && (
+                      <div className={styles.observacionesContainer}>
+                        <p className={styles.observacionesNote}>{evaluacion.observaciones}</p>
+                      </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             </div>
