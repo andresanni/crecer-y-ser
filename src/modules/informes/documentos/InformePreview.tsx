@@ -191,34 +191,83 @@ const ESCALA_DESEMPENO_SEGUNDO_CICLO = [
   { codigo: 'DESTACADO_10', etiqueta: 'Destacado 10' },
 ];
 
+const PATRON_TRES_NIVELES = [
+  'ALCANZADO',
+  'ALCANZADO',
+  'EN_PROCESO',
+  'ALCANZADO',
+  'ALCANZADO',
+  'EN_PROCESO',
+  'ALCANZADO',
+  'NO_ALCANZADO',
+  'ALCANZADO',
+  'ALCANZADO',
+  'EN_PROCESO',
+  'ALCANZADO',
+  'ALCANZADO',
+  'EN_PROCESO',
+  'ALCANZADO',
+  'ALCANZADO',
+  'EN_PROCESO',
+  'ALCANZADO',
+  'ALCANZADO',
+];
+
+const PATRON_EDUCACION_FISICA = [
+  'D',
+  'C',
+  'D',
+  'D',
+  'C',
+  'B',
+  'D',
+  'C',
+  'D',
+  'A',
+  'D',
+  'C',
+  'D',
+  'D',
+  'C',
+  'B',
+  'D',
+  'D',
+  'C',
+  'D',
+  'C',
+  'D',
+  'D',
+  'C',
+];
+
 const EJEMPLOS_OBSERVACIONES = [
   {
-    id: 'ninguna',
-    label: 'Ninguna (Alumno regular)',
-    texto: '',
-  },
-  {
     id: 'ppi',
-    label: 'PPI / Adaptaciones curriculares (Extensa)',
+    label: 'PPI / Adaptaciones curriculares (Oficial)',
     texto:
       'Su situación de alumno se encuentra respaldada por un PPI que enmarca adaptaciones curriculares y de recursos, los cuales tienen como finalidad respetar los tiempos y favorecer los procesos de comprensión y ejecución de tareas.',
   },
   {
+    id: 'ninguna',
+    label: 'Sin observaciones (Alumno regular)',
+    texto: '',
+  },
+  {
     id: 'destacado',
-    label: 'Desempeño destacado (Media)',
+    label: 'Desempeño destacado (Ejemplo pedagógico)',
     texto:
-      'Demostró un compromiso sobresaliente con las propuestas del taller, explorando diversas técnicas con autonomía, sensibilidad estética y excelente colaboración con sus pares.',
+      'Demostró un compromiso constante con las propuestas del área, participando activamente y colaborando con sus pares de manera respetuosa y creativa.',
   },
   {
     id: 'breve',
-    label: 'Breve / Pauta de trabajo',
+    label: 'Pauta de trabajo (Ejemplo breve)',
     texto:
       'Participó con entusiasmo de las actividades grupales y cumplió de manera responsable con los materiales de trabajo.',
   },
 ];
 
 export function InformePreview() {
-  const [materiaCodigo, setMateriaCodigo] = useState<'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA' | 'INGLES' | 'ED_FISICA'>('ED_FISICA');
+  const [materiaCodigo, setMateriaCodigo] = useState<'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA' | 'INGLES' | 'ED_FISICA'>('ARTES_VISUALES');
   const [gradoNumero, setGradoNumero] = useState<number>(3);
   const [ejemploObservacionId, setEjemploObservacionId] = useState<string>('ppi');
   const [desempenoCodigo, setDesempenoCodigo] = useState<string>('ALCANZADO');
@@ -300,9 +349,11 @@ export function InformePreview() {
 
   const respuestas = useMemo(
     () =>
-      items.map((item) => ({
+      items.map((item, idx) => ({
         itemId: item.id,
-        valorCodigo: isEdFisica ? 'D' : 'ALCANZADO',
+        valorCodigo: isEdFisica
+          ? PATRON_EDUCACION_FISICA[idx % PATRON_EDUCACION_FISICA.length]
+          : PATRON_TRES_NIVELES[idx % PATRON_TRES_NIVELES.length],
       })),
     [items, isEdFisica],
   );
@@ -353,41 +404,17 @@ export function InformePreview() {
         etiquetaPdf: etiquetaMateria,
       },
       docente: {
-        nombre: isMusica
-          ? 'MARIA INES'
-          : isIngles
-            ? 'CELESTE'
-            : isEdFisica
-              ? (gradoNumero <= 5 ? 'GIMENA' : 'ALAN')
-              : 'FLORENCIA',
-        apellido: isMusica
-          ? 'COSTA'
-          : isIngles
-            ? 'ARAGÓN'
-            : isEdFisica
-              ? (gradoNumero <= 5 ? 'CRUZADO ZEVALLOS' : 'FISSER')
-              : 'BULACIO',
+        nombre: 'Nombre',
+        apellido: 'Apellido',
       },
       direccion: {
-        nombre: 'MYRIAM GRACIELA',
-        apellido: 'ADDUCCI',
+        nombre: 'Nombre',
+        apellido: 'Apellido',
       },
       alumno: {
         id: 'alumno-preview-1',
-        apellidos: isEdFisica
-          ? (gradoNumero <= 3 ? 'Carrillo Obando' : gradoNumero <= 5 ? 'Guillermo' : 'Blanco')
-          : isIngles
-            ? 'Camarero'
-            : isMusica || isTecnologia
-              ? 'Castillo'
-              : 'Villca Romero',
-        nombres: isEdFisica
-          ? (gradoNumero <= 3 ? 'Luciano Anderson' : gradoNumero <= 5 ? 'Gael Carlos' : 'Nahiara Belén')
-          : isIngles
-            ? 'Ciro Nahuel'
-            : isMusica || isTecnologia
-              ? 'April Oriana'
-              : 'Malena Abigail',
+        apellidos: 'Apellido',
+        nombres: 'Nombre',
         numeroOrden: 1,
       },
       plantilla: {
