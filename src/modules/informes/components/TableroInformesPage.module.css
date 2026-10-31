@@ -1,0 +1,100 @@
+.gradeColumn {
+  white-space: nowrap;
+}
+
+.progressCell {
+  width: 100%;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.actionButton {
+  max-width: 100%;
+  font-weight: 600;
+  border-radius: 6px;
+}
+
+.instanceBanner {
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, var(--cys-color-primary-bg), var(--cys-color-fill-quaternary));
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 14px 20px;
+}
+
+.instanceIdentity {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.instanceIconBox {
+  align-items: center;
+  background: var(--cys-color-primary);
+  border-radius: 8px;
+  color: #fff;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 18px;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.instanceTextGroup {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.instanceTitle {
+  color: var(--cys-color-text) !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+}
+
+.filterCard {
+  border-radius: 12px;
+  border: 1px solid var(--cys-color-border-secondary);
+  background: var(--cys-color-bg-container);
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pillsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 575px) {
+  .instanceBanner {
+    padding: 12px 14px;
+  }
+
+  .instanceTextGroup {
+    flex-direction: column;
+    gap: 2px;
+  }
+}

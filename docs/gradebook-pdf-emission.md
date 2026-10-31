@@ -436,3 +436,10 @@ Los cuatro DNI regulares faltantes permanecen vacíos: conservan sus notas y vis
 La aceptación detectó que fechas de calendario almacenadas a medianoche UTC se mostraban un día antes en Buenos Aires. Los adaptadores de alumnos/inscripciones y el modal de alcance preservan el componente YYYY-MM-DD antes de entregarlo a Day.js. No cambia fechas persistidas ni timestamps de concurrencia. La regresión verifica presentación y guardado en la zona horaria argentina.
 
 Los dos PDFs regularizados de B1 se generaron y quedaron DISPONIBLE en el servidor, con archivo y SHA-256 persistidos. Los payloads preparados de B2 se conservan sólo como referencia privada y no forman parte del hito aplicado.
+
+## Promoción del motor de PDF para registros de cursada y cambios de escuela — 23 de octubre de 2026
+
+Se promovió el generador de PDF mediante `deploy/publish-pdf-worker.ps1` hacia `/opt/cys-pdf/releases/20261023-155814`. Esta release incorpora el bundle actualizado de renderizado (`dist-render`), que resuelve la presentación del registro administrativo y pases/cambios de escuela en la página de cierre administrativo para alumnos con cursada parcial (incorporado en `e1aa713`).
+
+El script completó la compilación local, empaquetado, transferencia SCP, instalación y la ejecución de `test-production-worker.mjs` bajo el usuario `cys-pdf`, validando respuesta `200` de middleware, 14 páginas de boletín sintético, ZIP con coincidencia exacta de bytes y recarga limpia de Caddy. La nueva versión de plantilla invalida automáticamente la reutilización de emisiones generadas bajo el hash anterior.
+

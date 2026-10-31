@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import { execSync, spawn } from 'node:child_process';
 
 const resolveMainRepoPath = () => {
@@ -110,6 +111,20 @@ const checkPocketBaseHealth = async () => {
   }
 };
 
+const getLanIp = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        if (!iface.address.startsWith('169.254.')) {
+          return iface.address;
+        }
+      }
+    }
+  }
+  return '127.0.0.1';
+};
+
 const ensureTeacherLinkKey = (secretPath) => {
   if (fs.existsSync(secretPath)) {
     const key = fs.readFileSync(secretPath, 'utf8').trim();
@@ -156,9 +171,11 @@ const startPocketBaseServer = async ({
   hooksDirectory,
   migrationsDirectory,
   teacherLinkKey,
-  pdfWorkerKey
+  pdfWorkerKey,
+  bindAddress = '127.0.0.1:8090',
+  allowedOrigins = []
 }) => {
-  const origins = [
+  const defaultOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://localhost:5174',
@@ -168,12 +185,13 @@ const startPocketBaseServer = async ({
     'http://localhost:5176',
     'http://127.0.0.1:5176'
   ];
+  const origins = allowedOrigins.length > 0 ? allowedOrigins : defaultOrigins;
 
   const pbProcess = spawn(
     executablePath,
     [
       'serve',
-      '--http=127.0.0.1:8090',
+      `--http=${bindAddress}`,
       `--origins=${origins.join(',')}`,
       `--dir=${dataDirectory}`,
       `--hooksDir=${hooksDirectory}`,
@@ -232,8 +250,14 @@ const main = async () => {
   loadEnvIntoProcess(envPath, false);
   loadEnvIntoProcess(envLocalPath, true);
 
-  process.env.VITE_POCKETBASE_URL = 'http://127.0.0.1:8090';
-  console.log('[Dev Setup] VITE_POCKETBASE_URL configurado en http://127.0.0.1:8090 (local)');
+  const forwardArgs = process.argv.slice(2);
+  const isHostMode = forwardArgs.some((arg) => arg === '--host' || arg.startsWith('--host=') || arg === '-h');
+  const lanIp = isHostMode ? getLanIp() : '127.0.0.1';
+  const pocketBaseHttp = isHostMode ? '0.0.0.0:8090' : '127.0.0.1:8090';
+  const pocketBasePublicUrl = isHostMode ? `http://${lanIp}:8090` : 'http://127.0.0.1:8090';
+
+  process.env.VITE_POCKETBASE_URL = pocketBasePublicUrl;
+  console.log(`[Dev Setup] VITE_POCKETBASE_URL configurado en ${pocketBasePublicUrl}`);
 
   const isAlreadyRunning = await checkPocketBaseHealth();
   let spawnedPocketBaseProcess = null;
@@ -254,26 +278,31 @@ const main = async () => {
       pdfWorkerKey = fs.readFileSync(pdfWorkerKeyPath, 'utf8').trim();
     }
 
-    console.log('[PocketBase Dev] Iniciando servicio PocketBase en http://127.0.0.1:8090...');
+    console.log(`[PocketBase Dev] Iniciando servicio PocketBase en ${pocketBaseHttp}...`);
     spawnedPocketBaseProcess = await startPocketBaseServer({
       executablePath,
       dataDirectory,
       hooksDirectory,
       migrationsDirectory,
       teacherLinkKey,
-      pdfWorkerKey
+      pdfWorkerKey,
+      bindAddress: pocketBaseHttp,
+      allowedOrigins: isHostMode ? ['*'] : []
     });
     console.log('[PocketBase Dev] Servicio PocketBase listo.');
   }
 
   displayMockCredentials(credentialsPath);
+  if (isHostMode) {
+    console.log(`[Acceso Móvil] URL de la app en tu red local: http://${lanIp}:5173`);
+    console.log(`[Acceso Móvil] URL de PocketBase en tu red:   http://${lanIp}:8090\n`);
+  }
 
   const viteBin = path.join(currentDir, 'node_modules', 'vite', 'bin', 'vite.js');
   if (!fs.existsSync(viteBin)) {
     throw new Error(`No se encontró el ejecutable de Vite en ${viteBin}.`);
   }
 
-  const forwardArgs = process.argv.slice(2);
   const viteArgs = forwardArgs.some((arg) => arg.startsWith('--clearScreen'))
     ? forwardArgs
     : ['--clearScreen=false', ...forwardArgs];

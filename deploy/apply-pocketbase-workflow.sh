@@ -17,6 +17,8 @@ test -f "$stage_dir/attendance.js"
 test -f "$stage_dir/attendance.pb.js"
 test -f "$stage_dir/contactService.js"
 test -f "$stage_dir/contacto.pb.js"
+test -f "$stage_dir/teacherReports.js"
+test -f "$stage_dir/teacher_reports.pb.js"
 test -f "$stage_dir/1789330000_created_initial_collections.js"
 test -f "$stage_dir/1789334557_hardened_teacher_access_tokens.js"
 test -f "$stage_dir/1789338120_close_public_gradebook_rules.js"
@@ -39,6 +41,9 @@ test -f "$stage_dir/1791468903_updated_meses_calendario.js"
 test -f "$stage_dir/1791470000_attendance_transactional_writes.js"
 test -f "$stage_dir/1791549000_attendance_non_class_days.js"
 test -f "$stage_dir/1791555000_added_ciclos_fecha_inicio_clases.js"
+test -f "$stage_dir/1792440000_created_teacher_reports_collections_and_seed.js"
+test -f "$stage_dir/1792440100_updated_teacher_reports_templates_catalog.js"
+test -f "$stage_dir/1792440200_multi_course_teacher_report_links.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -105,6 +110,8 @@ install -m 0644 "$stage_dir/attendance.js" /root/pb/pb_hooks/lib/attendance.js
 install -m 0644 "$stage_dir/attendance.pb.js" /root/pb/pb_hooks/attendance.pb.js
 install -m 0644 "$stage_dir/contactService.js" /root/pb/pb_hooks/lib/contactService.js
 install -m 0644 "$stage_dir/contacto.pb.js" /root/pb/pb_hooks/contacto.pb.js
+install -m 0644 "$stage_dir/teacherReports.js" /root/pb/pb_hooks/lib/teacherReports.js
+install -m 0644 "$stage_dir/teacher_reports.pb.js" /root/pb/pb_hooks/teacher_reports.pb.js
 install -m 0644 "$stage_dir/1789330000_created_initial_collections.js" /root/pb/pb_migrations/1789330000_created_initial_collections.js
 install -m 0644 "$stage_dir/1789334557_hardened_teacher_access_tokens.js" /root/pb/pb_migrations/1789334557_hardened_teacher_access_tokens.js
 install -m 0644 "$stage_dir/1789338120_close_public_gradebook_rules.js" /root/pb/pb_migrations/1789338120_close_public_gradebook_rules.js
@@ -128,6 +135,9 @@ install -m 0644 "$stage_dir/1791468903_updated_meses_calendario.js" /root/pb/pb_
 install -m 0644 "$stage_dir/1791470000_attendance_transactional_writes.js" /root/pb/pb_migrations/1791470000_attendance_transactional_writes.js
 install -m 0644 "$stage_dir/1791549000_attendance_non_class_days.js" /root/pb/pb_migrations/1791549000_attendance_non_class_days.js
 install -m 0644 "$stage_dir/1791555000_added_ciclos_fecha_inicio_clases.js" /root/pb/pb_migrations/1791555000_added_ciclos_fecha_inicio_clases.js
+install -m 0644 "$stage_dir/1792440000_created_teacher_reports_collections_and_seed.js" /root/pb/pb_migrations/1792440000_created_teacher_reports_collections_and_seed.js
+install -m 0644 "$stage_dir/1792440100_updated_teacher_reports_templates_catalog.js" /root/pb/pb_migrations/1792440100_updated_teacher_reports_templates_catalog.js
+install -m 0644 "$stage_dir/1792440200_multi_course_teacher_report_links.js" /root/pb/pb_migrations/1792440200_multi_course_teacher_report_links.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 
@@ -151,6 +161,8 @@ review_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/a
 test "$review_status" = "401"
 curriculum_status="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE http://127.0.0.1:8090/api/cys/directivo/configuracion/materias/aaaaaaaaaaaaaaa)"
 test "$curriculum_status" = "401"
+reports_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/cys/directivo/informes/etapas/aaaaaaaaaaaaaaa/CICLO_FINAL)"
+test "$reports_status" = "401"
 contact_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8090/api/cys/contacto)"
 test "$contact_status" = "400"
 journalctl -u pocketbase --since "5 minutes ago" --no-pager

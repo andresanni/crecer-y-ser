@@ -1,0 +1,341 @@
+.publicHeaderCard:global(.ant-card) {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(30, 64, 175, 0.18);
+  color: #ffffff;
+}
+
+.teacherContainer {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+}
+
+.schoolLogo {
+  align-items: center;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex: 0 0 56px;
+  height: 56px;
+  justify-content: center;
+  padding: 6px;
+  width: 56px;
+}
+
+.teacherTitle:global(.ant-typography) {
+  color: #ffffff;
+  font-size: 22px;
+  margin: 0;
+}
+
+.headerSubtitle {
+  color: #e0e7ff;
+  font-size: 13.5px;
+}
+
+.scopeContainer {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.scopeCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 12px;
+  padding: 10px 16px;
+  backdrop-filter: blur(6px);
+  min-width: 240px;
+}
+
+.scopeItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scopeIcon {
+  font-size: 16px;
+  color: #bfdbfe;
+  flex-shrink: 0;
+}
+
+.scopeMainText {
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.scopeDivider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  width: 100%;
+}
+
+.scopeSecondaryText {
+  color: #e0e7ff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+@media (max-width: 767px) {
+  .publicHeaderCard:global(.ant-card) :global(.ant-card-body) {
+    padding: 14px 16px !important;
+  }
+
+  .teacherContainer {
+    gap: 12px;
+  }
+
+  .schoolLogo {
+    border-radius: 12px;
+    flex: 0 0 46px;
+    height: 46px;
+    padding: 4px;
+    width: 46px;
+  }
+
+  .teacherTitle:global(.ant-typography) {
+    font-size: 19px;
+  }
+
+  .scopeContainer {
+    justify-content: stretch;
+  }
+
+  .scopeCard {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .desktopCoursesSwitcher {
+    display: none !important;
+  }
+
+  .mobileCoursesSwitcher {
+    display: block !important;
+    width: 100%;
+  }
+
+  .courseNavGroup {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .courseNavArrowButton {
+    flex: 0 0 38px;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobileCourseTrigger {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 38px;
+    padding: 6px 10px;
+    border: 1px solid var(--cys-color-border-secondary);
+    border-radius: 8px;
+    background: var(--cys-color-bg-container);
+    color: var(--cys-color-text);
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+  }
+
+  .mobileCourseTrigger:active {
+    background: var(--cys-color-fill-secondary);
+    border-color: var(--cys-color-primary);
+  }
+
+  .mobileCourseTriggerLeft {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .mobileCourseTriggerName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--cys-color-text);
+  }
+
+  .mobileCourseTriggerRight {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .mobileCourseTriggerTag {
+    margin: 0 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    border-radius: 6px !important;
+    padding-inline: 6px !important;
+  }
+
+  .mobileCourseTriggerArrow {
+    font-size: 11px;
+    color: var(--cys-color-text-secondary);
+  }
+}
+
+@media (max-width: 575px) {
+  .publicHeaderCard:global(.ant-card) :global(.ant-card-body) {
+    padding: 12px 14px !important;
+  }
+
+  .teacherTitle:global(.ant-typography) {
+    font-size: 17px !important;
+  }
+
+  .headerSubtitle {
+    font-size: 12.5px;
+  }
+
+  .scopeCard {
+    padding: 8px 12px;
+    gap: 6px;
+  }
+
+  .scopeMainText {
+    font-size: 13.5px;
+  }
+
+  .scopeSecondaryText {
+    font-size: 12.5px;
+  }
+
+  .coursesSwitcherCard:global(.ant-card) :global(.ant-card-body) {
+    padding: 8px 10px !important;
+  }
+
+  .mobileCourseTrigger {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+}
+
+.coursesSwitcherCard:global(.ant-card) {
+  border: 1px solid var(--cys-color-primary-border);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.desktopCoursesSwitcher {
+  display: block;
+}
+
+.mobileCoursesSwitcher {
+  display: none;
+}
+
+.coursesSwitcherRow {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.coursesSwitcherPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.modalCourseList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 55vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 2px;
+}
+
+.modalCourseItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--cys-color-border-secondary);
+  border-radius: 8px;
+  background: var(--cys-color-bg-container);
+  color: var(--cys-color-text);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.modalCourseItem:active,
+.modalCourseItem:hover {
+  background: var(--cys-color-fill-secondary);
+}
+
+.modalCourseItemSelected {
+  background: var(--cys-color-primary-bg, #eff6ff) !important;
+  border-color: var(--cys-color-primary, #1677ff) !important;
+}
+
+.modalCourseItemLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.modalCourseItemCheck {
+  color: var(--cys-color-primary, #1677ff);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.modalCourseItemName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--cys-color-text);
+}
+
+.modalCourseItemSelected .modalCourseItemName {
+  color: var(--cys-color-primary-text, #1d4ed8);
+  font-weight: 700;
+}
+
+.modalCourseItemTag {
+  margin: 0 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  flex-shrink: 0;
+}

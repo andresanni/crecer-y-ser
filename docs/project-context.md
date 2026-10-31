@@ -1,5 +1,12 @@
 # Contexto actual de Crecer y Ser
 
+## Informes de Maestras — Fase 1 (CICLO_FINAL) lista para pruebas y feedback — 20 de octubre de 2026
+
+Se completó de punta a punta la Fase 1 (`CICLO_FINAL` — Informes Finales de Áreas Especiales) del plan de Informes de Maestras (`docs/teacher-reports-plan.md`) y se realiza un alto antes de las Fases 2 y 3 para llevar adelante pruebas graduales y recoger feedback sobre el flujo completo:
+- **Esquema y catálogo de plantillas** (`1792440000_created_teacher_reports_collections_and_seed.js`, `1792440100_updated_teacher_reports_templates_catalog.js` y `1792440200_multi_course_teacher_report_links.js`): colecciones `plantillas_informe`, `items_plantilla_informe`, `instancias_informe`, `tokens_acceso_informe` (con soporte multirrelación `instancia_ids` para sets de grados en un único enlace), `evaluaciones_informe`, `respuestas_item_informe`, `visados_informe` y `emisiones_informe`. Catálogo completo para las 5 áreas especiales: **Educación Física** separada en 3 bloques de grados (`1.° a 3.°` con 24 ítems, `4.° y 5.°` con 20 ítems, `6.° y 7.°` con 22 ítems) y **Artes Visuales** (18 ítems), **Inglés** (18 ítems), **Educación Musical** (19 ítems) y **Tecnología** (17 ítems) con consignas unificadas de 1.° a 7.° grado.
+- **Reglas de negocio y gateways (`pb_hooks/lib/teacherReports.js`, `pb_hooks/teacher_reports.pb.js`)**: escala de `Desempeño General` dinámica según el ciclo pedagógico del grado (conceptual en 1.er Ciclo `1.° a 3.°`, alfanumérica `1..10` en 2.° Ciclo `4.° a 7.°`), campo opcional de `observaciones` habilitado en informes finales para devolución o notas de PPI, concurrencia optimista, enlaces mágicos enriquecidos por set de grados (`cursoIds`) con entrega independiente por grado e invalidación automática de visados y PDFs ante correcciones o cambios de datos de alumno/cursada.
+- **Frontend y emisión PDF A4 (`src/modules/informes/`, `informe-render.html`, `scripts/local-pdf-plugin.ts`, `scripts/build-pdf-worker.mjs`)**: sección institucional `/app/informes` con atajos de selección de grados (`Todos`, `1.er Ciclo`, `2.° Ciclo`), ruta pública `/carga-informe` con selector de grado activo, guardado progresivo y entrega atómica por grado, revisión directiva alumno por alumno, y esqueleto de documento A4 con generación individual y lote ZIP por instancia.
+
 ## Febrero y días sin clases — 9 de octubre de 2026
 
 El registro incorpora febrero y calcula acumulados desde ese mes. Calendario agrega `SIN_CLASES` con selección de un día o rango, compartido por todos los cursos del ciclo. Sus fechas quedan sin marcas ni texto impreso, no generan observaciones y no cuentan en días hábiles, presencias, ausencias ni tardanzas. Permite inicio tardío de febrero, cierre anticipado de diciembre y receso invernal sin inventar fechas. La migración `1791549000_attendance_non_class_days.js` y el esquema se validaron en PocketBase temporal con datos sintéticos; 20 pruebas de dominio/HTTP, navegación y presentación pasaron. La aplicación a la base habitual sigue pendiente: revisión automática rechazó detener/migrar/reiniciar la instancia local con «blocked by policy». No se modificó su contenido ni se accedió al VPS. Procedimiento en `docs/primary-attendance-records.md`.
@@ -58,7 +65,9 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 | `/` | Sitio institucional |
 | `/login` | Acceso institucional |
 | `/carga` | Carga pública mediante token docente |
+| `/carga-informe` | Carga pública de informes mediante token docente |
 | `/app/alumnos` | Directorio y gestión de alumnos |
+| `/app/informes` | Informes de maestras: selección de tipo, tablero y revisión |
 | `/app/boletines` | Redirección de compatibilidad a Bimestres |
 | `/app/boletines/calificaciones` | Bimestres: selección, tablero de carga y revisión |
 | `/app/boletines/constructor` | Constructor de la malla curricular |
