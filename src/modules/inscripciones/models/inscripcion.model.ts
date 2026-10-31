@@ -1,6 +1,15 @@
 export type EstadoInscripcion = 'Regular' | 'Libre' | 'Baja';
 export type TurnoCurso = 'Mañana' | 'Tarde' | 'Jornada Completa';
+export type ModalidadJornada = 'Mañana' | 'Tarde' | 'Jornada Completa';
 export type OpcionBinariaSN = 'SI' | 'NO' | '-';
+
+export const formatModalidadJornada = (value?: ModalidadJornada | string): string => {
+  if (!value) return '';
+  if (value === 'Mañana') return 'Turno Mañana';
+  if (value === 'Tarde') return 'Turno Tarde';
+  if (value === 'Jornada Completa') return 'Jornada Completa';
+  return value;
+};
 
 export interface NivelRecord {
   id: string;
@@ -27,6 +36,7 @@ export interface CursoRecord {
   nivel_id: string;
   escala_id: string;
   turno: TurnoCurso;
+  orden?: number;
   expand?: {
     nivel_id?: NivelRecord;
   };
@@ -39,6 +49,7 @@ export interface Curso {
   nivelNombre: string;
   turno: TurnoCurso;
   escalaId: string;
+  orden?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +61,7 @@ export const cursoAdapter = (record: CursoRecord): Curso => ({
   nivelNombre: record.expand?.nivel_id?.nombre || '',
   turno: record.turno,
   escalaId: record.escala_id,
+  orden: record.orden,
   createdAt: record.created,
   updatedAt: record.updated,
 });
@@ -97,6 +109,7 @@ export interface InscripcionRecord {
   bimestre_hasta?: number;
   revision_cursada?: number;
   estado: EstadoInscripcion;
+  modalidad_jornada?: ModalidadJornada | string;
   promociono_con_acompanamiento?: OpcionBinariaSN;
   posee_apoyos?: OpcionBinariaSN;
   cuales_apoyos?: string;
@@ -129,6 +142,7 @@ export interface Inscripcion {
   fechaIngreso: string;
   fechaEgreso: string;
   estado: EstadoInscripcion;
+  modalidadJornada?: ModalidadJornada | string;
   promocionoConAcompanamiento: OpcionBinariaSN;
   poseeApoyos: OpcionBinariaSN;
   cualesApoyos: string;
@@ -158,6 +172,7 @@ export const inscripcionAdapter = (record: InscripcionRecord): Inscripcion => ({
   fechaIngreso: record.fecha_ingreso?.slice(0, 10) || '',
   fechaEgreso: record.fecha_egreso?.slice(0, 10) || '',
   estado: record.estado,
+  modalidadJornada: record.modalidad_jornada || '',
   cursadaEstado: record.cursada_estado || 'PENDIENTE',
   bimestreDesde: record.bimestre_desde || 0,
   bimestreHasta: record.bimestre_hasta || 0,

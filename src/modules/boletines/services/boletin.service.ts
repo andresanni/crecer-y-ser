@@ -75,8 +75,9 @@ export const boletinService = {
 
   getCursos: async (): Promise<Curso[]> => {
     const records = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
+      filter: 'escala_id != ""',
       expand: 'nivel_id',
-      sort: 'nombre',
+      sort: 'orden,nombre',
     });
     return records.map(cursoAdapter);
   },
@@ -631,7 +632,9 @@ export const boletinService = {
       const periodo = await boletinService.getPeriodoById(periodoId);
 
       const cursosRecords = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
-        sort: 'nombre',
+        filter: 'escala_id != ""',
+        expand: 'nivel_id',
+        sort: 'orden,nombre',
       });
       const cursos = cursosRecords.map(cursoAdapter);
 

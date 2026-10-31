@@ -262,6 +262,20 @@ function requireRecord(dao, collection, id) {
   }
 }
 
+function isGradebookCourse(dao, course) {
+  var record = typeof course === "string" ? requireRecord(dao, "cursos", course) : course
+  return Boolean(record.getString("escala_id"))
+}
+
+function requireGradebookCourse(dao, course) {
+  var record = typeof course === "string" ? requireRecord(dao, "cursos", course) : course
+  if (!isGradebookCourse(dao, record)) {
+    throw new BadRequestError("Este curso no participa del régimen de boletines.")
+  }
+  return record
+}
+
+
 function findWorkflow(dao, courseId, periodId) {
   return findFirstByFilter(
     dao,
@@ -316,7 +330,7 @@ function staffReview(c) {
   noStore(c)
   var response
   $app.dao().runInTransaction((txDao) => {
-    var course = requireRecord(txDao, "cursos", c.pathParam("cursoId"))
+    var course = requireGradebookCourse(txDao, c.pathParam("cursoId"))
     var period = requireRecord(txDao, "periodos", c.pathParam("periodoId"))
     var workflow = requireStaffWorkflow(txDao, course.getId(), period.getId())
     var approvals = findByFilter(
@@ -500,7 +514,8 @@ function requireStaffWorkflow(dao, courseId, periodId) {
 }
 
 function ensureDraftWorkflow(dao, courseId, periodId) {
-  var workflow = findWorkflow(dao, courseId, periodId)
+  var course = requireGradebookCourse(dao, courseId)
+  var workflow = findWorkflow(dao, course.getId(), periodId)
   if (workflow) {
     if (workflow.getString("estado") !== "BORRADOR_DOCENTE") {
       throw new BadRequestError("El período ya se encuentra bajo control directivo.")
@@ -508,7 +523,7 @@ function ensureDraftWorkflow(dao, courseId, periodId) {
     return workflow
   }
   workflow = new Record(dao.findCollectionByNameOrId("instancias_carga_boletin"))
-  workflow.set("curso_id", courseId)
+  workflow.set("curso_id", course.getId())
   workflow.set("periodo_id", periodId)
   workflow.set("estado", "BORRADOR_DOCENTE")
   workflow.set("revision", 0)
@@ -763,7 +778,14 @@ function staffStages(c) {
   var response
   $app.dao().runInTransaction((txDao) => {
     var period = requireRecord(txDao, "periodos", c.pathParam("periodoId"))
-    var courses = findByFilter(txDao, "cursos", "id != ''", "nombre", {})
+    var courses = findByFilter(txDao, "cursos", "id != ''", "orden,nombre", {})
+      .filter((course) => isGradebookCourse(txDao, course))
+    courses.sort((a, b) => {
+      var orderA = a.getInt("orden") || 0
+      var orderB = b.getInt("orden") || 0
+      if (orderA !== orderB) return orderA - orderB
+      return a.getString("nombre").localeCompare(b.getString("nombre"))
+    })
     response = courses.map((course) => {
       var workflow = findWorkflow(txDao, course.getId(), period.getId())
       var token = findFirstByFilter(
@@ -1135,7 +1157,7 @@ function saveStudent(c) {
 function staffWorkflow(c) {
   noStore(c)
   var dao = $app.dao()
-  var course = requireRecord(dao, "cursos", c.pathParam("cursoId"))
+  var course = requireGradebookCourse(dao, c.pathParam("cursoId"))
   var period = requireRecord(dao, "periodos", c.pathParam("periodoId"))
   var workflow = findWorkflow(dao, course.getId(), period.getId())
   return c.json(200, { instancia: workflow ? workflowDto(workflow) : null })
@@ -1431,7 +1453,7 @@ function issue(c) {
   c.bind(body)
   var data = JSON.parse(JSON.stringify(body))
   var dao = $app.dao()
-  var course = requireRecord(dao, "cursos", stringValue(data.cursoId, 15))
+  var course = requireGradebookCourse(dao, stringValue(data.cursoId, 15))
   var period = requireRecord(dao, "periodos", stringValue(data.periodoId, 15))
   var teacherName = stringValue(data.docenteNombre, 120)
 
@@ -1443,6 +1465,7 @@ function issue(c) {
   }
   var response
   $app.dao().runInTransaction((txDao) => {
+    requireGradebookCourse(txDao, course)
     requireConfigurationReady(txDao, course, period)
     ensureDraftWorkflow(txDao, course.getId(), period.getId())
     deleteOtherTokens(txDao, course.getId(), period.getId(), "")
@@ -1536,6 +1559,9 @@ module.exports = {
   revokeStudentApproval: revokeStudentApproval,
   submitPeriod: submitPeriod,
   issue: issue,
+  issueTeacherLink: issue,
+  isGradebookCourse: isGradebookCourse,
+  requireGradebookCourse: requireGradebookCourse,
   rotate: rotate,
   recover: recover
 }

@@ -6,6 +6,91 @@ Las pantallas institucionales autenticadas leen las colecciones estándar median
 
 La credencial docente viaja en `X-CYS-Teacher-Token`. Las respuestas del gateway llevan `Cache-Control: no-store`. PocketBase conserva SHA-256 para validación, un prefijo administrativo y una copia cifrada que sólo puede recuperar una sesión institucional.
 
+---
+
+## Estructura de colecciones y evolución de esquema
+
+El backend PocketBase implementa las siguientes colecciones canónicas actualizadas mediante migraciones versionadas:
+
+### Colección `cursos`
+- `nombre` (text, requerido): Denominación oficial del curso o sala (`Sala de 2 y 3 años`, `Sala de 4 y 5 años`, `1°`, `2°`, ..., `7°`).
+- `nivel_id` (relation `niveles`, requerido): Vinculación al nivel educativo (`Inicial` o `Primario`).
+- `escala_id` (relation `escalas_calificacion`, opcional): Escala de calificaciones asociada. Es obligatoria para cursos de Nivel Primario y **permanece vacía para salas de Nivel Inicial**.
+- `turno` (select: `Mañana` | `Tarde` | `Jornada Completa`, opcional): Turno del curso en primaria; en inicial permanece opcional.
+- `orden` (number entero, opcional): Posición canónica para ordenamiento pedagógico transversal del colegio. Valores asignados:
+  - `orden: 2` $\to$ *Sala de 2 y 3 años*
+  - `orden: 4` $\to$ *Sala de 4 y 5 años*
+  - `orden: 11` a `17` $\to$ *1.° a 7.° Grado de Primaria* (`10 + grado`)
+
+### Colección `inscripciones`
+- `alumno_id` (relation `alumnos`, requerido).
+- `curso_id` (relation `cursos`, requerido).
+- `ciclo_id` (relation `ciclos_lectivos`, requerido).
+- `numero_orden` (number entero, opcional): Número de lista del estudiante.
+- `numero_inscripcion` (text, opcional): Folio o matrícula administrativa.
+- `fecha_inscripcion`, `fecha_ingreso`, `fecha_egreso` (date, opcional).
+- `estado` (select: `Regular` | `Libre` | `Baja`, requerido).
+- `modalidad_jornada` (select: `Mañana` | `Tarde` | `Jornada Completa`, opcional): Régimen de jornada escolar del estudiante. Modela tanto el turno simple como la jornada completa flexible de Nivel Inicial y Primario.
+- `promociono_con_acompanamiento`, `posee_apoyos`, `cuales_apoyos` (inclusión escolar).
+- Campos de historial de pase y registro administrativo (`escuela_inicial`, `fecha_ingreso_inicial`, `fecha_egreso_inicial`, `cambios_escuela`, `cambio_domicilio`).
+
+### Colección `alumnos`
+- `apellidos`, `nombres` (text, requerido).
+- `dni` (text, opcional): Documento nacional de identidad. Es opcional en el esquema para permitir la inscripción de alumnos de Nivel Inicial con documento en trámite o no emitido.
+- `numero_legajo` (text, opcional): Identificador de legajo escolar (opcional en Inicial).
+- `fecha_nacimiento`, `sexo`, `nacionalidad`, `domicilio`, `localidad` (datos censales).
+- `usuario_acadeu`, `clave_acadeu` (text, opcional): Credenciales de plataforma complementaria.
+
+---
+
+## Protección y aislamiento de regímenes por curso/nivel
+
+PocketBase aplica guardas a nivel de servidor dentro de las transacciones de sus gateways para impedir la interacción indebida entre regímenes de evaluación y niveles escolares:
+
+```mermaid
+flowchart TD
+    Req["Solicitud a Endpoint de Gateway"] --> CheckRegime{"¿Tipo de subsistema?"}
+    CheckRegime -->|Boletines / Libreta| CheckScale{"requireGradebookCourse<br/>¿curso.escala_id presente?"}
+    CheckScale -->|Sí| ExecBoletin["Permitir flujo de Boletines (Primaria)"]
+    CheckScale -->|No| RejectBoletin["Rechazar 400 Bad Request<br/>'Este curso no participa del régimen de boletines.'"]
+    
+    CheckRegime -->|Informes de Maestras| CheckPrimary{"isPrimaryCourse<br/>¿Pertenece a Nivel Primario?"}
+    CheckPrimary -->|Sí| ExecInforme["Permitir flujo de Informes de Áreas Especiales"]
+    CheckPrimary -->|No| RejectInforme["Rechazar 400 Bad Request<br/>'Este tipo de informe corresponde únicamente a Nivel Primario.'"]
+    
+    CheckRegime -->|Asistencias Mensuales| CheckAtt{"Validar Nivel Primario"}
+    CheckAtt -->|Sí| ExecAtt["Permitir carga mensual"]
+    CheckAtt -->|No| RejectAtt["Rechazar 400 Bad Request"]
+```
+
+### A. Guarda contra cursos sin escala en Boletines (`requireGradebookCourse`)
+Los gateways de configuración curricular (`pb_hooks/lib/curriculum.js`) y de libreta directiva/docente (`pb_hooks/lib/teacherAccess.js`) aplican la guarda `requireGradebookCourse(dao, courseId)`.
+
+Si un curso carece de `escala_id` (como es el caso de *Sala de 2 y 3 años* y *Sala de 4 y 5 años* de Nivel Inicial), el servidor cancela la operación y responde:
+- Código HTTP: `400 Bad Request`
+- Mensaje: `"Este curso no participa del régimen de boletines."`
+
+Aplica a todas las siguientes rutas:
+- `POST /api/cys/enlaces-docentes` (emisión de enlace).
+- `POST /api/cys/enlaces-docentes/:tokenId/rotar` y `/recuperar`.
+- `GET /api/cys/docente/contexto` y `GET/PUT /api/cys/docente/alumnos/:inscripcionId`.
+- `POST /api/cys/docente/enviar`.
+- `GET /api/cys/directivo/instancias/:cursoId/:periodoId`.
+- `GET/PUT /api/cys/directivo/alumnos/:inscripcionId`.
+- `GET /api/cys/directivo/etapas/:periodoId` y `GET /api/cys/directivo/revision/:cursoId/:periodoId`.
+- `POST /api/cys/directivo/boletines/:inscripcionId/visar` y `/retirar-visado`.
+- `GET /api/cys/directivo/boletines/:inscripcionId/instantanea`.
+- Rutas del constructor curricular `/api/cys/directivo/configuracion/*`.
+
+### B. Guarda de Nivel Primario en Informes de Maestras (`isPrimaryCourse`)
+En `pb_hooks/lib/teacherReports.js`, la emisión de enlaces multi-curso (`POST /api/cys/informes/enlaces`) y las operaciones sobre informes de áreas especiales de Primaria (`PRIMER_BIMESTRE`, `PRIMER_CUATRIMESTRE`, `CICLO_FINAL`) ejecutan la validación `isPrimaryCourse(dao, course)`.
+
+Si cualquiera de los cursos seleccionados no corresponde a Primaria (por ejemplo, si se incluye una sala de Inicial):
+- Código HTTP: `400 Bad Request`
+- Mensaje: `"Este tipo de informe corresponde únicamente a Nivel Primario."`
+
+---
+
 ## Ruta pública de contacto
 
 ### `POST /api/cys/contacto`
@@ -34,7 +119,9 @@ El servidor valida tipos y longitudes, escapa el contenido para HTML y envía el
 
 El cliente sólo muestra éxito después de recibir `200`. Ante cualquier error conserva los campos para permitir un nuevo intento.
 
-## Rutas docentes
+---
+
+## Rutas docentes de Boletines (Nivel Primario)
 
 ### `GET /api/cys/docente/contexto`
 
@@ -91,13 +178,15 @@ Valida dentro de una transacción que el curso tenga alumnos y materias, que cad
 
 Si la carga está incompleta responde `422` con totales y alumnos pendientes. Si está completa cambia la instancia a `CONTROL_DIRECTIVO`, registra fecha y docente, incrementa la revisión y elimina la llave del curso y período en la misma transacción.
 
-## Rutas institucionales para enlaces
+---
+
+## Rutas institucionales para enlaces de boletines
 
 Estas rutas exigen una sesión de la colección `users`.
 
 ### `POST /api/cys/enlaces-docentes`
 
-Emite un enlace sin vencimiento calendario, reemplaza cualquier llave previa del mismo curso y período y devuelve el secreto. El acceso termina por reemplazo, eliminación o entrega del bimestre.
+Emite un enlace sin vencimiento calendario, reemplaza cualquier llave previa del mismo curso y período y devuelve el secreto. El acceso termina por reemplazo, eliminación o entrega del bimestre. Exige curso con `escala_id`.
 
 ### `POST /api/cys/enlaces-docentes/:tokenId/rotar`
 
@@ -109,13 +198,15 @@ Devuelve el secreto vigente sin rotarlo únicamente cuando el registro existe y 
 
 La lista y eliminación usan la colección estándar `tokens_acceso_docente` con sesión institucional. No existe un endpoint de activación ni un campo `activo`: la vigencia se representa mediante la existencia de una única llave por curso y período. El antiguo `PATCH /api/cys/enlaces-docentes/:tokenId/estado` fue retirado y debe responder `404`. Las respuestas posteriores sólo contienen el hash, el prefijo y la disponibilidad de recuperación, nunca el secreto en texto plano.
 
-## Rutas institucionales para la planilla
+---
+
+## Rutas institucionales para la planilla de boletines
 
 Estas rutas exigen una sesión de la colección `users`.
 
 ### `GET /api/cys/directivo/instancias/:cursoId/:periodoId`
 
-Devuelve la instancia del curso y período, o `null` si la carga todavía no fue iniciada. El frontend usa el estado para montar el editor únicamente durante `CONTROL_DIRECTIVO`.
+Devuelve la instancia del curso y período, o `null` si la carga todavía no fue iniciada. El frontend usa el estado para montar el editor únicamente durante `CONTROL_DIRECTIVO`. Exige curso con `escala_id`.
 
 ### `GET /api/cys/directivo/alumnos/:inscripcionId?periodoId=:periodoId`
 
@@ -133,6 +224,8 @@ Ante un timeout, fallo de red o `5xx`, el resultado se considera incierto. El cl
 
 No existen rutas institucionales para devolver una entrega, cerrar la instancia o reabrirla. `CONTROL_DIRECTIVO` es terminal y sólo admite las correcciones realizadas mediante el endpoint de alumno.
 
+---
+
 ## Configuración curricular anual
 
 `curso_materias` incluye `ciclo_id`. Las escrituras directas de `curso_materias` y `criterios_evaluacion` están cerradas para sesiones autenticadas. El constructor usa estas rutas institucionales:
@@ -145,11 +238,13 @@ No existen rutas institucionales para devolver una entrega, cerrar la instancia 
 | `PUT /api/cys/directivo/configuracion/materias/orden` | Actualizar conjuntamente el orden de materias del mismo curso y ciclo. |
 | `PUT /api/cys/directivo/configuracion/materias/:cursoMateriaId/criterios` | Reemplazar los criterios de una materia en una transacción; admite hasta cinco. |
 
-Cada operación revalida dentro de la transacción que ningún bimestre del curso y ciclo haya iniciado su workflow. La emisión del enlace exige escala con valores, al menos una materia y exactamente cinco criterios por materia. El catálogo global de materias conserva la creación autenticada; sus nombres no se editan desde el constructor.
+Cada operación revalida dentro de la transacción que el curso posea escala (`requireGradebookCourse`) y que ningún bimestre del curso y ciclo haya iniciado su workflow. La emisión del enlace exige escala con valores, al menos una materia y exactamente cinco criterios por materia. El catálogo global de materias conserva la creación autenticada; sus nombres no se editan desde el constructor.
+
+---
 
 ## Etapas y visado de boletines
 
-`GET /api/cys/directivo/etapas/:periodoId` devuelve, para cada curso, `etapa`, `revision`, `totalBoletines` y `visados`. Las etapas son `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF`. Son una proyección del servidor: el estado persistido de control sigue siendo `BORRADOR_DOCENTE` o `CONTROL_DIRECTIVO`.
+`GET /api/cys/directivo/etapas/:periodoId` devuelve, para cada curso con escala, `etapa`, `revision`, `totalBoletines` y `visados`. Las etapas son `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF`. Son una proyección del servidor: el estado persistido de control sigue siendo `BORRADOR_DOCENTE` o `CONTROL_DIRECTIVO`. Cursos sin escala son excluidos de esta proyección.
 
 `GET /api/cys/directivo/revision/:cursoId/:periodoId` devuelve desde una transacción la instancia, su revisión, el conteo y la lista de boletines con `estado`, `revisionContenido`, fecha y usuario de visado. `alumnosSinIncorporar` informa matrículas evaluables ausentes de la entrega, incluidas bajas dentro del rango confirmado. Los boletines históricos se migran como `PENDIENTE_REVISION`; ningún registro se visa por inferencia.
 
@@ -159,16 +254,19 @@ Cada operación revalida dentro de la transacción que ningún bimestre del curs
 
 `visados_boletin` es legible para usuarios institucionales y rechaza creación, edición y eliminación directas. La generación de PDF no está implementada; `LISTO_PARA_PDF` expresa únicamente la condición necesaria para la siguiente fase.
 
+---
+
 ## Respuestas de autorización
 
 - `401`: enlace ausente, inválido, reemplazado o eliminado.
 - `403`: el registro o la operación está fuera del alcance concedido.
-- `400`: referencias o valores inválidos.
+- `400`: referencias o valores inválidos (incluyendo cursos que no participan del régimen solicitado).
 - `409`: la revisión esperada ya no es vigente; la operación no produjo escrituras.
 - `422`: el bimestre todavía tiene alumnos, materias o cierres pendientes.
 
 Los mensajes públicos son deliberadamente genéricos. El frontend debe retirar la planilla cuando recibe `401` o `403` y no debe reintentar una escritura automáticamente.
 
+---
 
 ## Elegibilidad acumulativa para PDF (publicada)
 
@@ -180,6 +278,7 @@ Se requieren períodos únicos desde el primer bimestre evaluable confirmado has
 
 `visados_boletin.generacion_visado` aumenta al visar, retirar o corregir. Repetir una operación ya satisfecha no aumenta el contador. La migración inicializa los visados existentes en 1 y pendientes en 0; no reconstruye eventos históricos. Las respuestas de visar/retirar incluyen la generación actual. La revisión de curso se conserva como control de concurrencia para escrituras.
 
+---
 
 ## Instantánea documental de preparación (publicada)
 
@@ -193,9 +292,13 @@ La protección documental devuelve 422 con `codigo=DATOS_DOCUMENTALES_INCOMPLETO
 
 Sólo se consultan evaluaciones y cierres del rango evaluable hasta el corte; la cursada pendiente conserva 1..corte. La promoción con acompañamiento se devuelve como null antes de cuarto; los apoyos y datos administrativos se identifican como valores actuales de matrícula/alumno, sin atribuirles historial. La respuesta no incluye credenciales Acadeu, DNI ni contactos del tutor. Los campos anuales sin fuente no se inventan. Los pendientes de integración son MAPEO_ESCALA, CIERRE_ANUAL e HISTORIAL_ADMINISTRATIVO. El adaptador y la emisión están publicados; el render de cuarto continúa bloqueado por fuentes anuales pendientes.
 
+---
+
 ## Servicio local de prueba PDF (fuera de PocketBase)
 
 POST `/__cys/pdf-prueba` pertenece al middleware Vite de desarrollo; no es un endpoint desplegado de PocketBase. Recibe `{ inscripcionId, periodoId, huella }` y Authorization de la sesión institucional; consulta dos veces el GET de instantánea local y devuelve PDF adjunto sólo si la huella permanece igual. Rechaza origen ajeno, solicitudes sin sesión, cambios de datos, faltantes de visado y bloqueos documentales. Genera o reutiliza una emisión persistida mediante el gateway y revalida la autorización para la descarga. Ver `gradebook-pdf-emission.md` para alcance y límites.
+
+---
 
 ## Emisiones persistidas (publicadas)
 
@@ -205,6 +308,7 @@ POST `/__cys/pdf-prueba` pertenece al middleware Vite de desarrollo; no es un en
 
 La colección `emisiones_boletin` no admite acceso directo de clientes. La instantánea se elimina al invalidar; las dependencias se conservan como auditoría. La retirada/corrección de un visado invalida ese corte y posteriores del mismo alumno dentro de su transacción; limpieza física reintentable cada minuto. El motor Vite local usa estos endpoints cuando está configurada la clave privada. Producción usa el mismo contrato mediante el worker publicado.
 
+---
 
 ## ZIP de emisiones por curso (servidor Vite local)
 
@@ -212,11 +316,13 @@ POST `/__cys/pdf-lote` recibe `{ cursoId, periodoId, emisiones: [{ inscripcionId
 
 Consulta los gateways existentes de instantánea, búsqueda de emisión por versión y descarga protegida. Verifica el curso, la huella y el ID de emisión antes de agregar cada archivo y vuelve a verificar todas las entradas al finalizar. Entrega `application/zip`, `Content-Disposition` UTF-8 y `Cache-Control: no-store`. Un cambio invalida la respuesta completa; no entrega silenciosamente un subconjunto. La selección explícita de los PDFs preparados ocurre en el modal antes de solicitar el ZIP. Límite de 100 MB y exclusión mutua con el generador individual. No persiste el ZIP ni crea un registro de lote.
 
+---
 
-## Rutas PDF publicadas en produccion
+## Rutas PDF publicadas en producción
 
-Caddy deriva POST/OPTIONS `/api/cys/pdf/generar` y `/api/cys/pdf/lote` al servicio Node interno. Conservan respectivamente los contratos de `/__cys/pdf-prueba` y `/__cys/pdf-lote`, con Authorization institucional, CORS limitado al origen productivo, revalidacion de visados y respuestas no-store. El frontend usa estas rutas en produccion y las de Vite en desarrollo. El worker requiere siempre clave privada configurada para publicar; no expone un modo de prueba sin persistencia. Las rutas de almacenamiento y descarga protegida siguen perteneciendo a PocketBase.
+Caddy deriva POST/OPTIONS `/api/cys/pdf/generar` y `/api/cys/pdf/lote` al servicio Node interno. Conservan respectivamente los contratos de `/__cys/pdf-prueba` y `/__cys/pdf-lote`, con Authorization institucional, CORS limitado al origen productivo, revalidación de visados y respuestas no-store. El frontend usa estas rutas en producción y las de Vite en desarrollo. El worker requiere siempre clave privada configurada para publicar; no expone un modo de prueba sin persistencia. Las rutas de almacenamiento y descarga protegida siguen perteneciendo a PocketBase.
 
+---
 
 ## Resultado de publicación y descarga PDF
 
@@ -224,6 +330,7 @@ POST `/api/cys/directivo/boletines/:inscripcionId/emisiones` amplía su respuest
 
 El worker individual (`/__cys/pdf-prueba` en desarrollo y `/api/cys/pdf/generar` en producción) devuelve `X-CYS-PDF-Result`: generated para una emisión nueva, reused para una existente y unknown cuando el publicador anterior no informa el resultado. Conserva `X-CYS-Emission-Id` y expone ambos headers mediante CORS. La UI no deduce generación a partir del tiempo de respuesta. El ZIP reúne emisiones disponibles y no genera PDFs.
 
+---
 
 ## Cursada evaluable institucional (publicada el 3 de octubre de 2026)
 
@@ -237,8 +344,9 @@ Contexto docente y etapas institucionales agregan `cursadasPendientes` (matrícu
 
 La instantánea PDF agrega `datos.cursada`, incluido en su huella. Las entregas anteriores con cursada pendiente mantienen la elegibilidad legada. Con alcance confirmado se bloquean cortes exteriores; las dependencias y períodos de altas tardías comienzan en el primer bimestre evaluable. Los anteriores se representan documentalmente sin registros académicos ficticios. Confirmar una cursada con ingreso tardío confirma también la documentación del colegio anterior en el legajo, según la decisión de dirección.
 
-
 GET de alumno docente e institucional agrega `bimestreApoyos`, calculado desde la cursada confirmada (primero en el contrato legado). El editor permite cargar apoyos en ese bimestre y la entrega aplica NO por defecto allí. Los faltantes documentales indican ese mismo bimestre para su corrección. No se modifica la política de visado ni el cuarto bimestre de promoción con acompañamiento.
+
+---
 
 ## Registros mensuales de asistencia (feature local, 8 de octubre de 2026)
 

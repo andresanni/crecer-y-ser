@@ -102,8 +102,182 @@ function parseCsv(content) {
   });
 }
 
+function normalizeCourseName(name) {
+  if (!name) return '';
+  const trimmed = String(name).trim();
+  const normalized = trimmed
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  if (/^sala (?:de )?2 y 3(?: anos)?$/i.test(normalized)) {
+    return 'Sala de 2 y 3 años';
+  }
+  if (/^sala (?:de )?4 y 5(?: anos)?$/i.test(normalized)) {
+    return 'Sala de 4 y 5 años';
+  }
+  return trimmed;
+}
+
+function normalizeModalidadJornada(rawVal) {
+  if (rawVal === undefined || rawVal === null) {
+    return { value: '', isValid: true };
+  }
+  const trimmed = String(rawVal).trim();
+  if (!trimmed) {
+    return { value: '', isValid: true };
+  }
+  const normalized = trimmed
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  if (['manana', 'turno manana', 'tm', 'simple'].includes(normalized)) {
+    return { value: 'Mañana', isValid: true };
+  }
+  if (['jornada completa', 'completa', 'jc'].includes(normalized)) {
+    return { value: 'Jornada Completa', isValid: true };
+  }
+  if (['tarde', 'turno tarde', 'tt'].includes(normalized)) {
+    return { value: 'Tarde', isValid: true };
+  }
+
+  return { value: trimmed, isValid: false };
+}
+
+function hasAnyGuardian2Field(row) {
+  const fields = [
+    'responsable2_dni_tipo',
+    'responsable2_dni_numero',
+    'responsable2_dni_nnumero',
+    'responsable2_apellidos',
+    'responsable2_nombres',
+    'responsable2_vinculo',
+    'responsable2_nacionalidad',
+    'responsable2_profesion',
+    'responsable2_telefono',
+    'responsable2_email'
+  ];
+  return fields.some(field => row[field] !== undefined && String(row[field]).trim().length > 0);
+}
+
+function normalizePersonName(val) {
+  return (val || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function normalizeBirthDate(val) {
+  if (!val) return '';
+  const trimmed = String(val).trim();
+  const match = trimmed.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]}`;
+  }
+  return trimmed;
+}
+
+function buildStudentCompositeKey(apellidos, nombres, fechaNacimiento) {
+  return `${normalizePersonName(apellidos)}|${normalizePersonName(nombres)}|${normalizeBirthDate(fechaNacimiento)}`;
+}
+
+function generateIngestionSummary(records) {
+  const courseCounts = new Map();
+  let morningCount = 0;
+  let fullDayCount = 0;
+  let afternoonCount = 0;
+  let unspecifiedJornadaCount = 0;
+  let twoGuardiansCount = 0;
+  let oneGuardianCount = 0;
+  let withoutDniCount = 0;
+  let withoutLegajoCount = 0;
+  let withoutDniOrLegajoCount = 0;
+
+  for (const row of records) {
+    const courseName = row.curso_nombre || 'Sin curso';
+    courseCounts.set(courseName, (courseCounts.get(courseName) || 0) + 1);
+
+    const rawJornada = row.modalidad_jornada ?? row.jornada;
+    const normalizedJornada = normalizeModalidadJornada(rawJornada).value;
+    if (normalizedJornada === 'Mañana') {
+      morningCount++;
+    } else if (normalizedJornada === 'Jornada Completa') {
+      fullDayCount++;
+    } else if (normalizedJornada === 'Tarde') {
+      afternoonCount++;
+    } else {
+      unspecifiedJornadaCount++;
+    }
+
+    if (hasAnyGuardian2Field(row)) {
+      twoGuardiansCount++;
+    } else {
+      oneGuardianCount++;
+    }
+
+    const hasDni = Boolean(row.alumno_dni && String(row.alumno_dni).trim());
+    const hasLegajo = Boolean(row.alumno_legajo && String(row.alumno_legajo).trim());
+
+    if (!hasDni) {
+      withoutDniCount++;
+    }
+    if (!hasLegajo) {
+      withoutLegajoCount++;
+    }
+    if (!hasDni || !hasLegajo) {
+      withoutDniOrLegajoCount++;
+    }
+  }
+
+  return {
+    total: records.length,
+    courseCounts,
+    morningCount,
+    fullDayCount,
+    afternoonCount,
+    unspecifiedJornadaCount,
+    twoGuardiansCount,
+    oneGuardianCount,
+    withoutDniCount,
+    withoutLegajoCount,
+    withoutDniOrLegajoCount
+  };
+}
+
+function printSummaryDetails(summary) {
+  console.log(`Total de registros: ${summary.total}`);
+
+  console.log('\nDesglose de alumnos por curso/sala:');
+  for (const [course, count] of summary.courseCounts.entries()) {
+    console.log(`  - ${course}: ${count}`);
+  }
+
+  console.log('\nModalidad de jornada:');
+  console.log(`  - Turno Mañana: ${summary.morningCount}`);
+  console.log(`  - Jornada Completa: ${summary.fullDayCount}`);
+  if (summary.afternoonCount > 0) {
+    console.log(`  - Turno Tarde: ${summary.afternoonCount}`);
+  }
+  if (summary.unspecifiedJornadaCount > 0) {
+    console.log(`  - Sin especificar: ${summary.unspecifiedJornadaCount}`);
+  }
+
+  console.log('\nResponsables / Tutores:');
+  console.log(`  - Alumnos con 2 tutores vinculados: ${summary.twoGuardiansCount}`);
+  console.log(`  - Alumnos con 1 tutor vinculado: ${summary.oneGuardianCount}`);
+
+  console.log('\nDocumentación y legajos:');
+  console.log(`  - Alumnos sin DNI: ${summary.withoutDniCount}`);
+  console.log(`  - Alumnos sin legajo: ${summary.withoutLegajoCount}`);
+  console.log(`  - Alumnos sin legajo o sin DNI: ${summary.withoutDniOrLegajoCount}`);
+}
+
 const REQUIRED_HEADERS = [
-  'alumno_dni',
   'alumno_apellidos',
   'alumno_nombres',
   'alumno_fecha_nacimiento',
@@ -125,24 +299,29 @@ const VALID_SEXO_VALUES = new Set(['Femenino', 'Masculino', 'No binario', 'Otro'
 const VALID_ESTADO_VALUES = new Set(['Regular', 'Baja', 'Libre']);
 const VALID_FLAG_VALUES = new Set(['SI', 'NO', '-', '']);
 
-function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDnis, encounteredNameKeys, warnings) {
+function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDnis, encounteredCompositeKeys, warnings) {
   const errors = [];
   const line = row.__lineNumber || (rowIndex + 2);
+  const compositeKey = buildStudentCompositeKey(row.alumno_apellidos, row.alumno_nombres, row.alumno_fecha_nacimiento);
 
-  if (row.alumno_dni && row.alumno_dni.trim()) {
-    const dni = row.alumno_dni.trim();
+  if (row.alumno_dni && String(row.alumno_dni).trim()) {
+    const dni = String(row.alumno_dni).trim();
     if (encounteredStudentDnis.has(dni)) {
       errors.push(`Línea ${line}: 'alumno_dni' ${dni} está duplicado en el archivo (aparece antes en la línea ${encounteredStudentDnis.get(dni)}).`);
     } else {
       encounteredStudentDnis.set(dni, line);
     }
+    if (encounteredCompositeKeys.has(compositeKey)) {
+      errors.push(`Línea ${line}: Alumno con datos repetidos '${row.alumno_apellidos}, ${row.alumno_nombres}' (${row.alumno_fecha_nacimiento || 'sin fecha'}) (aparece antes en la línea ${encounteredCompositeKeys.get(compositeKey)}).`);
+    } else {
+      encounteredCompositeKeys.set(compositeKey, line);
+    }
   } else {
     warnings.push(`Línea ${line}: 'alumno_dni' no especificado para "${row.alumno_apellidos}, ${row.alumno_nombres}". Se importará sin DNI para asignación posterior.`);
-    const nameKey = `${(row.alumno_apellidos || '').trim().toLowerCase()}::${(row.alumno_nombres || '').trim().toLowerCase()}`;
-    if (encounteredNameKeys.has(nameKey)) {
-      errors.push(`Línea ${line}: Alumno sin DNI con nombre repetido '${row.alumno_apellidos}, ${row.alumno_nombres}' (aparece antes en la línea ${encounteredNameKeys.get(nameKey)}).`);
+    if (encounteredCompositeKeys.has(compositeKey)) {
+      errors.push(`Línea ${line}: Alumno sin DNI con datos repetidos '${row.alumno_apellidos}, ${row.alumno_nombres}' (${row.alumno_fecha_nacimiento || 'sin fecha'}) (aparece antes en la línea ${encounteredCompositeKeys.get(compositeKey)}).`);
     } else {
-      encounteredNameKeys.set(nameKey, line);
+      encounteredCompositeKeys.set(compositeKey, line);
     }
   }
 
@@ -208,8 +387,16 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
     }
   });
 
-  const guardianDni = (row.responsable_dni_numero || row.responsable_dni_nnumero || '').trim();
-  if (!guardianDni) {
+  const rawJornada = row.modalidad_jornada ?? row.jornada;
+  const normalizedJornada = normalizeModalidadJornada(rawJornada);
+  if (!normalizedJornada.isValid) {
+    errors.push(`Línea ${line}: 'modalidad_jornada' ("${normalizedJornada.value}") inválido. Opciones admitidas: Mañana, Jornada Completa, Tarde o vacío.`);
+  } else {
+    row.modalidad_jornada = normalizedJornada.value;
+  }
+
+  const guardian1Dni = (row.responsable_dni_numero || row.responsable_dni_nnumero || '').trim();
+  if (!guardian1Dni) {
     errors.push(`Línea ${line}: 'responsable_dni_numero' es obligatorio.`);
   }
 
@@ -219,6 +406,25 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
 
   if (!row.responsable_nombres || !row.responsable_nombres.trim()) {
     errors.push(`Línea ${line}: 'responsable_nombres' es obligatorio.`);
+  }
+
+  if (hasAnyGuardian2Field(row)) {
+    const guardian2Dni = (row.responsable2_dni_numero || row.responsable2_dni_nnumero || '').trim();
+    if (!guardian2Dni) {
+      errors.push(`Línea ${line}: Si se informa el segundo responsable, 'responsable2_dni_numero' es obligatorio.`);
+    }
+
+    if (!row.responsable2_apellidos || !row.responsable2_apellidos.trim()) {
+      errors.push(`Línea ${line}: Si se informa el segundo responsable, 'responsable2_apellidos' es obligatorio.`);
+    }
+
+    if (!row.responsable2_nombres || !row.responsable2_nombres.trim()) {
+      errors.push(`Línea ${line}: Si se informa el segundo responsable, 'responsable2_nombres' es obligatorio.`);
+    }
+
+    if (guardian2Dni && guardian1Dni && guardian2Dni === guardian1Dni) {
+      errors.push(`Línea ${line}: El DNI del segundo responsable ("${guardian2Dni}") no puede ser idéntico al del primer responsable en la misma fila.`);
+    }
   }
 
   ['promociono_con_acompanamiento', 'posee_apoyos'].forEach(field => {
@@ -318,6 +524,25 @@ async function postRecord(url, token, collectionName, payload) {
   return await response.json();
 }
 
+async function patchRecord(url, token, collectionName, id, payload) {
+  const targetUrl = `${url.replace(/\/+$/, '')}/api/collections/${collectionName}/records/${id}`;
+  const response = await fetch(targetUrl, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Fallo al actualizar registro en ${collectionName}: HTTP ${response.status} - ${errorText}`);
+  }
+
+  return await response.json();
+}
+
 async function main() {
   const options = parseCommandLineArguments();
 
@@ -358,7 +583,10 @@ async function main() {
   ciclos.forEach(c => cyclesMap.set(String(c.ano), c));
 
   const coursesMap = new Map();
-  cursos.forEach(c => coursesMap.set(c.nombre.trim(), c));
+  cursos.forEach(c => {
+    coursesMap.set(c.nombre.trim(), c);
+    coursesMap.set(normalizeCourseName(c.nombre), c);
+  });
 
   console.log(`- Ciclos encontrados: ${ciclos.length} (${ciclos.map(c => c.ano).join(', ')})`);
   console.log(`- Cursos encontrados: ${cursos.length} (${cursos.map(c => c.nombre).join(', ')})`);
@@ -390,18 +618,19 @@ async function main() {
 
   console.log('Ejecutando validación exhaustiva de filas...');
   const encounteredStudentDnis = new Map();
-  const encounteredNameKeys = new Map();
+  const encounteredCompositeKeys = new Map();
   const allValidationErrors = [];
   const allValidationWarnings = [];
 
   records.forEach((row, index) => {
+    row.curso_nombre = normalizeCourseName(row.curso_nombre);
     const rowErrors = validateRow(
       row,
       index,
       cyclesMap,
       coursesMap,
       encounteredStudentDnis,
-      encounteredNameKeys,
+      encounteredCompositeKeys,
       allValidationWarnings
     );
     if (rowErrors.length > 0) {
@@ -427,11 +656,14 @@ async function main() {
 
   console.log('Todas las filas cumplen estrictamente los contratos de datos y relaciones.');
 
+  const summary = generateIngestionSummary(records);
+
   if (options.isDryRun) {
     console.log('\n' + '='.repeat(70));
     console.log(' RESUMEN DEL DRY-RUN (SIMULACIÓN FINALIZADA CON ÉXITO)');
     console.log('='.repeat(70));
-    console.log(`Total de registros listos para ingestar: ${records.length}`);
+    printSummaryDetails(summary);
+    console.log('\n' + '-'.repeat(70));
     console.log('Para ejecutar la inserción definitiva en PocketBase, ejecute el comando con el flag --execute:');
     console.log(`  node scripts/ingest-students.mjs --csv "${options.csvPath}" --execute`);
     return;
@@ -443,17 +675,19 @@ async function main() {
 
   const studentLookupMap = new Map();
   existingAlumnos.forEach(a => {
-    if (a.dni) {
+    if (a.dni && String(a.dni).trim()) {
       studentLookupMap.set(`dni:${String(a.dni).trim()}`, a);
     }
-    const nameKey = `name:${(a.apellidos || '').trim().toLowerCase()}::${(a.nombres || '').trim().toLowerCase()}`;
-    studentLookupMap.set(nameKey, a);
+    const compositeKey = `composite:${buildStudentCompositeKey(a.apellidos, a.nombres, a.fecha_nacimiento)}`;
+    studentLookupMap.set(compositeKey, a);
   });
 
-  const guardianDniToRecordMap = new Map();
+  const guardiansByDni = new Map();
   existingResponsables.forEach(r => {
     const dniNum = r.dni_numero || r.dni;
-    if (dniNum) guardianDniToRecordMap.set(String(dniNum).trim(), r);
+    if (dniNum && String(dniNum).trim()) {
+      guardiansByDni.set(String(dniNum).trim(), r);
+    }
   });
 
   const existingLinkSet = new Set();
@@ -461,9 +695,9 @@ async function main() {
     existingLinkSet.add(`${l.alumno_id}::${l.responsable_id}`);
   });
 
-  const existingEnrollmentSet = new Set();
+  const existingEnrollmentMap = new Map();
   existingEnrollments.forEach(e => {
-    existingEnrollmentSet.add(`${e.alumno_id}::${e.curso_id}::${e.ciclo_id}`);
+    existingEnrollmentMap.set(`${e.alumno_id}::${e.curso_id}::${e.ciclo_id}`, e);
   });
 
   const stats = {
@@ -474,6 +708,7 @@ async function main() {
     linksCreated: 0,
     linksReused: 0,
     enrollmentsCreated: 0,
+    enrollmentsUpdated: 0,
     enrollmentsSkipped: 0
   };
 
@@ -482,16 +717,16 @@ async function main() {
     const line = row.__lineNumber || (i + 2);
     const progress = `[${i + 1}/${records.length}]`;
 
-    const guardianDni = (row.responsable_dni_numero || row.responsable_dni_nnumero || '').trim();
-    let guardianId = '';
+    const guardian1Dni = (row.responsable_dni_numero || row.responsable_dni_nnumero || '').trim();
+    let guardian1Id = '';
 
-    if (guardianDniToRecordMap.has(guardianDni)) {
-      guardianId = guardianDniToRecordMap.get(guardianDni).id;
+    if (guardiansByDni.has(guardian1Dni)) {
+      guardian1Id = guardiansByDni.get(guardian1Dni).id;
       stats.guardiansReused++;
     } else {
-      const guardianPayload = {
+      const guardian1Payload = {
         dni_tipo: (row.responsable_dni_tipo || 'DNI').trim(),
-        dni_numero: guardianDni,
+        dni_numero: guardian1Dni,
         apellidos: (row.responsable_apellidos || '').trim(),
         nombres: (row.responsable_nombres || '').trim(),
         nacionalidad: (row.responsable_nacionalidad || '').trim(),
@@ -499,20 +734,31 @@ async function main() {
         telefono: (row.responsable_telefono || '').trim(),
         email: (row.responsable_email || '').trim()
       };
-      const createdGuardian = await postRecord(options.pbUrl, token, 'responsables', guardianPayload);
-      guardianId = createdGuardian.id;
-      guardianDniToRecordMap.set(guardianDni, createdGuardian);
+      const createdGuardian1 = await postRecord(options.pbUrl, token, 'responsables', guardian1Payload);
+      guardian1Id = createdGuardian1.id;
+      guardiansByDni.set(guardian1Dni, createdGuardian1);
       stats.guardiansCreated++;
     }
 
     const studentDni = (row.alumno_dni || '').trim();
-    const lookupKey = studentDni
-      ? `dni:${studentDni}`
-      : `name:${(row.alumno_apellidos || '').trim().toLowerCase()}::${(row.alumno_nombres || '').trim().toLowerCase()}`;
-    let studentId = '';
+    const compositeLookupKey = `composite:${buildStudentCompositeKey(row.alumno_apellidos, row.alumno_nombres, row.alumno_fecha_nacimiento)}`;
+    const dniLookupKey = studentDni ? `dni:${studentDni}` : null;
 
-    if (studentLookupMap.has(lookupKey)) {
-      studentId = studentLookupMap.get(lookupKey).id;
+    let studentRecord = null;
+    if (dniLookupKey && studentLookupMap.has(dniLookupKey)) {
+      studentRecord = studentLookupMap.get(dniLookupKey);
+    } else if (studentLookupMap.has(compositeLookupKey)) {
+      studentRecord = studentLookupMap.get(compositeLookupKey);
+    }
+
+    let studentId = '';
+    if (studentRecord) {
+      studentId = studentRecord.id;
+      if (!studentRecord.dni && studentDni) {
+        await patchRecord(options.pbUrl, token, 'alumnos', studentRecord.id, { dni: studentDni });
+        studentRecord.dni = studentDni;
+        studentLookupMap.set(`dni:${studentDni}`, studentRecord);
+      }
       stats.studentsReused++;
     } else {
       const studentPayload = {
@@ -530,33 +776,88 @@ async function main() {
       };
       const createdStudent = await postRecord(options.pbUrl, token, 'alumnos', studentPayload);
       studentId = createdStudent.id;
-      studentLookupMap.set(lookupKey, createdStudent);
-      if (studentDni) {
-        studentLookupMap.set(`name:${(row.alumno_apellidos || '').trim().toLowerCase()}::${(row.alumno_nombres || '').trim().toLowerCase()}`, createdStudent);
+      if (dniLookupKey) {
+        studentLookupMap.set(dniLookupKey, createdStudent);
       }
+      studentLookupMap.set(compositeLookupKey, createdStudent);
       stats.studentsCreated++;
     }
 
-    const linkKey = `${studentId}::${guardianId}`;
-    if (existingLinkSet.has(linkKey)) {
+    const link1Key = `${studentId}::${guardian1Id}`;
+    if (existingLinkSet.has(link1Key)) {
       stats.linksReused++;
     } else {
-      const linkPayload = {
+      const link1Payload = {
         alumno_id: studentId,
-        responsable_id: guardianId,
+        responsable_id: guardian1Id,
         vinculo: (row.responsable_vinculo || 'Padre').trim()
       };
-      await postRecord(options.pbUrl, token, 'alumno_responable', linkPayload);
-      existingLinkSet.add(linkKey);
+      await postRecord(options.pbUrl, token, 'alumno_responable', link1Payload);
+      existingLinkSet.add(link1Key);
       stats.linksCreated++;
+    }
+
+    if (hasAnyGuardian2Field(row)) {
+      const guardian2Dni = (row.responsable2_dni_numero || row.responsable2_dni_nnumero || '').trim();
+      let guardian2Id = '';
+
+      if (guardiansByDni.has(guardian2Dni)) {
+        guardian2Id = guardiansByDni.get(guardian2Dni).id;
+        stats.guardiansReused++;
+      } else {
+        const guardian2Payload = {
+          dni_tipo: (row.responsable2_dni_tipo || 'DNI').trim(),
+          dni_numero: guardian2Dni,
+          apellidos: (row.responsable2_apellidos || '').trim(),
+          nombres: (row.responsable2_nombres || '').trim(),
+          nacionalidad: (row.responsable2_nacionalidad || '').trim(),
+          profesion: (row.responsable2_profesion || '').trim(),
+          telefono: (row.responsable2_telefono || '').trim(),
+          email: (row.responsable2_email || '').trim()
+        };
+        const createdGuardian2 = await postRecord(options.pbUrl, token, 'responsables', guardian2Payload);
+        guardian2Id = createdGuardian2.id;
+        guardiansByDni.set(guardian2Dni, createdGuardian2);
+        stats.guardiansCreated++;
+      }
+
+      const link2Key = `${studentId}::${guardian2Id}`;
+      if (existingLinkSet.has(link2Key)) {
+        stats.linksReused++;
+      } else {
+        const link2Payload = {
+          alumno_id: studentId,
+          responsable_id: guardian2Id,
+          vinculo: (row.responsable2_vinculo || 'Madre').trim()
+        };
+        await postRecord(options.pbUrl, token, 'alumno_responable', link2Payload);
+        existingLinkSet.add(link2Key);
+        stats.linksCreated++;
+      }
     }
 
     const courseRecord = coursesMap.get(row.curso_nombre.trim());
     const cycleRecord = cyclesMap.get(String(row.ciclo_ano).trim());
 
     const enrollmentKey = `${studentId}::${courseRecord.id}::${cycleRecord.id}`;
-    if (existingEnrollmentSet.has(enrollmentKey)) {
-      stats.enrollmentsSkipped++;
+    const rawJornada = row.modalidad_jornada ?? row.jornada;
+    const jornadaResult = normalizeModalidadJornada(rawJornada);
+    const jornadaValue = jornadaResult.value;
+
+    if (existingEnrollmentMap.has(enrollmentKey)) {
+      const existingEnrollment = existingEnrollmentMap.get(enrollmentKey);
+      const currentJornada = existingEnrollment.modalidad_jornada || '';
+      const hasDifferentJornada = (jornadaValue || currentJornada) && currentJornada !== jornadaValue;
+
+      if (hasDifferentJornada) {
+        await patchRecord(options.pbUrl, token, 'inscripciones', existingEnrollment.id, {
+          modalidad_jornada: jornadaValue
+        });
+        existingEnrollment.modalidad_jornada = jornadaValue;
+        stats.enrollmentsUpdated++;
+      } else {
+        stats.enrollmentsSkipped++;
+      }
     } else {
       const enrollmentPayload = {
         alumno_id: studentId,
@@ -570,10 +871,11 @@ async function main() {
         estado: (row.estado_inscripcion || 'Regular').trim(),
         promociono_con_acompanamiento: (row.promociono_con_acompanamiento || '').trim(),
         posee_apoyos: (row.posee_apoyos || '').trim(),
-        cuales_apoyos: (row.cuales_apoyos || '').trim()
+        cuales_apoyos: (row.cuales_apoyos || '').trim(),
+        modalidad_jornada: jornadaValue
       };
-      await postRecord(options.pbUrl, token, 'inscripciones', enrollmentPayload);
-      existingEnrollmentSet.add(enrollmentKey);
+      const createdEnrollment = await postRecord(options.pbUrl, token, 'inscripciones', enrollmentPayload);
+      existingEnrollmentMap.set(enrollmentKey, createdEnrollment);
       stats.enrollmentsCreated++;
     }
 
@@ -586,7 +888,9 @@ async function main() {
   console.log(`- Alumnos creados:        ${stats.studentsCreated} (reutilizados existentes: ${stats.studentsReused})`);
   console.log(`- Responsables creados:   ${stats.guardiansCreated} (reutilizados existentes: ${stats.guardiansReused})`);
   console.log(`- Vínculos creados:       ${stats.linksCreated} (existentes previos: ${stats.linksReused})`);
-  console.log(`- Inscripciones creadas:  ${stats.enrollmentsCreated} (omitidas por ya existir: ${stats.enrollmentsSkipped})`);
+  console.log(`- Inscripciones creadas:  ${stats.enrollmentsCreated} (actualizadas: ${stats.enrollmentsUpdated}, omitidas por ya existir: ${stats.enrollmentsSkipped})`);
+  console.log('\n' + '-'.repeat(70));
+  printSummaryDetails(summary);
 }
 
 main().catch(err => {

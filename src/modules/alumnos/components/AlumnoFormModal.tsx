@@ -19,6 +19,7 @@ import {
   Tabs,
   InputNumber,
   Spin,
+  Card,
 } from 'antd';
 import {
   IdcardOutlined,
@@ -39,13 +40,21 @@ import {
   LeftOutlined,
   CheckOutlined,
   UserAddOutlined,
+  PlusOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
 import { responsableService } from '../../responsables/services/responsable.service';
 import type { Responsable } from '../../responsables/models/responsable.model';
 import { inscripcionService } from '../../inscripciones/services/inscripcion.service';
-import type { Curso, CicloLectivo, EstadoInscripcion } from '../../inscripciones/models/inscripcion.model';
+import {
+  formatModalidadJornada,
+  type Curso,
+  type CicloLectivo,
+  type EstadoInscripcion,
+  type ModalidadJornada,
+} from '../../inscripciones/models/inscripcion.model';
 
 const { Text } = Typography;
 
@@ -70,6 +79,7 @@ export interface AlumnoFormValues {
   fechaIngreso?: dayjs.Dayjs | null;
   fechaEgreso?: dayjs.Dayjs | null;
   estadoInscripcion?: EstadoInscripcion;
+  modalidadJornada?: ModalidadJornada;
 
   responsableId?: string;
   responsableDniTipo?: string;
@@ -82,6 +92,18 @@ export interface AlumnoFormValues {
   responsableTelefono?: string;
   responsableEmail?: string;
   vinculo?: string;
+
+  responsableSecundarioId?: string;
+  responsableSecundarioDniTipo?: string;
+  responsableSecundarioDniNumero?: string;
+  responsableSecundarioDni?: string;
+  responsableSecundarioApellidos?: string;
+  responsableSecundarioNombres?: string;
+  responsableSecundarioNacionalidad?: string;
+  responsableSecundarioProfesion?: string;
+  responsableSecundarioTelefono?: string;
+  responsableSecundarioEmail?: string;
+  vinculoSecundario?: string;
 }
 
 interface AlumnoFormModalProps {
@@ -124,6 +146,12 @@ const ESTADO_INSCRIPCION_OPTIONS: { label: string; value: EstadoInscripcion }[] 
   { label: 'Baja', value: 'Baja' },
 ];
 
+const MODALIDAD_JORNADA_OPTIONS: { label: string; value: ModalidadJornada }[] = [
+  { label: 'Turno Mañana', value: 'Mañana' },
+  { label: 'Jornada Completa', value: 'Jornada Completa' },
+  { label: 'Turno Tarde', value: 'Tarde' },
+];
+
 export const AlumnoFormModal: React.FC<AlumnoFormModalProps> = (props) => {
   const sessionKey = useModalSessionKey(props.visible);
   return (
@@ -149,11 +177,9 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     (initialValues?.estadoInscripcion as EstadoInscripcion | undefined) ?? 'Regular',
   );
 
-
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [ciclos, setCiclos] = useState<CicloLectivo[]>([]);
   const [loadingMetadata, setLoadingMetadata] = useState(false);
-
 
   const [searchingDni, setSearchingDni] = useState(false);
   const [existingResponsable, setExistingResponsable] = useState<Responsable | null>(null);
@@ -161,8 +187,13 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
   const [lastSearchedDni, setLastSearchedDni] = useState('');
   const [loadingResponsable, setLoadingResponsable] = useState(Boolean(initialValues));
 
-  const isEditing = Boolean(initialValues);
+  const [searchingSecundarioDni, setSearchingSecundarioDni] = useState(false);
+  const [existingResponsableSecundario, setExistingResponsableSecundario] = useState<Responsable | null>(null);
+  const [dniSecundarioSearched, setDniSecundarioSearched] = useState(false);
+  const [lastSearchedSecundarioDni, setLastSearchedSecundarioDni] = useState('');
+  const [showSecondaryResponsable, setShowSecondaryResponsable] = useState(false);
 
+  const isEditing = Boolean(initialValues);
 
   const edadCalculada = useMemo(() => {
     if (!fechaNacimientoValue) return null;
@@ -171,7 +202,6 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     const years = dayjs().diff(date, 'year');
     return years >= 0 ? years : null;
   }, [fechaNacimientoValue]);
-
 
   useEffect(() => {
     if (!visible) return;
@@ -188,7 +218,6 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         setCursos(cursosList);
         setCiclos(ciclosList);
 
-
         if (!initialValues) {
           const cicloActivo = ciclosList.find((c) => c.actual) || ciclosList[0];
           form.setFieldsValue({
@@ -200,6 +229,9 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             responsableNacionalidad: 'Argentina',
             responsableDniTipo: 'DNI',
             vinculo: 'Padre',
+            responsableSecundarioNacionalidad: 'Argentina',
+            responsableSecundarioDniTipo: 'DNI',
+            vinculoSecundario: 'Madre',
           });
         }
       } catch (error) {
@@ -215,7 +247,6 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       isMounted = false;
     };
   }, [visible, initialValues, form]);
-
 
   useEffect(() => {
     let active = true;
@@ -240,7 +271,9 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         fechaIngreso: initialValues.fechaIngreso ? dayjs(initialValues.fechaIngreso) : null,
         fechaEgreso: initialValues.fechaEgreso ? dayjs(initialValues.fechaEgreso) : null,
         estadoInscripcion: (initialValues.estadoInscripcion as EstadoInscripcion) || 'Regular',
+        modalidadJornada: initialValues.modalidadJornada,
       });
+
       responsableService
         .getByAlumnoId(initialValues.id)
         .then((responsables) => {
@@ -264,10 +297,41 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               responsableEmail: primary.responsable.email || '',
               vinculo: primary.vinculo || 'Padre',
             });
+
+            if (responsables.length > 1) {
+              const secondary = responsables[1];
+              const secondaryDni = secondary.responsable.dniNumero || secondary.responsable.dni;
+              setExistingResponsableSecundario(secondary.responsable);
+              setDniSecundarioSearched(true);
+              setLastSearchedSecundarioDni(secondaryDni);
+              setShowSecondaryResponsable(true);
+              form.setFieldsValue({
+                responsableSecundarioId: secondary.responsable.id,
+                responsableSecundarioDniTipo: secondary.responsable.dniTipo || 'DNI',
+                responsableSecundarioDniNumero: secondaryDni,
+                responsableSecundarioDni: secondaryDni,
+                responsableSecundarioApellidos: secondary.responsable.apellidos,
+                responsableSecundarioNombres: secondary.responsable.nombres,
+                responsableSecundarioNacionalidad: secondary.responsable.nacionalidad || 'Argentina',
+                responsableSecundarioProfesion: secondary.responsable.profesion || '',
+                responsableSecundarioTelefono: secondary.responsable.telefono || '',
+                responsableSecundarioEmail: secondary.responsable.email || '',
+                vinculoSecundario: secondary.vinculo || 'Madre',
+              });
+            } else {
+              setExistingResponsableSecundario(null);
+              setDniSecundarioSearched(false);
+              setLastSearchedSecundarioDni('');
+              setShowSecondaryResponsable(false);
+            }
           } else {
             setExistingResponsable(null);
             setDniSearched(false);
             setLastSearchedDni('');
+            setExistingResponsableSecundario(null);
+            setDniSecundarioSearched(false);
+            setLastSearchedSecundarioDni('');
+            setShowSecondaryResponsable(false);
             form.setFieldsValue({
               responsableId: undefined,
               responsableDniTipo: 'DNI',
@@ -280,6 +344,17 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               responsableTelefono: '',
               responsableEmail: '',
               vinculo: 'Padre',
+              responsableSecundarioId: undefined,
+              responsableSecundarioDniTipo: 'DNI',
+              responsableSecundarioDniNumero: '',
+              responsableSecundarioDni: '',
+              responsableSecundarioApellidos: '',
+              responsableSecundarioNombres: '',
+              responsableSecundarioNacionalidad: 'Argentina',
+              responsableSecundarioProfesion: '',
+              responsableSecundarioTelefono: '',
+              responsableSecundarioEmail: '',
+              vinculoSecundario: 'Madre',
             });
           }
         })
@@ -300,11 +375,14 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     setExistingResponsable(null);
     setDniSearched(false);
     setLastSearchedDni('');
+    setExistingResponsableSecundario(null);
+    setDniSecundarioSearched(false);
+    setLastSearchedSecundarioDni('');
+    setShowSecondaryResponsable(false);
     setCurrentStep(0);
     setActiveEditTab('alumno');
     onClose();
   };
-
 
   const handleSearchResponsable = useCallback(
     async (dniToSearch?: string) => {
@@ -348,6 +426,48 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     [form, lastSearchedDni, dniSearched]
   );
 
+  const handleSearchResponsableSecundario = useCallback(
+    async (dniToSearch?: string) => {
+      const dni = (dniToSearch ?? form.getFieldValue('responsableSecundarioDniNumero') ?? form.getFieldValue('responsableSecundarioDni') ?? '').toString().trim();
+      if (!dni || dni.length < 5) return;
+      if (dni === lastSearchedSecundarioDni && dniSecundarioSearched) return;
+
+      try {
+        setSearchingSecundarioDni(true);
+        const resp = await responsableService.getByDni(dni);
+        setLastSearchedSecundarioDni(dni);
+        setDniSecundarioSearched(true);
+
+        if (resp) {
+          const respDni = resp.dniNumero || resp.dni;
+          setExistingResponsableSecundario(resp);
+          form.setFieldsValue({
+            responsableSecundarioId: resp.id,
+            responsableSecundarioDniTipo: resp.dniTipo || 'DNI',
+            responsableSecundarioDniNumero: respDni,
+            responsableSecundarioDni: respDni,
+            responsableSecundarioApellidos: resp.apellidos,
+            responsableSecundarioNombres: resp.nombres,
+            responsableSecundarioNacionalidad: resp.nacionalidad || 'Argentina',
+            responsableSecundarioProfesion: resp.profesion || '',
+            responsableSecundarioTelefono: resp.telefono || '',
+            responsableSecundarioEmail: resp.email || '',
+          });
+        } else {
+          setExistingResponsableSecundario(null);
+          form.setFieldsValue({
+            responsableSecundarioId: undefined,
+          });
+        }
+      } catch (error) {
+        console.error('Error al buscar segundo responsable por DNI:', error);
+      } finally {
+        setSearchingSecundarioDni(false);
+      }
+    },
+    [form, lastSearchedSecundarioDni, dniSecundarioSearched]
+  );
+
   const handleValuesChange = (changedValues: Partial<AlumnoFormValues>) => {
     if ('fechaNacimiento' in changedValues) {
       setFechaNacimientoValue(changedValues.fechaNacimiento ?? null);
@@ -369,16 +489,43 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     form.setFieldsValue({
       responsableId: undefined,
       responsableDni: '',
+      responsableDniNumero: '',
       responsableApellidos: '',
       responsableNombres: '',
       responsableNacionalidad: 'Argentina',
       responsableProfesion: '',
       responsableTelefono: '',
       responsableEmail: '',
-      vinculo: 'Madre',
+      vinculo: 'Padre',
     });
   };
 
+  const handleClearResponsableSecundario = () => {
+    setExistingResponsableSecundario(null);
+    setDniSecundarioSearched(false);
+    setLastSearchedSecundarioDni('');
+    form.setFieldsValue({
+      responsableSecundarioId: undefined,
+      responsableSecundarioDni: '',
+      responsableSecundarioDniNumero: '',
+      responsableSecundarioApellidos: '',
+      responsableSecundarioNombres: '',
+      responsableSecundarioNacionalidad: 'Argentina',
+      responsableSecundarioProfesion: '',
+      responsableSecundarioTelefono: '',
+      responsableSecundarioEmail: '',
+      vinculoSecundario: 'Madre',
+    });
+  };
+
+  const handleToggleSecondaryResponsable = () => {
+    if (showSecondaryResponsable) {
+      handleClearResponsableSecundario();
+      setShowSecondaryResponsable(false);
+    } else {
+      setShowSecondaryResponsable(true);
+    }
+  };
 
   const handleNextStep = async () => {
     try {
@@ -449,7 +596,20 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         const errorFields = info.errorFields || [];
         const alumnoFieldNames = ['dni', 'apellidos', 'nombres', 'fechaNacimiento'];
         const inscripcionFieldNames = ['cursoId', 'cicloId', 'fechaEgreso'];
-        const responsableFieldNames = ['responsableDni', 'responsableDniNumero', 'responsableDniTipo', 'responsableApellidos', 'responsableNombres', 'vinculo'];
+        const responsableFieldNames = [
+          'responsableDni',
+          'responsableDniNumero',
+          'responsableDniTipo',
+          'responsableApellidos',
+          'responsableNombres',
+          'vinculo',
+          'responsableSecundarioDni',
+          'responsableSecundarioDniNumero',
+          'responsableSecundarioDniTipo',
+          'responsableSecundarioApellidos',
+          'responsableSecundarioNombres',
+          'vinculoSecundario',
+        ];
 
         if (isEditing) {
           if (errorFields.some((f: { name: string[] }) => alumnoFieldNames.includes(f.name[0]))) {
@@ -471,14 +631,13 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       });
   };
 
-
   const renderTabAlumno = () => (
     <div style={{ paddingTop: 4 }}>
       {isEditing && (
         <div
           style={{
-            background: "var(--cys-color-fill-quaternary)",
-            border: "1px solid var(--cys-color-border-secondary)",
+            background: 'var(--cys-color-fill-quaternary)',
+            border: '1px solid var(--cys-color-border-secondary)',
             borderRadius: 10,
             padding: '8px 12px',
             marginBottom: 14,
@@ -641,14 +800,13 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     </div>
   );
 
-
   const renderTabInscripcion = () => (
     <div style={{ paddingTop: 4 }}>
       {isEditing && (
         <div
           style={{
-            background: "var(--cys-color-fill-quaternary)",
-            border: "1px solid var(--cys-color-border-secondary)",
+            background: 'var(--cys-color-fill-quaternary)',
+            border: '1px solid var(--cys-color-border-secondary)',
             borderRadius: 10,
             padding: '8px 12px',
             marginBottom: 14,
@@ -670,6 +828,11 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             ) : (
               <Tag color="warning" className={ui.compactTag}>
                 ⚠️ Sin Curso Asignado
+              </Tag>
+            )}
+            {initialValues?.modalidadJornada && (
+              <Tag color="geekblue" className={ui.strongTag}>
+                Jornada: {formatModalidadJornada(initialValues.modalidadJornada)}
               </Tag>
             )}
             <Tag
@@ -720,26 +883,26 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       ) : (
         <>
           <Row gutter={14}>
-            <Col xs={24} sm={12} md={10}>
+            <Col xs={24} sm={12} md={8}>
               <Form.Item
                 name="cursoId"
-                label="Curso a Asignar"
-                rules={[{ required: !isEditing, message: 'Por favor seleccione el curso' }]}
+                label="Curso / Sala a Asignar"
+                rules={[{ required: !isEditing, message: 'Por favor seleccione el curso o sala' }]}
               >
                 <Select
                   disabled={Boolean(initialValues?.inscripcionId)}
-                  placeholder="Seleccione el curso y turno"
+                  placeholder="Seleccione el curso o sala"
                   showSearch
                   optionFilterProp="label"
                   options={cursos.map((c) => ({
                     value: c.id,
-                    label: `${c.nombre} ${c.nivelNombre ? `• ${c.nivelNombre}` : ''} (${c.turno || 'Sin turno'})`,
+                    label: `${c.nombre}${c.nivelNombre ? ` • ${c.nivelNombre}` : ''}${c.turno ? ` (${c.turno})` : ''}`,
                   }))}
                 />
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={7}>
+            <Col xs={24} sm={12} md={5}>
               <Form.Item
                 name="cicloId"
                 label={
@@ -763,7 +926,17 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               </Form.Item>
             </Col>
 
-            <Col xs={24} sm={12} md={7}>
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item name="modalidadJornada" label="Modalidad de Jornada">
+                <Select
+                  allowClear
+                  placeholder="Seleccione jornada (opcional)"
+                  options={MODALIDAD_JORNADA_OPTIONS}
+                />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={12} md={5}>
               <Form.Item name="estadoInscripcion" label="Estado de Cursada">
                 <Select disabled={initialValues?.estadoInscripcion === 'Baja'} options={ESTADO_INSCRIPCION_OPTIONS.filter(option => option.value !== 'Baja' || initialValues?.estadoInscripcion === 'Baja')} />
               </Form.Item>
@@ -822,7 +995,6 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
     </div>
   );
 
-
   const renderTabResponsable = () => (
     <div style={{ paddingTop: 4 }}>
       {isEditing && loadingResponsable && (
@@ -834,8 +1006,8 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       {isEditing && !loadingResponsable && (
         <div
           style={{
-            background: "var(--cys-color-fill-quaternary)",
-            border: "1px solid var(--cys-color-border-secondary)",
+            background: 'var(--cys-color-fill-quaternary)',
+            border: '1px solid var(--cys-color-border-secondary)',
             borderRadius: 10,
             padding: '8px 12px',
             marginBottom: 14,
@@ -848,38 +1020,20 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         >
           <div className={ui.wrappingRow}>
             <Text strong className={ui.sectionLabel}>
-              Datos del Responsable:
+              Tutores Registrados:
             </Text>
             {form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni') || existingResponsable?.dniNumero || existingResponsable?.dni ? (
               <Tag color="success" className={ui.strongTag}>
-                {form.getFieldValue('responsableDniTipo') || existingResponsable?.dniTipo || 'DNI'}: {form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni') || existingResponsable?.dniNumero || existingResponsable?.dni}
+                Principal: {form.getFieldValue('responsableApellidos') || existingResponsable?.apellidos} ({form.getFieldValue('vinculo') || 'Padre'})
               </Tag>
             ) : (
               <Tag color="warning" className={ui.compactTag}>
-                ⚠️ Sin Documento
+                ⚠️ Sin Responsable Principal
               </Tag>
             )}
-            {form.getFieldValue('responsableTelefono') || existingResponsable?.telefono ? (
-              <Tag color="success" className={ui.compactTag}>
-                Teléfono Cargado
-              </Tag>
-            ) : (
-              <Tag color="warning" className={ui.compactTag}>
-                ⚠️ Sin Teléfono
-              </Tag>
-            )}
-            {form.getFieldValue('responsableEmail') || existingResponsable?.email ? (
-              <Tag color="success" className={ui.compactTag}>
-                Email Cargado
-              </Tag>
-            ) : (
-              <Tag color="warning" className={ui.compactTag}>
-                ⚠️ Sin Email
-              </Tag>
-            )}
-            {form.getFieldValue('vinculo') && (
-              <Tag color="blue" className={ui.compactTag}>
-                Vínculo: {form.getFieldValue('vinculo')}
+            {showSecondaryResponsable && (form.getFieldValue('responsableSecundarioDniNumero') || form.getFieldValue('responsableSecundarioDni') || existingResponsableSecundario?.dniNumero || existingResponsableSecundario?.dni) && (
+              <Tag color="purple" className={ui.strongTag}>
+                Secundario: {form.getFieldValue('responsableSecundarioApellidos') || existingResponsableSecundario?.apellidos} ({form.getFieldValue('vinculoSecundario') || 'Madre'})
               </Tag>
             )}
           </div>
@@ -904,7 +1058,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               </Button>
             </div>
           }
-          description="Se reutilizará su registro y se vinculará con el nuevo alumno."
+          description="Se reutilizará su registro y se vinculará como responsable principal."
         />
       )}
 
@@ -914,139 +1068,329 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
           showIcon
           style={{ marginBottom: 12, borderRadius: 10 }}
           message="DNI no registrado previamente"
-          description="Complete los datos a continuación para registrar al responsable y asociarlo al estudiante."
+          description="Complete los datos a continuación para registrar al responsable principal y asociarlo al estudiante."
         />
       )}
 
-      <Row gutter={14}>
-        <Col xs={24} sm={8} md={isEditing ? 4 : 4}>
-          <Form.Item
-            name="responsableDniTipo"
-            label="Tipo Doc."
-            initialValue="DNI"
-          >
-            <Select options={DNI_TIPO_OPTIONS} />
-          </Form.Item>
-        </Col>
+      <Card
+        size="small"
+        title={
+          <Space size={8}>
+            <UserOutlined style={{ color: '#0284c7' }} />
+            <span>Responsable Principal</span>
+          </Space>
+        }
+        style={{ marginBottom: 16, borderRadius: 10, border: '1px solid var(--cys-color-border-secondary)' }}
+      >
+        <Row gutter={14}>
+          <Col xs={24} sm={8} md={4}>
+            <Form.Item
+              name="responsableDniTipo"
+              label="Tipo Doc."
+              initialValue="DNI"
+            >
+              <Select options={DNI_TIPO_OPTIONS} />
+            </Form.Item>
+          </Col>
 
-        <Col xs={24} sm={16} md={isEditing ? 8 : 8}>
-          <Form.Item
-            name="responsableDniNumero"
-            label="Número de Doc."
-            rules={[
-              { required: !isEditing, message: 'Por favor ingrese el número de documento' },
-              { pattern: /^[0-9]+$/, message: 'Solo números sin puntos' },
-            ]}
-          >
-            {isEditing ? (
-              <Input
-                prefix={<IdcardOutlined className={ui.primary} />}
-                placeholder="Ej. 30123456"
-                maxLength={10}
-              />
-            ) : (
-              <Space.Compact className={ui.fullWidth}>
+          <Col xs={24} sm={16} md={8}>
+            <Form.Item
+              name="responsableDniNumero"
+              label="Número de Doc."
+              rules={[
+                { required: !isEditing, message: 'Por favor ingrese el número de documento' },
+                { pattern: /^[0-9]+$/, message: 'Solo números sin puntos' },
+              ]}
+            >
+              {isEditing ? (
                 <Input
                   prefix={<IdcardOutlined className={ui.primary} />}
                   placeholder="Ej. 30123456"
                   maxLength={10}
-                  onBlur={() => handleSearchResponsable()}
-                  onPressEnter={() => handleSearchResponsable()}
                 />
-                <Button
-                  type="primary"
-                  icon={<SearchOutlined />}
-                  loading={searchingDni}
-                  onClick={() => handleSearchResponsable()}
-                >
-                  Buscar
-                </Button>
-              </Space.Compact>
-            )}
-          </Form.Item>
-        </Col>
+              ) : (
+                <Space.Compact className={ui.fullWidth}>
+                  <Input
+                    prefix={<IdcardOutlined className={ui.primary} />}
+                    placeholder="Ej. 30123456"
+                    maxLength={10}
+                    onBlur={() => handleSearchResponsable()}
+                    onPressEnter={() => handleSearchResponsable()}
+                  />
+                  <Button
+                    type="primary"
+                    icon={<SearchOutlined />}
+                    loading={searchingDni}
+                    onClick={() => handleSearchResponsable()}
+                  >
+                    Buscar
+                  </Button>
+                </Space.Compact>
+              )}
+            </Form.Item>
+          </Col>
 
-        <Col xs={24} sm={12} md={isEditing ? 6 : 6}>
-          <Form.Item
-            name="vinculo"
-            label="Vínculo / Parentesco"
-            initialValue="Padre"
-            rules={[{ required: !isEditing, message: 'Seleccione o ingrese el vínculo' }]}
-          >
-            <Select placeholder="Ej. Padre, Madre, Tutor" options={VINCULO_OPTIONS} allowClear showSearch />
-          </Form.Item>
-        </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Form.Item
+              name="vinculo"
+              label="Vínculo / Parentesco"
+              initialValue="Padre"
+              rules={[{ required: !isEditing, message: 'Seleccione o ingrese el vínculo' }]}
+            >
+              <Select placeholder="Ej. Padre, Madre, Tutor" options={VINCULO_OPTIONS} allowClear showSearch />
+            </Form.Item>
+          </Col>
 
-        <Col xs={24} sm={12} md={isEditing ? 6 : 6}>
-          <Form.Item name="responsableTelefono" label="Teléfono de Contacto">
-            <Input
-              prefix={<PhoneOutlined className={ui.primary} />}
-              placeholder="Ej. +54 9 11 1234-5678"
-            />
-          </Form.Item>
-        </Col>
-      </Row>
+          <Col xs={24} sm={12} md={6}>
+            <Form.Item name="responsableTelefono" label="Teléfono de Contacto">
+              <Input
+                prefix={<PhoneOutlined className={ui.primary} />}
+                placeholder="Ej. +54 9 11 1234-5678"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
-      <Row gutter={14}>
-        <Col xs={24} sm={12} md={8}>
-          <Form.Item
-            name="responsableApellidos"
-            label="Apellidos del Responsable"
-            rules={[{ required: !isEditing, message: 'Por favor ingrese los apellidos' }]}
-          >
-            <Input
-              prefix={<UserOutlined className={ui.primary} />}
-              placeholder="Ej. García"
-            />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12} md={8}>
-          <Form.Item
-            name="responsableNombres"
-            label="Nombres del Responsable"
-            rules={[{ required: !isEditing, message: 'Por favor ingrese los nombres' }]}
-          >
-            <Input
-              prefix={<UserOutlined className={ui.primary} />}
-              placeholder="Ej. Laura Elena"
-            />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12} md={8}>
-          <Form.Item
-            name="responsableEmail"
-            label="Correo Electrónico"
-            rules={[{ type: 'email', message: 'Ingrese un correo electrónico válido' }]}
-          >
-            <Input
-              prefix={<MailOutlined className={ui.primary} />}
-              placeholder="Ej. laura.garcia@email.com"
-            />
-          </Form.Item>
-        </Col>
-      </Row>
+        <Row gutter={14}>
+          <Col xs={24} sm={12} md={8}>
+            <Form.Item
+              name="responsableApellidos"
+              label="Apellidos"
+              rules={[{ required: !isEditing, message: 'Por favor ingrese los apellidos' }]}
+            >
+              <Input
+                prefix={<UserOutlined className={ui.primary} />}
+                placeholder="Ej. García"
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Form.Item
+              name="responsableNombres"
+              label="Nombres"
+              rules={[{ required: !isEditing, message: 'Por favor ingrese los nombres' }]}
+            >
+              <Input
+                prefix={<UserOutlined className={ui.primary} />}
+                placeholder="Ej. Laura Elena"
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12} md={8}>
+            <Form.Item
+              name="responsableEmail"
+              label="Correo Electrónico"
+              rules={[{ type: 'email', message: 'Ingrese un correo electrónico válido' }]}
+            >
+              <Input
+                prefix={<MailOutlined className={ui.primary} />}
+                placeholder="Ej. laura.garcia@email.com"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
-      <Row gutter={14}>
-        <Col xs={24} sm={12} md={12}>
-          <Form.Item name="responsableNacionalidad" label="Nacionalidad">
-            <Input
-              prefix={<GlobalOutlined className={ui.primary} />}
-              placeholder="Ej. Argentina"
+        <Row gutter={14}>
+          <Col xs={24} sm={12} md={12}>
+            <Form.Item name="responsableNacionalidad" label="Nacionalidad">
+              <Input
+                prefix={<GlobalOutlined className={ui.primary} />}
+                placeholder="Ej. Argentina"
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12} md={12}>
+            <Form.Item name="responsableProfesion" label="Profesión u Ocupación">
+              <Input
+                prefix={<SolutionOutlined className={ui.primary} />}
+                placeholder="Ej. Docente, Empleado/a"
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Card>
+
+      {!showSecondaryResponsable ? (
+        <Button
+          type="dashed"
+          icon={<PlusOutlined />}
+          onClick={() => setShowSecondaryResponsable(true)}
+          style={{ width: '100%', height: 40, borderRadius: 8 }}
+        >
+          Agregar Segundo Responsable (Opcional)
+        </Button>
+      ) : (
+        <Card
+          size="small"
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Space size={8}>
+                <TeamOutlined style={{ color: '#7c3aed' }} />
+                <span>Segundo Responsable (Opcional)</span>
+              </Space>
+              <Button
+                type="text"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={handleToggleSecondaryResponsable}
+              >
+                Quitar segundo responsable
+              </Button>
+            </div>
+          }
+          style={{ borderRadius: 10, border: '1px solid var(--cys-color-border-secondary)' }}
+        >
+          {existingResponsableSecundario && (
+            <Alert
+              type="success"
+              showIcon
+              style={{ marginBottom: 12, borderRadius: 8 }}
+              message={
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <span>
+                    <strong>
+                      {existingResponsableSecundario.apellidos}, {existingResponsableSecundario.nombres}
+                    </strong>{' '}
+                    ({existingResponsableSecundario.dniTipo || 'DNI'}: {existingResponsableSecundario.dniNumero || existingResponsableSecundario.dni}) ya está registrado.
+                  </span>
+                  <Button size="small" icon={<ReloadOutlined />} onClick={handleClearResponsableSecundario}>
+                    Buscar otro DNI
+                  </Button>
+                </div>
+              }
+              description="Se reutilizará su registro y se vinculará como segundo tutor."
             />
-          </Form.Item>
-        </Col>
-        <Col xs={24} sm={12} md={12}>
-          <Form.Item name="responsableProfesion" label="Profesión u Ocupación">
-            <Input
-              prefix={<SolutionOutlined className={ui.primary} />}
-              placeholder="Ej. Docente, Empleado/a"
+          )}
+
+          {dniSecundarioSearched && !existingResponsableSecundario && (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 12, borderRadius: 8 }}
+              message="DNI no registrado previamente"
+              description="Complete los datos para registrar al segundo responsable y asociarlo al alumno."
             />
-          </Form.Item>
-        </Col>
-      </Row>
+          )}
+
+          <Row gutter={14}>
+            <Col xs={24} sm={8} md={4}>
+              <Form.Item
+                name="responsableSecundarioDniTipo"
+                label="Tipo Doc."
+                initialValue="DNI"
+              >
+                <Select options={DNI_TIPO_OPTIONS} />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={16} md={8}>
+              <Form.Item
+                name="responsableSecundarioDniNumero"
+                label="Número de Doc."
+                rules={[
+                  { pattern: /^[0-9]+$/, message: 'Solo números sin puntos' },
+                ]}
+              >
+                <Space.Compact className={ui.fullWidth}>
+                  <Input
+                    prefix={<IdcardOutlined style={{ color: '#7c3aed' }} />}
+                    placeholder="Ej. 32123456"
+                    maxLength={10}
+                    onBlur={() => handleSearchResponsableSecundario()}
+                    onPressEnter={() => handleSearchResponsableSecundario()}
+                  />
+                  <Button
+                    type="default"
+                    icon={<SearchOutlined />}
+                    loading={searchingSecundarioDni}
+                    onClick={() => handleSearchResponsableSecundario()}
+                  >
+                    Buscar
+                  </Button>
+                </Space.Compact>
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item
+                name="vinculoSecundario"
+                label="Vínculo / Parentesco"
+                initialValue="Madre"
+              >
+                <Select placeholder="Ej. Madre, Padre, Tutor" options={VINCULO_OPTIONS} allowClear showSearch />
+              </Form.Item>
+            </Col>
+
+            <Col xs={24} sm={12} md={6}>
+              <Form.Item name="responsableSecundarioTelefono" label="Teléfono de Contacto">
+                <Input
+                  prefix={<PhoneOutlined style={{ color: '#7c3aed' }} />}
+                  placeholder="Ej. +54 9 11 9876-5432"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={14}>
+            <Col xs={24} sm={12} md={8}>
+              <Form.Item
+                name="responsableSecundarioApellidos"
+                label="Apellidos"
+              >
+                <Input
+                  prefix={<UserOutlined style={{ color: '#7c3aed' }} />}
+                  placeholder="Ej. Rodríguez"
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <Form.Item
+                name="responsableSecundarioNombres"
+                label="Nombres"
+              >
+                <Input
+                  prefix={<UserOutlined style={{ color: '#7c3aed' }} />}
+                  placeholder="Ej. Carlos Martín"
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={8}>
+              <Form.Item
+                name="responsableSecundarioEmail"
+                label="Correo Electrónico"
+                rules={[{ type: 'email', message: 'Ingrese un correo electrónico válido' }]}
+              >
+                <Input
+                  prefix={<MailOutlined style={{ color: '#7c3aed' }} />}
+                  placeholder="Ej. carlos.rodriguez@email.com"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={14}>
+            <Col xs={24} sm={12} md={12}>
+              <Form.Item name="responsableSecundarioNacionalidad" label="Nacionalidad">
+                <Input
+                  prefix={<GlobalOutlined style={{ color: '#7c3aed' }} />}
+                  placeholder="Ej. Argentina"
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12} md={12}>
+              <Form.Item name="responsableSecundarioProfesion" label="Profesión u Ocupación">
+                <Input
+                  prefix={<SolutionOutlined style={{ color: '#7c3aed' }} />}
+                  placeholder="Ej. Empleado/a, Comerciante"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+      )}
     </div>
   );
-
 
   const editTabItems = [
     {
@@ -1057,7 +1401,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             <UserOutlined style={{ fontSize: 13.5 }} />
             <span>1. Datos del Alumno</span>
           </span>
-          <span style={{ fontSize: 11, color: "var(--cys-color-success-text)", fontWeight: 600, marginTop: 2, paddingLeft: 19 }}>
+          <span style={{ fontSize: 11, color: 'var(--cys-color-success-text)', fontWeight: 600, marginTop: 2, paddingLeft: 19 }}>
             ✓ Ficha Completa
           </span>
         </div>
@@ -1079,7 +1423,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               fontWeight: 600,
               marginTop: 2,
               paddingLeft: 19,
-              color: initialValues?.cursoNombre ? "var(--cys-color-primary-text)" : "var(--cys-color-warning-text)",
+              color: initialValues?.cursoNombre ? 'var(--cys-color-primary-text)' : 'var(--cys-color-warning-text)',
             }}
           >
             {initialValues?.cursoNombre ? `• ${initialValues.cursoNombre}` : '⚠️ Sin Curso'}
@@ -1103,10 +1447,14 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               fontWeight: 600,
               marginTop: 2,
               paddingLeft: 19,
-              color: existingResponsable || form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni') ? "var(--cys-color-success-text)" : "var(--cys-color-warning-text)",
+              color: existingResponsable || form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni')
+                ? 'var(--cys-color-success-text)'
+                : 'var(--cys-color-warning-text)',
             }}
           >
-            {existingResponsable || form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni') ? '✓ Tutor Vinculado' : '⚠️ Sin Responsable'}
+            {existingResponsable || form.getFieldValue('responsableDniNumero') || form.getFieldValue('responsableDni')
+              ? showSecondaryResponsable ? '✓ 2 Tutores' : '✓ Tutor Vinculado'
+              : '⚠️ Sin Responsable'}
           </span>
         </div>
       ),
@@ -1120,7 +1468,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
       open={visible}
       title={isEditing ? 'Editar ficha del alumno' : 'Nuevo alumno'}
       description={isEditing
-        ? 'Actualizá los datos personales, la cursada o el responsable vinculado.'
+        ? 'Actualizá los datos personales, la cursada o los responsables vinculados.'
         : 'Completá los datos esenciales en tres pasos breves.'}
       icon={isEditing ? <SolutionOutlined /> : <UserAddOutlined />}
       tone={isEditing ? 'info' : 'primary'}
@@ -1171,6 +1519,9 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
         onValuesChange={handleValuesChange}
       >
         <Form.Item name="responsableId" hidden>
+          <Input />
+        </Form.Item>
+        <Form.Item name="responsableSecundarioId" hidden>
           <Input />
         </Form.Item>
 

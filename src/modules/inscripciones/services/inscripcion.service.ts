@@ -16,19 +16,13 @@ const COLLECTION_CICLOS = 'ciclos_lectivos';
 const COLLECTION_INSCRIPCIONES = 'inscripciones';
 
 export const inscripcionService = {
-
-
-
   getCursos: async (): Promise<Curso[]> => {
     const records = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
       expand: 'nivel_id',
-      sort: 'nombre',
+      sort: 'orden,nombre',
     });
     return records.map(cursoAdapter);
   },
-
-
-
 
   getCiclos: async (): Promise<CicloLectivo[]> => {
     const records = await pb.collection(COLLECTION_CICLOS).getFullList<CicloLectivoRecord>({
@@ -36,9 +30,6 @@ export const inscripcionService = {
     });
     return records.map(cicloLectivoAdapter);
   },
-
-
-
 
   getCicloActual: async (): Promise<CicloLectivo | null> => {
     try {
@@ -51,9 +42,6 @@ export const inscripcionService = {
     }
   },
 
-
-
-
   create: async (
     data: Omit<InscripcionRecord, 'id' | 'created' | 'updated' | 'expand'>
   ): Promise<Inscripcion> => {
@@ -65,9 +53,6 @@ export const inscripcionService = {
     return inscripcionAdapter(record);
   },
 
-
-
-
   getByAlumnoId: async (alumnoId: string): Promise<Inscripcion[]> => {
     const records = await pb.collection(COLLECTION_INSCRIPCIONES).getFullList<InscripcionRecord>({
       filter: `alumno_id = "${alumnoId}"`,
@@ -76,9 +61,6 @@ export const inscripcionService = {
     });
     return records.map(inscripcionAdapter);
   },
-
-
-
 
   update: async (
     id: string,
@@ -91,8 +73,4 @@ export const inscripcionService = {
       });
     return inscripcionAdapter(record);
   },
-
-
-
-
 };

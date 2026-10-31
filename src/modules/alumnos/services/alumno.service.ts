@@ -1,7 +1,7 @@
 import pb from '../../../core/pocketbase';
 import { alumnoAdapter, type Alumno, type AlumnoRecord } from '../models/alumno.model';
-import type { EstadoInscripcion } from '../../inscripciones/models/inscripcion.model';
-import type { GradeNumber } from '../utils/gradeColors';
+import type { EstadoInscripcion, ModalidadJornada } from '../../inscripciones/models/inscripcion.model';
+import type { CourseFilterKey, GradeNumber, SchoolLevelFilter } from '../utils/gradeColors';
 
 const COLLECTION_NAME = 'alumnos';
 const COLLECTION_RESPONSABLES = 'responsables';
@@ -11,6 +11,8 @@ const COLLECTION_INSCRIPCIONES = 'inscripciones';
 export interface AlumnoListFilters {
   searchTerm?: string;
   grade?: GradeNumber | 'all';
+  courseKey?: CourseFilterKey | 'all';
+  level?: SchoolLevelFilter;
   status?: 'REGULARES' | 'BAJAS' | 'TODOS';
 }
 
@@ -41,8 +43,27 @@ function buildAlumnoFilter(filters?: AlumnoListFilters): string {
     parts.push(searchConditions.join(' && '));
   }
 
-  if (filters.grade && filters.grade !== 'all') {
-    parts.push(`inscripciones_via_alumno_id.curso_id.nombre ~ "${filters.grade}°"`);
+  if (filters.level === 'inicial') {
+    parts.push('inscripciones_via_alumno_id.curso_id.nivel_id.nombre ~ "Inic"');
+  } else if (filters.level === 'primario') {
+    parts.push('inscripciones_via_alumno_id.curso_id.nivel_id.nombre ~ "Primar"');
+  }
+
+  if (filters.courseKey === 'sala_2_3') {
+    parts.push('inscripciones_via_alumno_id.curso_id.nombre ~ "Sala de 2 y 3"');
+  } else if (filters.courseKey === 'sala_4_5') {
+    parts.push('inscripciones_via_alumno_id.curso_id.nombre ~ "Sala de 4 y 5"');
+  } else {
+    const gradeNum =
+      typeof filters.courseKey === 'number'
+        ? filters.courseKey
+        : typeof filters.grade === 'number'
+        ? filters.grade
+        : null;
+
+    if (gradeNum !== null) {
+      parts.push(`(inscripciones_via_alumno_id.curso_id.nombre = "${gradeNum}°" || inscripciones_via_alumno_id.curso_id.nombre ~ "${gradeNum}° ")`);
+    }
   }
 
   if (filters.status === 'BAJAS') {
@@ -52,6 +73,19 @@ function buildAlumnoFilter(filters?: AlumnoListFilters): string {
   }
 
   return parts.join(' && ');
+}
+
+export interface ResponsablePayload {
+  id?: string;
+  dni_tipo?: string;
+  dni_numero?: string;
+  dni?: string;
+  apellidos: string;
+  nombres: string;
+  nacionalidad?: string;
+  profesion?: string;
+  telefono?: string;
+  email?: string;
 }
 
 export interface CreateAlumnoIntegralParams {
@@ -77,20 +111,12 @@ export interface CreateAlumnoIntegralParams {
     fecha_ingreso?: string;
     fecha_egreso?: string;
     estado?: EstadoInscripcion;
+    modalidad_jornada?: ModalidadJornada;
   };
-  responsable?: {
-    id?: string;
-    dni_tipo?: string;
-    dni_numero?: string;
-    dni?: string;
-    apellidos: string;
-    nombres: string;
-    nacionalidad?: string;
-    profesion?: string;
-    telefono?: string;
-    email?: string;
-  };
+  responsable?: ResponsablePayload;
   vinculo?: string;
+  responsableSecundario?: ResponsablePayload;
+  vinculoSecundario?: string;
 }
 
 export const alumnoService = {
@@ -103,10 +129,15 @@ export const alumnoService = {
     if (!enrollment) throw new Error('La inscripción no pertenece a este alumno o ya no está disponible.');
     return alumnoAdapter({ ...record, expand: { inscripciones_via_alumno_id: [enrollment] } });
   },
-  getCounts: async (filters?: Pick<AlumnoListFilters, 'searchTerm' | 'grade'>): Promise<AlumnoCounts> => {
+
+  getCounts: async (
+    filters?: Pick<AlumnoListFilters, 'searchTerm' | 'grade' | 'courseKey' | 'level'>
+  ): Promise<AlumnoCounts> => {
     const baseFilter = buildAlumnoFilter({
       searchTerm: filters?.searchTerm,
       grade: filters?.grade,
+      courseKey: filters?.courseKey,
+      level: filters?.level,
       status: 'TODOS',
     });
 
@@ -174,8 +205,10 @@ export const alumnoService = {
               const cursoExp = insc.expand?.curso_id;
               item.cursoId = cursoExp?.id || insc.curso_id;
               item.cursoNombre = cursoExp?.nombre;
+              item.cursoOrden = cursoExp?.orden;
               item.nivelNombre = cursoExp?.expand?.nivel_id?.nombre;
               item.turno = cursoExp?.turno;
+              item.modalidadJornada = (insc.modalidad_jornada as ModalidadJornada | undefined) || undefined;
               item.estadoInscripcion = insc.estado;
               item.fechaEgreso = insc.fecha_egreso || undefined;
               item.fechaIngreso = insc.fecha_ingreso || undefined;
@@ -204,19 +237,17 @@ export const alumnoService = {
     return alumnoAdapter(record);
   },
 
-
-
-
-
   createIntegral: async (
     params: CreateAlumnoIntegralParams
-  ): Promise<{ alumno: Alumno; responsableId?: string; inscripcionId?: string }> => {
+  ): Promise<{ alumno: Alumno; responsableId?: string; responsableSecundarioId?: string; inscripcionId?: string }> => {
     let createdAlumnoRecord: AlumnoRecord | null = null;
     let newlyCreatedResponsableId: string | null = null;
     let newlyCreatedAlumnoResponsableId: string | null = null;
+    let newlyCreatedResponsableSecundarioId: string | null = null;
+    let newlyCreatedAlumnoResponsableSecundarioId: string | null = null;
     let newlyCreatedInscripcionId: string | null = null;
     let responsableId: string | undefined = params.responsable?.id;
-
+    let responsableSecundarioId: string | undefined = params.responsableSecundario?.id;
 
     const rollback = async () => {
       if (newlyCreatedInscripcionId) {
@@ -224,6 +255,13 @@ export const alumnoService = {
           await pb.collection(COLLECTION_INSCRIPCIONES).delete(newlyCreatedInscripcionId);
         } catch (e) {
           console.error('Fallo al revertir inscripción:', e);
+        }
+      }
+      if (newlyCreatedAlumnoResponsableSecundarioId) {
+        try {
+          await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).delete(newlyCreatedAlumnoResponsableSecundarioId);
+        } catch (e) {
+          console.error('Fallo al revertir vinculación de segundo responsable:', e);
         }
       }
       if (newlyCreatedAlumnoResponsableId) {
@@ -240,6 +278,13 @@ export const alumnoService = {
           console.error('Fallo al revertir alumno:', e);
         }
       }
+      if (newlyCreatedResponsableSecundarioId) {
+        try {
+          await pb.collection(COLLECTION_RESPONSABLES).delete(newlyCreatedResponsableSecundarioId);
+        } catch (e) {
+          console.error('Fallo al revertir segundo responsable nuevo:', e);
+        }
+      }
       if (newlyCreatedResponsableId) {
         try {
           await pb.collection(COLLECTION_RESPONSABLES).delete(newlyCreatedResponsableId);
@@ -248,7 +293,6 @@ export const alumnoService = {
         }
       }
     };
-
 
     try {
       createdAlumnoRecord = await pb.collection(COLLECTION_NAME).create<AlumnoRecord>({
@@ -284,7 +328,6 @@ export const alumnoService = {
               .getFirstListItem(`dni_numero = "${sanitizedDni}" || dni = "${sanitizedDni}"`);
             responsableId = existing.id;
           } catch {
-
             const newResp = await pb.collection(COLLECTION_RESPONSABLES).create({
               dni_tipo: (params.responsable.dni_tipo || 'DNI').trim(),
               dni_numero: respDniNum,
@@ -329,6 +372,60 @@ export const alumnoService = {
       }
     }
 
+    const respSecDniNum = (params.responsableSecundario?.dni_numero || params.responsableSecundario?.dni || '').trim();
+    if (params.responsableSecundario && respSecDniNum) {
+      try {
+        if (!responsableSecundarioId) {
+          const sanitizedDni = respSecDniNum.replace(/"/g, '\\"');
+          try {
+            const existing = await pb
+              .collection(COLLECTION_RESPONSABLES)
+              .getFirstListItem(`dni_numero = "${sanitizedDni}" || dni = "${sanitizedDni}"`);
+            responsableSecundarioId = existing.id;
+          } catch {
+            const newResp = await pb.collection(COLLECTION_RESPONSABLES).create({
+              dni_tipo: (params.responsableSecundario.dni_tipo || 'DNI').trim(),
+              dni_numero: respSecDniNum,
+              apellidos: params.responsableSecundario.apellidos.trim(),
+              nombres: params.responsableSecundario.nombres.trim(),
+              nacionalidad: (params.responsableSecundario.nacionalidad || '').trim(),
+              profesion: (params.responsableSecundario.profesion || '').trim(),
+              telefono: (params.responsableSecundario.telefono || '').trim(),
+              email: (params.responsableSecundario.email || '').trim(),
+            });
+            responsableSecundarioId = newResp.id;
+            newlyCreatedResponsableSecundarioId = newResp.id;
+          }
+        }
+      } catch (error) {
+        await rollback();
+        throw new Error(
+          `Error al procesar el Segundo Responsable (Sección 3): ${
+            error instanceof Error ? error.message : 'Fallo en la creación del segundo responsable'
+          }`,
+          { cause: error }
+        );
+      }
+
+      if (responsableSecundarioId && createdAlumnoRecord) {
+        try {
+          const relRecord = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).create({
+            alumno_id: createdAlumnoRecord.id,
+            responsable_id: responsableSecundarioId,
+            vinculo: (params.vinculoSecundario || 'Madre').trim(),
+          });
+          newlyCreatedAlumnoResponsableSecundarioId = relRecord.id;
+        } catch (error) {
+          await rollback();
+          throw new Error(
+            `Error al vincular el Segundo Responsable con el Alumno (Sección 3): ${
+              error instanceof Error ? error.message : 'Fallo en tabla intermedia'
+            }`,
+            { cause: error }
+          );
+        }
+      }
+    }
 
     if (params.inscripcion && params.inscripcion.curso_id && params.inscripcion.ciclo_id && createdAlumnoRecord) {
       try {
@@ -342,6 +439,7 @@ export const alumnoService = {
           fecha_ingreso: params.inscripcion.fecha_ingreso || '',
           fecha_egreso: params.inscripcion.fecha_egreso || '',
           estado: params.inscripcion.estado || 'Regular',
+          modalidad_jornada: params.inscripcion.modalidad_jornada || null,
         });
         newlyCreatedInscripcionId = inscRecord.id;
       } catch (error) {
@@ -358,6 +456,7 @@ export const alumnoService = {
     return {
       alumno: alumnoAdapter(createdAlumnoRecord),
       responsableId,
+      responsableSecundarioId,
       inscripcionId: newlyCreatedInscripcionId || undefined,
     };
   },
@@ -367,7 +466,6 @@ export const alumnoService = {
     data: Partial<Omit<AlumnoRecord, 'id' | 'created' | 'updated'>>,
     originalUpdatedDate: string
   ): Promise<Alumno> => {
-
     const currentRecord = await pb.collection(COLLECTION_NAME).getOne(id, { fields: 'updated' });
     if (currentRecord.updated !== originalUpdatedDate) {
       throw new Error('El registro fue modificado por otro usuario. Por favor, refresca los datos.');
@@ -376,9 +474,6 @@ export const alumnoService = {
     const record = await pb.collection(COLLECTION_NAME).update<AlumnoRecord>(id, data);
     return alumnoAdapter(record);
   },
-
-
-
 
   updateIntegral: async (
     id: string,
@@ -394,24 +489,15 @@ export const alumnoService = {
         fecha_ingreso?: string;
         fecha_egreso?: string;
         estado?: EstadoInscripcion;
+        modalidad_jornada?: ModalidadJornada;
       };
-      responsable?: {
-        id?: string;
-        dni_tipo?: string;
-        dni_numero?: string;
-        dni?: string;
-        apellidos: string;
-        nombres: string;
-        nacionalidad?: string;
-        profesion?: string;
-        telefono?: string;
-        email?: string;
-      };
+      responsable?: ResponsablePayload;
       vinculo?: string;
+      responsableSecundario?: ResponsablePayload;
+      vinculoSecundario?: string;
     },
     originalUpdatedDate: string
   ): Promise<Alumno> => {
-
     const currentRecord = await pb.collection(COLLECTION_NAME).getOne(id, { fields: 'updated' });
     if (currentRecord.updated !== originalUpdatedDate) {
       throw new Error('El registro fue modificado por otro usuario. Por favor, refresca los datos.');
@@ -419,8 +505,7 @@ export const alumnoService = {
 
     await pb.collection(COLLECTION_NAME).update<AlumnoRecord>(id, params.alumno);
 
-
-    if (params.inscripcion && (params.inscripcion.curso_id || params.inscripcion.estado)) {
+    if (params.inscripcion && (params.inscripcion.curso_id || params.inscripcion.estado || params.inscripcion.modalidad_jornada)) {
       let targetInscId = params.inscripcion.id;
       if (!targetInscId) {
         try {
@@ -444,6 +529,7 @@ export const alumnoService = {
           fecha_inscripcion: params.inscripcion.fecha_inscripcion || '',
           fecha_ingreso: params.inscripcion.fecha_ingreso || '',
           estado: params.inscripcion.estado || 'Regular',
+          modalidad_jornada: params.inscripcion.modalidad_jornada || null,
         });
       } else if (params.inscripcion.curso_id && params.inscripcion.ciclo_id) {
         await pb.collection(COLLECTION_INSCRIPCIONES).create({
@@ -456,80 +542,114 @@ export const alumnoService = {
           fecha_ingreso: params.inscripcion.fecha_ingreso || '',
           fecha_egreso: params.inscripcion.fecha_egreso || '',
           estado: params.inscripcion.estado || 'Regular',
+          modalidad_jornada: params.inscripcion.modalidad_jornada || null,
         });
       }
     }
 
+    const saveOrUpdateResponsable = async (payload: ResponsablePayload): Promise<string> => {
+      const dniNum = (payload.dni_numero || payload.dni || '').trim();
+      let respId = payload.id;
+      const sanitizedDni = dniNum.replace(/"/g, '\\"');
 
-    const updateDniNum = (params.responsable?.dni_numero || params.responsable?.dni || '').trim();
-    if (params.responsable && updateDniNum) {
-      let responsableId = params.responsable.id;
-      const sanitizedDni = updateDniNum.replace(/"/g, '\\"');
-
-      if (!responsableId) {
+      if (!respId) {
         try {
           const existing = await pb
             .collection(COLLECTION_RESPONSABLES)
             .getFirstListItem(`dni_numero = "${sanitizedDni}" || dni = "${sanitizedDni}"`);
-          responsableId = existing.id;
+          respId = existing.id;
         } catch {
-
           const newResp = await pb.collection(COLLECTION_RESPONSABLES).create({
-            dni_tipo: (params.responsable.dni_tipo || 'DNI').trim(),
-            dni_numero: updateDniNum,
-            apellidos: (params.responsable.apellidos || '').trim(),
-            nombres: (params.responsable.nombres || '').trim(),
-            nacionalidad: (params.responsable.nacionalidad || '').trim(),
-            profesion: (params.responsable.profesion || '').trim(),
-            telefono: (params.responsable.telefono || '').trim(),
-            email: (params.responsable.email || '').trim(),
+            dni_tipo: (payload.dni_tipo || 'DNI').trim(),
+            dni_numero: dniNum,
+            apellidos: (payload.apellidos || '').trim(),
+            nombres: (payload.nombres || '').trim(),
+            nacionalidad: (payload.nacionalidad || '').trim(),
+            profesion: (payload.profesion || '').trim(),
+            telefono: (payload.telefono || '').trim(),
+            email: (payload.email || '').trim(),
           });
-          responsableId = newResp.id;
-        }
-      } else {
-
-        try {
-          await pb.collection(COLLECTION_RESPONSABLES).update(responsableId, {
-            ...(params.responsable.dni_tipo ? { dni_tipo: params.responsable.dni_tipo.trim() } : {}),
-            dni_numero: updateDniNum,
-            apellidos: (params.responsable.apellidos || '').trim(),
-            nombres: (params.responsable.nombres || '').trim(),
-            nacionalidad: (params.responsable.nacionalidad || '').trim(),
-            profesion: (params.responsable.profesion || '').trim(),
-            telefono: (params.responsable.telefono || '').trim(),
-            email: (params.responsable.email || '').trim(),
-          });
-        } catch (e) {
-          console.error('Error al actualizar datos del responsable:', e);
-          throw e;
+          respId = newResp.id;
         }
       }
 
-      if (responsableId) {
-        try {
-          const existingRels = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).getFullList({
-            filter: `alumno_id = "${id}"`,
+      if (respId) {
+        await pb.collection(COLLECTION_RESPONSABLES).update(respId, {
+          ...(payload.dni_tipo ? { dni_tipo: payload.dni_tipo.trim() } : {}),
+          dni_numero: dniNum,
+          apellidos: (payload.apellidos || '').trim(),
+          nombres: (payload.nombres || '').trim(),
+          nacionalidad: (payload.nacionalidad || '').trim(),
+          profesion: (payload.profesion || '').trim(),
+          telefono: (payload.telefono || '').trim(),
+          email: (payload.email || '').trim(),
+        });
+      }
+
+      return respId;
+    };
+
+    const primaryDniNum = (params.responsable?.dni_numero || params.responsable?.dni || '').trim();
+    const primaryRespId = params.responsable && primaryDniNum
+      ? await saveOrUpdateResponsable(params.responsable)
+      : null;
+
+    const secondaryDniNum = (params.responsableSecundario?.dni_numero || params.responsableSecundario?.dni || '').trim();
+    const secondaryRespId = params.responsableSecundario && secondaryDniNum
+      ? await saveOrUpdateResponsable(params.responsableSecundario)
+      : null;
+
+    if (primaryRespId || secondaryRespId) {
+      const existingRels = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).getFullList({
+        filter: `alumno_id = "${id}"`,
+        sort: 'created',
+      });
+
+      const usedRelIds = new Set<string>();
+
+      if (primaryRespId) {
+        let match = existingRels.find((r) => r.responsable_id === primaryRespId);
+        if (!match) {
+          match = existingRels.find((r) => !usedRelIds.has(r.id) && r.responsable_id !== secondaryRespId);
+        }
+
+        if (match) {
+          usedRelIds.add(match.id);
+          await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).update(match.id, {
+            responsable_id: primaryRespId,
+            vinculo: (params.vinculo || 'Padre').trim(),
           });
-          const matchRel = existingRels.find((r) => r.responsable_id === responsableId) || existingRels[0];
-          if (matchRel) {
-            await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).update(matchRel.id, {
-              responsable_id: responsableId,
-              vinculo: (params.vinculo || 'Padre').trim(),
-            });
-          } else {
-            await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).create({
-              alumno_id: id,
-              responsable_id: responsableId,
-              vinculo: (params.vinculo || 'Padre').trim(),
-            });
-          }
-        } catch (e) {
-          console.error('Error al actualizar relación alumno_responsable:', e);
-          throw e;
+        } else {
+          const created = await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).create({
+            alumno_id: id,
+            responsable_id: primaryRespId,
+            vinculo: (params.vinculo || 'Padre').trim(),
+          });
+          usedRelIds.add(created.id);
+        }
+      }
+
+      if (secondaryRespId) {
+        let match = existingRels.find((r) => !usedRelIds.has(r.id) && r.responsable_id === secondaryRespId);
+        if (!match) {
+          match = existingRels.find((r) => !usedRelIds.has(r.id));
+        }
+
+        if (match) {
+          usedRelIds.add(match.id);
+          await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).update(match.id, {
+            responsable_id: secondaryRespId,
+            vinculo: (params.vinculoSecundario || 'Madre').trim(),
+          });
+        } else {
+          await pb.collection(COLLECTION_ALUMNO_RESPONSABLE).create({
+            alumno_id: id,
+            responsable_id: secondaryRespId,
+            vinculo: (params.vinculoSecundario || 'Madre').trim(),
+          });
         }
       }
     }
-
 
     const fullUpdated = await pb.collection(COLLECTION_NAME).getOne<AlumnoRecord>(id, {
       expand: 'inscripciones_via_alumno_id.curso_id.nivel_id',
@@ -537,9 +657,6 @@ export const alumnoService = {
 
     return alumnoAdapter(fullUpdated);
   },
-
-
-
 
   delete: async (id: string): Promise<boolean> => {
     return await pb.collection(COLLECTION_NAME).delete(id);

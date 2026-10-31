@@ -23,10 +23,13 @@ import { focusFirstFormError } from '../../../shared/utils/formValidation';
 import ui from '../../../shared/styles/ui.module.css';
 import { FormModal } from '../../../shared/components/FormModal';
 import { cursadaService, type CursadaSnapshot } from '../services/cursada.service';
+import { isKindergartenCourse } from '../../alumnos/utils/gradeColors';
 
 interface Props {
   inscripcionId: string;
   registrarBaja?: boolean;
+  cursoNombre?: string;
+  nivelNombre?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -43,7 +46,14 @@ interface Values {
   cambioDomicilio?: string;
 }
 
-export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, onSuccess }: Props) => {
+export const CursadaModal = ({
+  inscripcionId,
+  registrarBaja = false,
+  cursoNombre,
+  nivelNombre,
+  onClose,
+  onSuccess,
+}: Props) => {
   const { message } = App.useApp();
   const [form] = Form.useForm<Values>();
   const [snapshot, setSnapshot] = useState<CursadaSnapshot>();
@@ -58,6 +68,7 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
   const [expandedKeys, setExpandedKeys] = useState<string[] | null>(null);
   const requiresAdminData = Boolean((desde && desde > 1) || recordWithdrawal || (hasta && hasta < 4));
   const activePanels = expandedKeys ?? (requiresAdminData ? ['admin'] : []);
+  const isInicial = isKindergartenCourse(cursoNombre || snapshot?.curso, nivelNombre);
 
   useEffect(() => {
     let active = true;
@@ -114,7 +125,11 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
         cambiosEscuela: formattedCambios,
         cambioDomicilio: values.cambioDomicilio?.trim() || '',
       });
-      message.success(registrarBaja ? 'Baja y bimestres evaluables registrados.' : 'Cursada confirmada.');
+      message.success(
+        registrarBaja
+          ? (isInicial ? 'Baja y períodos evaluables registrados.' : 'Baja y bimestres evaluables registrados.')
+          : 'Cursada confirmada.'
+      );
       onSuccess();
       onClose();
     } catch (cause) {
@@ -127,15 +142,21 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
   const adminPanelItems = [
     {
       key: 'admin',
-      label: 'Datos administrativos y cambios de escuela (Página 14 del boletín)',
+      label: isInicial
+        ? 'Datos administrativos y cambios de escuela (Registro administrativo de trayectoria y pases)'
+        : 'Datos administrativos y cambios de escuela (Página 14 del boletín)',
       children: (
         <Space orientation="vertical" size="small" className={ui.fullWidth}>
           {desde > 1 && (
             <Alert
               type="warning"
               showIcon
-              title="Ingreso tardío: datos requeridos para el boletín"
-              description="Indicá la escuela de origen y registrá el pase de ingreso hacia Crecer y Ser para habilitar la generación del PDF."
+              title={isInicial ? 'Ingreso tardío: datos requeridos para la trayectoria' : 'Ingreso tardío: datos requeridos para el boletín'}
+              description={
+                isInicial
+                  ? 'Indicá la escuela de origen y registrá el pase de ingreso hacia Crecer y Ser para completar la trayectoria institucional.'
+                  : 'Indicá la escuela de origen y registrá el pase de ingreso hacia Crecer y Ser para habilitar la generación del PDF.'
+              }
             />
           )}
           {(recordWithdrawal || (hasta !== undefined && hasta < 4)) && (
@@ -143,7 +164,11 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
               type="warning"
               showIcon
               title="Baja o egreso anticipado"
-              description="Registrá el pase hacia la escuela de destino para la hoja administrativa del boletín."
+              description={
+                isInicial
+                  ? 'Registrá el pase hacia la escuela de destino para el registro administrativo de trayectoria.'
+                  : 'Registrá el pase hacia la escuela de destino para la hoja administrativa del boletín.'
+              }
             />
           )}
           <Form.Item
@@ -236,7 +261,7 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
   return (
     <FormModal
       open
-      title={registrarBaja ? 'Registrar baja y cursada' : 'Bimestres evaluables'}
+      title={registrarBaja ? 'Registrar baja y cursada' : (isInicial ? 'Períodos evaluables e informes' : 'Bimestres evaluables')}
       icon={<CalendarOutlined />}
       description={snapshot ? `${snapshot.nombreCompleto} · ${snapshot.curso} · ${snapshot.ciclo}` : undefined}
       onCancel={saving ? undefined : onClose}
@@ -254,8 +279,16 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
         <Alert
           type="info"
           showIcon
-          title="La fecha administrativa y el bimestre evaluable son independientes."
-          description="Incluí el último bimestre que corresponde evaluar, aunque el alumno ya se haya retirado. Fuera del rango no se exigirán boletines nuevos."
+          title={
+            isInicial
+              ? 'La fecha administrativa y el período evaluable son independientes.'
+              : 'La fecha administrativa y el bimestre evaluable son independientes.'
+          }
+          description={
+            isInicial
+              ? 'Incluí el último período que corresponde evaluar, aunque el alumno ya se haya retirado. Fuera del rango no se exigirán informes nuevos.'
+              : 'Incluí el último bimestre que corresponde evaluar, aunque el alumno ya se haya retirado. Fuera del rango no se exigirán boletines nuevos.'
+          }
         />
         {error && (
           <Alert
@@ -272,31 +305,35 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
         {!snapshot && !error && <Spin />}
         <Form form={form} layout="vertical" disabled={saving || !snapshot || uncertain}>
           <Form.Item name="sinCursada" valuePropName="checked">
-            <Checkbox>No cursó ningún bimestre</Checkbox>
+            <Checkbox>{isInicial ? 'No cursó ningún período' : 'No cursó ningún bimestre'}</Checkbox>
           </Form.Item>
           {!sinCursada && (
             <>
               <Form.Item
                 name="desde"
-                label="Primer bimestre evaluable"
-                rules={[{ required: true, message: 'Seleccioná el primer bimestre.' }]}
+                label={isInicial ? 'Primer período evaluable' : 'Primer bimestre evaluable'}
+                rules={[{ required: true, message: isInicial ? 'Seleccioná el primer período.' : 'Seleccioná el primer bimestre.' }]}
               >
-                <Select options={[1, 2, 3, 4].map(value => ({ value, label: `${value}.º bimestre` }))} />
+                <Select options={[1, 2, 3, 4].map(value => ({ value, label: isInicial ? `Período ${value}` : `${value}.º bimestre` }))} />
               </Form.Item>
               {desde > 1 && (
                 <Alert
                   type="info"
                   showIcon
                   title="Documentación del colegio anterior"
-                  description="Al confirmar esta cursada, confirmás que la información de los bimestres anteriores consta en el legajo. El boletín lo indicará en sus observaciones."
+                  description={
+                    isInicial
+                      ? 'Al confirmar esta cursada, confirmás que la información de los períodos anteriores consta en el legajo. Los informes institucionales lo reflejarán en sus observaciones.'
+                      : 'Al confirmar esta cursada, confirmás que la información de los bimestres anteriores consta en el legajo. El boletín lo indicará en sus observaciones.'
+                  }
                 />
               )}
               <Form.Item
                 name="hasta"
-                label="Último bimestre evaluable"
+                label={isInicial ? 'Último período evaluable' : 'Último bimestre evaluable'}
                 dependencies={['desde']}
                 rules={[
-                  { required: true, message: 'Seleccioná el último bimestre.' },
+                  { required: true, message: isInicial ? 'Seleccioná el último período.' : 'Seleccioná el último bimestre.' },
                   ({ getFieldValue }) => ({
                     validator: (_, value) =>
                       !value || value >= getFieldValue('desde')
@@ -305,7 +342,7 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
                   }),
                 ]}
               >
-                <Select options={[1, 2, 3, 4].map(value => ({ value, label: `${value}.º bimestre` }))} />
+                <Select options={[1, 2, 3, 4].map(value => ({ value, label: isInicial ? `Período ${value}` : `${value}.º bimestre` }))} />
               </Form.Item>
             </>
           )}
@@ -328,14 +365,18 @@ export const CursadaModal = ({ inscripcionId, registrarBaja = false, onClose, on
         </Form>
         {!!snapshot?.bimestresConDatos.length && (
           <Typography.Text type="secondary">
-            Bimestres con notas, cierres o entregas: {snapshot.bimestresConDatos.join(', ')}. Deben conservarse dentro del rango.
+            {isInicial ? 'Períodos con datos, cierres o informes' : 'Bimestres con notas, cierres o entregas'}: {snapshot.bimestresConDatos.join(', ')}. Deben conservarse dentro del rango.
           </Typography.Text>
         )}
         {snapshot?.cursada.estado === 'PENDIENTE' && (
           <Alert
             type="warning"
             title="Cursada por confirmar"
-            description="La confirmación es necesaria antes de una nueva entrega del curso."
+            description={
+              isInicial
+                ? 'La confirmación es necesaria antes de una nueva emisión o entrega de informes del curso.'
+                : 'La confirmación es necesaria antes de una nueva entrega del curso.'
+            }
           />
         )}
       </Space>
