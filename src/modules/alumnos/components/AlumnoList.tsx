@@ -39,12 +39,17 @@ import type { Alumno } from '../models/alumno.model';
 import { AlumnoFormModal, type AlumnoFormValues } from './AlumnoFormModal';
 import { AlumnoDetailModal } from './AlumnoDetailModal';
 import { DarDeBajaModal } from './DarDeBajaModal';
-import type { EstadoInscripcion } from '../../inscripciones/models/inscripcion.model';
 import {
-  getGradeColorConfig,
+  formatModalidadJornada,
+  type EstadoInscripcion,
+} from '../../inscripciones/models/inscripcion.model';
+import {
+  getCourseVisualConfig,
   compareGrados,
   GRADE_PALETTE,
-  type GradeNumber,
+  KINDERGARTEN_PALETTE,
+  type CourseFilterKey,
+  type SchoolLevelFilter,
 } from '../utils/gradeColors';
 import { getAvatarGradient } from '../../../theme';
 
@@ -72,7 +77,8 @@ export const AlumnoList: React.FC = () => {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
-  const [selectedGradeFilter, setSelectedGradeFilter] = useState<GradeNumber | 'all'>('all');
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState<SchoolLevelFilter>('all');
+  const [selectedCourseFilter, setSelectedCourseFilter] = useState<CourseFilterKey | 'all'>('all');
   const [estadoFilter, setEstadoFilter] = useState<'REGULARES' | 'BAJAS' | 'TODOS'>('REGULARES');
 
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -95,8 +101,13 @@ export const AlumnoList: React.FC = () => {
     };
   }, [inputValue]);
 
-  const handleGradeChange = (val: GradeNumber | 'all') => {
-    setSelectedGradeFilter(val);
+  const handleLevelChange = (val: SchoolLevelFilter) => {
+    setSelectedLevelFilter(val);
+    setCurrentPage(1);
+  };
+
+  const handleCourseKeyChange = (val: CourseFilterKey | 'all') => {
+    setSelectedCourseFilter(val);
     setCurrentPage(1);
   };
 
@@ -110,7 +121,8 @@ export const AlumnoList: React.FC = () => {
       setLoading(true);
       const data = await alumnoService.getList(currentPage, 50, {
         searchTerm,
-        grade: selectedGradeFilter,
+        level: selectedLevelFilter,
+        courseKey: selectedCourseFilter,
         status: estadoFilter,
       });
       setAlumnos(data.items);
@@ -122,7 +134,7 @@ export const AlumnoList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, searchTerm, selectedGradeFilter, estadoFilter, message]);
+  }, [currentPage, searchTerm, selectedLevelFilter, selectedCourseFilter, estadoFilter, message]);
 
   useEffect(() => {
     let isMounted = true;
@@ -132,7 +144,8 @@ export const AlumnoList: React.FC = () => {
         setLoading(true);
         const data = await alumnoService.getList(currentPage, 50, {
           searchTerm,
-          grade: selectedGradeFilter,
+          level: selectedLevelFilter,
+          courseKey: selectedCourseFilter,
           status: estadoFilter,
         });
         if (!isMounted) return;
@@ -159,7 +172,7 @@ export const AlumnoList: React.FC = () => {
       isMounted = false;
       void alumnoService.unsubscribeRealtime();
     };
-  }, [currentPage, searchTerm, selectedGradeFilter, estadoFilter, message]);
+  }, [currentPage, searchTerm, selectedLevelFilter, selectedCourseFilter, estadoFilter, message]);
 
   const displayedAlumnos = alumnos;
 
@@ -238,12 +251,29 @@ export const AlumnoList: React.FC = () => {
           }
         : undefined;
 
+      const respSecNum = (values.responsableSecundarioDniNumero || values.responsableSecundarioDni || '').trim();
+      const responsableSecundarioData = respSecNum
+        ? {
+            id: values.responsableSecundarioId,
+            dni_tipo: (values.responsableSecundarioDniTipo || 'DNI').trim(),
+            dni_numero: respSecNum,
+            dni: respSecNum,
+            apellidos: (values.responsableSecundarioApellidos || '').trim(),
+            nombres: (values.responsableSecundarioNombres || '').trim(),
+            nacionalidad: (values.responsableSecundarioNacionalidad || '').trim(),
+            profesion: (values.responsableSecundarioProfesion || '').trim(),
+            telefono: (values.responsableSecundarioTelefono || '').trim(),
+            email: (values.responsableSecundarioEmail || '').trim(),
+          }
+        : undefined;
+
       const vinculo = values.vinculo || 'Padre';
+      const vinculoSecundario = values.vinculoSecundario || 'Madre';
 
       if (editingAlumno) {
         if (!originalUpdatedDate) throw new Error('Falta la fecha de actualización original');
         const editInscripcionData =
-          values.cursoId || values.estadoInscripcion || editingAlumno.inscripcionId
+          values.cursoId || values.estadoInscripcion || values.modalidadJornada || editingAlumno.inscripcionId
             ? {
                 id: editingAlumno.inscripcionId,
                 curso_id: values.cursoId !== undefined ? values.cursoId : editingAlumno.cursoId,
@@ -258,6 +288,7 @@ export const AlumnoList: React.FC = () => {
                   ? (values.fechaEgreso ? values.fechaEgreso.format('YYYY-MM-DD') : '')
                   : (editingAlumno.fechaEgreso || ''),
                 estado: (values.estadoInscripcion || editingAlumno.estadoInscripcion || 'Regular') as EstadoInscripcion,
+                modalidad_jornada: values.modalidadJornada !== undefined ? values.modalidadJornada : editingAlumno.modalidadJornada,
               }
             : undefined;
 
@@ -268,6 +299,8 @@ export const AlumnoList: React.FC = () => {
             inscripcion: editInscripcionData,
             responsable: responsableData,
             vinculo,
+            responsableSecundario: responsableSecundarioData,
+            vinculoSecundario,
           },
           originalUpdatedDate
         );
@@ -285,16 +318,17 @@ export const AlumnoList: React.FC = () => {
                 fecha_ingreso: values.fechaIngreso ? values.fechaIngreso.format('YYYY-MM-DD') : '',
                 fecha_egreso: values.fechaEgreso ? values.fechaEgreso.format('YYYY-MM-DD') : '',
                 estado: values.estadoInscripcion || 'Regular',
+                modalidad_jornada: values.modalidadJornada,
               }
             : undefined;
-
-        const vinculo = values.vinculo || 'Padre';
 
         await alumnoService.createIntegral({
           alumno: alumnoData,
           inscripcion: createInscripcionData,
           responsable: responsableData,
           vinculo,
+          responsableSecundario: responsableSecundarioData,
+          vinculoSecundario,
         });
 
         message.success('Alumno registrado, inscrito y vinculado exitosamente');
@@ -318,6 +352,27 @@ export const AlumnoList: React.FC = () => {
     }
   };
 
+  const getEmptyDescription = () => {
+    if (estadoFilter === 'BAJAS') {
+      return 'No hay alumnos dados de baja en este ciclo';
+    }
+    if (selectedCourseFilter !== 'all') {
+      if (selectedCourseFilter === 'sala_2_3') {
+        return `No hay alumnos registrados en ${KINDERGARTEN_PALETTE.sala_2_3.fullLabel}`;
+      }
+      if (selectedCourseFilter === 'sala_4_5') {
+        return `No hay alumnos registrados en ${KINDERGARTEN_PALETTE.sala_4_5.fullLabel}`;
+      }
+      return `No hay alumnos registrados en ${GRADE_PALETTE[selectedCourseFilter].label}`;
+    }
+    if (selectedLevelFilter !== 'all') {
+      return `No hay alumnos registrados en Nivel ${selectedLevelFilter === 'inicial' ? 'Inicial' : 'Primario'}`;
+    }
+    if (searchTerm) {
+      return `No se encontraron alumnos para "${searchTerm}"`;
+    }
+    return 'No hay alumnos registrados aún';
+  };
 
   const columns: ColumnsType<Alumno> = [
     {
@@ -342,7 +397,7 @@ export const AlumnoList: React.FC = () => {
             </Avatar>
             <div>
               <div className={ui.wrappingRow}>
-                <span className="student-name" style={{ color: isBaja ? "var(--cys-color-error-text)" : "var(--cys-color-primary-text)", fontWeight: 600 }}>
+                <span className="student-name" style={{ color: isBaja ? 'var(--cys-color-error-text)' : 'var(--cys-color-primary-text)', fontWeight: 600 }}>
                   {record.apellidos}, {record.nombres}
                 </span>
                 {isBaja && (
@@ -382,12 +437,12 @@ export const AlumnoList: React.FC = () => {
       },
     },
     {
-      title: 'Grado',
-      key: 'grado',
-      width: 155,
+      title: 'Curso / Sala',
+      key: 'curso',
+      width: 220,
       sorter: (a, b) => compareGrados(a.cursoNombre, b.cursoNombre),
       render: (_, record) => {
-        const config = getGradeColorConfig(record.cursoNombre);
+        const config = getCourseVisualConfig(record.cursoNombre, record.nivelNombre);
         if (!record.cursoNombre) {
           return (
             <Tag
@@ -395,8 +450,8 @@ export const AlumnoList: React.FC = () => {
                 borderRadius: 6,
                 fontSize: 12,
                 color: 'var(--cys-color-text-secondary)',
-                background: "var(--cys-color-fill-tertiary)",
-                border: "1px solid var(--cys-color-border-secondary)",
+                background: 'var(--cys-color-fill-tertiary)',
+                border: '1px solid var(--cys-color-border-secondary)',
               }}
             >
               Sin Grado
@@ -404,32 +459,48 @@ export const AlumnoList: React.FC = () => {
           );
         }
         return (
-          <Tag
-            style={{
-              borderRadius: 8,
-              padding: '3px 10px',
-              fontWeight: 700,
-              fontSize: 12,
-              color: config.textColor,
-              background: config.bgColor,
-              border: `1px solid ${config.borderColor}`,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <span
+          <Space size={6} wrap>
+            <Tag
               style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                backgroundColor: config.textColor,
-                display: 'inline-block',
-                boxShadow: `0 0 0 2px ${config.bgColor}`,
+                borderRadius: 8,
+                padding: '3px 10px',
+                fontWeight: 700,
+                fontSize: 12,
+                color: config.textColor,
+                background: config.bgColor,
+                border: `1px solid ${config.borderColor}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
               }}
-            />
-            <span>{record.cursoNombre}</span>
-          </Tag>
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  backgroundColor: config.textColor,
+                  display: 'inline-block',
+                  boxShadow: `0 0 0 2px ${config.bgColor}`,
+                }}
+              />
+              <span>{record.cursoNombre}</span>
+            </Tag>
+            {record.modalidadJornada && (
+              <Tag
+                style={{
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: 'var(--cys-color-primary-text)',
+                  background: 'var(--cys-color-primary-bg)',
+                  border: '1px solid var(--cys-color-primary-border)',
+                }}
+              >
+                {formatModalidadJornada(record.modalidadJornada)}
+              </Tag>
+            )}
+          </Space>
         );
       },
     },
@@ -447,7 +518,7 @@ export const AlumnoList: React.FC = () => {
             fontSize: 12,
             fontWeight: 600,
             background: 'rgba(13, 148, 136, 0.08)',
-            color: "var(--cys-color-success-text)",
+            color: 'var(--cys-color-success-text)',
             border: '1px solid rgba(13, 148, 136, 0.2)',
           }}
         >
@@ -537,7 +608,6 @@ export const AlumnoList: React.FC = () => {
       actions={
         <Space size="middle" wrap>
           {returnToBulletin && <Button onClick={() => navigate(returnToBulletin)}>Volver al boletín</Button>}
-          { }
           <Segmented
             value={viewMode}
             onChange={(val) => setViewMode(val as 'table' | 'grid')}
@@ -547,8 +617,6 @@ export const AlumnoList: React.FC = () => {
             ]}
             style={{ fontWeight: 500 }}
           />
-
-          { }
           <Button
             type="primary"
             icon={<PlusOutlined />}
@@ -559,7 +627,6 @@ export const AlumnoList: React.FC = () => {
         </Space>
       }
     >
-
       <AlumnoFilters
         counts={counts}
         status={estadoFilter}
@@ -567,15 +634,16 @@ export const AlumnoList: React.FC = () => {
         query={inputValue}
         appliedQuery={searchTerm}
         onQueryChange={setInputValue}
-        grade={selectedGradeFilter}
-        onGradeChange={handleGradeChange}
+        level={selectedLevelFilter}
+        onLevelChange={handleLevelChange}
+        courseKey={selectedCourseFilter}
+        onCourseKeyChange={handleCourseKeyChange}
         loading={loading}
         onRefresh={fetchAlumnos}
       />
 
-      { }
       {selectedRowKeys.length > 0 && (
-        <Card style={{ marginBottom: 16, background: "var(--cys-color-primary-bg)", borderColor: "var(--cys-color-primary-border)", borderRadius: 12 }} styles={{ body: { padding: '10px 16px' } }}>
+        <Card style={{ marginBottom: 16, background: 'var(--cys-color-primary-bg)', borderColor: 'var(--cys-color-primary-border)', borderRadius: 12 }} styles={{ body: { padding: '10px 16px' } }}>
           <Space style={{ justifyContent: 'space-between', width: '100%' }}>
             <Space size={8}>
               <Badge count={selectedRowKeys.length} style={{ backgroundColor: '#2563eb', fontWeight: 700 }} />
@@ -590,7 +658,6 @@ export const AlumnoList: React.FC = () => {
         </Card>
       )}
 
-      { }
       {viewMode === 'table' ? (
         <Card className="students-card">
           <Table
@@ -612,15 +679,7 @@ export const AlumnoList: React.FC = () => {
               emptyText: (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={
-                    estadoFilter === 'BAJAS'
-                      ? 'No hay alumnos dados de baja en este ciclo'
-                      : selectedGradeFilter !== 'all'
-                      ? `No hay alumnos registrados en ${GRADE_PALETTE[selectedGradeFilter].label}`
-                      : searchTerm
-                      ? `No se encontraron alumnos para "${searchTerm}"`
-                      : 'No hay alumnos registrados aún'
-                  }
+                  description={getEmptyDescription()}
                 >
                   <Button type="primary" size="small" icon={<PlusOutlined />} onClick={() => handleOpenModal()}>
                     Registrar primer alumno
@@ -648,22 +707,14 @@ export const AlumnoList: React.FC = () => {
             <Card className="students-card">
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={
-                  estadoFilter === 'BAJAS'
-                    ? 'No hay alumnos dados de baja en este ciclo'
-                    : selectedGradeFilter !== 'all'
-                    ? `No hay alumnos registrados en ${GRADE_PALETTE[selectedGradeFilter].label}`
-                    : searchTerm
-                    ? `No se encontraron alumnos para "${searchTerm}"`
-                    : 'No hay alumnos registrados aún'
-                }
+                description={getEmptyDescription()}
               />
             </Card>
           ) : (
             <Row gutter={[16, 16]}>
               {displayedAlumnos.map((alumno) => {
                 const initials = `${alumno.apellidos.charAt(0)}${alumno.nombres.charAt(0)}`.toUpperCase();
-                const gradeConfig = getGradeColorConfig(alumno.cursoNombre);
+                const courseConfig = getCourseVisualConfig(alumno.cursoNombre, alumno.nivelNombre);
                 const isBaja = alumno.estadoInscripcion === 'Baja';
 
                 return (
@@ -693,7 +744,6 @@ export const AlumnoList: React.FC = () => {
                           {initials}
                         </Avatar>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                          { }
                           {isBaja && (
                             <Tag color="error" className={ui.statusTag}>
                               Baja {alumno.fechaEgreso ? `• ${dayjs(alumno.fechaEgreso).format('DD/MM/YY')}` : ''}
@@ -714,26 +764,43 @@ export const AlumnoList: React.FC = () => {
                               Sin cursada
                             </Tag>
                           )}
-                          {alumno.cursoNombre ? (
-                            <Tag
-                              style={{
-                                borderRadius: 8,
-                                padding: '2px 8px',
-                                fontWeight: 700,
-                                fontSize: 12,
-                                color: gradeConfig.textColor,
-                                background: gradeConfig.bgColor,
-                                border: `1px solid ${gradeConfig.borderColor}`,
-                                margin: 0,
-                              }}
-                            >
-                              {alumno.cursoNombre}
-                            </Tag>
-                          ) : (
-                            <Tag style={{ borderRadius: 6, fontSize: 11, margin: 0, color: 'var(--cys-color-text-secondary)' }}>
-                              Sin Grado
-                            </Tag>
-                          )}
+                          <Space size={4} wrap style={{ justifyContent: 'flex-end' }}>
+                            {alumno.cursoNombre ? (
+                              <Tag
+                                style={{
+                                  borderRadius: 8,
+                                  padding: '2px 8px',
+                                  fontWeight: 700,
+                                  fontSize: 12,
+                                  color: courseConfig.textColor,
+                                  background: courseConfig.bgColor,
+                                  border: `1px solid ${courseConfig.borderColor}`,
+                                  margin: 0,
+                                }}
+                              >
+                                {alumno.cursoNombre}
+                              </Tag>
+                            ) : (
+                              <Tag style={{ borderRadius: 6, fontSize: 11, margin: 0, color: 'var(--cys-color-text-secondary)' }}>
+                                Sin Grado
+                              </Tag>
+                            )}
+                            {alumno.modalidadJornada && (
+                              <Tag
+                                style={{
+                                  borderRadius: 6,
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: 'var(--cys-color-primary-text)',
+                                  background: 'var(--cys-color-primary-bg)',
+                                  border: '1px solid var(--cys-color-primary-border)',
+                                  margin: 0,
+                                }}
+                              >
+                                {formatModalidadJornada(alumno.modalidadJornada)}
+                              </Tag>
+                            )}
+                          </Space>
                           <Tag className="student-legajo-tag" style={{ margin: 0 }}>
                             {alumno.numeroLegajo ? `Leg. ${alumno.numeroLegajo}` : 'S/L'}
                           </Tag>
@@ -747,7 +814,7 @@ export const AlumnoList: React.FC = () => {
                           fontSize: 15,
                           lineHeight: '21px',
                           height: '42px',
-                          color: isBaja ? "var(--cys-color-error-text)" : "var(--cys-color-primary-text)",
+                          color: isBaja ? 'var(--cys-color-error-text)' : 'var(--cys-color-primary-text)',
                           display: '-webkit-box',
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: 'vertical',
@@ -817,7 +884,6 @@ export const AlumnoList: React.FC = () => {
         </div>
       )}
 
-      { }
       <AlumnoFormModal
         visible={isModalVisible}
         onClose={handleCloseModal}
@@ -826,7 +892,6 @@ export const AlumnoList: React.FC = () => {
         initialTab={editingInitialTab}
       />
 
-      { }
       <AlumnoDetailModal
         visible={isDetailModalVisible}
         alumno={selectedDetailAlumno}
@@ -840,7 +905,6 @@ export const AlumnoList: React.FC = () => {
         }}
       />
 
-      { }
       <DarDeBajaModal
         visible={isBajaModalVisible}
         alumno={bajaModalAlumno}

@@ -63,6 +63,8 @@ async function fetchAll(endpoint, token) {
 }
 
 const COURSES_INFO = [
+  { grade: 'Sala de 2 y 3 años', birthYear: 2023 },
+  { grade: 'Sala de 4 y 5 años', birthYear: 2021 },
   { grade: '1°', birthYear: 2019 },
   { grade: '2°', birthYear: 2018 },
   { grade: '3°', birthYear: 2017 },
@@ -177,10 +179,17 @@ async function run() {
 
     let currentOrder = 1;
     for (const enrollment of existingEnrollmentsForCourse) {
+      const patch = {};
       if (enrollment.numero_orden !== currentOrder) {
+        patch.numero_orden = currentOrder;
+      }
+      if (courseInfo.grade.startsWith('Sala') && !enrollment.modalidad_jornada) {
+        patch.modalidad_jornada = currentOrder % 2 !== 0 ? 'Mañana' : 'Jornada Completa';
+      }
+      if (Object.keys(patch).length > 0) {
         await request(`/api/collections/inscripciones/records/${enrollment.id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ numero_orden: currentOrder })
+          body: JSON.stringify(patch)
         }, token);
       }
       currentOrder += 1;
@@ -254,6 +263,11 @@ async function run() {
       const isLibre = studentIndex === 82;
       const status = isBaja ? 'Baja' : isLibre ? 'Libre' : 'Regular';
 
+      const isKindergarten = courseInfo.grade.startsWith('Sala');
+      const modalidadJornada = isKindergarten
+        ? (i % 2 === 0 ? 'Mañana' : 'Jornada Completa')
+        : (course.turno || 'Mañana');
+
       await request('/api/collections/inscripciones/records', {
         method: 'POST',
         body: JSON.stringify({
@@ -262,6 +276,7 @@ async function run() {
           ciclo_id: activeCycle.id,
           numero_orden: currentOrder,
           numero_inscripcion: `DEV-I-${String(studentIndex).padStart(4, '0')}`,
+          modalidad_jornada: modalidadJornada,
           estado: status,
           fecha_ingreso: '2026-03-02 08:00:00.000Z',
           fecha_egreso: isBaja ? '2026-05-15 12:00:00.000Z' : '',

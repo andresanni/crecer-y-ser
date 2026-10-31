@@ -44,7 +44,10 @@ import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
 import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 import { inscripcionService } from '../../inscripciones/services/inscripcion.service';
-import type { Inscripcion } from '../../inscripciones/models/inscripcion.model';
+import {
+  formatModalidadJornada,
+  type Inscripcion,
+} from '../../inscripciones/models/inscripcion.model';
 import { responsableService } from '../../responsables/services/responsable.service';
 import type { Responsable } from '../../responsables/models/responsable.model';
 import { getAvatarGradient } from '../../../theme';
@@ -98,14 +101,13 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
     onEdit(alumno, targetTab);
   };
 
-
   useEffect(() => {
     if (!visible || !alumno) return;
 
     let isMounted = true;
     const loadDetails = async () => {
       try {
-          const [inscList, respList] = await Promise.all([
+        const [inscList, respList] = await Promise.all([
           inscripcionService.getByAlumnoId(alumno.id),
           responsableService.getByAlumnoId(alumno.id),
         ]);
@@ -126,7 +128,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
     };
   }, [visible, alumno, detailsRevision]);
 
-
   const edad = useMemo(() => {
     if (!alumno?.fechaNacimiento) return null;
     const birth = dayjs(alumno.fechaNacimiento);
@@ -139,7 +140,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
 
   const initials = `${alumno.apellidos.charAt(0)}${alumno.nombres.charAt(0)}`.toUpperCase();
   const isBaja = alumno.estadoInscripcion === 'Baja';
-  const primaryResponsable = responsables.length > 0 ? responsables[0] : null;
 
   const tabItems = [
     {
@@ -150,18 +150,17 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             <UserOutlined style={{ fontSize: 13.5 }} />
             <span>1. Datos del Alumno</span>
           </span>
-          <span style={{ fontSize: 11, color: "var(--cys-color-success-text)", fontWeight: 600, marginTop: 2, paddingLeft: 19 }}>
+          <span style={{ fontSize: 11, color: 'var(--cys-color-success-text)', fontWeight: 600, marginTop: 2, paddingLeft: 19 }}>
             ✓ Ficha Completa
           </span>
         </div>
       ),
       children: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
-          { }
           <div
             style={{
-              background: "var(--cys-color-fill-quaternary)",
-              border: "1px solid var(--cys-color-border-secondary)",
+              background: 'var(--cys-color-fill-quaternary)',
+              border: '1px solid var(--cys-color-border-secondary)',
               borderRadius: 10,
               padding: '6px 10px',
               display: 'flex',
@@ -213,13 +212,12 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             )}
           </div>
 
-          { }
           <Card
             className="detail-section-card"
             size="small"
             title={
               <div className={ui.splitRow}>
-                <Space size={8} style={{ color: "var(--cys-color-success-text)", fontWeight: 700 }}>
+                <Space size={8} style={{ color: 'var(--cys-color-success-text)', fontWeight: 700 }}>
                   <IdcardOutlined className={ui.success} />
                   <span>Identificación y Filiación</span>
                 </Space>
@@ -228,7 +226,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                   size="small"
                   icon={<EditOutlined />}
                   onClick={() => handleEdit('alumno')}
-                  style={{ color: "var(--cys-color-success-text)", fontWeight: 600, padding: 0 }}
+                  style={{ color: 'var(--cys-color-success-text)', fontWeight: 600, padding: 0 }}
                 >
                   Editar
                 </Button>
@@ -318,13 +316,12 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             </Row>
           </Card>
 
-          { }
           <Card
             className="detail-section-card"
             size="small"
             title={
               <div className={ui.splitRow}>
-                <Space size={8} style={{ color: "var(--cys-color-success-text)", fontWeight: 700 }}>
+                <Space size={8} style={{ color: 'var(--cys-color-success-text)', fontWeight: 700 }}>
                   <HomeOutlined className={ui.success} />
                   <span>Contacto y Domicilio</span>
                 </Space>
@@ -333,7 +330,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                   size="small"
                   icon={<EditOutlined />}
                   onClick={() => handleEdit('alumno')}
-                  style={{ color: "var(--cys-color-success-text)", fontWeight: 600, padding: 0 }}
+                  style={{ color: 'var(--cys-color-success-text)', fontWeight: 600, padding: 0 }}
                 >
                   Editar
                 </Button>
@@ -380,7 +377,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             </Row>
           </Card>
 
-          { }
           <Card
             className="detail-section-card acadeu-card"
             size="small"
@@ -475,7 +471,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
               fontWeight: 600,
               marginTop: 2,
               paddingLeft: 19,
-              color: alumno.cursoNombre ? "var(--cys-color-primary-text)" : "var(--cys-color-warning-text)",
+              color: alumno.cursoNombre ? 'var(--cys-color-primary-text)' : 'var(--cys-color-warning-text)',
             }}
           >
             {alumno.cursoNombre ? `• ${alumno.cursoNombre}` : '⚠️ Sin Curso'}
@@ -484,11 +480,10 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
       ),
       children: (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
-          { }
           <div
             style={{
-              background: "var(--cys-color-fill-quaternary)",
-              border: "1px solid var(--cys-color-border-secondary)",
+              background: 'var(--cys-color-fill-quaternary)',
+              border: '1px solid var(--cys-color-border-secondary)',
               borderRadius: 10,
               padding: '6px 10px',
               display: 'flex',
@@ -509,6 +504,11 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
               ) : (
                 <Tag color="warning" className={ui.compactTag}>
                   ⚠️ Sin Curso Asignado
+                </Tag>
+              )}
+              {alumno.modalidadJornada && (
+                <Tag color="geekblue" className={ui.strongTag}>
+                  Jornada: {formatModalidadJornada(alumno.modalidadJornada)}
                 </Tag>
               )}
               <Tag
@@ -581,12 +581,17 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                       <div>
-                        <Text strong style={{ fontSize: 16, color: isBajaInsc ? "var(--cys-color-error-text)" : "var(--cys-color-text)" }}>
+                        <Text strong style={{ fontSize: 16, color: isBajaInsc ? 'var(--cys-color-error-text)' : 'var(--cys-color-text)' }}>
                           {insc.cursoNombre || 'Curso no asignado'}
                         </Text>
                         {insc.nivelNombre && (
                           <Tag color="blue" style={{ marginLeft: 8, fontWeight: 600, borderRadius: 6 }}>
                             {insc.nivelNombre}
+                          </Tag>
+                        )}
+                        {insc.modalidadJornada && (
+                          <Tag color="cyan" style={{ marginLeft: 8, fontWeight: 600, borderRadius: 6 }}>
+                            {formatModalidadJornada(insc.modalidadJornada)}
                           </Tag>
                         )}
                       </div>
@@ -622,6 +627,14 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                           </span>
                         </div>
                       </Col>
+                      {insc.modalidadJornada && (
+                        <Col xs={12} sm={isBajaInsc ? 4 : 6}>
+                          <div className="detail-data-tile">
+                            <span className="detail-tile-label">JORNADA</span>
+                            <span className="detail-tile-value">{formatModalidadJornada(insc.modalidadJornada)}</span>
+                          </div>
+                        </Col>
+                      )}
                       {isBajaInsc && (
                         <Col xs={12} sm={8}>
                           <div className="detail-data-tile">
@@ -700,10 +713,14 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
               fontWeight: 600,
               marginTop: 2,
               paddingLeft: 19,
-              color: responsables.length > 0 ? "var(--cys-color-success-text)" : "var(--cys-color-warning-text)",
+              color: responsables.length > 0 ? 'var(--cys-color-success-text)' : 'var(--cys-color-warning-text)',
             }}
           >
-            {responsables.length > 0 ? '✓ Tutor Vinculado' : '⚠️ Sin Responsable'}
+            {responsables.length > 1
+              ? `✓ ${responsables.length} Tutores Vinculados`
+              : responsables.length === 1
+              ? '✓ Tutor Vinculado'
+              : '⚠️ Sin Responsable'}
           </span>
         </div>
       ),
@@ -735,69 +752,47 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
             </div>
           ) : (
             <>
-              { }
-              {primaryResponsable && (
-                <div
-                  style={{
-                    background: "var(--cys-color-fill-quaternary)",
-                    border: "1px solid var(--cys-color-border-secondary)",
-                    borderRadius: 10,
-                    padding: '6px 10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 8,
-                  }}
-                >
-                  <div className={ui.wrappingRow}>
-                    <Text strong className={ui.sectionLabel}>
-                      Datos del Responsable:
-                    </Text>
-                    <Tag color="success" className={ui.strongTag}>
-                      {primaryResponsable.responsable.dniTipo || 'DNI'}: {primaryResponsable.responsable.dniNumero || primaryResponsable.responsable.dni || 'Cargado'}
+              <div
+                style={{
+                  background: 'var(--cys-color-fill-quaternary)',
+                  border: '1px solid var(--cys-color-border-secondary)',
+                  borderRadius: 10,
+                  padding: '6px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 8,
+                }}
+              >
+                <div className={ui.wrappingRow}>
+                  <Text strong className={ui.sectionLabel}>
+                    Tutores Vinculados ({responsables.length}):
+                  </Text>
+                  {responsables.map((item, idx) => (
+                    <Tag key={item.relationId} color="success" className={ui.compactTag}>
+                      {idx === 0 ? 'Principal' : 'Secundario'}: {item.responsable.apellidos}, {item.responsable.nombres} ({item.vinculo})
                     </Tag>
-                    {primaryResponsable.responsable.telefono ? (
-                      <Tag color="success" className={ui.compactTag}>
-                        Teléfono: {primaryResponsable.responsable.telefono}
-                      </Tag>
-                    ) : (
-                      <Tag color="warning" className={ui.compactTag}>
-                        ⚠️ Sin Teléfono
-                      </Tag>
-                    )}
-                    {primaryResponsable.responsable.email ? (
-                      <Tag color="success" className={ui.compactTag}>
-                        Email: {primaryResponsable.responsable.email}
-                      </Tag>
-                    ) : (
-                      <Tag color="warning" className={ui.compactTag}>
-                        ⚠️ Sin Email
-                      </Tag>
-                    )}
-                    <Tag color="blue" className={ui.compactTag}>
-                      Vínculo: {primaryResponsable.vinculo}
-                    </Tag>
-                  </div>
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={() => handleEdit('responsable')}
-                    style={{ color: 'var(--cys-color-primary-text)', fontWeight: 600, padding: 0 }}
-                  >
-                    Editar Tutor
-                  </Button>
+                  ))}
                 </div>
-              )}
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEdit('responsable')}
+                  style={{ color: 'var(--cys-color-primary-text)', fontWeight: 600, padding: 0 }}
+                >
+                  Gestionar Tutores
+                </Button>
+              </div>
 
               <Space orientation="vertical" size="middle" className={ui.fullWidth}>
-                {responsables.map((item) => (
+                {responsables.map((item, idx) => (
                   <Card
                     key={item.relationId}
                     className="detail-sub-card"
                     size="small"
-                    style={{ borderTop: '3px solid #0284c7' }}
+                    style={{ borderTop: idx === 0 ? '3px solid #0284c7' : '3px solid #7c3aed' }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                       <Space size="middle">
@@ -814,9 +809,14 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                           {item.responsable.nombres.charAt(0)}
                         </Avatar>
                         <div>
-                          <Text strong style={{ fontSize: 16, color: 'var(--cys-color-text)' }}>
-                            {item.responsable.apellidos}, {item.responsable.nombres}
-                          </Text>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <Text strong style={{ fontSize: 16, color: 'var(--cys-color-text)' }}>
+                              {item.responsable.apellidos}, {item.responsable.nombres}
+                            </Text>
+                            <Tag color={idx === 0 ? 'blue' : 'purple'} style={{ borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                              {idx === 0 ? 'Responsable Principal' : 'Segundo Responsable'}
+                            </Tag>
+                          </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                             <Text type="secondary" className={ui.caption}>
                               {item.responsable.dniTipo || 'DNI'}: {item.responsable.dniNumero || item.responsable.dni || '-'}
@@ -852,7 +852,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                               <a
                                 href={`tel:${item.responsable.telefono}`}
                                 style={{
-                                  color: "var(--cys-color-success-text)",
+                                  color: 'var(--cys-color-success-text)',
                                   fontWeight: 600,
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -982,7 +982,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
       title={null}
       destroyOnClose
     >
-      { }
       <div className="detail-header-banner">
         <Avatar
           size={52}
@@ -1004,7 +1003,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <Title level={3} style={{ margin: 0, color: isBaja ? "var(--cys-color-error-text)" : "var(--cys-color-text)", letterSpacing: '-0.5px' }}>
+              <Title level={3} style={{ margin: 0, color: isBaja ? 'var(--cys-color-error-text)' : 'var(--cys-color-text)', letterSpacing: '-0.5px' }}>
                 {alumno.apellidos}, {alumno.nombres}
               </Title>
               <Tag color="blue" style={{ borderRadius: 6, fontWeight: 700, fontSize: 12, padding: '1px 8px' }}>
@@ -1021,11 +1020,25 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                   padding: '2px 8px',
                   fontWeight: 600,
                   color: 'var(--cys-color-primary-text)',
-                  background: "var(--cys-color-primary-bg)",
-                  borderColor: "var(--cys-color-primary-border)",
+                  background: 'var(--cys-color-primary-bg)',
+                  borderColor: 'var(--cys-color-primary-border)',
                 }}
               >
                 {alumno.cursoNombre} {alumno.turno ? `(${alumno.turno})` : ''}
+              </Tag>
+            )}
+            {alumno.modalidadJornada && (
+              <Tag
+                style={{
+                  borderRadius: 6,
+                  padding: '2px 8px',
+                  fontWeight: 600,
+                  color: 'var(--cys-color-primary-text)',
+                  background: 'var(--cys-color-primary-bg)',
+                  borderColor: 'var(--cys-color-primary-border)',
+                }}
+              >
+                {formatModalidadJornada(alumno.modalidadJornada)}
               </Tag>
             )}
             {alumno.numeroLegajo && (
@@ -1072,7 +1085,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         </div>
       </div>
 
-      { }
       {isBaja && (
         <Alert
           type="error"
@@ -1085,7 +1097,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         />
       )}
 
-      { }
       <Tabs
         activeKey={activeTab}
         onChange={(key) => setActiveTab(key)}

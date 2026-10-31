@@ -662,6 +662,20 @@
             "Jornada Completa"
           ]
         }
+      },
+      {
+        "system": false,
+        "id": "cys_curso_orden1",
+        "name": "orden",
+        "type": "number",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "min": 0,
+          "max": null,
+          "noDecimal": true
+        }
       }
     ],
     "indexes": [],
@@ -1204,6 +1218,23 @@
           "min": null,
           "max": null,
           "pattern": ""
+        }
+      },
+      {
+        "system": false,
+        "id": "cys_mod_jornada1",
+        "name": "modalidad_jornada",
+        "type": "select",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "Mañana",
+            "Tarde",
+            "Jornada Completa"
+          ]
         }
       }
     ],

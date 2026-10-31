@@ -146,14 +146,34 @@ function requireSpecialSubject(dao, materiaId) {
   return record
 }
 
+function isPrimaryCourse(dao, course) {
+  var record = typeof course === "string" ? requireRecord(dao, "cursos", course) : course
+  var levelId = record.getString("nivel_id")
+  if (levelId) {
+    try {
+      var level = requireRecord(dao, "niveles", levelId)
+      return /primar/i.test(level.getString("nombre"))
+    } catch (_) {
+      return false
+    }
+  }
+  var name = (record.getString("nombre") || "").trim()
+  if (/sala/i.test(name)) return false
+  return /^[1-7]\s*[°º]?$/.test(name) || /^([1-7])\s*(?:[°º]|grado)?(?:\s|$)/i.test(name)
+}
+
 function courseGradeNumber(course) {
-  var gradoRaw = course.getString("grado") || course.getString("nombre") || ""
-  var match = String(gradoRaw).match(/([1-7])/)
-  return match ? Number(match[1]) : 1
+  var name = course.getString("nombre") || ""
+  if (/sala/i.test(name)) return 0
+  var gradoRaw = course.getString("grado") || name
+  var trimmed = String(gradoRaw).trim()
+  var match = trimmed.match(/^([1-7])\s*(?:[°º]|grado)?(?:\s|$)/i)
+  return match ? Number(match[1]) : 0
 }
 
 function resolveTemplate(dao, tipoInforme, course, materiaId) {
   var grade = courseGradeNumber(course)
+  if (grade === 0) return null
   if (tipoInforme === "CICLO_FINAL") {
     if (!materiaId) return null
     var candidates = findByFilter(
@@ -829,7 +849,16 @@ function issue(c) {
   }
 
   var selectedCourses = rawCourseIds.map((cId) => requireRecord(dao, "cursos", cId))
+  if (tipoInforme === "PRIMER_BIMESTRE" || tipoInforme === "PRIMER_CUATRIMESTRE" || tipoInforme === "CICLO_FINAL") {
+    var hasNonPrimary = selectedCourses.some((course) => !isPrimaryCourse(dao, course))
+    if (hasNonPrimary) {
+      throw new BadRequestError("Este tipo de informe corresponde únicamente a Nivel Primario.")
+    }
+  }
   selectedCourses.sort((a, b) => {
+    var orderA = a.getInt("orden") || 0
+    var orderB = b.getInt("orden") || 0
+    if (orderA !== orderB) return orderA - orderB
     var gradeDiff = courseGradeNumber(a) - courseGradeNumber(b)
     if (gradeDiff !== 0) return gradeDiff
     return a.getString("nombre").localeCompare(b.getString("nombre"))
@@ -1285,8 +1314,14 @@ function staffStages(c) {
     var cycle = requireRecord(txDao, "ciclos_lectivos", c.pathParam("cicloId"))
     var tipoInforme = stringValue(c.pathParam("tipoInforme"), 30)
     var needSubject = requiresSpecialSubject(tipoInforme)
-    var courses = findByFilter(txDao, "cursos", "id != ''", "nombre", {})
+    var courses = findByFilter(txDao, "cursos", "id != ''", "orden,nombre", {})
+    if (tipoInforme === "PRIMER_BIMESTRE" || tipoInforme === "PRIMER_CUATRIMESTRE" || tipoInforme === "CICLO_FINAL") {
+      courses = courses.filter((course) => isPrimaryCourse(txDao, course))
+    }
     courses.sort((a, b) => {
+      var orderA = a.getInt("orden") || 0
+      var orderB = b.getInt("orden") || 0
+      if (orderA !== orderB) return orderA - orderB
       var gradeDiff = courseGradeNumber(a) - courseGradeNumber(b)
       if (gradeDiff !== 0) return gradeDiff
       return a.getString("nombre").localeCompare(b.getString("nombre"))
@@ -2067,6 +2102,8 @@ module.exports = {
   invalidateStudentReportEmissions: invalidateStudentReportEmissions,
   buildReportDocumentSnapshot: buildReportDocumentSnapshot,
   issue: issue,
+  issueLink: issue,
+  isPrimaryCourse: isPrimaryCourse,
   rotate: rotate,
   recover: recover,
   revoke: revoke,

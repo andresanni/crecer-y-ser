@@ -1,3 +1,5 @@
+import type { ModalidadJornada } from '../../inscripciones/models/inscripcion.model';
+
 export interface AlumnoRecord {
   id: string;
   created: string;
@@ -24,6 +26,7 @@ export interface AlumnoRecord {
       fecha_ingreso?: string;
       fecha_egreso?: string;
       estado: string;
+      modalidad_jornada?: ModalidadJornada | string;
       cursada_estado?: string;
       bimestre_desde?: number;
       bimestre_hasta?: number;
@@ -32,6 +35,7 @@ export interface AlumnoRecord {
           id: string;
           nombre: string;
           turno: string;
+          orden?: number;
           expand?: {
             nivel_id?: {
               nombre: string;
@@ -58,8 +62,10 @@ export interface Alumno {
   claveAcadeu: string;
   cursoId?: string;
   cursoNombre?: string;
+  cursoOrden?: number;
   nivelNombre?: string;
   turno?: string;
+  modalidadJornada?: ModalidadJornada;
   estadoInscripcion?: string;
   cursadaEstado?: string;
   bimestreDesde?: number;
@@ -75,7 +81,6 @@ export interface Alumno {
 }
 
 export const alumnoAdapter = (record: AlumnoRecord): Alumno => {
-
   const activeInsc = record.expand?.inscripciones_via_alumno_id?.find(
     (i) => i.estado === 'Regular'
   ) || record.expand?.inscripciones_via_alumno_id?.[0];
@@ -97,8 +102,10 @@ export const alumnoAdapter = (record: AlumnoRecord): Alumno => {
     claveAcadeu: record.clave_acadeu || '',
     cursoId: cursoRecord?.id || activeInsc?.curso_id || undefined,
     cursoNombre: cursoRecord?.nombre || undefined,
+    cursoOrden: cursoRecord?.orden ?? undefined,
     nivelNombre: cursoRecord?.expand?.nivel_id?.nombre || undefined,
     turno: cursoRecord?.turno || undefined,
+    modalidadJornada: (activeInsc?.modalidad_jornada as ModalidadJornada | undefined) || undefined,
     estadoInscripcion: activeInsc?.estado || undefined,
     cursadaEstado: activeInsc?.cursada_estado || undefined,
     bimestreDesde: activeInsc?.bimestre_desde ?? undefined,

@@ -59,11 +59,11 @@ if ($ExpectSyntheticSeed) {
     niveles = 2
     escalas_calificacion = 1
     valores_escala = 5
-    cursos = 2
+    cursos = 3
     periodos = 2
     materias = 5
-    curso_materias = 8
-    criterios_evaluacion = 40
+    curso_materias = 5
+    criterios_evaluacion = 25
     alumnos = 6
     responsables = 6
     alumno_responable = 6

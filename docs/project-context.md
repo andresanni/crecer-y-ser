@@ -1,5 +1,28 @@
 # Contexto actual de Crecer y Ser
 
+## Incorporación de Nivel Inicial (Jardín) y ordenamiento unificado — 31 de octubre de 2026
+
+Se integró de extremo a extremo el soporte para **Nivel Inicial (Jardín de Infantes)** en el sistema institucional:
+- **Estructura y salas unificadas**: Incorporación formal del nivel `Inicial` y de sus dos salas multiedad oficiales:
+  - `Sala de 2 y 3 años` (con `orden` 2 y sin escala de calificaciones).
+  - `Sala de 4 y 5 años` (con `orden` 4 y sin escala de calificaciones).
+- **Esquema de datos y migración** (`pb_migrations/1792500000_added_kindergarten_level_and_courses.js`):
+  - Nuevo campo `orden` (numérico entero) en la colección `cursos` para garantizar la secuencia pedagógica natural (salas de inicial con órdenes 2 y 4; grados de primaria con orden 10 + grado, ej. 11 a 17).
+  - Nuevo campo `modalidad_jornada` (selector: `Mañana`, `Tarde`, `Jornada Completa`) en la colección `inscripciones` para modelar la jornada escolar flexible.
+  - Creación automática del nivel `Inicial` y alta/actualización de las dos salas con `escala_id` vacío.
+- **Aislamiento riguroso de regímenes de Primaria**:
+  - **Boletines**: Al carecer de `escala_id`, las salas de jardín quedan completamente aisladas del régimen de boletines. Los gateways de configuración curricular (`pb_hooks/lib/curriculum.js`) y de gestión directiva/docente (`pb_hooks/lib/teacherAccess.js`) cuentan con la guarda `requireGradebookCourse`, rechazando con `400 Bad Request` cualquier operación sobre cursos sin escala.
+  - **Informes de Maestras (Fase 1)**: Los tipos de informe de áreas especiales (`PRIMER_BIMESTRE`, `PRIMER_CUATRIMESTRE`, `CICLO_FINAL`) en `pb_hooks/lib/teacherReports.js` rechazan con `400 Bad Request` la emisión o consulta para cursos que no pertenezcan al Nivel Primario (`isPrimaryCourse`), protegiendo el catálogo e instancias vigentes.
+  - **Asistencia**: El subsistema de asistencia primaria (`pb_hooks/lib/attendanceService.js`) restringe sus operaciones exclusivamente a grados primarios.
+- **Evolución del Directorio de Alumnos (`/app/alumnos`)**:
+  - Selector de nivel `Todos` / `Inicial` / `Primario` con componente `Segmented` y filtrado server-side dinámico en `AlumnoFilters.tsx`.
+  - Paleta visual dedicada para salas de jardín (`KINDERGARTEN_PALETTE` en `gradeColors.ts`): naranja institucional (`#c2410c`, tag `orange`) para Sala de 2 y 3 años, y verde azulado / cian institucional (`#0f766e`, tag `cyan`) para Sala de 4 y 5 años.
+  - Soporte completo para doble responsable familiar: carga y edición en `AlumnoFormModal`, visualización en `AlumnoDetailModal` y persistencia relacional M:N en `alumno_responable`.
+- **Pipeline de ingesta de estudiantes (`scripts/ingest-students.mjs`)**:
+  - Normalización automática de denominaciones de salas y jornadas escolares.
+  - Deduplicación compuesta `apellidos|nombres|fecha_nacimiento` para alumnos sin DNI o con documento en trámite.
+  - Tolerancia para alumnos sin legajo o sin credenciales Acadeu.
+
 ## Informes de Maestras — Fase 1 (CICLO_FINAL) lista para pruebas y feedback — 20 de octubre de 2026
 
 Se completó de punta a punta la Fase 1 (`CICLO_FINAL` — Informes Finales de Áreas Especiales) del plan de Informes de Maestras (`docs/teacher-reports-plan.md`) y se realiza un alto antes de las Fases 2 y 3 para llevar adelante pruebas graduales y recoger feedback sobre el flujo completo:
@@ -33,16 +56,17 @@ El servidor mantiene un PDF vigente por matrícula y período, invalidación acu
 
 ## Propósito
 
-Crecer y Ser es una aplicación web de gestión escolar conectada directamente a PocketBase. Centraliza alumnos, responsables, inscripciones, estructura curricular, períodos y carga de boletines.
+Crecer y Ser es una aplicación web de gestión escolar conectada directamente a PocketBase. Centraliza alumnos, responsables familiares, inscripciones, estructura curricular por nivel, períodos, informes de maestras y carga de boletines.
 
 ## Estado funcional
 
 - Autenticación institucional y rutas protegidas.
-- Directorio de alumnos con búsqueda, filtros, paginación, tabla y tarjetas.
-- Alta, edición, ficha integral, baja y eliminación de alumnos.
-- Gestión de inscripción, cursada, responsables vinculados y credenciales Acadeu.
-- Portal de boletines con constructor curricular, materias, criterios y períodos.
-- Carga de calificaciones, asistencias, observaciones y apoyos por alumno.
+- Directorio de alumnos con búsqueda, filtros combinados por nivel (Todos / Inicial / Primario), curso/sala y condición lectiva, paginación server-side, vista en tabla y tarjetas.
+- Alta, edición, ficha integral, baja y eliminación de alumnos con soporte completo para doble responsable familiar.
+- Gestión de inscripción, cursada anual, modalidad de jornada (`Mañana`, `Tarde`, `Jornada Completa`), responsables vinculados y credenciales Acadeu.
+- Portal de boletines exclusivo de Nivel Primario con constructor curricular, materias, criterios y períodos.
+- Informes de maestras de áreas especiales (Fase 1: Ciclo Final) protegidos para Nivel Primario.
+- Registros mensuales de asistencia y calendario escolar protegidos para Nivel Primario.
 - Tablero unificado de carga, avance y revisión por curso.
 - Workflow de boletines con enlaces docentes descartables, guardado progresivo, envío completo y control institucional exclusivo.
 - Landing institucional y tema claro como única presentación en toda la aplicación.
@@ -66,7 +90,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 | `/login` | Acceso institucional |
 | `/carga` | Carga pública mediante token docente |
 | `/carga-informe` | Carga pública de informes mediante token docente |
-| `/app/alumnos` | Directorio y gestión de alumnos |
+| `/app/alumnos` | Directorio y gestión de alumnos (Nivel Inicial y Primario) |
 | `/app/informes` | Informes de maestras: selección de tipo, tablero y revisión |
 | `/app/boletines` | Redirección de compatibilidad a Bimestres |
 | `/app/boletines/calificaciones` | Bimestres: selección, tablero de carga y revisión |
@@ -80,7 +104,7 @@ Crecer y Ser es una aplicación web de gestión escolar conectada directamente a
 - `src/shared`: composiciones, estilos y hooks reutilizables.
 - `src/theme`: paleta, tokens y configuración central de Ant Design.
 - `pb_migrations`: evolución desplegable del esquema y de las reglas de PocketBase.
-- `pb_hooks`: gateway HTTP, autorización y transacciones del acceso docente.
+- `pb_hooks`: gateway HTTP, autorización y transacciones del acceso docente e informes.
 - `pb_schema.json`: snapshot legible del backend y sus relaciones.
 - `deploy`: unidad systemd, Caddyfile e instrucciones operativas del VPS.
 
@@ -133,6 +157,8 @@ La tipografía de títulos y navegación es Manrope; Inter se reserva para lectu
 
 El producto es desktop first para equipos escolares, con validación prioritaria en 1366, 1440 y 1920 px. El soporte móvil sigue siendo obligatorio para navegación, modales y tareas compatibles.
 
+El Directorio de Alumnos (`/app/alumnos`) incorpora un control `Segmented` superior para conmutar el nivel institucional (`Todos`, `Inicial`, `Primario`), adaptando las opciones del selector de cursos/salas y sincronizando la consulta server-side. Los cursos de Nivel Inicial cuentan con su propia paleta de insignias (`KINDERGARTEN_PALETTE`), identificando con claridad la pertenencia a *Sala de 2 y 3 años* y *Sala de 4 y 5 años*.
+
 La sección institucional `Bimestres` concentra la selección del período, el seguimiento y la operación por curso. `Boletines` es sólo un desplegable de la barra lateral que conserva el área de trabajo hasta elegir `Bimestres` o `Constructor`. Se retiró la portada de atajos; `/app/boletines` redirige a Bimestres por compatibilidad. La antigua ruta `/app/boletines/monitoreo` sólo conserva una redirección de compatibilidad y no debe volver a exponerse en la navegación.
 
 El tablero distingue el avance académico del control operativo. Las etapas `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF` provienen del servidor. Eliminar un enlace conserva el borrador y generar uno nuevo lo reanuda.
@@ -160,8 +186,10 @@ La evolución de visado y malla anual está implementada y aplicada en PocketBas
 
 El 27 de septiembre de 2026, el pull request #6 integró en `master` el frontend compatible con el gateway curricular y el visado. Vercel publicó el nuevo bundle con los endpoints de etapas y revisión y la URL HTTPS del VPS; las rutas públicas y profundas respondieron correctamente. Antes de la fusión se confirmó que los seis hooks y las dos migraciones de esta evolución coincidían con el VPS, considerando los finales de línea de Windows, y que ambas migraciones constaban en su historial. No fue necesario reinstalar PocketBase ni reemplazar `pb_data`.
 
-- `npm run lint`: sin errores ni advertencias al finalizar la modernización.
-- `npm run build`: correcto.
+- `npm run lint`: sin errores ni advertencias.
+- `npm run build`: correcto (TypeScript estricto y Vite bundle completados con éxito).
+- `scripts/test-kindergarten-isolation-http.mjs`: verificación automatizada exitosa del aislamiento de Nivel Inicial en boletines, informes y asistencias.
+- `node --check scripts/ingest-students.mjs`: sintaxis e integridad del script de ingesta validadas.
 - Advertencia conocida: el bundle principal supera 500 kB minificado; requiere una estrategia posterior de partición de código.
 - La modernización UX/UI fue aprobada y fusionada en `master`.
 - El workflow unidireccional fue validado sobre una copia aislada y desplegado; el servicio, el esquema de dos estados y la ausencia de rutas de retorno fueron verificados en el VPS.
@@ -198,18 +226,15 @@ Los tres campos de apoyos/integración de la página 3 ya tienen fuente en `insc
 
 Emisión individual persistida en desarrollo: `emisiones_boletin` almacena PDF protegido, instantánea y dependencias. El generador local publica con sesión institucional más secreto de worker; el gateway revalida antes de publicar y descargar. Retiro/corrección revoca emisiones acumulativas transaccionalmente y borra la instantánea; una tarea reintenta el borrado físico. Descargas repetidas reutilizan bytes. Migración local `1790625600_document_emissions.js`; VPS sin cambios. Worker desplegable, cola, lotes y pruebas de recuperación de almacenamiento siguen pendientes. Contrato operativo en `docs/gradebook-pdf-emission.md`.
 
-
 ## Emisión por curso y ZIP implementados en desarrollo
 
 La revisión institucional incorpora «Generar PDFs / ZIP del curso». Consulta los visados actuales, prepara secuencialmente los PDFs individuales y expone las exclusiones por alumno; permite descargar juntos los preparados aunque el grado tenga revisiones pendientes. El ZIP se arma en memoria a partir de emisiones persistidas y protegidas, revalidando huella, curso y versión antes de entregar. Los nombres coincidentes reciben sufijos para no sobrescribirse al extraer. Cerrar interrumpe la preparación del cliente; reintentar reutiliza las emisiones vigentes. No hay cola durable de lotes.
 
 El contrato completo y el procedimiento de prueba están en `gradebook-pdf-emission.md`. No se agregaron colecciones ni hooks y no se modificó producción. Generación individual y masiva siguen dependiendo del motor local Vite; el despliegue productivo, segundo ciclo real y fuentes de cierre anual continúan pendientes. Validación: lint, build, 13 pruebas automatizadas y descarga real de un ZIP de dos boletines de 13 páginas, con exclusiones explícitas de tres alumnos sin visado.
 
-
 ## Segundo ciclo documental habilitado
 
 El adaptador admite las etiquetas de segundo ciclo con número explícito 1–10 y concepto, independientemente del peso de orden. La malla utiliza 11 materias y genera 14 páginas A4; conserva el diseño de número en línea separada. Los cuatro cursos 4.º–7.º quedaron vinculados a la escala nueva en desarrollo con autorización del usuario. Las notas previas no se convirtieron: el usuario las recargará para realizar la prueba operativa con visados reales. «No corresponde» sin número está soportado cuando se agregue al catálogo. Pasan 15 pruebas automatizadas, incluida generación Edge de segundo ciclo; continúan pendientes las fuentes anuales y el motor en producción. Detalles en `gradebook-pdf-emission.md`.
-
 
 ## Estado de publicacion PDF (29 de septiembre de 2026)
 
@@ -227,10 +252,7 @@ El Directorio de Alumnos (`/app/alumnos`) implementa paginación server-side de 
 - La navegación por páginas se reinicia a 1 ante cualquier cambio en los filtros de búsqueda, grado o estado.
 - La paginación y el resumen de registros totales aplican de forma consistente tanto en la vista de Tabla como en la vista de Tarjetas (Grid).
 
-
-
 La UX de PDFs muestra la disponibilidad para descargar: el modal del curso inicia la obtención automáticamente al abrirse y permite Actualizar PDFs, informa PDF listo o Falta visar, sin columna Detalle ni distinción entre archivos nuevos y reutilizados. El resumen cuenta los PDFs listos; Descargar PDFs tiene actividad independiente y entrega un archivo ZIP. La descarga individual informa sólo el inicio de descarga. El worker obtiene el resultado real del publicador y lo transmite en X-CYS-PDF-Result, sin inferencias por duración. Los endpoints y controles de vigencia permanecen iguales.
-
 
 ## Dominio institucional vigente
 

@@ -10,8 +10,13 @@ migrate((db) => {
   const id = (number) => `dev${(`000000000000${number}`).slice(-12)}`
   const save = (collectionName, recordId, values) => {
     const collection = dao.findCollectionByNameOrId(collectionName)
-    const record = new Record(collection)
-    record.set("id", recordId)
+    let record
+    try {
+      record = dao.findRecordById(collectionName, recordId)
+    } catch (_) {
+      record = new Record(collection)
+      record.set("id", recordId)
+    }
     Object.keys(values).forEach((key) => {
       if (key === "password") {
         record.setPassword(values[key])
@@ -20,6 +25,7 @@ migrate((db) => {
       record.set(key, values[key])
     })
     dao.saveRecord(record)
+    return record
   }
 
   save("users", id(900), {
@@ -32,7 +38,12 @@ migrate((db) => {
 
   save("ciclos_lectivos", id(1), { ano: 2026, actual: true })
 
-  save("niveles", id(2), { nombre: "Inicial" })
+  const existingLevels = dao.findRecordsByFilter("niveles", "id != ''", "", 0, 0)
+  const existingInicial = existingLevels.find((n) => /inic/i.test(n.getString("nombre").trim()))
+  const nivelInicialId = existingInicial ? existingInicial.getId() : id(2)
+  if (!existingInicial) {
+    save("niveles", nivelInicialId, { nombre: "Inicial" })
+  }
   save("niveles", id(3), { nombre: "Primario" })
 
   save("escalas_calificacion", id(4), { nombre: "Escala conceptual" })
@@ -51,15 +62,49 @@ migrate((db) => {
     })
   })
 
-  save("cursos", id(10), {
-    nombre: "Sala de 5 A",
-    nivel_id: id(2),
-    escala_id: id(4),
-    turno: "Mañana"
-  })
+  const existingCourses = dao.findRecordsByFilter("cursos", "id != ''", "", 0, 0)
+  const existingSala23 = existingCourses.find((c) => /sala.*2.*3/i.test(c.getString("nombre").trim()))
+  const sala23Id = existingSala23 ? existingSala23.getId() : id(10)
+  if (existingSala23) {
+    existingSala23.set("nombre", "Sala de 2 y 3 años")
+    existingSala23.set("nivel_id", nivelInicialId)
+    existingSala23.set("orden", 2)
+    existingSala23.set("escala_id", "")
+    existingSala23.set("turno", "")
+    dao.saveRecord(existingSala23)
+  } else {
+    save("cursos", sala23Id, {
+      nombre: "Sala de 2 y 3 años",
+      nivel_id: nivelInicialId,
+      orden: 2,
+      escala_id: "",
+      turno: ""
+    })
+  }
+
+  const existingSala45 = existingCourses.find((c) => /sala.*4.*5/i.test(c.getString("nombre").trim()))
+  const sala45Id = existingSala45 ? existingSala45.getId() : id(14)
+  if (existingSala45) {
+    existingSala45.set("nombre", "Sala de 4 y 5 años")
+    existingSala45.set("nivel_id", nivelInicialId)
+    existingSala45.set("orden", 4)
+    existingSala45.set("escala_id", "")
+    existingSala45.set("turno", "")
+    dao.saveRecord(existingSala45)
+  } else {
+    save("cursos", sala45Id, {
+      nombre: "Sala de 4 y 5 años",
+      nivel_id: nivelInicialId,
+      orden: 4,
+      escala_id: "",
+      turno: ""
+    })
+  }
+
   save("cursos", id(11), {
     nombre: "1° A",
     nivel_id: id(3),
+    orden: 11,
     escala_id: id(4),
     turno: "Mañana"
   })
@@ -76,9 +121,6 @@ migrate((db) => {
   ].forEach(([recordId, name]) => save("materias", id(recordId), { nombre: name }))
 
   const courseSubjects = [
-    [30, 10, 20, 1],
-    [31, 10, 21, 2],
-    [32, 10, 24, 3],
     [33, 11, 20, 1],
     [34, 11, 21, 2],
     [35, 11, 22, 3],
@@ -118,7 +160,7 @@ migrate((db) => {
     const guardianId = 299 + index
     const linkId = 399 + index
     const enrollmentId = 499 + index
-    const courseId = index <= 2 ? 10 : 11
+    const courseId = index === 1 ? sala23Id : index === 2 ? sala45Id : id(11)
 
     save("alumnos", id(studentId), {
       numero_legajo: `DEV-L-${(`0000${index}`).slice(-4)}`,
@@ -148,10 +190,11 @@ migrate((db) => {
 
     save("inscripciones", id(enrollmentId), {
       alumno_id: id(studentId),
-      curso_id: id(courseId),
+      curso_id: courseId,
       ciclo_id: id(1),
-      numero_orden: index,
+      numero_orden: index <= 2 ? index : index - 2,
       numero_inscripcion: `DEV-I-${(`0000${index}`).slice(-4)}`,
+      modalidad_jornada: index % 2 === 0 ? "Jornada Completa" : "Mañana",
       estado: "Regular",
       promociono_con_acompanamiento: "-",
       posee_apoyos: "-"
@@ -174,11 +217,14 @@ migrate((db) => {
   remove("inscripciones", [1, 2, 3, 4, 5, 6].map((number) => id(499 + number)))
   remove("alumnos", [1, 2, 3, 4, 5, 6].map((number) => id(199 + number)))
   remove("responsables", [1, 2, 3, 4, 5, 6].map((number) => id(299 + number)))
-  remove("criterios_evaluacion", Array.from({ length: 40 }, (_, index) => id(100 + index)))
-  remove("curso_materias", [30, 31, 32, 33, 34, 35, 36, 37].map(id))
+  remove("criterios_evaluacion", Array.from({ length: 25 }, (_, index) => id(100 + index)))
+  remove("curso_materias", [33, 34, 35, 36, 37].map(id))
   remove("materias", [20, 21, 22, 23, 24].map(id))
   remove("periodos", [12, 13].map(id))
-  remove("cursos", [10, 11].map(id))
+  const existingCourses = dao.findRecordsByFilter("cursos", "id != ''", "", 0, 0)
+  const sala23 = existingCourses.find((c) => /sala.*2.*3/i.test(c.getString("nombre").trim()))
+  const sala45 = existingCourses.find((c) => /sala.*4.*5/i.test(c.getString("nombre").trim()))
+  remove("cursos", [sala23 ? sala23.getId() : id(10), sala45 ? sala45.getId() : id(14), id(11)])
   remove("valores_escala", [5, 6, 7, 8, 9].map(id))
   remove("escalas_calificacion", [4].map(id))
   remove("niveles", [2, 3].map(id))

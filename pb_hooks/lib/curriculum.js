@@ -11,8 +11,16 @@ function findRecords(dao, collection, filter, params) {
   return dao.findRecordsByFilter(collection, filter, "", 0, 0, params)
 }
 
+function requireGradebookCourse(dao, courseId) {
+  var course = requireRecord(dao, "cursos", courseId)
+  if (!course.getString("escala_id")) {
+    throw new BadRequestError("Este curso no participa del régimen de boletines.")
+  }
+  return course
+}
+
 function configurationLocked(dao, courseId, cycleId) {
-  requireRecord(dao, "cursos", courseId)
+  requireGradebookCourse(dao, courseId)
   requireRecord(dao, "ciclos_lectivos", cycleId)
   var periods = findRecords(dao, "periodos", "ciclo_id = {:cycleId}", { cycleId: cycleId })
   return periods.some((period) => {
@@ -182,5 +190,6 @@ module.exports = {
   assignMaterial: assignMaterial,
   removeMaterial: removeMaterial,
   reorderMaterials: reorderMaterials,
-  saveCriteria: saveCriteria
+  saveCriteria: saveCriteria,
+  requireGradebookCourse: requireGradebookCourse
 }
