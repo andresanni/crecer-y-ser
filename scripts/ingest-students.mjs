@@ -397,7 +397,7 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
 
   const guardian1Dni = (row.responsable_dni_numero || row.responsable_dni_nnumero || '').trim();
   if (!guardian1Dni) {
-    errors.push(`Línea ${line}: 'responsable_dni_numero' es obligatorio.`);
+    warnings.push(`Línea ${line}: 'responsable_dni_numero' no especificado para responsable "${row.responsable_apellidos || 'Sin apellido'}, ${row.responsable_nombres || 'Sin nombre'}". Se importará sin DNI para asignación posterior.`);
   }
 
   if (!row.responsable_apellidos || !row.responsable_apellidos.trim()) {
@@ -411,7 +411,7 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
   if (hasAnyGuardian2Field(row)) {
     const guardian2Dni = (row.responsable2_dni_numero || row.responsable2_dni_nnumero || '').trim();
     if (!guardian2Dni) {
-      errors.push(`Línea ${line}: Si se informa el segundo responsable, 'responsable2_dni_numero' es obligatorio.`);
+      warnings.push(`Línea ${line}: 'responsable2_dni_numero' no especificado para segundo responsable "${row.responsable2_apellidos || 'Sin apellido'}, ${row.responsable2_nombres || 'Sin nombre'}". Se importará sin DNI para asignación posterior.`);
     }
 
     if (!row.responsable2_apellidos || !row.responsable2_apellidos.trim()) {
@@ -683,10 +683,15 @@ async function main() {
   });
 
   const guardiansByDni = new Map();
+  const guardiansByName = new Map();
   existingResponsables.forEach(r => {
     const dniNum = r.dni_numero || r.dni;
     if (dniNum && String(dniNum).trim()) {
       guardiansByDni.set(String(dniNum).trim(), r);
+    }
+    const nameKey = `${normalizePersonName(r.apellidos)}|${normalizePersonName(r.nombres)}`;
+    if (nameKey !== '|') {
+      guardiansByName.set(nameKey, r);
     }
   });
 
@@ -718,10 +723,21 @@ async function main() {
     const progress = `[${i + 1}/${records.length}]`;
 
     const guardian1Dni = (row.responsable_dni_numero || row.responsable_dni_nnumero || '').trim();
+    const guardian1NameKey = `${normalizePersonName(row.responsable_apellidos)}|${normalizePersonName(row.responsable_nombres)}`;
     let guardian1Id = '';
 
-    if (guardiansByDni.has(guardian1Dni)) {
+    if (guardian1Dni && guardiansByDni.has(guardian1Dni)) {
       guardian1Id = guardiansByDni.get(guardian1Dni).id;
+      stats.guardiansReused++;
+    } else if (!guardian1Dni && guardiansByName.has(guardian1NameKey)) {
+      guardian1Id = guardiansByName.get(guardian1NameKey).id;
+      stats.guardiansReused++;
+    } else if (guardian1Dni && guardiansByName.has(guardian1NameKey) && !(guardiansByName.get(guardian1NameKey).dni_numero || guardiansByName.get(guardian1NameKey).dni)) {
+      const existingG1 = guardiansByName.get(guardian1NameKey);
+      await patchRecord(options.pbUrl, token, 'responsables', existingG1.id, { dni_numero: guardian1Dni });
+      existingG1.dni_numero = guardian1Dni;
+      guardian1Id = existingG1.id;
+      guardiansByDni.set(guardian1Dni, existingG1);
       stats.guardiansReused++;
     } else {
       const guardian1Payload = {
@@ -736,7 +752,10 @@ async function main() {
       };
       const createdGuardian1 = await postRecord(options.pbUrl, token, 'responsables', guardian1Payload);
       guardian1Id = createdGuardian1.id;
-      guardiansByDni.set(guardian1Dni, createdGuardian1);
+      if (guardian1Dni) {
+        guardiansByDni.set(guardian1Dni, createdGuardian1);
+      }
+      guardiansByName.set(guardian1NameKey, createdGuardian1);
       stats.guardiansCreated++;
     }
 
@@ -799,10 +818,21 @@ async function main() {
 
     if (hasAnyGuardian2Field(row)) {
       const guardian2Dni = (row.responsable2_dni_numero || row.responsable2_dni_nnumero || '').trim();
+      const guardian2NameKey = `${normalizePersonName(row.responsable2_apellidos)}|${normalizePersonName(row.responsable2_nombres)}`;
       let guardian2Id = '';
 
-      if (guardiansByDni.has(guardian2Dni)) {
+      if (guardian2Dni && guardiansByDni.has(guardian2Dni)) {
         guardian2Id = guardiansByDni.get(guardian2Dni).id;
+        stats.guardiansReused++;
+      } else if (!guardian2Dni && guardiansByName.has(guardian2NameKey)) {
+        guardian2Id = guardiansByName.get(guardian2NameKey).id;
+        stats.guardiansReused++;
+      } else if (guardian2Dni && guardiansByName.has(guardian2NameKey) && !(guardiansByName.get(guardian2NameKey).dni_numero || guardiansByName.get(guardian2NameKey).dni)) {
+        const existingG2 = guardiansByName.get(guardian2NameKey);
+        await patchRecord(options.pbUrl, token, 'responsables', existingG2.id, { dni_numero: guardian2Dni });
+        existingG2.dni_numero = guardian2Dni;
+        guardian2Id = existingG2.id;
+        guardiansByDni.set(guardian2Dni, existingG2);
         stats.guardiansReused++;
       } else {
         const guardian2Payload = {
@@ -817,7 +847,10 @@ async function main() {
         };
         const createdGuardian2 = await postRecord(options.pbUrl, token, 'responsables', guardian2Payload);
         guardian2Id = createdGuardian2.id;
-        guardiansByDni.set(guardian2Dni, createdGuardian2);
+        if (guardian2Dni) {
+          guardiansByDni.set(guardian2Dni, createdGuardian2);
+        }
+        guardiansByName.set(guardian2NameKey, createdGuardian2);
         stats.guardiansCreated++;
       }
 
