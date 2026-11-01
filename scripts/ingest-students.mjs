@@ -163,6 +163,48 @@ function hasAnyGuardian2Field(row) {
   return fields.some(field => row[field] !== undefined && String(row[field]).trim().length > 0);
 }
 
+function normalizeSexo(val) {
+  if (!val) return '';
+  const trimmed = val.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === 'v' || lower === 'varon' || lower === 'varón' || lower === 'masculino') return 'Masculino';
+  if (lower === 'm' || lower === 'mujer' || lower === 'femenino' || lower === 'f') return 'Femenino';
+  if (lower === 'no binario' || lower === 'nobinario') return 'No binario';
+  if (lower === 'otro') return 'Otro';
+  return trimmed;
+}
+
+function sanitizeDniTipo(val) {
+  if (!val) return 'DNI';
+  const clean = val.replace(/[:.]/g, '').trim();
+  return clean || 'DNI';
+}
+
+function promoteGuardian2IfNeeded(row) {
+  if (!row.responsable_apellidos && !row.responsable_nombres && hasAnyGuardian2Field(row)) {
+    row.responsable_dni_tipo = row.responsable2_dni_tipo;
+    row.responsable_dni_numero = row.responsable2_dni_numero || row.responsable2_dni_nnumero;
+    row.responsable_apellidos = row.responsable2_apellidos;
+    row.responsable_nombres = row.responsable2_nombres;
+    row.responsable_vinculo = row.responsable2_vinculo || 'Madre';
+    row.responsable_telefono = row.responsable2_telefono;
+    row.responsable_email = row.responsable2_email;
+    row.responsable_nacionalidad = row.responsable2_nacionalidad;
+    row.responsable_profesion = row.responsable2_profesion;
+
+    delete row.responsable2_dni_tipo;
+    delete row.responsable2_dni_numero;
+    delete row.responsable2_dni_nnumero;
+    delete row.responsable2_apellidos;
+    delete row.responsable2_nombres;
+    delete row.responsable2_vinculo;
+    delete row.responsable2_telefono;
+    delete row.responsable2_email;
+    delete row.responsable2_nacionalidad;
+    delete row.responsable2_profesion;
+  }
+}
+
 function normalizePersonName(val) {
   return (val || '')
     .trim()
@@ -300,6 +342,12 @@ const VALID_ESTADO_VALUES = new Set(['Regular', 'Baja', 'Libre']);
 const VALID_FLAG_VALUES = new Set(['SI', 'NO', '-', '']);
 
 function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDnis, encounteredCompositeKeys, warnings) {
+  promoteGuardian2IfNeeded(row);
+  row.responsable_dni_tipo = sanitizeDniTipo(row.responsable_dni_tipo);
+  if (hasAnyGuardian2Field(row)) {
+    row.responsable2_dni_tipo = sanitizeDniTipo(row.responsable2_dni_tipo);
+  }
+
   const errors = [];
   const line = row.__lineNumber || (rowIndex + 2);
   const compositeKey = buildStudentCompositeKey(row.alumno_apellidos, row.alumno_nombres, row.alumno_fecha_nacimiento);
@@ -341,9 +389,11 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
   }
 
   if (row.alumno_sexo && row.alumno_sexo.trim()) {
-    const sexoVal = row.alumno_sexo.trim();
-    if (!VALID_SEXO_VALUES.has(sexoVal)) {
-      errors.push(`Línea ${line}: 'alumno_sexo' ("${sexoVal}") inválido. Opciones admitidas: Femenino, Masculino, No binario, Otro.`);
+    const normalizedSexo = normalizeSexo(row.alumno_sexo);
+    if (!VALID_SEXO_VALUES.has(normalizedSexo)) {
+      errors.push(`Línea ${line}: 'alumno_sexo' ("${row.alumno_sexo}") inválido. Opciones admitidas: Femenino, Masculino, No binario, Otro.`);
+    } else {
+      row.alumno_sexo = normalizedSexo;
     }
   }
 
@@ -359,6 +409,7 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
   if (!row.curso_nombre || !row.curso_nombre.trim()) {
     errors.push(`Línea ${line}: 'curso_nombre' es obligatorio.`);
   } else {
+    row.curso_nombre = normalizeCourseName(row.curso_nombre);
     const courseKey = row.curso_nombre.trim();
     if (!coursesMap.has(courseKey)) {
       errors.push(`Línea ${line}: 'curso_nombre' "${courseKey}" no existe en la colección de cursos.`);
