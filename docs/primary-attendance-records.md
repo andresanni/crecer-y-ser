@@ -20,6 +20,14 @@ Para garantizar que el registro mensual y la impresión A4 reflejen exclusivamen
    - Opción «Continuar e imprimir», que habilita la vista previa A4 mostrando un banner de alerta visible.
    - Opción «Cancelar», que mantiene al usuario en la edición de asistencia.
 
+## Coexistencia con Nivel Inicial y entrada guiada — 1 de noviembre de 2026
+
+Con la incorporación del Nivel Inicial (salas de 2-3 y 4-5 años):
+1. **Aislamiento de la operativa de Primaria:** El motor de registro mensual de primaria, el cálculo de asistencia media, el traspaso condicionado a visados de boletines y la impresión oficial A4 continúan operando exclusivamente para los cursos de 1.° a 7.° grado sin interferencia.
+2. **Entrada guiada en interfaz:** En `/app/asistencias`, al abrir un mes lectivo, la barra de herramientas dispone de un selector segmentado entre **Nivel Primario** (activo por defecto) y **Nivel Inicial**.
+3. **Formato adaptado de Inicial (Fase 2):** Al seleccionar Nivel Inicial, la interfaz presenta una tarjeta informativa que orienta a conducción y secretaría sobre el modelo de sala: las salas cuentan con su propia dinámica de asistencia (sin materias curriculares ni escalas de calificación de primaria) y su plantilla A4 oficial diferenciada será incorporada en la Fase 2.
+4. **Protección ante navegación directa:** Si se accede por parámetro URL a un identificador de curso correspondiente a Inicial (`?mes=X&curso=...`), el componente intercepta la carga antes de disparar consultas a tablas de materias curriculares, ofreciendo una pantalla guiada con botón de retorno a cursos.
+
 ## Inicio, fin de cursada y días sin clases — 9 de octubre de 2026
 
 La navegación admite febrero a diciembre. Para los días anteriores al inicio, posteriores al fin de las clases o del receso invernal, elegir **Sin clases** en Calendario, indicar **Desde** y **Hasta** y pulsar **Agregar** antes de guardar. Sin Hasta se agrega un solo día. Los rangos son inclusivos, deben existir en el mes y no superponerse con fechas ya configuradas; para un receso que atraviese dos meses se configura cada tramo en su mes. Las fechas las define la institución, sin asumir un calendario oficial ni un receso fijo.

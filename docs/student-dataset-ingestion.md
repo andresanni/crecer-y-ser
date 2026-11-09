@@ -38,7 +38,7 @@ alumno_dni,alumno_apellidos,alumno_nombres,alumno_legajo,alumno_fecha_nacimiento
 | `alumno_nombres` | Sí | Texto | Nombres de pila del estudiante. |
 | `alumno_legajo` | No | Texto o numérico | Opcional en Inicial; dejar celda en blanco si no se asignó. |
 | `alumno_fecha_nacimiento` | No (recomendado) | `YYYY-MM-DD` o `YYYY/MM/DD` | Fundamental para la deduplicación de alumnos sin DNI. |
-| `alumno_sexo` | No | `Femenino`, `Masculino`, `No binario`, `Otro` | Valores exactos admitidos por el backend. |
+| `alumno_sexo` | No | `Femenino`, `Masculino`, `No binario`, `Otro` | Normaliza automáticamente abreviaturas coloquiales como `V`, `varón`, `M`, `mujer`. |
 | `alumno_nacionalidad` | No | Texto (ej. `Argentina`) | Dejar vacío si se desconoce. |
 | `alumno_domicilio` | No | Texto libre | Calle, número, piso/depto. |
 | `alumno_localidad` | No | Texto (ej. `CABA`, `Olivos`) | Localidad de residencia. |
@@ -56,8 +56,8 @@ alumno_dni,alumno_apellidos,alumno_nombres,alumno_legajo,alumno_fecha_nacimiento
 | `posee_apoyos` | No | `SI`, `NO`, `-`, o vacío | Indicador de PPI o inclusión escolar. |
 | `cuales_apoyos` | No | Texto descriptivo | Detalle del equipo o apoyos externos. |
 | `modalidad_jornada` | No | `Mañana`, `Jornada Completa`, `Tarde` | Admite alias institucionales (ver sección específica). |
-| `responsable_dni_tipo` | No | `DNI`, `Pasaporte`, `CI`, etc. | Por defecto `DNI`. |
-| `responsable_dni_numero` | Sí | Dígitos sin puntos | Clave primaria de deduplicación del primer tutor. |
+| `responsable_dni_tipo` | No | `DNI`, `Pasaporte`, `CI`, etc. | Por defecto `DNI`. Sanitiza puntuaciones accidentales (ej. `D.N.I:`). |
+| `responsable_dni_numero` | No (recomendado) | Dígitos sin puntos | Si está ausente, se emite aviso y se deduplica por nombre compuesto. |
 | `responsable_apellidos` | Sí | Texto | Apellidos del primer responsable. |
 | `responsable_nombres` | Sí | Texto | Nombres del primer responsable. |
 | `responsable_vinculo` | No | `Padre`, `Madre`, `Tutor`, etc. | Por defecto `Padre`. |
@@ -66,7 +66,7 @@ alumno_dni,alumno_apellidos,alumno_nombres,alumno_legajo,alumno_fecha_nacimiento
 | `responsable_nacionalidad`| No | Texto | Nacionalidad del primer responsable. |
 | `responsable_profesion` | No | Texto | Ocupación laboral. |
 | `responsable2_dni_tipo` | No | `DNI`, `Pasaporte`, etc. | Tipo de documento del segundo responsable. |
-| `responsable2_dni_numero` | Condicional | Dígitos sin puntos | Obligatorio si se completan datos del segundo tutor. |
+| `responsable2_dni_numero` | No (recomendado) | Dígitos sin puntos | Opcional si faltara en secretaría; emite aviso y deduplica por nombre. |
 | `responsable2_apellidos` | Condicional | Texto | Obligatorio si se completan datos del segundo tutor. |
 | `responsable2_nombres` | Condicional | Texto | Obligatorio si se completan datos del segundo tutor. |
 | `responsable2_vinculo` | No | `Madre`, `Padre`, `Tutor`, etc. | Por defecto `Madre`. |
@@ -105,9 +105,16 @@ Los alumnos de Inicial frecuentemente no tienen `alumno_legajo`, `alumno_usuario
 
 ### E. Doble responsable o tutor
 Cuando la fila incluye datos de un segundo responsable (columnas con prefijo `responsable2_`):
-- Se exige que `responsable2_dni_numero`, `responsable2_apellidos` y `responsable2_nombres` estén presentes.
-- Se valida que `responsable2_dni_numero` sea distinto a `responsable_dni_numero` en la misma fila.
-- Ambos tutores se deduplican independientemente en la colección `responsables` por su respectivo número de documento y se asocian en `alumno_responable` con su correspondiente vínculo (`responsable_vinculo` por defecto 'Padre' y `responsable2_vinculo` por defecto 'Madre').
+- Se exige que `responsable2_apellidos` y `responsable2_nombres` estén presentes.
+- Si se indica número de documento, se valida que `responsable2_dni_numero` sea distinto a `responsable_dni_numero` en la misma fila.
+- Ambos tutores se deduplican independientemente en la colección `responsables` (por su número de documento o por nombre compuesto si el DNI faltara) y se asocian en `alumno_responable` con su correspondiente vínculo (`responsable_vinculo` por defecto 'Padre' y `responsable2_vinculo` por defecto 'Madre').
+
+### F. Resiliencia de tutores y normalización de valores
+Para acomodar particularidades de las planillas de inscripción:
+- **Promoción de tutor 2:** Si una fila consigna únicamente datos de la madre o tutora en las columnas `responsable2_*` dejando `responsable_*` vacías, el script promueve automáticamente a tutor 2 como responsable principal para mantener la coherencia relacional.
+- **Tutores sin DNI:** Si la secretaría no dispone momentáneamente del DNI de un adulto responsable, el script emite un aviso no bloqueante y deduplica al tutor por `apellidos_normalizados|nombres_normalizados`, actualizando su DNI posteriormente mediante `PATCH` si se suministra en una corrida futura.
+- **Sanitización de tipo de DNI:** Elimina signos de puntuación involuntarios (ej. `D.N.I:` o `DNI.`) convirtiéndolos a `DNI`.
+- **Normalización de sexo:** Mapea abreviaturas frecuentes (`V`, `varon`, `M`, `mujer`) a `Masculino` y `Femenino`.
 
 ---
 
