@@ -163,6 +163,48 @@ function hasAnyGuardian2Field(row) {
   return fields.some(field => row[field] !== undefined && String(row[field]).trim().length > 0);
 }
 
+function normalizeSexo(val) {
+  if (!val) return '';
+  const trimmed = val.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === 'v' || lower === 'varon' || lower === 'varón' || lower === 'masculino') return 'Masculino';
+  if (lower === 'm' || lower === 'mujer' || lower === 'femenino' || lower === 'f') return 'Femenino';
+  if (lower === 'no binario' || lower === 'nobinario') return 'No binario';
+  if (lower === 'otro') return 'Otro';
+  return trimmed;
+}
+
+function sanitizeDniTipo(val) {
+  if (!val) return 'DNI';
+  const clean = val.replace(/[:.]/g, '').trim();
+  return clean || 'DNI';
+}
+
+function promoteGuardian2IfNeeded(row) {
+  if (!row.responsable_apellidos && !row.responsable_nombres && hasAnyGuardian2Field(row)) {
+    row.responsable_dni_tipo = row.responsable2_dni_tipo;
+    row.responsable_dni_numero = row.responsable2_dni_numero || row.responsable2_dni_nnumero;
+    row.responsable_apellidos = row.responsable2_apellidos;
+    row.responsable_nombres = row.responsable2_nombres;
+    row.responsable_vinculo = row.responsable2_vinculo || 'Madre';
+    row.responsable_telefono = row.responsable2_telefono;
+    row.responsable_email = row.responsable2_email;
+    row.responsable_nacionalidad = row.responsable2_nacionalidad;
+    row.responsable_profesion = row.responsable2_profesion;
+
+    delete row.responsable2_dni_tipo;
+    delete row.responsable2_dni_numero;
+    delete row.responsable2_dni_nnumero;
+    delete row.responsable2_apellidos;
+    delete row.responsable2_nombres;
+    delete row.responsable2_vinculo;
+    delete row.responsable2_telefono;
+    delete row.responsable2_email;
+    delete row.responsable2_nacionalidad;
+    delete row.responsable2_profesion;
+  }
+}
+
 function normalizePersonName(val) {
   return (val || '')
     .trim()
@@ -300,6 +342,12 @@ const VALID_ESTADO_VALUES = new Set(['Regular', 'Baja', 'Libre']);
 const VALID_FLAG_VALUES = new Set(['SI', 'NO', '-', '']);
 
 function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDnis, encounteredCompositeKeys, warnings) {
+  promoteGuardian2IfNeeded(row);
+  row.responsable_dni_tipo = sanitizeDniTipo(row.responsable_dni_tipo);
+  if (hasAnyGuardian2Field(row)) {
+    row.responsable2_dni_tipo = sanitizeDniTipo(row.responsable2_dni_tipo);
+  }
+
   const errors = [];
   const line = row.__lineNumber || (rowIndex + 2);
   const compositeKey = buildStudentCompositeKey(row.alumno_apellidos, row.alumno_nombres, row.alumno_fecha_nacimiento);
@@ -341,9 +389,11 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
   }
 
   if (row.alumno_sexo && row.alumno_sexo.trim()) {
-    const sexoVal = row.alumno_sexo.trim();
-    if (!VALID_SEXO_VALUES.has(sexoVal)) {
-      errors.push(`Línea ${line}: 'alumno_sexo' ("${sexoVal}") inválido. Opciones admitidas: Femenino, Masculino, No binario, Otro.`);
+    const normalizedSexo = normalizeSexo(row.alumno_sexo);
+    if (!VALID_SEXO_VALUES.has(normalizedSexo)) {
+      errors.push(`Línea ${line}: 'alumno_sexo' ("${row.alumno_sexo}") inválido. Opciones admitidas: Femenino, Masculino, No binario, Otro.`);
+    } else {
+      row.alumno_sexo = normalizedSexo;
     }
   }
 
@@ -359,6 +409,7 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
   if (!row.curso_nombre || !row.curso_nombre.trim()) {
     errors.push(`Línea ${line}: 'curso_nombre' es obligatorio.`);
   } else {
+    row.curso_nombre = normalizeCourseName(row.curso_nombre);
     const courseKey = row.curso_nombre.trim();
     if (!coursesMap.has(courseKey)) {
       errors.push(`Línea ${line}: 'curso_nombre' "${courseKey}" no existe en la colección de cursos.`);
@@ -397,7 +448,7 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
 
   const guardian1Dni = (row.responsable_dni_numero || row.responsable_dni_nnumero || '').trim();
   if (!guardian1Dni) {
-    errors.push(`Línea ${line}: 'responsable_dni_numero' es obligatorio.`);
+    warnings.push(`Línea ${line}: 'responsable_dni_numero' no especificado para responsable "${row.responsable_apellidos || 'Sin apellido'}, ${row.responsable_nombres || 'Sin nombre'}". Se importará sin DNI para asignación posterior.`);
   }
 
   if (!row.responsable_apellidos || !row.responsable_apellidos.trim()) {
@@ -411,7 +462,7 @@ function validateRow(row, rowIndex, cyclesMap, coursesMap, encounteredStudentDni
   if (hasAnyGuardian2Field(row)) {
     const guardian2Dni = (row.responsable2_dni_numero || row.responsable2_dni_nnumero || '').trim();
     if (!guardian2Dni) {
-      errors.push(`Línea ${line}: Si se informa el segundo responsable, 'responsable2_dni_numero' es obligatorio.`);
+      warnings.push(`Línea ${line}: 'responsable2_dni_numero' no especificado para segundo responsable "${row.responsable2_apellidos || 'Sin apellido'}, ${row.responsable2_nombres || 'Sin nombre'}". Se importará sin DNI para asignación posterior.`);
     }
 
     if (!row.responsable2_apellidos || !row.responsable2_apellidos.trim()) {
@@ -683,10 +734,15 @@ async function main() {
   });
 
   const guardiansByDni = new Map();
+  const guardiansByName = new Map();
   existingResponsables.forEach(r => {
     const dniNum = r.dni_numero || r.dni;
     if (dniNum && String(dniNum).trim()) {
       guardiansByDni.set(String(dniNum).trim(), r);
+    }
+    const nameKey = `${normalizePersonName(r.apellidos)}|${normalizePersonName(r.nombres)}`;
+    if (nameKey !== '|') {
+      guardiansByName.set(nameKey, r);
     }
   });
 
@@ -718,10 +774,21 @@ async function main() {
     const progress = `[${i + 1}/${records.length}]`;
 
     const guardian1Dni = (row.responsable_dni_numero || row.responsable_dni_nnumero || '').trim();
+    const guardian1NameKey = `${normalizePersonName(row.responsable_apellidos)}|${normalizePersonName(row.responsable_nombres)}`;
     let guardian1Id = '';
 
-    if (guardiansByDni.has(guardian1Dni)) {
+    if (guardian1Dni && guardiansByDni.has(guardian1Dni)) {
       guardian1Id = guardiansByDni.get(guardian1Dni).id;
+      stats.guardiansReused++;
+    } else if (!guardian1Dni && guardiansByName.has(guardian1NameKey)) {
+      guardian1Id = guardiansByName.get(guardian1NameKey).id;
+      stats.guardiansReused++;
+    } else if (guardian1Dni && guardiansByName.has(guardian1NameKey) && !(guardiansByName.get(guardian1NameKey).dni_numero || guardiansByName.get(guardian1NameKey).dni)) {
+      const existingG1 = guardiansByName.get(guardian1NameKey);
+      await patchRecord(options.pbUrl, token, 'responsables', existingG1.id, { dni_numero: guardian1Dni });
+      existingG1.dni_numero = guardian1Dni;
+      guardian1Id = existingG1.id;
+      guardiansByDni.set(guardian1Dni, existingG1);
       stats.guardiansReused++;
     } else {
       const guardian1Payload = {
@@ -736,7 +803,10 @@ async function main() {
       };
       const createdGuardian1 = await postRecord(options.pbUrl, token, 'responsables', guardian1Payload);
       guardian1Id = createdGuardian1.id;
-      guardiansByDni.set(guardian1Dni, createdGuardian1);
+      if (guardian1Dni) {
+        guardiansByDni.set(guardian1Dni, createdGuardian1);
+      }
+      guardiansByName.set(guardian1NameKey, createdGuardian1);
       stats.guardiansCreated++;
     }
 
@@ -799,10 +869,21 @@ async function main() {
 
     if (hasAnyGuardian2Field(row)) {
       const guardian2Dni = (row.responsable2_dni_numero || row.responsable2_dni_nnumero || '').trim();
+      const guardian2NameKey = `${normalizePersonName(row.responsable2_apellidos)}|${normalizePersonName(row.responsable2_nombres)}`;
       let guardian2Id = '';
 
-      if (guardiansByDni.has(guardian2Dni)) {
+      if (guardian2Dni && guardiansByDni.has(guardian2Dni)) {
         guardian2Id = guardiansByDni.get(guardian2Dni).id;
+        stats.guardiansReused++;
+      } else if (!guardian2Dni && guardiansByName.has(guardian2NameKey)) {
+        guardian2Id = guardiansByName.get(guardian2NameKey).id;
+        stats.guardiansReused++;
+      } else if (guardian2Dni && guardiansByName.has(guardian2NameKey) && !(guardiansByName.get(guardian2NameKey).dni_numero || guardiansByName.get(guardian2NameKey).dni)) {
+        const existingG2 = guardiansByName.get(guardian2NameKey);
+        await patchRecord(options.pbUrl, token, 'responsables', existingG2.id, { dni_numero: guardian2Dni });
+        existingG2.dni_numero = guardian2Dni;
+        guardian2Id = existingG2.id;
+        guardiansByDni.set(guardian2Dni, existingG2);
         stats.guardiansReused++;
       } else {
         const guardian2Payload = {
@@ -817,7 +898,10 @@ async function main() {
         };
         const createdGuardian2 = await postRecord(options.pbUrl, token, 'responsables', guardian2Payload);
         guardian2Id = createdGuardian2.id;
-        guardiansByDni.set(guardian2Dni, createdGuardian2);
+        if (guardian2Dni) {
+          guardiansByDni.set(guardian2Dni, createdGuardian2);
+        }
+        guardiansByName.set(guardian2NameKey, createdGuardian2);
         stats.guardiansCreated++;
       }
 
