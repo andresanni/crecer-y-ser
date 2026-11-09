@@ -11,6 +11,7 @@ import {
   App,
   Modal,
   Tag,
+  Segmented,
 } from 'antd';
 import {
   CalendarOutlined,
@@ -40,6 +41,7 @@ export const AsistenciasPage = () => {
   const { message, modal } = App.useApp();
   const { cicloActual } = useAppStore();
   const [cursos, setCursos] = useState<Curso[]>([]);
+  const [nivelSeleccionado, setNivelSeleccionado] = useState<'primario' | 'inicial'>('primario');
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { token } = theme.useToken();
@@ -89,15 +91,29 @@ export const AsistenciasPage = () => {
     setMesesConfigurados(records.map((r) => r.mes).sort((a, b) => a - b));
   }, [cicloActual]);
 
+  const isInicial = useCallback((c?: Curso | null) => {
+    if (!c) return false;
+    return c.nivelNombre.toLowerCase().includes('inicial') || /sala/i.test(c.nombre);
+  }, []);
+
+  const cursosPrimaria = cursos
+    .filter((c) => !isInicial(c))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }) || a.turno.localeCompare(b.turno, 'es'));
+
+  const cursosInicial = cursos
+    .filter((c) => isInicial(c))
+    .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.nombre.localeCompare(b.nombre, 'es'));
+
+  const cursoSeleccionado = cursos.find((c) => c.id === cursoSeleccionadoId);
+  const esCursoInicialSeleccionado = isInicial(cursoSeleccionado);
+
   const cargarNavegacion = useCallback(async () => {
     if (!cicloActual) return;
     setCargandoNavegacion(true);
     setErrorNavegacion(null);
     try {
       const [todosLosCursos] = await Promise.all([inscripcionService.getCursos(), cargarMesesConfigurados()]);
-      setCursos(todosLosCursos.filter(
-        (c) => c.nivelNombre.toLowerCase().includes('primar') || /^[1-7]°/.test(c.nombre)
-      ).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }) || a.turno.localeCompare(b.turno, 'es')));
+      setCursos(todosLosCursos);
     } catch {
       setErrorNavegacion('No se pudieron cargar los meses y cursos.');
     } finally {
@@ -119,7 +135,7 @@ export const AsistenciasPage = () => {
 
   const cargarRegistro = useCallback(async (): Promise<RegistroMensualCompleto | null> => {
     const solicitud = ++solicitudRegistro.current;
-    if (!cursoSeleccionadoId || !cicloActual) {
+    if (!cursoSeleccionadoId || !cicloActual || esCursoInicialSeleccionado) {
       setLoading(false);
       setRegistroCompleto(null);
       setErrorCarga(null);
@@ -149,10 +165,10 @@ export const AsistenciasPage = () => {
     } finally {
       if (solicitud === solicitudRegistro.current) setLoading(false);
     }
-  }, [cursoSeleccionadoId, cicloActual, mesSeleccionado]);
+  }, [cursoSeleccionadoId, cicloActual, mesSeleccionado, esCursoInicialSeleccionado]);
 
   const abrirImpresion = async () => {
-    if (cambiosPendientes) return;
+    if (cambiosPendientes || esCursoInicialSeleccionado) return;
     const data = await cargarRegistro();
     if (!data) return;
 
@@ -235,7 +251,6 @@ export const AsistenciasPage = () => {
 
   const mesAbierto = mesesConfigurados.includes(mesSeleccionado);
   const nombreMes = mesesBase.find((m) => m.value === mesSeleccionado)?.label;
-  const cursoSeleccionado = cursos.find((c) => c.id === cursoSeleccionadoId);
 
   return (
     <SectionLayout
@@ -246,7 +261,7 @@ export const AsistenciasPage = () => {
           {mesSeleccionado > 0 && <Button aria-label={cursoSeleccionadoId ? 'Cursos' : 'Meses'} icon={<ArrowLeftOutlined />} disabled={cambiosPendientes || loading}
             onClick={() => setSearchParams(cursoSeleccionadoId ? { mes: String(mesSeleccionado) } : {})}>
             {cursoSeleccionadoId ? 'Cursos' : 'Meses'}</Button>}
-          {cursoSeleccionadoId && <>
+          {cursoSeleccionadoId && !esCursoInicialSeleccionado && <>
             <Button icon={<ReloadOutlined />} disabled={cambiosPendientes || loading}
               onClick={() => void cargarRegistro()}>Actualizar</Button>
             <Button icon={<PrinterOutlined />} disabled={!registroCompleto || cambiosPendientes || loading}
@@ -278,23 +293,120 @@ export const AsistenciasPage = () => {
         </NavigationCardGrid>
       </>}
       {cicloActual && !cargandoNavegacion && !errorNavegacion && mesSeleccionado > 0 && !cursoSeleccionadoId && (
-        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-          <Tag color={mesAbierto ? 'success' : 'default'}>{mesAbierto ? 'Mes abierto' : 'Sin abrir'}</Tag>
+        <Space direction="vertical" size="middle" style={{ width: '100%', maxWidth: 640 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <Tag color={mesAbierto ? 'success' : 'default'}>{mesAbierto ? 'Mes abierto' : 'Sin abrir'}</Tag>
+            <Segmented<'primario' | 'inicial'>
+              aria-label="Filtrar cursos por nivel"
+              value={nivelSeleccionado}
+              onChange={setNivelSeleccionado}
+              options={[
+                { value: 'primario', label: 'Nivel Primario' },
+                { value: 'inicial', label: 'Nivel Inicial' },
+              ]}
+            />
+          </div>
           {!mesAbierto && <Alert type="info" showIcon title="Abrí el mes para cargar los registros." />}
-          <Card size="small" style={{ width: '100%', maxWidth: 560 }}>
-            {cursos.length === 0 ? <Empty description="No hay cursos de primaria" /> : cursos.map((curso, index) => (
-              <div key={curso.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-                padding: '12px 4px', borderBottom: index < cursos.length - 1 ? `1px solid ${token.colorBorderSecondary}` : undefined }}>
-                <Space orientation="vertical" size={0}>
-                  <Typography.Text strong>{curso.nombre}</Typography.Text>
-                  <Typography.Text type="secondary">{curso.turno}</Typography.Text>
-                </Space>
-                <Button disabled={!mesAbierto} icon={<RightOutlined />} iconPlacement="end"
-                  onClick={() => setSearchParams({ mes: String(mesSeleccionado), curso: curso.id })}>Ver registro</Button>
-              </div>
-            ))}
-          </Card>
+
+          {nivelSeleccionado === 'primario' && (
+            <Card size="small" style={{ width: '100%' }}>
+              {cursosPrimaria.length === 0 ? (
+                <Empty description="No hay cursos de primaria" />
+              ) : (
+                cursosPrimaria.map((curso, index) => (
+                  <div
+                    key={curso.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 16,
+                      padding: '12px 4px',
+                      borderBottom: index < cursosPrimaria.length - 1 ? `1px solid ${token.colorBorderSecondary}` : undefined,
+                    }}
+                  >
+                    <Space direction="vertical" size={0}>
+                      <Typography.Text strong>{curso.nombre}</Typography.Text>
+                      <Typography.Text type="secondary">{curso.turno}</Typography.Text>
+                    </Space>
+                    <Button
+                      disabled={!mesAbierto}
+                      icon={<RightOutlined />}
+                      iconPosition="end"
+                      onClick={() => setSearchParams({ mes: String(mesSeleccionado), curso: curso.id })}
+                    >
+                      Ver registro
+                    </Button>
+                  </div>
+                ))
+              )}
+            </Card>
+          )}
+
+          {nivelSeleccionado === 'inicial' && (
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <Alert
+                type="info"
+                showIcon
+                message="Seguimiento de Asistencia · Nivel Inicial"
+                description="Las salas de Nivel Inicial incorporan un formato de registro mensual diferenciado (asistencia diaria por sala y planilla oficial adaptada sin asignaturas de primaria). El módulo de emisión para salas se habilitará en la Fase 2."
+              />
+              <Card size="small" style={{ width: '100%' }}>
+                {cursosInicial.length === 0 ? (
+                  <Empty description="No hay salas de inicial" />
+                ) : (
+                  cursosInicial.map((curso, index) => (
+                    <div
+                      key={curso.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 16,
+                        padding: '12px 4px',
+                        borderBottom: index < cursosInicial.length - 1 ? `1px solid ${token.colorBorderSecondary}` : undefined,
+                      }}
+                    >
+                      <Space direction="vertical" size={2}>
+                        <Space size={6}>
+                          <Typography.Text strong>{curso.nombre}</Typography.Text>
+                          <Tag color="purple">Inicial</Tag>
+                        </Space>
+                        <Typography.Text type="secondary">{curso.turno}</Typography.Text>
+                      </Space>
+                      <Tag color="processing">En adaptación (Fase 2)</Tag>
+                    </div>
+                  ))
+                )}
+              </Card>
+            </Space>
+          )}
         </Space>
+      )}
+
+      {cursoSeleccionadoId && esCursoInicialSeleccionado && (
+        <Card style={{ maxWidth: 650, margin: '24px auto', textAlign: 'center' }}>
+          <Space direction="vertical" size="middle" align="center" style={{ width: '100%' }}>
+            <CalendarOutlined style={{ fontSize: 44, color: token.colorPrimary }} />
+            <Typography.Title level={4} style={{ margin: 0 }}>
+              Registro de Asistencia · {cursoSeleccionado?.nombre}
+            </Typography.Title>
+            <Tag color="purple">Nivel Inicial</Tag>
+            <Alert
+              type="info"
+              showIcon
+              style={{ textAlign: 'left' }}
+              message="Formato adaptado de sala en desarrollo (Fase 2)"
+              description="Las salas de Nivel Inicial incorporan un seguimiento mensual propio, adaptado a novedades de sala y con una grilla de seguimiento institucional sin materias curriculares de primaria. La visualización de matriz y emisión de hoja A4 adaptada se habilitará en la próxima etapa."
+            />
+            <Button
+              type="primary"
+              onClick={() => setSearchParams({ mes: String(mesSeleccionado) })}
+            >
+              Volver a cursos
+            </Button>
+          </Space>
+        </Card>
       )}
 
       {cursoSeleccionadoId && loading && (
