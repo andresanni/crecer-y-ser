@@ -286,3 +286,10 @@ node deploy/test-attendance-presentation.mjs
 Las 20 pruebas de dominio y HTTP cubren reglas de asistencia, matrícula, bajas, notas pendientes, días hábiles, años bisiestos, acumulados inclusivos, recalculado de meses posteriores, autorización, concurrencia y rollback. Las pruebas de navegador usan Edge headless y datos sintéticos: navegación, calendario contextual sin selectores residuales, acumulado provisorio, protección de borradores, cierre del menú de marcas, foco, grilla de 31 días, ambas plantillas y cinco PDFs de una página A4 horizontal. La prueba HTTP requiere `C:\pocketbase\pocketbase.exe` 0.22.17; crea y elimina su propia instancia temporal, sin tocar `127.0.0.1:8090`. Las pruebas visuales tienen cachés Vite separadas dentro de los artefactos ignorados.
 
 La grilla interactiva usa filas de 36 px, ampliables únicamente por nombres u observaciones que requieran más líneas. El texto vertical de eventos se posiciona dentro de la celda combinada sin determinar la altura de la tabla; los textos largos se recortan con el detalle completo en el título al pasar el mouse. El encabezado de sección concentra Actualizar, Imprimir A4 y Calendario, sin duplicados en la grilla. La barra de carga conserva indicadores del curso y Guardar/Descartar, manteniendo el bloqueo de impresión y calendario cuando hay cambios pendientes. Estos ajustes no modifican la plantilla impresa.
+
+## Promoción a producción de `1°2° Multigrado` — 10 de noviembre de 2026
+
+- **Migraciones**: sin cambios de esquema (`pb_migrations` y `pb_schema.json` sin modificaciones).
+- **Despliegue de backend en VPS**: actualizado `pb_hooks/lib/attendance.js` mediante `deploy/publish-pocketbase.ps1` con health check `200` y worker PDF operativo (`204`).
+- **Respaldo productivo previo**: `/root/pb/deploy_backups/20261110-185253`.
+- **Estrategia de rollback**: restaurar `/root/pb/deploy_backups/20261110-185253/pb_hooks/lib/attendance.js` hacia `/root/pb/pb_hooks/lib/attendance.js`, reiniciar `pocketbase.service` y revertir el merge en `master`.
