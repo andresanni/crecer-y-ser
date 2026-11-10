@@ -28,9 +28,19 @@ function fixture({ month = 5, linked = 'period', periodNumber = 1, periodCycle =
   };
   const pb = { send: async () => ({ revision: 0, versionFuentes: 'synthetic-version', mes: records.meses_calendario[0], curso: records.cursos[0],
     fechaInicioClases: records.ciclos_lectivos[0].fecha_inicio_clases,
-    eventos: records.eventos_calendario, inscripciones: records.inscripciones, novedades: records.asistencias_diarias, registroCurso: records.registros_asistencia_curso[0] || null }),
+    eventos: records.eventos_calendario, inscripciones: records.inscripciones, novedades: records.asistencias_diarias, registroCurso: records.registros_asistencia_curso[0] || null,
+    ...(records.cursosIntegrantes ? { cursosIntegrantes: records.cursosIntegrantes } : {}) }),
     collection: name => ({
-    getFullList: async options => { calls.push({ name, operation: 'list', options }); if (failure?.name === name) throw failure.error; return records[name] || []; },
+    getFullList: async options => {
+      calls.push({ name, operation: 'list', options });
+      if (failure?.name === name) throw failure.error;
+      let list = records[name] || [];
+      if (options?.filter && typeof options.filter === 'string') {
+        const match = options.filter.match(/instancia_id = "([^"]+)"/);
+        if (match) list = list.filter(item => item.instancia_id === match[1]);
+      }
+      return list;
+    },
     getOne: async id => { calls.push({ name, operation: 'one', id }); if (failure?.name === name) throw failure.error; const record = records[name]?.find(row => row.id === id); if (!record) throw missing(); return record; },
     getFirstListItem: async filter => { calls.push({ name, operation: 'first', filter }); if (failure?.name === name) throw failure.error; if (!records[name]?.length) throw missing(); return records[name][0]; },
     create: async data => { calls.push({ name, operation: 'create', data }); return { id: 'created', ...data }; },
@@ -38,7 +48,7 @@ function fixture({ month = 5, linked = 'period', periodNumber = 1, periodCycle =
     delete: async id => { calls.push({ name, operation: 'delete', id }); },
   }) };
   const service = loadSource('services/registroAsistenciaCurso.service.ts', pb).registroAsistenciaCursoService;
-  return { records, pb, calls, service, read: () => service.obtenerHojaAsistenciaCompleta('course', 'cycle', month) };
+  return { records, pb, calls, service, read: (courseId = 'course') => service.obtenerHojaAsistenciaCompleta(courseId, 'cycle', month) };
 }
 
 test('Los totales de las muestras coinciden con las funciones reales', () => {
@@ -343,4 +353,127 @@ test('El visado desfasado por modificación posterior (revision_visada !== revis
   assert.equal(regular.visado, false);
   assert.deepEqual(plain(regular.calificacionesMaterias), {});
 });
+
+test('Multigrado 1°2°: ordenamiento Grado DESC, altas tardías al final, renumeración dinámica 1..N, materias canónicas y visado unificado', async () => {
+  const f = fixture({ month: 5, fechaInicioClases: '2026-03-01' });
+  const c1 = { id: 'c1', nombre: '1°', orden: 11, turno: 'Mañana' };
+  const c2 = { id: 'c2', nombre: '2°', orden: 12, turno: 'Mañana' };
+  f.records.cursosIntegrantes = [c1, c2];
+  f.records.cursos = [{ id: 'c1', nombre: '1°2° Multigrado', turno: 'Mañana', expand: { nivel_id: { nombre: 'Primario' } } }];
+
+  const makeStudent = (id, cursoId, orden, fecha, apellidos, nombres) => ({
+    id,
+    curso_id: cursoId,
+    estado: 'Regular',
+    fecha_ingreso: fecha,
+    numero_orden: orden,
+    expand: {
+      alumno_id: { id: 'alu-' + id, apellidos, nombres, sexo: 'Femenino', fecha_nacimiento: '2019-01-01', nacionalidad: 'Argentina' }
+    }
+  });
+
+  f.records.inscripciones = [
+    makeStudent('s1-ord2', 'c1', 2, '2026-03-01', 'Álvarez', 'Zoe'),
+    makeStudent('s1-ord1', 'c1', 1, '2026-03-01', 'Benítez', 'Carlos'),
+    makeStudent('s2-ord2', 'c2', 2, '2026-03-01', 'Domínguez', 'Lucas'),
+    makeStudent('s2-ord1', 'c2', 1, '2026-03-01', 'Castro', 'Ana'),
+    makeStudent('s1-late1', 'c1', 3, '2026-04-10', 'Navarro', 'Elena'),
+    makeStudent('s2-late1', 'c2', 3, '2026-04-10', 'Méndez', 'Hugo'),
+    makeStudent('s2-late2', 'c2', 4, '2026-05-02', 'Quiroga', 'Sofía'),
+  ];
+
+  f.records.curso_materias = [
+    { id: 'cm1-lengua', curso_id: 'c1', materia_id: 'mat-lengua', orden_visual: 1, expand: { materia_id: { nombre: 'Lengua' } } },
+    { id: 'cm1-aula', curso_id: 'c1', materia_id: 'mat-aula', orden_visual: 2, expand: { materia_id: { nombre: 'Trabajo en el aula' } } },
+    { id: 'cm2-lengua', curso_id: 'c2', materia_id: 'mat-lengua', orden_visual: 1, expand: { materia_id: { nombre: 'Lengua' } } },
+    { id: 'cm2-aula', curso_id: 'c2', materia_id: 'mat-aula', orden_visual: 2, expand: { materia_id: { nombre: 'Trabajo en el aula' } } },
+  ];
+
+  f.records.evaluaciones_materia = [
+    { id: 'ev-s1', inscripcion_id: 's1-ord1', curso_materia_id: 'cm1-lengua', expand: { calificacion_general_id: { etiqueta: 'MB' } } },
+    { id: 'ev-s2', inscripcion_id: 's2-ord1', curso_materia_id: 'cm2-lengua', expand: { calificacion_general_id: { etiqueta: 'EX' } } },
+    { id: 'ev-aula-s1', inscripcion_id: 's1-ord1', curso_materia_id: 'cm1-aula' },
+    { id: 'ev-aula-s2', inscripcion_id: 's2-ord1', curso_materia_id: 'cm2-aula' },
+  ];
+
+  f.records.evaluaciones_criterios = [
+    { id: 'ec-s1', evaluacion_materia_id: 'ev-aula-s1', expand: { criterio_id: { orden_visual: 3 }, valor_escala_id: { etiqueta: 'AV8' } } },
+    { id: 'ec-s2', evaluacion_materia_id: 'ev-aula-s2', expand: { criterio_id: { orden_visual: 3 }, valor_escala_id: { etiqueta: 'AV9' } } },
+  ];
+
+  f.records.instancias_carga_boletin = [
+    { id: 'inst-1', curso_id: 'c1', periodo_id: 'period', estado: 'CONTROL_DIRECTIVO' },
+    { id: 'inst-2', curso_id: 'c2', periodo_id: 'period', estado: 'CONTROL_DIRECTIVO' },
+  ];
+
+  f.records.visados_boletin = [
+    { id: 'vis-s1', instancia_id: 'inst-1', inscripcion_id: 's1-ord1', estado: 'VISADO', revision_contenido: 1, revision_visada: 1 },
+    { id: 'vis-s2', instancia_id: 'inst-2', inscripcion_id: 's2-ord1', estado: 'VISADO', revision_contenido: 1, revision_visada: 1 },
+  ];
+
+  const record = await f.read('c1');
+
+  assert.equal(record.curso.nombre, '1°2° Multigrado');
+  assert.equal(record.alumnos.length, 7);
+
+  assert.deepEqual(plain(record.alumnos.map(a => a.inscripcionId)), [
+    's2-ord1',
+    's2-ord2',
+    's1-ord1',
+    's1-ord2',
+    's2-late1',
+    's1-late1',
+    's2-late2',
+  ]);
+
+  assert.deepEqual(plain(record.alumnos.map(a => a.numeroOrden)), [1, 2, 3, 4, 5, 6, 7]);
+  assert.deepEqual(plain(record.alumnos.map(a => a.numeroOrdenCurso)), [1, 2, 1, 2, 3, 3, 4]);
+  assert.deepEqual(plain(record.alumnos.map(a => a.gradoNumero)), [2, 2, 1, 1, 2, 1, 2]);
+  assert.deepEqual(plain(record.alumnos.map(a => a.cursoNombre)), ['2°', '2°', '1°', '1°', '2°', '1°', '2°']);
+
+  assert.equal(record.materias.length, 1);
+  assert.equal(record.materias[0].cursoMateriaId, 'cm1-lengua');
+
+  const student1Ord1 = record.alumnos.find(a => a.inscripcionId === 's1-ord1');
+  const student2Ord1 = record.alumnos.find(a => a.inscripcionId === 's2-ord1');
+  const unapprovedStudent = record.alumnos.find(a => a.inscripcionId === 's1-ord2');
+
+  assert.equal(student1Ord1.visado, true);
+  assert.equal(student1Ord1.calificacionesMaterias['cm1-lengua'], 'MB');
+  assert.equal(student1Ord1.trabajoEnElAula[3], 'AV8');
+
+  assert.equal(student2Ord1.visado, true);
+  assert.equal(student2Ord1.calificacionesMaterias['cm1-lengua'], 'EX');
+  assert.equal(student2Ord1.trabajoEnElAula[3], 'AV9');
+
+  assert.equal(unapprovedStudent.visado, false);
+  assert.deepEqual(plain(unapprovedStudent.calificacionesMaterias), {});
+  assert.equal(unapprovedStudent.trabajoEnElAula[3], '');
+
+  assert.equal(record.resumenVisado.totalAlumnosEvaluables, 7);
+  assert.equal(record.resumenVisado.alumnosVisados, 2);
+  assert.equal(record.resumenVisado.completo, false);
+  assert.equal(record.resumenVisado.estadoInstancia, 'CONTROL_DIRECTIVO');
+
+  for (const inscId of ['s2-ord2', 's1-ord2', 's2-late1', 's1-late1', 's2-late2']) {
+    const instId = inscId.startsWith('s1') ? 'inst-1' : 'inst-2';
+    f.records.visados_boletin.push({
+      id: 'vis-' + inscId,
+      instancia_id: instId,
+      inscripcion_id: inscId,
+      estado: 'VISADO',
+      revision_contenido: 1,
+      revision_visada: 1,
+    });
+  }
+
+  const recordFullVisado = await f.read('c1');
+  assert.equal(recordFullVisado.resumenVisado.alumnosVisados, 7);
+  assert.equal(recordFullVisado.resumenVisado.completo, true);
+
+  f.records.instancias_carga_boletin[1].estado = 'BORRADOR_DOCENTE';
+  const recordDraft = await f.read('c1');
+  assert.equal(recordDraft.resumenVisado.estadoInstancia, 'BORRADOR_DOCENTE');
+});
+
 

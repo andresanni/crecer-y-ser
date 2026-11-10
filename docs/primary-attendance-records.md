@@ -1,10 +1,43 @@
 # Registros de Asistencia de Primaria
 
-Actualizado: 19 de octubre de 2026.
+Actualizado: 10 de noviembre de 2026.
 
 ## Propósito
 
 Centralizar y automatizar la gestión mensual de los registros oficiales de asistencia y seguimiento pedagógico para los cursos de nivel primario, reemplazando la gestión manual previa en Google Sheets y permitiendo la emisión e impresión directa en formato A4 apaisado conforme a la normativa escolar.
+
+## Abstracción «1°2° Multigrado» — 10 de noviembre de 2026
+
+Debido a la baja matrícula en los primeros grados de nivel primario, la institución combina operativamente 1.° y 2.° grado en una única sección física y un único registro mensual de asistencia, denominado «1°2° Multigrado».
+
+### 1. Propósito y desacoplamiento de dominios
+- **Alcance exclusivo de Asistencias**: La abstracción multigrado opera exclusivamente en la carga interactiva mensual (`CargaAsistenciaMatrix`), en la hoja impresa oficial A4 (`RegistroEscolar`), en el cálculo consolidado de matrícula/asistencia y en el gateway transaccional de PocketBase (`pb_hooks/lib/attendance.js`).
+- **Independencia en base de datos**: En la colección `cursos`, 1.° grado y 2.° grado continúan existiendo como registros independientes con su propio identificador, orden y asignaturas.
+- **Aislamiento de Boletines, Informes y Alumnos**: Los módulos de Boletines oficiales (`instancias_carga_boletin`), Informes pedagógicos docentes y la gestión de legajos de Alumnos mantienen los cursos totalmente diferenciados e independientes, sin mezcla de plantillas, criterios de evaluación ni cierres administrativos.
+
+### 2. Criterios de ordenamiento unificado de la nómina
+Para conformar una lista única coherente institucionalmente en la planilla consolidada:
+1. **Inscriptos al inicio de ciclo (`fechaEfectiva <= fechaInicioClases`)**:
+   - Se ordenan por grado en forma descendente (**Grado DESC**: los alumnos de 2.° grado se listan en el primer bloque, seguidos por los de 1.° grado).
+   - Dentro de cada grado, se respeta estrictamente su número de orden administrativo ascendente (**`numero_orden ASC`**).
+2. **Altas tardías (`fechaEfectiva > fechaInicioClases`)**:
+   - Todo alumno incorporado con posterioridad a la fecha de inicio de clases se coloca al final de la nómina completa, independientemente de si pertenece a 1.° o a 2.° grado.
+   - Entre los ingresantes tardíos, el orden es cronológico ascendente por fecha efectiva (**`fechaEfectiva ASC`**).
+   - Ante igual fecha efectiva de ingreso, se aplica el criterio institucional de desempate: **Grado DESC** (2.° antes de 1.°) y luego **`numero_orden ASC`**.
+
+### 3. Renumeración dinámica (1..N) y preservación del orden original
+- **Renumeración en hoja (1..N)**: En la planilla interactiva y en la carilla A4 impresa, el atributo `numeroOrden` se renumera de forma continua y consecutiva (`1, 2, ..., N`) según la posición resultante de la lista consolidada de la sala multigrado.
+- **Preservación del orden de curso**: El atributo `numeroOrdenCurso` conserva de forma inmutable el número de orden original asignado al alumno en su curso de origen en PocketBase (`inscripciones.numero_orden`).
+
+### 4. Patrón de curso ancla en `registros_asistencia_curso`
+- **Curso ancla (1.° grado)**: Las observaciones adicionales institucionales y el número de revisión transaccional del registro mensual se guardan en un único registro de la colección `registros_asistencia_curso` asociado al curso ancla (1.° grado).
+- **Resolución bidireccional**: Tanto al acceder al registro desde 1.° grado como desde 2.° grado (mismo nivel primario y turno), el backend (`resolveAttendanceCourses` en `pb_hooks/lib/attendance.js`) detecta automáticamente la configuración multigrado, devuelve el snapshot consolidado con `nombre = "1°2° Multigrado"` y el arreglo `cursosIntegrantes`.
+- **Persistencia atómica**: Al guardar asistencia u observaciones para alumnos de ambos grados, el backend procesa las novedades de asistencia diaria (`asistencias_diarias`) bajo sus inscripciones respectivas y actualiza o crea el registro en `registros_asistencia_curso` vinculado al curso ancla, manteniendo consistencia y evitando duplicaciones.
+
+### 5. Currícula multicurso y unificación de visados
+- **Mapeo a materias canónicas**: Al consolidar la cuadrícula evaluativa en los meses bimestrales (Mayo, Julio, Octubre, Diciembre), las asignaturas curriculares de ambos cursos (ej. Lengua, Matemática) se mapean canónicamente al identificador `cursoMateriaId` del curso ancla, proyectando las calificaciones correspondientes de los alumnos visados sin desalinear columnas.
+- **Criterios pedagógicos**: Las evaluaciones de Trabajo en el aula y Convivencia de ambos cursos se recopilan y proyectan conjuntamente en los casilleros de seguimiento.
+- **Resumen unificado de visados**: El componente `resumenVisado` totaliza los alumnos evaluables y visados de ambos cursos integrantes. El estado general de la instancia refleja `CONTROL_DIRECTIVO` únicamente si todas las instancias integrantes alcanzaron dicho control, y desciende a `BORRADOR_DOCENTE` si cualquiera de los cursos aún se encuentra en borrador.
 
 ## Salvaguarda institucional: traspaso condicionado a visado directivo — 19 de octubre de 2026
 
@@ -174,6 +207,12 @@ Metadatos y observaciones del curso para un mes determinado.
   - [x] Texto vertical SVG para feriados y jornadas, con geometría dinámica según el mes.
   - [x] Generación en caliente y vista previa de impresión desde modal Ant Design (`AsistenciasPage.tsx` y `CargaAsistenciaMatrix.tsx`).
   - [x] Exportación a PDF / impresión directa (`window.print()` con reseteo de shell e impresión exacta en 1 carilla A4 horizontal).
+- [x] **Etapa 5: Abstracción «1°2° Multigrado»**:
+  - [x] Resolución automática de cursos integrantes en backend y frontend (`resolveAttendanceCourses` en `pb_hooks/lib/attendance.js`).
+  - [x] Criterio de ordenamiento unificado: Grado DESC (2.° antes que 1.°) y `numero_orden ASC`, con altas tardías al final de la nómina por `fechaEfectiva ASC`.
+  - [x] Renumeración dinámica 1..N en grilla e impresión, preservando `numeroOrdenCurso` original.
+  - [x] Persistencia sobre curso ancla (1.° grado) en `registros_asistencia_curso`.
+  - [x] Unificación de materias curriculares canónicas y consolidación de visados directivos.
 
 ## Plantilla SVG e integración de datos — 8 de octubre de 2026
 
@@ -247,3 +286,10 @@ node deploy/test-attendance-presentation.mjs
 Las 20 pruebas de dominio y HTTP cubren reglas de asistencia, matrícula, bajas, notas pendientes, días hábiles, años bisiestos, acumulados inclusivos, recalculado de meses posteriores, autorización, concurrencia y rollback. Las pruebas de navegador usan Edge headless y datos sintéticos: navegación, calendario contextual sin selectores residuales, acumulado provisorio, protección de borradores, cierre del menú de marcas, foco, grilla de 31 días, ambas plantillas y cinco PDFs de una página A4 horizontal. La prueba HTTP requiere `C:\pocketbase\pocketbase.exe` 0.22.17; crea y elimina su propia instancia temporal, sin tocar `127.0.0.1:8090`. Las pruebas visuales tienen cachés Vite separadas dentro de los artefactos ignorados.
 
 La grilla interactiva usa filas de 36 px, ampliables únicamente por nombres u observaciones que requieran más líneas. El texto vertical de eventos se posiciona dentro de la celda combinada sin determinar la altura de la tabla; los textos largos se recortan con el detalle completo en el título al pasar el mouse. El encabezado de sección concentra Actualizar, Imprimir A4 y Calendario, sin duplicados en la grilla. La barra de carga conserva indicadores del curso y Guardar/Descartar, manteniendo el bloqueo de impresión y calendario cuando hay cambios pendientes. Estos ajustes no modifican la plantilla impresa.
+
+## Promoción a producción de `1°2° Multigrado` — 10 de noviembre de 2026
+
+- **Migraciones**: sin cambios de esquema (`pb_migrations` y `pb_schema.json` sin modificaciones).
+- **Despliegue de backend en VPS**: actualizado `pb_hooks/lib/attendance.js` mediante `deploy/publish-pocketbase.ps1` con health check `200` y worker PDF operativo (`204`).
+- **Respaldo productivo previo**: `/root/pb/deploy_backups/20261110-185253`.
+- **Estrategia de rollback**: restaurar `/root/pb/deploy_backups/20261110-185253/pb_hooks/lib/attendance.js` hacia `/root/pb/pb_hooks/lib/attendance.js`, reiniciar `pocketbase.service` y revertir el merge en `master`.

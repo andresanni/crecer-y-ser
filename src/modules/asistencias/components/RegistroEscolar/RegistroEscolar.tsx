@@ -121,7 +121,9 @@ export function RegistroEscolar({ data, className = '', showPresentMarks = false
           const field = 'field' in run ? run.field : undefined;
           const [section, key] = field?.split('.') ?? [];
           if (section === 'header') {
-            const box = HEADER_BOXES[key];
+            const box = key === 'grade' && String(data.header.grade || '').length > 4
+              ? ([526, 636] as const)
+              : HEADER_BOXES[key];
             return <Cell key={run.id} field={field!} value={data.header[key as keyof typeof data.header] ?? run.text}
               x={(box[0] + box[1]) / 2} y={run.y} size={run.size} width={box[1] - box[0] - 2} useSource={false} />;
           }
