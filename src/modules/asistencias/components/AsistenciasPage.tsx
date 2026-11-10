@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Typography,
   Empty,
@@ -96,15 +96,62 @@ export const AsistenciasPage = () => {
     return c.nivelNombre.toLowerCase().includes('inicial') || /sala/i.test(c.nombre);
   }, []);
 
-  const cursosPrimaria = cursos
-    .filter((c) => !isInicial(c))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }) || a.turno.localeCompare(b.turno, 'es'));
+  const cursosPrimaria = useMemo(() => {
+    const rawPrimaria = cursos.filter((c) => !isInicial(c));
+    const agrupadosPorTurnoYNivel = new Map<string, Curso[]>();
+    for (const c of rawPrimaria) {
+      const clave = `${c.nivelId}__${c.turno}`;
+      const grupo = agrupadosPorTurnoYNivel.get(clave) || [];
+      grupo.push(c);
+      agrupadosPorTurnoYNivel.set(clave, grupo);
+    }
+
+    const resultado: Curso[] = [];
+    for (const [, grupo] of agrupadosPorTurnoYNivel) {
+      const curso1 = grupo.find((c) => /^1[°º]?/i.test(c.nombre));
+      const curso2 = grupo.find((c) => /^2[°º]?/i.test(c.nombre));
+
+      if (curso1 && curso2) {
+        resultado.push({
+          ...curso1,
+          id: curso1.id,
+          nombre: '1°2° Multigrado',
+          turno: curso1.turno,
+          nivelNombre: curso1.nivelNombre,
+          nivelId: curso1.nivelId,
+        });
+        for (const c of grupo) {
+          if (c.id !== curso1.id && c.id !== curso2.id) {
+            resultado.push(c);
+          }
+        }
+      } else {
+        resultado.push(...grupo);
+      }
+    }
+
+    return resultado.sort(
+      (a, b) => a.nombre.localeCompare(b.nombre, 'es', { numeric: true }) || a.turno.localeCompare(b.turno, 'es')
+    );
+  }, [cursos, isInicial]);
 
   const cursosInicial = cursos
     .filter((c) => isInicial(c))
     .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0) || a.nombre.localeCompare(b.nombre, 'es'));
 
-  const cursoSeleccionado = cursos.find((c) => c.id === cursoSeleccionadoId);
+  const cursoSeleccionado = useMemo(() => {
+    const cursoDirecto = cursos.find((c) => c.id === cursoSeleccionadoId);
+    if (!cursoDirecto) return undefined;
+    const enPrimaria = cursosPrimaria.find((c) => c.id === cursoSeleccionadoId);
+    if (enPrimaria) return enPrimaria;
+    if (/^2[°º]?/i.test(cursoDirecto.nombre)) {
+      const multigradoHermano = cursosPrimaria.find(
+        (c) => c.nivelId === cursoDirecto.nivelId && c.turno === cursoDirecto.turno && c.nombre === '1°2° Multigrado'
+      );
+      if (multigradoHermano) return multigradoHermano;
+    }
+    return cursoDirecto;
+  }, [cursos, cursosPrimaria, cursoSeleccionadoId]);
   const esCursoInicialSeleccionado = isInicial(cursoSeleccionado);
 
   const cargarNavegacion = useCallback(async () => {
@@ -254,7 +301,7 @@ export const AsistenciasPage = () => {
 
   return (
     <SectionLayout
-      title={cursoSeleccionadoId ? `${nombreMes} · ${cursoSeleccionado?.nombre || 'Registro'}` : mesSeleccionado ? `${nombreMes} ${cicloActual?.ano || ''}` : 'Registros de Asistencia'}
+      title={cursoSeleccionadoId ? `${nombreMes} · ${registroCompleto?.curso?.nombre || cursoSeleccionado?.nombre || 'Registro'}` : mesSeleccionado ? `${nombreMes} ${cicloActual?.ano || ''}` : 'Registros de Asistencia'}
       icon={<CalendarOutlined />}
       actions={
         <Space wrap>
@@ -293,7 +340,7 @@ export const AsistenciasPage = () => {
         </NavigationCardGrid>
       </>}
       {cicloActual && !cargandoNavegacion && !errorNavegacion && mesSeleccionado > 0 && !cursoSeleccionadoId && (
-        <Space direction="vertical" size="middle" style={{ width: '100%', maxWidth: 640 }}>
+        <Space direction="vertical" size="middle" style={{ width: '100%', maxWidth: 560 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <Tag color={mesAbierto ? 'success' : 'default'}>{mesAbierto ? 'Mes abierto' : 'Sin abrir'}</Tag>
             <Segmented<'primario' | 'inicial'>

@@ -18,12 +18,28 @@ function canonical(value) {
   return value
 }
 
+function resolveAttendanceCourses(dao, course, level) {
+  const isFirstGrade = /^1[°º]?/i.test(course.getString("nombre"))
+  const isSecondGrade = /^2[°º]?/i.test(course.getString("nombre"))
+  if (!isFirstGrade && !isSecondGrade) return { anchorCourse: course, integratedCourses: null }
+  const siblingPattern = isFirstGrade ? /^2[°º]?/i : /^1[°º]?/i
+  const candidates = records(dao, "cursos", "nivel_id = {:level} && turno = {:turno} && id != {:course}", {
+    level: level.getId(), turno: course.getString("turno"), course: course.getId()
+  })
+  const sibling = candidates.find(item => siblingPattern.test(item.getString("nombre")))
+  if (!sibling) return { anchorCourse: course, integratedCourses: null }
+  const anchorCourse = isFirstGrade ? course : sibling
+  const secondCourse = isFirstGrade ? sibling : course
+  return { anchorCourse, integratedCourses: [anchorCourse, secondCourse] }
+}
+
 function context(dao, courseId, cycleId, month) {
   if (!Number.isInteger(month) || month < 2 || month > 12) throw new BadRequestError("Mes lectivo inválido.")
   const cycle = record(dao, "ciclos_lectivos", cycleId)
   const course = record(dao, "cursos", courseId)
   const level = record(dao, "niveles", course.getString("nivel_id"))
   if (!/primar/i.test(level.getString("nombre"))) throw new BadRequestError("El curso debe pertenecer a primaria.")
+  const { anchorCourse, integratedCourses } = resolveAttendanceCourses(dao, course, level)
   const months = records(dao, "meses_calendario", "ciclo_id = {:cycle} && mes = {:month}", { cycle: cycleId, month: month })
   if (!months.length) throw new NotFoundError("El mes todavía no está configurado.")
   const calendar = months[0]
@@ -32,13 +48,16 @@ function context(dao, courseId, cycleId, month) {
   const first = String(calendar.getInt("ano")) + "-" + String(month).padStart(2, "0") + "-01"
   const days = new Date(Date.UTC(calendar.getInt("ano"), month, 0)).getUTCDate()
   const last = first.slice(0, 8) + String(days).padStart(2, "0")
-  const allEnrollments = records(dao, "inscripciones", "curso_id = {:course} && ciclo_id = {:cycle}", { course: courseId, cycle: cycleId }, "numero_orden,id")
+  const allEnrollments = integratedCourses
+    ? [...records(dao, "inscripciones", "curso_id = {:course} && ciclo_id = {:cycle}", { course: integratedCourses[0].getId(), cycle: cycleId }, "numero_orden,id"),
+       ...records(dao, "inscripciones", "curso_id = {:course} && ciclo_id = {:cycle}", { course: integratedCourses[1].getId(), cycle: cycleId }, "numero_orden,id")]
+    : records(dao, "inscripciones", "curso_id = {:course} && ciclo_id = {:cycle}", { course: courseId, cycle: cycleId }, "numero_orden,id")
   const enrollments = allEnrollments.filter(item => {
     const entry = item.getString("fecha_ingreso").slice(0, 10)
     return !entry || entry <= last
   })
   const pupils = enrollments.map(item => record(dao, "alumnos", item.getString("alumno_id")))
-  const registrations = records(dao, "registros_asistencia_curso", "curso_id = {:course} && mes_calendario_id = {:calendar}", { course: courseId, calendar: calendar.getId() })
+  const registrations = records(dao, "registros_asistencia_curso", "curso_id = {:course} && mes_calendario_id = {:calendar}", { course: anchorCourse.getId(), calendar: calendar.getId() })
   const registration = registrations[0]
   const daily = []
   enrollments.forEach(item => {
@@ -46,23 +65,28 @@ function context(dao, courseId, cycleId, month) {
       enrollment: item.getId(), first: first + " 00:00:00", last: last + " 23:59:59"
     }, "fecha,id").forEach(value => daily.push(value))
   })
-  const sources = [calendar, ...events, ...enrollments, ...pupils, course, level, cycle].map(dto)
+  const courseSources = integratedCourses ? integratedCourses : [course]
+  const sources = [calendar, ...events, ...enrollments, ...pupils, ...courseSources, level, cycle].map(dto)
   return { calendar, events, enrollments, pupils, registration, daily, first, last,
     version: $security.sha256(JSON.stringify(canonical(sources))), revision: registration ? registration.getInt("revision") : 0,
-    course, level, cycle }
+    course, level, cycle, anchorCourse, integratedCourses }
 }
 
 function snapshot(data) {
   const cycleStart = data.cycle ? data.cycle.getString("fecha_inicio_clases") : ""
-  return {
+  const courseDto = Object.assign(dto(data.course), { expand: { nivel_id: dto(data.level) } })
+  if (data.integratedCourses) courseDto.nombre = "1°2° Multigrado"
+  const result = {
     revision: data.revision, versionFuentes: data.version,
     fechaInicioClases: cycleStart ? cycleStart.slice(0, 10) : "",
     ciclo: data.cycle ? dto(data.cycle) : null,
     mes: dto(data.calendar), eventos: data.events.map(dto),
-    curso: Object.assign(dto(data.course), { expand: { nivel_id: dto(data.level) } }),
+    curso: courseDto,
     inscripciones: data.enrollments.map((item, index) => Object.assign(dto(item), { expand: { alumno_id: dto(data.pupils[index]) } })),
     novedades: data.daily.map(dto), registroCurso: data.registration ? dto(data.registration) : null
   }
+  if (data.integratedCourses) result.cursosIntegrantes = data.integratedCourses.map(dto)
+  return result
 }
 
 function readRegister(c) {
@@ -112,7 +136,7 @@ function saveRegister(c) {
       }
     })
     const registration = data.registration || new Record(dao.findCollectionByNameOrId("registros_asistencia_curso"))
-    registration.set("curso_id", data.course.getId())
+    registration.set("curso_id", data.anchorCourse.getId())
     registration.set("mes_calendario_id", data.calendar.getId())
     registration.set("observaciones_adicionales", payload.observaciones)
     registration.set("revision", data.revision + 1)

@@ -1,7 +1,10 @@
 import dayjs from 'dayjs';
 import { ClientResponseError } from 'pocketbase';
 import pb from '../../../core/pocketbase';
-import type { RegistroAsistenciaSnapshot } from '../models/asistenciaSnapshot.model';
+import type {
+  InscripcionConAlumnoRecord,
+  RegistroAsistenciaSnapshot,
+} from '../models/asistenciaSnapshot.model';
 import type { CambioNovedadItem } from './asistenciaDiaria.service';
 import {
   type Curso,
@@ -73,6 +76,23 @@ export class MesNoConfiguradoError extends Error {
   }
 }
 
+function obtenerNumeroGrado(nombre?: string): number {
+  const m = (nombre || '').match(/^([1-7])/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function resolverGradoInscripcion(
+  insc: InscripcionConAlumnoRecord,
+  cursoMap: Map<string, Curso>,
+  cursoFallbackNombre?: string
+): number {
+  const c = cursoMap.get(insc.curso_id);
+  if (c?.orden) {
+    return c.orden > 10 ? c.orden - 10 : c.orden;
+  }
+  return obtenerNumeroGrado(c?.nombre || cursoFallbackNombre);
+}
+
 export const registroAsistenciaCursoService = {
   async obtenerRegistroCurso(
     cursoId: string,
@@ -116,6 +136,11 @@ export const registroAsistenciaCursoService = {
     }
 
     const curso: Curso = cursoAdapter(snapshot.curso);
+    const esMultigrado = Boolean(snapshot.cursosIntegrantes && snapshot.cursosIntegrantes.length > 1);
+    const cursosIntegrantes = snapshot.cursosIntegrantes?.map(cursoAdapter) || [];
+    const cursoMap = new Map(cursosIntegrantes.map((c) => [c.id, c]));
+    const cursoIds = esMultigrado ? cursosIntegrantes.map((c) => c.id) : [cursoId];
+
     const ano = mesCalendario.ano;
     const mesPad = String(mes).padStart(2, '0');
     const primerDiaMes = `${ano}-${mesPad}-01`;
@@ -123,18 +148,70 @@ export const registroAsistenciaCursoService = {
     const ultimoDiaMes = `${ano}-${mesPad}-${String(diasEnElMes).padStart(2, '0')}`;
 
     const inscripcionesDelCurso = snapshot.inscripciones;
-    const inscripcionesRecords = inscripcionesDelCurso.filter(inscripcion => {
+    let inscripcionesRecords = inscripcionesDelCurso.filter((inscripcion) => {
       if (inscripcion.cursada_estado === 'SIN_CURSADA') return false;
       const fechaIngresoCorta = inscripcion.fecha_ingreso ? inscripcion.fecha_ingreso.slice(0, 10) : '';
       if (fechaIngresoCorta && fechaIngresoCorta > ultimoDiaMes) return false;
       return true;
     });
 
-    inscripcionesRecords.sort((a, b) => {
-      const ordA = a.numero_orden && a.numero_orden > 0 ? a.numero_orden : Infinity;
-      const ordB = b.numero_orden && b.numero_orden > 0 ? b.numero_orden : Infinity;
-      return ordA === ordB ? 0 : ordA - ordB;
-    });
+    if (esMultigrado) {
+      const fechaInicio = snapshot.fechaInicioClases ? snapshot.fechaInicioClases.slice(0, 10) : '';
+
+      const obtenerFechaEfectiva = (insc: InscripcionConAlumnoRecord) =>
+        (insc.fecha_ingreso ? insc.fecha_ingreso.slice(0, 10) : '') ||
+        (insc.fecha_inscripcion ? insc.fecha_inscripcion.slice(0, 10) : '');
+
+      const compararInscripciones = (a: InscripcionConAlumnoRecord, b: InscripcionConAlumnoRecord) => {
+        const gradoA = resolverGradoInscripcion(a, cursoMap, snapshot.curso.nombre);
+        const gradoB = resolverGradoInscripcion(b, cursoMap, snapshot.curso.nombre);
+        if (gradoA !== gradoB) {
+          return gradoB - gradoA;
+        }
+
+        const ordA = a.numero_orden && a.numero_orden > 0 ? a.numero_orden : Infinity;
+        const ordB = b.numero_orden && b.numero_orden > 0 ? b.numero_orden : Infinity;
+        if (ordA !== ordB) {
+          return ordA - ordB;
+        }
+
+        const nomA = a.expand?.alumno_id ? `${a.expand.alumno_id.apellidos}, ${a.expand.alumno_id.nombres}` : '';
+        const nomB = b.expand?.alumno_id ? `${b.expand.alumno_id.apellidos}, ${b.expand.alumno_id.nombres}` : '';
+        return nomA.localeCompare(nomB, 'es');
+      };
+
+      const bloque1: InscripcionConAlumnoRecord[] = [];
+      const bloque2: InscripcionConAlumnoRecord[] = [];
+
+      for (const insc of inscripcionesRecords) {
+        const fechaEfectiva = obtenerFechaEfectiva(insc);
+        const esIngresoTardio = Boolean(fechaInicio && fechaEfectiva && fechaEfectiva > fechaInicio);
+        if (esIngresoTardio) {
+          bloque2.push(insc);
+        } else {
+          bloque1.push(insc);
+        }
+      }
+
+      bloque1.sort(compararInscripciones);
+
+      bloque2.sort((a, b) => {
+        const fechaA = obtenerFechaEfectiva(a);
+        const fechaB = obtenerFechaEfectiva(b);
+        if (fechaA !== fechaB) {
+          return fechaA.localeCompare(fechaB);
+        }
+        return compararInscripciones(a, b);
+      });
+
+      inscripcionesRecords = [...bloque1, ...bloque2];
+    } else {
+      inscripcionesRecords.sort((a, b) => {
+        const ordA = a.numero_orden && a.numero_orden > 0 ? a.numero_orden : Infinity;
+        const ordB = b.numero_orden && b.numero_orden > 0 ? b.numero_orden : Infinity;
+        return ordA === ordB ? 0 : ordA - ordB;
+      });
+    }
 
     const inscripcionIds = inscripcionesRecords.map((i) => i.id);
     const novedades = snapshot.novedades.map(asistenciaDiariaAdapter);
@@ -166,22 +243,31 @@ export const registroAsistenciaCursoService = {
       }
     }
 
-    let instanciaBoletin: InstanciaCargaBoletinRecord | null = null;
+    const instanciasBoletin: InstanciaCargaBoletinRecord[] = [];
     const visadosValidosSet = new Set<string>();
 
     if (periodoIdBoletin) {
       try {
-        instanciaBoletin = await pb.collection(COLLECTION_INSTANCIAS_BOLETIN).getFirstListItem<InstanciaCargaBoletinRecord>(
-          `curso_id = "${cursoId}" && periodo_id = "${periodoIdBoletin}"`
-        );
+        if (esMultigrado) {
+          const orCursos = cursoIds.map((id) => `curso_id = "${id}"`).join(' || ');
+          const recordsInstancias = await pb.collection(COLLECTION_INSTANCIAS_BOLETIN).getFullList<InstanciaCargaBoletinRecord>({
+            filter: `(${orCursos}) && periodo_id = "${periodoIdBoletin}"`,
+          });
+          instanciasBoletin.push(...recordsInstancias);
+        } else {
+          const inst = await pb.collection(COLLECTION_INSTANCIAS_BOLETIN).getFirstListItem<InstanciaCargaBoletinRecord>(
+            `curso_id = "${cursoId}" && periodo_id = "${periodoIdBoletin}"`
+          );
+          instanciasBoletin.push(inst);
+        }
       } catch (error) {
         if (!(error instanceof ClientResponseError && error.status === 404)) throw error;
       }
 
-      if (instanciaBoletin) {
+      for (const inst of instanciasBoletin) {
         try {
           const visadosRecords = await pb.collection(COLLECTION_VISADOS_BOLETIN).getFullList<VisadoBoletinRecord>({
-            filter: `instancia_id = "${instanciaBoletin.id}"`,
+            filter: `instancia_id = "${inst.id}"`,
           });
           for (const vis of visadosRecords) {
             if (
@@ -199,38 +285,85 @@ export const registroAsistenciaCursoService = {
       }
     }
 
+    const cursoAnclaId = esMultigrado && cursosIntegrantes.length > 0 ? cursosIntegrantes[0].id : snapshot.curso.id;
     const materiasCalificadas: MateriaCalificada[] = [];
-    const evaluacionesPorInscripcion = new Map<string, Map<string, string>>();
-    const trabajoAulaPorInscripcion = new Map<string, Map<number, string>>();
-    const convivenciaPorInscripcion = new Map<string, Map<number, string>>();
+    const cmTrabajoAulaIds = new Set<string>();
+    const cmConvivenciaIds = new Set<string>();
+    const cmIdToCanonicalCmId = new Map<string, string>();
+    const nombresMateriasVistas = new Set<string>();
+    const materiaIdsVistos = new Set<string>();
+
+    const filterCursoMaterias = esMultigrado
+      ? `(${cursoIds.map((id) => `curso_id = "${id}"`).join(' || ')}) && ciclo_id = "${cicloId}"`
+      : `curso_id = "${cursoId}" && ciclo_id = "${cicloId}"`;
 
     const cursoMateriasRecords = await pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
-      filter: `curso_id = "${cursoId}" && ciclo_id = "${cicloId}"`,
+      filter: filterCursoMaterias,
       sort: 'orden_visual',
       expand: 'materia_id',
     });
-
-    let cmTrabajoAulaId: string | undefined;
-    let cmConvivenciaId: string | undefined;
 
     for (const cm of cursoMateriasRecords) {
       const nombreMat = cm.expand?.materia_id?.nombre || '';
       if (esMateriaConducta(nombreMat)) {
         const nomUpper = nombreMat.toUpperCase();
         if (nomUpper.includes('TRABAJO')) {
-          cmTrabajoAulaId = cm.id;
+          cmTrabajoAulaIds.add(cm.id);
         } else if (nomUpper.includes('CONVIVENCIA') || nomUpper.includes('CONDUCTA')) {
-          cmConvivenciaId = cm.id;
+          cmConvivenciaIds.add(cm.id);
         }
-      } else {
+        continue;
+      }
+
+      if (cm.curso_id === cursoAnclaId) {
         materiasCalificadas.push({
           id: cm.materia_id,
           cursoMateriaId: cm.id,
           nombre: nombreMat,
           ordenVisual: cm.orden_visual,
         });
+        nombresMateriasVistas.add(nombreMat.toLowerCase().trim());
+        materiaIdsVistos.add(cm.materia_id);
+        cmIdToCanonicalCmId.set(cm.id, cm.id);
       }
     }
+
+    for (const cm of cursoMateriasRecords) {
+      const nombreMat = cm.expand?.materia_id?.nombre || '';
+      if (esMateriaConducta(nombreMat)) continue;
+      const nombreKey = nombreMat.toLowerCase().trim();
+      if (!nombresMateriasVistas.has(nombreKey) && !materiaIdsVistos.has(cm.materia_id)) {
+        materiasCalificadas.push({
+          id: cm.materia_id,
+          cursoMateriaId: cm.id,
+          nombre: nombreMat,
+          ordenVisual: cm.orden_visual,
+        });
+        nombresMateriasVistas.add(nombreKey);
+        materiaIdsVistos.add(cm.materia_id);
+        cmIdToCanonicalCmId.set(cm.id, cm.id);
+      }
+    }
+
+    for (const cm of cursoMateriasRecords) {
+      const nombreMat = cm.expand?.materia_id?.nombre || '';
+      if (esMateriaConducta(nombreMat)) continue;
+      if (!cmIdToCanonicalCmId.has(cm.id)) {
+        const nombreKey = nombreMat.toLowerCase().trim();
+        const canonical = materiasCalificadas.find(
+          (m) => m.id === cm.materia_id || m.nombre.toLowerCase().trim() === nombreKey
+        );
+        if (canonical) {
+          cmIdToCanonicalCmId.set(cm.id, canonical.cursoMateriaId);
+        } else {
+          cmIdToCanonicalCmId.set(cm.id, cm.id);
+        }
+      }
+    }
+
+    const evaluacionesPorInscripcion = new Map<string, Map<string, string>>();
+    const trabajoAulaPorInscripcion = new Map<string, Map<number, string>>();
+    const convivenciaPorInscripcion = new Map<string, Map<number, string>>();
 
     if (periodoIdBoletin) {
 
@@ -252,9 +385,10 @@ export const registroAsistenciaCursoService = {
           if (!evaluacionesPorInscripcion.has(ev.inscripcion_id)) {
             evaluacionesPorInscripcion.set(ev.inscripcion_id, new Map());
           }
-          evaluacionesPorInscripcion.get(ev.inscripcion_id)!.set(ev.curso_materia_id, etiqueta);
+          const canonicalCmId = cmIdToCanonicalCmId.get(ev.curso_materia_id) || ev.curso_materia_id;
+          evaluacionesPorInscripcion.get(ev.inscripcion_id)!.set(canonicalCmId, etiqueta);
 
-          if (ev.curso_materia_id === cmTrabajoAulaId || ev.curso_materia_id === cmConvivenciaId) {
+          if (cmTrabajoAulaIds.has(ev.curso_materia_id) || cmConvivenciaIds.has(ev.curso_materia_id)) {
             evalIdsConducta.push(ev.id);
           }
         }
@@ -278,12 +412,12 @@ export const registroAsistenciaCursoService = {
             const orden = ec.expand?.criterio_id?.orden_visual ?? 1;
             const etiqueta = ec.expand?.valor_escala_id?.etiqueta || '';
 
-            if (ev.curso_materia_id === cmTrabajoAulaId) {
+            if (cmTrabajoAulaIds.has(ev.curso_materia_id)) {
               if (!trabajoAulaPorInscripcion.has(ev.inscripcion_id)) {
                 trabajoAulaPorInscripcion.set(ev.inscripcion_id, new Map());
               }
               trabajoAulaPorInscripcion.get(ev.inscripcion_id)!.set(orden, etiqueta);
-            } else if (ev.curso_materia_id === cmConvivenciaId) {
+            } else if (cmConvivenciaIds.has(ev.curso_materia_id)) {
               if (!convivenciaPorInscripcion.has(ev.inscripcion_id)) {
                 convivenciaPorInscripcion.set(ev.inscripcion_id, new Map());
               }
@@ -304,7 +438,8 @@ export const registroAsistenciaCursoService = {
     let totAsistenciaAcumulada = 0;
     let totInasistenciaAcumulada = 0;
 
-    for (const insc of inscripcionesRecords) {
+    for (let index = 0; index < inscripcionesRecords.length; index++) {
+      const insc = inscripcionesRecords[index];
       const alu = insc.expand?.alumno_id;
       const apellidoYNombre = alu ? `${alu.apellidos}, ${alu.nombres}` : 'Sin datos';
       const fechaNac = alu?.fecha_nacimiento || '';
@@ -408,7 +543,10 @@ export const registroAsistenciaCursoService = {
       alumnosResumen.push({
         inscripcionId: insc.id,
         alumnoId: alu?.id || '',
-        numeroOrden: insc.numero_orden && insc.numero_orden > 0 ? insc.numero_orden : null,
+        numeroOrden: esMultigrado ? index + 1 : (insc.numero_orden && insc.numero_orden > 0 ? insc.numero_orden : null),
+        numeroOrdenCurso: insc.numero_orden && insc.numero_orden > 0 ? insc.numero_orden : null,
+        gradoNumero: resolverGradoInscripcion(insc, cursoMap, snapshot.curso.nombre),
+        cursoNombre: cursoMap.get(insc.curso_id)?.nombre || snapshot.curso.nombre,
         apellidoYNombre,
         sexo,
         nacionalidad,
@@ -489,13 +627,24 @@ export const registroAsistenciaCursoService = {
         }
       }
 
+      let estadoInstancia: 'SIN_INSTANCIA' | 'BORRADOR_DOCENTE' | 'CONTROL_DIRECTIVO' = 'SIN_INSTANCIA';
+      if (instanciasBoletin.length > 0) {
+        if (instanciasBoletin.some((inst) => inst.estado === 'BORRADOR_DOCENTE')) {
+          estadoInstancia = 'BORRADOR_DOCENTE';
+        } else if (instanciasBoletin.every((inst) => inst.estado === 'CONTROL_DIRECTIVO')) {
+          estadoInstancia = 'CONTROL_DIRECTIVO';
+        } else {
+          estadoInstancia = instanciasBoletin[0].estado;
+        }
+      }
+
       resumenVisado = {
         numeroPeriodo: numeroPeriodoBoletin,
         nombrePeriodo: nombrePeriodoBoletin || `${numeroPeriodoBoletin}° Bimestre`,
         totalAlumnosEvaluables: totalEvaluables,
         alumnosVisados: alumnosVisadosCount,
         completo: totalEvaluables > 0 && alumnosVisadosCount === totalEvaluables,
-        estadoInstancia: instanciaBoletin?.estado || 'SIN_INSTANCIA',
+        estadoInstancia,
       };
     }
 
@@ -505,6 +654,7 @@ export const registroAsistenciaCursoService = {
       fechaInicioClases: snapshot.fechaInicioClases,
       mesCalendario,
       curso,
+      cursosIntegrantes: esMultigrado ? cursosIntegrantes : undefined,
       materias: materiasCalificadas,
       eventos,
       alumnos: alumnosResumen,

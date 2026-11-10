@@ -8,7 +8,7 @@ const { randomBytes } = require('node:crypto');
 const { default: PocketBase } = require('pocketbase');
 const { loadSource } = require('./attendance-test-loader.cjs');
 
-test('Persistencia de asistencia y lectura mensual en PocketBase temporal con migraciones reales', { timeout: 60000 }, async () => {
+async function withTempPocketBase(fn) {
   const base = path.resolve('C:/pocketbase');
   const root = fs.mkdtempSync(path.join(base, 'attendance-test-'));
   const binary = path.join(base, 'pocketbase.exe');
@@ -41,8 +41,24 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
     assert.equal(authentication.status, 200);
     const administrator = await authentication.json();
     admin.authStore.save(administrator.token, administrator.admin);
+    const staff = new PocketBase(origin);
+    staff.autoCancellation(false);
+    await admin.collection('users').create({ email: 'attendance-staff@example.local', password, passwordConfirm: password, name: 'Prueba' });
+    await staff.collection('users').authWithPassword('attendance-staff@example.local', password);
+    await fn({ admin, staff, origin, password });
+  } finally {
+    if (server && server.exitCode === null) {
+      await new Promise(resolve => { server.once('exit', resolve); server.kill(); });
+    }
+    const resolved = path.resolve(root);
+    assert.ok(resolved.startsWith(base + path.sep) && path.basename(resolved).startsWith('attendance-test-'));
+    fs.rmSync(resolved, { recursive: true, force: true });
+  }
+}
+
+test('Persistencia de asistencia y lectura mensual en PocketBase temporal con migraciones reales', { timeout: 60000 }, async () => {
+  await withTempPocketBase(async ({ admin, staff, origin, password }) => {
     const create = (collection, body) => admin.collection(collection).create(body);
-    await create('users', { email: 'attendance-staff@example.local', password, passwordConfirm: password, name: 'Prueba' });
     const cycle = await create('ciclos_lectivos', { ano: 2026, actual: true });
     const level = await create('niveles', { nombre: 'Primario' });
     const scale = await create('escalas_calificacion', { nombre: 'Segundo ciclo sintético' });
@@ -57,9 +73,6 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
       enrollments.push(await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular', fecha_ingreso: '2026-03-01', numero_orden: index + 1, ...extra }));
     }
     await create('evaluaciones_materia', { inscripcion_id: enrollments[0].id, periodo_id: period.id, curso_materia_id: material.id, calificacion_general_id: note.id });
-    const staff = new PocketBase(origin);
-    staff.autoCancellation(false);
-    await staff.collection('users').authWithPassword('attendance-staff@example.local', password);
     const calendar = loadSource('services/calendarioMes.service.ts', staff).calendarioMesService;
     const monthly = loadSource('services/registroAsistenciaCurso.service.ts', staff).registroAsistenciaCursoService;
     const configure = async (month, events = [], fechaInicioClases) => {
@@ -253,12 +266,80 @@ test('Persistencia de asistencia y lectura mensual en PocketBase temporal con mi
       });
       fs.writeFileSync(path.resolve('pb_schema.json'), JSON.stringify(derived, null, 2) + '\n');
     }
-  } finally {
-    if (server && server.exitCode === null) {
-      await new Promise(resolve => { server.once('exit', resolve); server.kill(); });
-    }
-    const resolved = path.resolve(root);
-    assert.ok(resolved.startsWith(base + path.sep) && path.basename(resolved).startsWith('attendance-test-'));
-    fs.rmSync(resolved, { recursive: true, force: true });
-  }
+  });
+});
+
+test('Abstracción multigrado 1°2° en PocketBase: cursos integrantes, lectura unificada y persistencia en ancla', { timeout: 60000 }, async () => {
+  await withTempPocketBase(async ({ admin, staff }) => {
+    const create = (collection, body) => admin.collection(collection).create(body);
+    const cycle = await create('ciclos_lectivos', { ano: 2026, actual: true, fecha_inicio_clases: '2026-03-01' });
+    const level = await create('niveles', { nombre: 'Primario' });
+    const scale = await create('escalas_calificacion', { nombre: 'Primer ciclo sintético' });
+
+    const calendar = loadSource('services/calendarioMes.service.ts', staff).calendarioMesService;
+    const monthly = loadSource('services/registroAsistenciaCurso.service.ts', staff).registroAsistenciaCursoService;
+
+    const currentMonth = await calendar.obtenerConfiguracion(cycle.id, 5);
+    const configured = await calendar.guardarConfiguracion(cycle.id, 5, currentMonth, [{ dia: 1, tipo: 'FERIADO', textoCeldaVertical: 'FERIADO', descripcionObservaciones: 'Feriado sintético' }], '2026-03-01');
+    const month = configured.mes;
+
+    const course1 = await create('cursos', { nombre: '1°', nivel_id: level.id, escala_id: scale.id, turno: 'Mañana' });
+    const course2 = await create('cursos', { nombre: '2°', nivel_id: level.id, escala_id: scale.id, turno: 'Mañana' });
+
+    const student1 = await create('alumnos', { apellidos: 'Pérez', nombres: 'Ana', dni: '40000001', fecha_nacimiento: '2019-04-10', sexo: 'Femenino', nacionalidad: 'Argentina' });
+    const student2 = await create('alumnos', { apellidos: 'Gómez', nombres: 'Bruno', dni: '40000002', fecha_nacimiento: '2018-06-15', sexo: 'Masculino', nacionalidad: 'Argentina' });
+
+    const enrollment1 = await create('inscripciones', { alumno_id: student1.id, curso_id: course1.id, ciclo_id: cycle.id, estado: 'Regular', fecha_ingreso: '2026-03-01', numero_orden: 1 });
+    const enrollment2 = await create('inscripciones', { alumno_id: student2.id, curso_id: course2.id, ciclo_id: cycle.id, estado: 'Regular', fecha_ingreso: '2026-03-01', numero_orden: 1 });
+
+    const endpointSnapshot1 = await staff.send(`/api/cys/directivo/asistencias/${course1.id}/${cycle.id}/5`, { method: 'GET' });
+    assert.equal(endpointSnapshot1.curso.nombre, '1°2° Multigrado');
+    assert.equal(endpointSnapshot1.cursosIntegrantes?.length, 2);
+    const endpointIds1 = endpointSnapshot1.inscripciones.map(i => i.id);
+    assert.ok(endpointIds1.includes(enrollment1.id));
+    assert.ok(endpointIds1.includes(enrollment2.id));
+
+    const sheet1 = await monthly.obtenerHojaAsistenciaCompleta(course1.id, cycle.id, 5);
+    assert.equal(sheet1.curso.nombre, '1°2° Multigrado');
+    assert.equal(sheet1.alumnos.length, 2);
+    assert.ok(sheet1.alumnos.some(a => a.inscripcionId === enrollment1.id));
+    assert.ok(sheet1.alumnos.some(a => a.inscripcionId === enrollment2.id));
+
+    const endpointSnapshot2 = await staff.send(`/api/cys/directivo/asistencias/${course2.id}/${cycle.id}/5`, { method: 'GET' });
+    assert.equal(endpointSnapshot2.curso.nombre, '1°2° Multigrado');
+    assert.equal(endpointSnapshot2.cursosIntegrantes?.length, 2);
+    const endpointIds2 = endpointSnapshot2.inscripciones.map(i => i.id);
+    assert.ok(endpointIds2.includes(enrollment1.id));
+    assert.ok(endpointIds2.includes(enrollment2.id));
+
+    const sheet2 = await monthly.obtenerHojaAsistenciaCompleta(course2.id, cycle.id, 5);
+    assert.equal(sheet2.curso.nombre, '1°2° Multigrado');
+    assert.equal(sheet2.alumnos.length, 2);
+    assert.ok(sheet2.alumnos.some(a => a.inscripcionId === enrollment1.id));
+    assert.ok(sheet2.alumnos.some(a => a.inscripcionId === enrollment2.id));
+
+    await monthly.guardarCambios(sheet1, [
+      { inscripcionId: enrollment1.id, fecha: '2026-05-04', estado: 'IT' },
+      { inscripcionId: enrollment2.id, fecha: '2026-05-04', estado: 'A' },
+    ], 'Observaciones de multigrado');
+
+    const daily1 = await admin.collection('asistencias_diarias').getFirstListItem(`inscripcion_id = "${enrollment1.id}" && fecha >= "2026-05-04"`);
+    assert.equal(daily1.estado, 'IT');
+
+    const daily2 = await admin.collection('asistencias_diarias').getFirstListItem(`inscripcion_id = "${enrollment2.id}" && fecha >= "2026-05-04"`);
+    assert.equal(daily2.estado, 'A');
+
+    const anchorRecord = await admin.collection('registros_asistencia_curso').getFirstListItem(`curso_id = "${course1.id}" && mes_calendario_id = "${month.id}"`);
+    assert.equal(anchorRecord.observaciones_adicionales, 'Observaciones de multigrado');
+    assert.equal(anchorRecord.revision, 1);
+
+    const otherRecords = await admin.collection('registros_asistencia_curso').getList(1, 1, { filter: `curso_id = "${course2.id}" && mes_calendario_id = "${month.id}"` });
+    assert.equal(otherRecords.totalItems, 0);
+
+    const sheetAfterSave = await monthly.obtenerHojaAsistenciaCompleta(course2.id, cycle.id, 5);
+    assert.equal(sheetAfterSave.revision, 1);
+    assert.equal(sheetAfterSave.observacionesAdicionales, 'Observaciones de multigrado');
+    assert.equal(sheetAfterSave.alumnos.find(a => a.inscripcionId === enrollment1.id).marcasPorDia[4], 'IT');
+    assert.equal(sheetAfterSave.alumnos.find(a => a.inscripcionId === enrollment2.id).marcasPorDia[4], 'A');
+  });
 });

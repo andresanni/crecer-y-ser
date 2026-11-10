@@ -71,6 +71,9 @@ export interface ResumenAsistenciaAlumno {
   inscripcionId: string;
   alumnoId: string;
   numeroOrden: number | null;
+  numeroOrdenCurso?: number | null;
+  gradoNumero?: number;
+  cursoNombre?: string;
   apellidoYNombre: string;
   sexo: string;
   nacionalidad: string;
@@ -93,6 +96,7 @@ export interface RegistroMensualCompleto extends VersionRegistroAsistencia {
   fechaInicioClases?: string;
   mesCalendario: MesCalendario;
   curso: Curso;
+  cursosIntegrantes?: Curso[];
   materias: MateriaCalificada[];
   eventos: EventoCalendario[];
   alumnos: ResumenAsistenciaAlumno[];

@@ -398,6 +398,14 @@ export const CargaAsistenciaMatrix = ({
                   <td className={styles.stickyColLeft1}>{alumno.numeroOrden ?? '—'}</td>
                   <td className={styles.stickyColLeft2}>
                     <div className={styles.studentLabel}>
+                      {alumno.gradoNumero && registro.cursosIntegrantes && registro.cursosIntegrantes.length > 1 ? (
+                        <Tag
+                          color={alumno.gradoNumero === 2 ? 'cyan' : 'orange'}
+                          style={{ fontSize: 10, marginInlineEnd: 4, fontWeight: 600 }}
+                        >
+                          {alumno.gradoNumero}°
+                        </Tag>
+                      ) : null}
                       <span title={alumno.apellidoYNombre}>{alumno.apellidoYNombre}</span>
                       {alumno.observacion && (
                         <Tag color={alumno.observacion.includes('311') ? 'gold' : 'blue'} style={{ fontSize: 10 }}>

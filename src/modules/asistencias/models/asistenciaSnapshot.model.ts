@@ -9,6 +9,7 @@ export interface InscripcionConAlumnoRecord {
   numero_orden?: number;
   fecha_ingreso?: string;
   fecha_egreso?: string;
+  fecha_inscripcion?: string;
   estado: string;
   cursada_estado?: string;
   bimestre_desde?: number;
@@ -31,6 +32,7 @@ export interface RegistroAsistenciaSnapshot extends VersionRegistroAsistencia {
   fechaInicioClases?: string;
   mes: MesCalendarioRecord;
   curso: CursoRecord;
+  cursosIntegrantes?: CursoRecord[];
   inscripciones: InscripcionConAlumnoRecord[];
   eventos: EventoCalendarioRecord[];
   novedades: AsistenciaDiariaRecord[];
