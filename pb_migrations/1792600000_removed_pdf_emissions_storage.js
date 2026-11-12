@@ -5,6 +5,11 @@ migrate((db) => {
       dao.deleteCollection(dao.findCollectionByNameOrId(name))
     } catch (_) {}
   })
+  ;["visados_boletin", "visados_informe"].forEach((table) => {
+    try {
+      db.newQuery("UPDATE " + table + " SET generacion_visado = 1 WHERE estado = 'VISADO' AND (generacion_visado IS NULL OR generacion_visado < 1)").execute()
+    } catch (_) {}
+  })
 }, (db) => {
   const dao = new Dao(db)
   const boletinFields = [

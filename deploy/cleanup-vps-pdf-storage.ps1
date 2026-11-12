@@ -86,9 +86,12 @@ echo "=== COMPACTACION WAL SQLITE ==="
 if [ -f /root/pb/pb_data/data.db ]; then
   if command -v sqlite3 >/dev/null 2>&1; then
     sqlite3 /root/pb/pb_data/data.db "PRAGMA wal_checkpoint(TRUNCATE);"
-    echo "PRAGMA wal_checkpoint(TRUNCATE) ejecutado con exito."
+    echo "PRAGMA wal_checkpoint(TRUNCATE) ejecutado con exito via sqlite3."
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c "import sqlite3; db = sqlite3.connect('/root/pb/pb_data/data.db'); db.execute('PRAGMA wal_checkpoint(TRUNCATE);'); db.close()"
+    echo "PRAGMA wal_checkpoint(TRUNCATE) ejecutado con exito via python3."
   else
-    echo "sqlite3 no disponible en el sistema remoto."
+    echo "Ni sqlite3 ni python3 estan disponibles en el sistema remoto."
   fi
 fi
 
