@@ -252,7 +252,7 @@ Cada operación revalida dentro de la transacción que el curso posea escala (`r
 
 `POST /api/cys/directivo/boletines/:inscripcionId/visar` y `POST /api/cys/directivo/boletines/:inscripcionId/retirar-visado` reciben `periodoId`, `expectedRevision` y `expectedContentRevision`. Comparan ambas revisiones en la transacción. El visado exige que el boletín individual tenga todas sus materias, criterios y cierre completos. Una operación repetida sobre el mismo estado no incrementa la revisión. La corrección directiva de ese alumno incrementa `revision_contenido` y retira su visado en la misma transacción.
 
-`visados_boletin` es legible para usuarios institucionales y rechaza creación, edición y eliminación directas. La generación de PDF no está implementada; `LISTO_PARA_PDF` expresa únicamente la condición necesaria para la siguiente fase.
+`visados_boletin` es legible para usuarios institucionales y rechaza creación, edición y eliminación directas. La condición `LISTO_PARA_PDF` expresa que la totalidad de los boletines del curso disponen de visado y elegibilidad documental completa para la emisión de PDFs en caliente.
 
 ---
 
@@ -280,55 +280,50 @@ Se requieren períodos únicos desde el primer bimestre evaluable confirmado has
 
 ---
 
-## Instantánea documental de preparación (publicada)
+## Instantáneas documentales de preparación (fuente canónica para PDFs)
 
-`GET /api/cys/directivo/boletines/:inscripcionId/instantanea?periodoId=...` requiere sesión institucional y devuelve `Cache-Control: no-store`. Lee en una sola transacción el alcance, elegibilidad, alumno, tutor, malla anual con criterios ordenados, escala, evaluaciones y cierres hasta el corte, apoyos, datos administrativos disponibles y dependencias de visado. No escribe ni almacena la instantánea.
+Las instantáneas documentales constituyen la única fuente de verdad autoritativa para la generación stateless de PDFs, tanto para Boletines como para Informes de Maestras:
 
-Respuesta 200: `{ datos, huella }`; `datos.versionContrato=1`, `inscripcionId`, `ciclo`, `curso`, `bimestreCorte`, `alumno`, `responsable`, `materias`, `escala`, `periodos`, `apoyos`, `administrativo`, `dependencias` y `pendientesDeIntegracion`. `huella` es SHA-256 del JSON de datos, sin fecha variable. No es una autorización de descarga, firma ni registro de emisión. Las notas todavía son referencias a valores de escala: no se inventa un número a partir de su peso.
+- `GET /api/cys/directivo/boletines/:inscripcionId/instantanea?periodoId=...`: requiere sesión institucional (`users`) y responde `Cache-Control: no-store`. Lee en una sola transacción el alcance, elegibilidad, alumno, tutor, malla anual con criterios ordenados, escala, evaluaciones y cierres hasta el corte, apoyos, datos administrativos disponibles y dependencias de visado.
+- `GET /api/cys/directivo/informes/:instanciaId/alumnos/:cursadaId/instantanea`: requiere sesión institucional (`users`) y responde `Cache-Control: no-store`. Lee en una sola transacción los datos filiatorios del alumno, curso, turno, ciclo, materia especial (o grado en B1), nombre y apellido de la docente a cargo, respuestas a consignas, desempeño general según el ciclo, observaciones y generación de visado.
 
-422 si falta un visado requerido (incluye `elegibilidadPdf`); 422 con `codigo=TUTOR_UNICO_REQUERIDO` si no hay exactamente un responsable distinto vinculado. Se deduplican vínculos al mismo responsable. La norma de tutor único está confirmada por el usuario; no se permite seleccionar automáticamente entre varios. Alcance fuera de curso/ciclo o entrega se rechaza; ruta sin sesión devuelve 401.
+Respuesta 200: `{ datos, huella }`. La `huella` es el SHA-256 canónico del payload de datos, sin marcas temporales variables.
+- Devuelve `422` si falta algún visado requerido (incluye `elegibilidadPdf`).
+- Para boletines: devuelve `422` con `codigo=TUTOR_UNICO_REQUERIDO` si no hay exactamente un tutor responsable vinculado. Se deduplican vínculos al mismo responsable.
+- Devuelve `422` con `codigo=DATOS_DOCUMENTALES_INCOMPLETOS` ante ausencias de campos obligatorios (`message` y `faltantes: [{ campo, mensaje, origen, bimestre }]`). Exige nombres, apellidos y DNI impresos del alumno, nombres y apellidos del tutor, SI/NO en apoyos, detalle real si es SI y SI/NO en promoción con acompañamiento sólo en cuarto.
+- Sin sesión válida responde `401`.
 
-La protección documental devuelve 422 con `codigo=DATOS_DOCUMENTALES_INCOMPLETOS`, `message` y `faltantes: [{ campo, mensaje, origen, bimestre }]`. Origen es `alumno`, `responsable` o `apoyos`; bimestre es el primer evaluable/4 para integración o null para identidad. Exige nombres, apellidos y DNI impresos del alumno, nombres y apellidos del tutor, SI/NO en apoyos, detalle real si es SI y SI/NO en promoción con acompañamiento sólo en cuarto. Vacíos, espacios y guiones solos no completan textos. Conserva NO por defecto y no modifica datos. La publicación y descarga revalidan esta misma guarda; un archivo anterior incompleto no elude el bloqueo. No reemplaza los controles académicos ni resuelve las fuentes anuales pendientes. Plan y estado en `gradebook-pdf-emission.md`, sección Casos de borde.
-
-Sólo se consultan evaluaciones y cierres del rango evaluable hasta el corte; la cursada pendiente conserva 1..corte. La promoción con acompañamiento se devuelve como null antes de cuarto; los apoyos y datos administrativos se identifican como valores actuales de matrícula/alumno, sin atribuirles historial. La respuesta no incluye credenciales Acadeu, DNI ni contactos del tutor. Los campos anuales sin fuente no se inventan. Los pendientes de integración son MAPEO_ESCALA, CIERRE_ANUAL e HISTORIAL_ADMINISTRATIVO. El adaptador y la emisión están publicados; el render de cuarto continúa bloqueado por fuentes anuales pendientes.
-
----
-
-## Servicio local de prueba PDF (fuera de PocketBase)
-
-POST `/__cys/pdf-prueba` pertenece al middleware Vite de desarrollo; no es un endpoint desplegado de PocketBase. Recibe `{ inscripcionId, periodoId, huella }` y Authorization de la sesión institucional; consulta dos veces el GET de instantánea local y devuelve PDF adjunto sólo si la huella permanece igual. Rechaza origen ajeno, solicitudes sin sesión, cambios de datos, faltantes de visado y bloqueos documentales. Genera o reutiliza una emisión persistida mediante el gateway y revalida la autorización para la descarga. Ver `gradebook-pdf-emission.md` para alcance y límites.
+Sólo se consultan evaluaciones y cierres del rango evaluable hasta el corte; la cursada pendiente conserva 1..corte. La promoción con acompañamiento se devuelve como null antes de cuarto; los apoyos y datos administrativos se identifican como valores actuales de matrícula/alumno, sin atribuirles historial. La respuesta no incluye credenciales Acadeu, DNI ni contactos del tutor.
 
 ---
 
-## Emisiones persistidas (publicadas)
+## Generación de PDFs stateless en caliente (Worker privado)
 
-- POST `/api/cys/directivo/boletines/:inscripcionId/emisiones`: sesión `users` y header privado `X-CYS-PDF-Worker`; multipart `periodoId`, `huella`, `version`, `archivoSha256`, `archivo`. Revalida la instantánea dentro de transacción; 409 si cambió, 200 `{id, created}` si guardó o reutilizó una emisión. Sólo el generador validado debe utilizarlo.
-- GET `/api/cys/directivo/boletines/:inscripcionId/emisiones?periodoId=...&version=...`: sesión institucional; devuelve `{emision: {id,huella} | null}` y detecta emisiones desactualizadas por datos.
-- GET `/api/cys/directivo/emisiones/:emisionId/archivo?download=1`: sesión institucional; revalida visados y huella, sirve archivo protegido o 409 si fue invalidado. Respuestas no-store.
+La persistencia en disco de archivos PDF y las colecciones `emisiones_boletin` y `emisiones_informe` fueron completamente eliminadas (migración `1792600000_removed_pdf_emissions_storage.js`). Toda la generación documental se ejecuta en memoria y bajo demanda:
 
-La colección `emisiones_boletin` no admite acceso directo de clientes. La instantánea se elimina al invalidar; las dependencias se conservan como auditoría. La retirada/corrección de un visado invalida ese corte y posteriores del mismo alumno dentro de su transacción; limpieza física reintentable cada minuto. El motor Vite local usa estos endpoints cuando está configurada la clave privada. Producción usa el mismo contrato mediante el worker publicado.
+### Endpoints del worker:
+- **Boletines**:
+  - Producción: `POST /api/cys/pdf/generar` (expuesto por Caddy hacia el servicio Node local `cys-pdf` en `127.0.0.1:8093`).
+  - Desarrollo: `POST /__cys/pdf-prueba` (atendido por el plugin Vite en loopback).
+- **Informes de Maestras**:
+  - Producción: `POST /api/cys/pdf/informe/generar` (expuesto por Caddy hacia `cys-pdf`).
+  - Desarrollo: `POST /__cys/pdf-informe` (atendido por el plugin Vite en loopback).
 
----
+### Parámetros y contrato de solicitud:
+- Cabecera: `Authorization: Bearer <token_directivo>` (el worker reenvía el token a PocketBase para validar la sesión institucional).
+- Body JSON: `{ inscripcionId / cursadaId, periodoId / instanciaId, huella }`.
+- Restricciones: CORS restringido a los dominios autorizados de la institución, respuestas con `Cache-Control: no-store`.
 
-## ZIP de emisiones por curso (servidor Vite local)
+### Ciclo de vida y validación en memoria:
+1. El worker recibe la solicitud y consulta la instantánea autoritativa (`GET .../instantanea`) con las credenciales del directivo.
+2. Si `elegible` es falso o la huella no coincide, rechaza con el código de error correspondiente (`422`, `409`).
+3. Renderiza en Chromium headless (`dist-render/boletin-render.html` o `dist-render/informe-render.html`) inyectando los datos en memoria en `window.__CYS_BOLETIN_SNAPSHOT__` o `window.__CYS_INFORME_SNAPSHOT__`.
+4. Vuelve a consultar `GET .../instantanea` tras la captura del PDF para garantizar que ningún dato haya mutado durante la generación; si la huella cambió, responde `409 Conflict`.
+5. Valida la integridad de páginas y formato A4 con `pdf-lib`.
+6. Devuelve el binario del PDF en memoria (`application/pdf`) con las cabeceras `X-CYS-PDF-Result: generated` y `X-CYS-Snapshot-Hash: <hash>`.
 
-POST `/__cys/pdf-lote` recibe `{ cursoId, periodoId, emisiones: [{ inscripcionId, huella, emisionId }] }`, con sesión institucional en Authorization. Admite de 1 a 100 entradas, sin inscripciones repetidas. Comparte restricciones de loopback y origen del generador individual; requiere la clave privada del worker configurada. No es una ruta de PocketBase ni está desplegada en producción.
-
-Consulta los gateways existentes de instantánea, búsqueda de emisión por versión y descarga protegida. Verifica el curso, la huella y el ID de emisión antes de agregar cada archivo y vuelve a verificar todas las entradas al finalizar. Entrega `application/zip`, `Content-Disposition` UTF-8 y `Cache-Control: no-store`. Un cambio invalida la respuesta completa; no entrega silenciosamente un subconjunto. La selección explícita de los PDFs preparados ocurre en el modal antes de solicitar el ZIP. Límite de 100 MB y exclusión mutua con el generador individual. No persiste el ZIP ni crea un registro de lote.
-
----
-
-## Rutas PDF publicadas en producción
-
-Caddy deriva POST/OPTIONS `/api/cys/pdf/generar` y `/api/cys/pdf/lote` al servicio Node interno. Conservan respectivamente los contratos de `/__cys/pdf-prueba` y `/__cys/pdf-lote`, con Authorization institucional, CORS limitado al origen productivo, revalidación de visados y respuestas no-store. El frontend usa estas rutas en producción y las de Vite en desarrollo. El worker requiere siempre clave privada configurada para publicar; no expone un modo de prueba sin persistencia. Las rutas de almacenamiento y descarga protegida siguen perteneciendo a PocketBase.
-
----
-
-## Resultado de publicación y descarga PDF
-
-POST `/api/cys/directivo/boletines/:inscripcionId/emisiones` amplía su respuesta exitosa a `{ id, created }`. created es true cuando se guardó una nueva emisión y false cuando la transacción reutilizó una coincidente.
-
-El worker individual (`/__cys/pdf-prueba` en desarrollo y `/api/cys/pdf/generar` en producción) devuelve `X-CYS-PDF-Result`: generated para una emisión nueva, reused para una existente y unknown cuando el publicador anterior no informa el resultado. Conserva `X-CYS-Emission-Id` y expone ambos headers mediante CORS. La UI no deduce generación a partir del tiempo de respuesta. El ZIP reúne emisiones disponibles y no genera PDFs.
+### Descarga masiva por lote y ZIP en memoria:
+La descarga masiva por curso no pasa por endpoints de lote en el servidor ni genera archivos en disco. El componente frontend `SharedBatchPdfModal` procesa secuencialmente cada alumno, retiene los buffers binarios en la memoria del navegador, ejecuta una revalidación final de huellas contra PocketBase y ensambla el ZIP instantáneamente en memoria mediante `fflate` (`buildInMemoryPdfZip` con compresión nivel 0 y límite de 100 MB).
 
 ---
 

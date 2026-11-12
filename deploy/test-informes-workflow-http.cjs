@@ -641,45 +641,7 @@ test('Flujo HTTP completo de Informes de Maestras: enlaces, carga progresiva, en
     assert.equal(snapVisadoA.body.datos.docente.apellido, 'RODRIGUEZ PEREZ');
     assert.equal(snapVisadoA.body.datos.direccion.apellido, 'ADDUCCI');
 
-    const versionHash = 'a'.repeat(64);
-    const pdfBytes = Buffer.from('%PDF-1.4\n%Test informe PDF\n%%EOF\n', 'utf8');
-    const archivoSha256 = 'b'.repeat(64);
-    const form = new FormData();
-    form.set('huella', snapVisadoA.body.huella);
-    form.set('version', versionHash);
-    form.set('archivoSha256', archivoSha256);
-    form.set('archivo', new Blob([pdfBytes], { type: 'application/pdf' }), 'informe.pdf');
-
-    const publishRes = await fetch(
-      `${origin}/api/cys/directivo/informes/${instanciaId}/alumnos/${enrollmentA.id}/emisiones`,
-      {
-        method: 'POST',
-        headers: Object.assign({}, staffHeaders, {
-          'X-CYS-PDF-Worker': 'worker-secret-test-key',
-        }),
-        body: form,
-      }
-    );
-    assert.equal(publishRes.status, 200);
-    const publishedBody = await publishRes.json();
-    assert.equal(publishedBody.created, true);
-    assert.ok(publishedBody.id);
-
-    const lookupRes = await jsonRequest(
-      origin,
-      `/api/cys/directivo/informes/${instanciaId}/alumnos/${enrollmentA.id}/emisiones?version=${versionHash}`,
-      { headers: staffHeaders }
-    );
-    assert.equal(lookupRes.status, 200);
-    assert.equal(lookupRes.body.emision.id, publishedBody.id);
-    assert.equal(lookupRes.body.emision.huella, snapVisadoA.body.huella);
-
-    const downloadRes = await fetch(
-      `${origin}/api/cys/directivo/emisiones-informe/${publishedBody.id}/archivo?download=1`,
-      { headers: staffHeaders }
-    );
-    assert.equal(downloadRes.status, 200);
-    assert.match(downloadRes.headers.get('content-type') || '', /application\/pdf/);
+    assert.ok(snapVisadoA.body.huella);
 
     const updateTeacherInvalidate = await jsonRequest(
       origin,
@@ -696,11 +658,14 @@ test('Flujo HTTP completo de Informes de Maestras: enlaces, carga progresiva, en
     );
     assert.equal(updateTeacherInvalidate.status, 200);
 
-    const downloadStaleRes = await fetch(
-      `${origin}/api/cys/directivo/emisiones-informe/${publishedBody.id}/archivo?download=1`,
+    const snapUpdatedTeacher = await jsonRequest(
+      origin,
+      `/api/cys/directivo/informes/${instanciaId}/alumnos/${enrollmentA.id}/instantanea`,
       { headers: staffHeaders }
     );
-    assert.equal(downloadStaleRes.status, 409);
+    assert.equal(snapUpdatedTeacher.status, 200);
+    assert.equal(snapUpdatedTeacher.body.datos.docente.apellido, 'RODRIGUEZ GOMEZ');
+    assert.notEqual(snapUpdatedTeacher.body.huella, snapVisadoA.body.huella);
 
     const course4 = await admin.collection('cursos').create({
       nombre: '4.° Grado',

@@ -39,12 +39,15 @@ return { alumnosSinIncorporar: 0, boletines: window.batchSettings.empty ? [] : [
  { inscripcionId: 'c', nombreCompleto: 'Alumno C', preparacionDocumental: { completa: false, faltantes: [{ mensaje: 'Completar DNI.' }] }, elegibilidadPdf: { elegiblePorVisados: true } }
 ] };
 }`;
-      if (id.endsWith('/services/documentSnapshot.service.ts')) return `export class DocumentPdfError extends Error { constructor(message, status) { super(message); this.status = status; } }
+      if (id.endsWith('/services/documentSnapshot.service.ts')) return `import { PdfGenerationError } from '/src/shared/pdf';
+export const DocumentPdfError = PdfGenerationError;
 export async function getDocumentSnapshot() { return { huella: 'huella' }; }
+export function formatBulletinPdfBaseName() { return 'boletin'; }
+export function formatBulletinZipFilename() { return 'boletines.zip'; }
 export async function downloadDocumentProof() {
  window.batchStats.pdfs++;
  if (window.batchSettings.busy) throw new DocumentPdfError('Hay otro PDF en preparación.', 429);
- return { emissionId: 'emision', result: 'reused' };
+ return { bytes: new Uint8Array(), emissionId: 'emision', result: 'reused' };
 }
 export async function downloadDocumentBatch() { throw Error('No debe descargarse automáticamente'); }`;
     },
@@ -56,7 +59,7 @@ export async function downloadDocumentBatch() { throw Error('No debe descargarse
       });
     },
   };
-  const vite = await createServer({ configFile: false, cacheDir: 'node_modules/.cache/test-batch-modal', plugins: [plugin, react()], server: { host: '127.0.0.1', port: 0 }, logLevel: 'error' });
+  const vite = await createServer({ configFile: false, define: { 'import.meta.env.VITE_POCKETBASE_URL': JSON.stringify('http://127.0.0.1:8090') }, cacheDir: 'node_modules/.cache/test-batch-modal', plugins: [plugin, react()], server: { host: '127.0.0.1', port: 0 }, logLevel: 'error' });
   let browser;
   try {
     await vite.listen();

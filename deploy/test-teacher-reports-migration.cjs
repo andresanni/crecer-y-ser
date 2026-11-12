@@ -15,12 +15,14 @@ const REPORT_COLLECTIONS = [
   'evaluaciones_informe',
   'respuestas_item_informe',
   'visados_informe',
-  'emisiones_informe',
 ];
 
 test('Esquema, reglas de acceso y seed de plantillas de informes en PocketBase temporal y pb_schema.json', { timeout: 60000 }, async () => {
   const schema = JSON.parse(fs.readFileSync(path.resolve('pb_schema.json'), 'utf8'));
   const schemaByName = new Map(schema.map((col) => [col.name, col]));
+
+  assert.equal(schemaByName.has('emisiones_informe'), false);
+  assert.equal(schemaByName.has('emisiones_boletin'), false);
 
   for (const name of REPORT_COLLECTIONS) {
     const col = schemaByName.get(name);
@@ -28,13 +30,8 @@ test('Esquema, reglas de acceso y seed de plantillas de informes en PocketBase t
     assert.equal(col.createRule, null);
     assert.equal(col.updateRule, null);
     assert.equal(col.deleteRule, null);
-    if (name === 'emisiones_informe') {
-      assert.equal(col.listRule, null);
-      assert.equal(col.viewRule, null);
-    } else {
-      assert.equal(col.listRule, '@request.auth.id != ""');
-      assert.equal(col.viewRule, '@request.auth.id != ""');
-    }
+    assert.equal(col.listRule, '@request.auth.id != ""');
+    assert.equal(col.viewRule, '@request.auth.id != ""');
   }
 
   const base = path.resolve('C:/pocketbase');
@@ -192,8 +189,12 @@ test('Esquema, reglas de acceso y seed de plantillas de informes en PocketBase t
     );
 
     await assert.rejects(
-      staff.collection('emisiones_informe').getList(1, 10),
-      (error) => error.status === 403
+      admin.collections.getOne('emisiones_informe'),
+      (error) => error.status === 404
+    );
+    await assert.rejects(
+      admin.collections.getOne('emisiones_boletin'),
+      (error) => error.status === 404
     );
   } finally {
     if (server) {

@@ -1,6 +1,6 @@
 # Estrategia de emisión de boletines PDF
 
-Documento iniciado el 28 de septiembre de 2026. Conserva la propuesta y el historial de implementación. El generador, la persistencia y las descargas ya están implementados y publicados; las secciones finales registran los pulidos vigentes.
+Documento iniciado el 28 de septiembre de 2026. Conserva la propuesta inicial y el historial de evolución del sistema. A partir de noviembre de 2026 (migración `1792600000_removed_pdf_emissions_storage.js`), la persistencia en disco de archivos PDF y las colecciones `emisiones_boletin` y `emisiones_informe` fueron completamente eliminadas en favor de una **generación 100% en caliente (stateless) en memoria**, unificada entre Boletines e Informes de Maestras bajo `src/shared/pdf/`. La sección final detalla la arquitectura canónica vigente.
 
 ## Casos de borde: estado publicado — actualizado el 4 de octubre de 2026
 
@@ -442,4 +442,37 @@ Los dos PDFs regularizados de B1 se generaron y quedaron DISPONIBLE en el servid
 Se promovió el generador de PDF mediante `deploy/publish-pdf-worker.ps1` hacia `/opt/cys-pdf/releases/20261023-155814`. Esta release incorpora el bundle actualizado de renderizado (`dist-render`), que resuelve la presentación del registro administrativo y pases/cambios de escuela en la página de cierre administrativo para alumnos con cursada parcial (incorporado en `e1aa713`).
 
 El script completó la compilación local, empaquetado, transferencia SCP, instalación y la ejecución de `test-production-worker.mjs` bajo el usuario `cys-pdf`, validando respuesta `200` de middleware, 14 páginas de boletín sintético, ZIP con coincidencia exacta de bytes y recarga limpia de Caddy. La nueva versión de plantilla invalida automáticamente la reutilización de emisiones generadas bajo el hash anterior.
+
+## Arquitectura canónica vigente: Generación 100% stateless en memoria (Noviembre 2026)
+
+Con la migración `1792600000_removed_pdf_emissions_storage.js`, se desmantelaron definitivamente las colecciones `emisiones_boletin` y `emisiones_informe`, eliminando por completo la persistencia física de archivos PDF en el servidor VPS (`pb_data/storage`) y sus endpoints asociados (`POST /emisiones`, `GET /archivo`).
+
+La arquitectura unificada para **Boletines de Primaria** e **Informes de Maestras** es **100% stateless en memoria**:
+
+### 1. Infraestructura compartida (`src/shared/pdf/`)
+
+Toda la lógica de cliente, modales y construcción documental se centraliza en `src/shared/pdf/`:
+- **`pdfError.ts`**: normalización y tipado exhaustivo de errores de generación y red (autenticación `401`, autorizaciones `403`, concurrencia `409`, validaciones de elegibilidad documental `422`, límites de tiempo y fallos de servicio).
+- **`pdfClient.ts`**: cliente HTTP para comunicación con el worker PDF (`/api/cys/pdf/generar` e `/api/cys/pdf/informe/generar` en producción; `/__cys/pdf-prueba` e `/__cys/pdf-informe` en desarrollo), con reintentos controlados y revalidaciones.
+- **`pdfZipBuilder.ts`**: ensamblado de archivos ZIP directamente en la memoria del navegador usando `fflate` (`zipSync` con nivel de compresión 0 para velocidad máxima y mínimo consumo de CPU), resolución determinista de colisiones de nombres (`APELLIDO, NOMBRE - BOLETIN (2).pdf`) y límite de seguridad estricto de 100 MB.
+- **`SharedDownloadPdfButton.tsx`**: botón reutilizable para descarga individual con máquina de estados reactiva (inactivo, solicitando render, descargando, error con tooltip contextual).
+- **`SharedBatchPdfModal.tsx`**: modal genérico para procesamiento por lote de cursos e instancias completas, con ejecución secuencial por alumno, visualización en tiempo real del progreso, motivos de exclusión y empaquetado final instantáneo en ZIP.
+
+### 2. Flujo de generación individual en caliente (Stateless)
+
+El flujo de generación de un documento PDF (tanto boletín como informe) opera de la siguiente manera:
+1. El cliente invoca el worker PDF mediante POST (`/api/cys/pdf/generar` o `/api/cys/pdf/informe/generar`) enviando el identificador del alumno/cursada, período o instancia, y la `huella` esperada, adjuntando la cabecera `Authorization: Bearer <token>` del directivo autenticado.
+2. El worker consulta el endpoint de instantánea autoritativa de PocketBase (`GET .../instantanea`) con las credenciales del directivo, validando que el documento exista y sea elegible.
+3. El worker renderiza la vista imprimible en una instancia de Chromium headless (`dist-render/boletin-render.html` para boletines o `dist-render/informe-render.html` para informes) inyectando el payload JSON directamente en memoria en `window.__CYS_BOLETIN_SNAPSHOT__` o `window.__CYS_INFORME_SNAPSHOT__`.
+4. Tras completar el renderizado gráfico y la captura de páginas en PDF, el worker vuelve a consultar `GET .../instantanea` en PocketBase para verificar que `elegible === true` y que la `huella` SHA-256 no haya mutado durante los segundos que tomó el render. Si los datos cambiaron concurrentemente, se descartan los bytes y se responde con `409 Conflict`.
+5. Valida la cantidad esperada de páginas y dimensiones normalizadas A4 usando `pdf-lib`.
+6. Devuelve inmediatamente los bytes binarios del PDF en el cuerpo de la respuesta HTTP con las cabeceras `X-CYS-PDF-Result: generated` y `X-CYS-Snapshot-Hash: <hash>`. Ningún archivo ni metadato de emisión se escribe en disco.
+
+### 3. Flujo de generación por lote y armado de ZIP en memoria
+
+Para la descarga masiva por curso o materia:
+1. **Preparación secuencial**: `SharedBatchPdfModal` procesa cada alumno elegible uno a uno para no sobrecargar el worker headless Chromium.
+2. **Retención en memoria**: Cada PDF generado exitosamente se retiene como `Uint8Array` junto con su `huella` en la memoria del navegador.
+3. **Revalidación previa al empaquetado**: Antes de armar el ZIP, `revalidateStudentPdf` realiza una última consulta ligera a PocketBase (`GET .../instantanea`) para cada alumno retenido. Si las notas, apoyos o visados cambiaron mientras se generaban los compañeros del lote, se solicita la regeneración del PDF desactualizado.
+4. **Armado instantáneo con `fflate`**: Una vez garantizada la vigencia de todos los alumnos elegibles, `buildInMemoryPdfZip` empaqueta los buffers en memoria en un único archivo ZIP sin compresión (nivel 0), resuelve nombres duplicados agregando sufijos numéricos y dispara la descarga en el navegador con `downloadBlob`.
 

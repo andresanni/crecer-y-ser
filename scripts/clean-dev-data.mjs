@@ -154,7 +154,6 @@ async function run() {
   console.log('\nIniciando limpieza ordenada de colecciones operativas en dev local...\n');
 
   const collectionsToClean = [
-    'emisiones_boletin',
     'visados_boletin',
     'instancias_carga_boletin',
     'tokens_acceso_docente',

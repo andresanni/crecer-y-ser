@@ -5,9 +5,9 @@ import { createPdfMiddleware } from './local-pdf-plugin.ts';
 
 const root = resolve(process.env.CYS_PDF_ROOT || process.cwd());
 const port = Number(process.env.CYS_PDF_PORT || 8093);
-const key = process.env.CYS_PDF_WORKER_KEY;
+const key = process.env.CYS_PDF_WORKER_KEY || '';
 const allowedOrigins = (process.env.CYS_PDF_ORIGINS || '').split(',').filter(Boolean);
-if (!key || !allowedOrigins.length) throw new Error('Falta configurar el generador PDF.');
+if (!allowedOrigins.length) throw new Error('Falta configurar el generador PDF.');
 const handler = createPdfMiddleware(process.env.CYS_POCKETBASE_URL || 'http://127.0.0.1:8090', key, {
   root, port: () => port, allowedOrigins, renderOrigin: `http://127.0.0.1:${port}`, chromium: true,
 });

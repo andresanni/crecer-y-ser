@@ -130,13 +130,11 @@ function saveEnrollmentScope(c) {
     if (Array.isArray(data.cambiosEscuela)) enrollment.set("cambios_escuela", JSON.stringify(data.cambiosEscuela))
     if (typeof data.cambioDomicilio === "string") enrollment.set("cambio_domicilio", data.cambioDomicilio.trim())
     dao.saveRecord(enrollment)
-    require("./pdfEmissions.js").invalidate(dao, enrollment.getId(), 1, "CAMBIO_CURSADA")
     findByFilter(dao, "instancias_carga_boletin", "curso_id = {:course} && periodo_id.ciclo_id = {:cycle}", "", { course: enrollment.getString("curso_id"), cycle: enrollment.getString("ciclo_id") }).forEach((workflow) => {
       workflow.set("revision", workflow.getInt("revision") + 1)
       dao.saveRecord(workflow)
     })
     try {
-      require("./teacherReports.js").invalidateStudentReportEmissions(dao, enrollment.getId(), "CAMBIO_CURSADA")
       findByFilter(dao, "instancias_informe", "curso_id = {:course} && ciclo_id = {:cycle}", "", { course: enrollment.getString("curso_id"), cycle: enrollment.getString("ciclo_id") }).forEach((reportWorkflow) => {
         reportWorkflow.set("revision", reportWorkflow.getInt("revision") + 1)
         dao.saveRecord(reportWorkflow)
@@ -445,7 +443,6 @@ function changeApproval(c, approve) {
       response = { instancia: workflowDto(workflow), boletin: approvalDto(approval) }
       return
     }
-    require("./pdfEmissions.js").invalidate(txDao, enrollment.getId(), period.getInt("numero_periodo"), "Cambió la autorización del bimestre.")
     approval.set("generacion_visado", approval.getInt("generacion_visado") + 1)
     if (approve) {
       if (!studentReadyForApproval(txDao, workflow, enrollment)) {
@@ -1371,7 +1368,6 @@ function saveStaffStudent(c) {
     if (data.apoyos && Object.keys(data.apoyos).length > 0) {
       saveSupport(txDao, workflow, enrollment, data.apoyos)
     }
-    require("./pdfEmissions.js").invalidate(txDao, enrollment.getId(), period.getInt("numero_periodo"), "Cambió la autorización del bimestre.")
     approval.set("generacion_visado", approval.getInt("generacion_visado") + 1)
     approval.set("revision_contenido", approval.getInt("revision_contenido") + 1)
     approval.set("estado", "PENDIENTE_REVISION")

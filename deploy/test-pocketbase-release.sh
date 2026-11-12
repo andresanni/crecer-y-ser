@@ -25,7 +25,7 @@ PY
 python3 - "$trial" <<'PY'
 import sqlite3,sys
 db=sqlite3.connect(sys.argv[1]+'/data.db')
-assert db.execute("select count(*) from _collections where name='emisiones_boletin'").fetchone()[0]==1
+assert db.execute("select count(*) from _collections where name in ('emisiones_boletin','emisiones_informe')").fetchone()[0]==0
 assert 'generacion_visado' in {r[1] for r in db.execute('pragma table_info(visados_boletin)')}
 print('Isolated migration check passed')
 PY

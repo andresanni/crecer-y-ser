@@ -1,5 +1,14 @@
 import pb from '../../../core/pocketbase';
+import {
+  type GeneratedPdfResponse,
+  PdfGenerationError as InformePdfError,
+  type PdfGenerationResult as InformePdfResult,
+  requestGeneratedPdf,
+  sanitizePdfFilename,
+} from '../../../shared/pdf';
 import type { InformeDocumentSnapshot } from '../documentos/informeSnapshot.model';
+
+export { InformePdfError, type InformePdfResult };
 
 export function getInformeDocumentSnapshot(
   instanciaId: string,
@@ -16,93 +25,47 @@ export function getInformeDocumentSnapshot(
   );
 }
 
-export type InformePdfResult = 'generated' | 'reused' | 'unknown';
-
-export class InformePdfError extends Error {
-  readonly status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
+export function formatInformePdfBaseName(datos: InformeDocumentSnapshot['datos']): string {
+  if (!datos?.alumno) {
+    return 'informe';
   }
-}
-
-export interface InformeBatchEmission {
-  inscripcionId: string;
-  huella: string;
-  emisionId: string;
-}
-
-export async function downloadInformeBatch(
-  instanciaId: string,
-  emisiones: InformeBatchEmission[],
-  signal: AbortSignal,
-) {
-  const response = await fetch(
-    import.meta.env.DEV ? '/__cys/pdf-informe-lote' : `${pb.baseURL}/api/cys/pdf-informe/lote`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: pb.authStore.token,
-      },
-      body: JSON.stringify({ instanciaId, emisiones }),
-      signal,
-    },
+  const prefix =
+    datos.tipoInforme === 'CICLO_FINAL'
+      ? 'INFORME FINAL'
+      : datos.tipoInforme === 'PRIMER_CUATRIMESTRE'
+        ? 'INFORME 1 CUATRIMESTRE'
+        : 'INFORME 1 BIMESTRE';
+  const suffix = datos.materia?.etiquetaPdf
+    ? ` - ${datos.materia.etiquetaPdf.toUpperCase()}`
+    : '';
+  return sanitizePdfFilename(
+    `${datos.alumno.apellidos}, ${datos.alumno.nombres} - ${prefix}${suffix}`,
   );
-  if (!response.ok) {
-    const error = (await response.json().catch(() => ({}))) as { message?: string };
-    throw new InformePdfError(error.message || 'No se pudo descargar el ZIP de informes.', response.status);
-  }
-  if (!response.headers.get('Content-Type')?.includes('application/zip')) {
-    throw new Error('El servicio no devolvió un ZIP.');
-  }
-  return {
-    blob: await response.blob(),
-    filename: decodeURIComponent(
-      response.headers.get('Content-Disposition')?.split("UTF-8''")[1] || 'informes.zip',
-    ),
-  };
 }
 
-export async function downloadInformeProof(
+export function formatInformeZipFilename(datos: InformeDocumentSnapshot['datos']): string {
+  if (!datos?.curso) {
+    return 'informes.zip';
+  }
+  const subjLabel = datos.materia?.etiquetaPdf
+    ? ` - ${datos.materia.etiquetaPdf.toUpperCase()}`
+    : '';
+  return `${sanitizePdfFilename(
+    `${datos.curso.nombre}${subjLabel} - INFORMES ${datos.ciclo.ano}`,
+  )}.zip`;
+}
+
+export function downloadInformeProof(
   instanciaId: string,
   inscripcionId: string,
   huella: string,
   signal: AbortSignal,
-): Promise<{
-  blob: Blob;
-  filename: string;
-  emissionId: string | null;
-  result: InformePdfResult;
-}> {
-  const response = await fetch(
-    import.meta.env.DEV ? '/__cys/pdf-informe' : `${pb.baseURL}/api/cys/pdf-informe/generar`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: pb.authStore.token,
-      },
-      body: JSON.stringify({ instanciaId, inscripcionId, huella }),
-      signal,
-    },
+): Promise<GeneratedPdfResponse> {
+  return requestGeneratedPdf(
+    import.meta.env.DEV ? '/__cys/pdf-informe' : `${pb.baseURL}/api/cys/pdf/informe/generar`,
+    { instanciaId, inscripcionId, huella },
+    signal,
+    'informe.pdf',
+    'No se pudo generar el PDF del informe.',
   );
-  if (!response.ok) {
-    const error = (await response.json().catch(() => ({}))) as { message?: string };
-    throw new InformePdfError(error.message || 'No se pudo generar el PDF del informe.', response.status);
-  }
-  if (!response.headers.get('Content-Type')?.includes('application/pdf')) {
-    throw new Error('El servicio no devolvió un PDF.');
-  }
-  const filename = decodeURIComponent(
-    response.headers.get('Content-Disposition')?.split("UTF-8''")[1] || 'informe.pdf',
-  );
-  const result = response.headers.get('X-CYS-PDF-Result');
-  return {
-    blob: await response.blob(),
-    filename,
-    emissionId: response.headers.get('X-CYS-Emission-Id'),
-    result: result === 'generated' || result === 'reused' ? result : 'unknown',
-  };
 }

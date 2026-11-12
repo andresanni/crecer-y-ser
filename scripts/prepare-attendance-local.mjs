@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const origin = 'http://127.0.0.1:8090';
 const root = 'C:/pocketbase';
 const repository = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const operational = ['emisiones_boletin', 'visados_boletin', 'evaluaciones_criterios', 'evaluaciones_materia', 'cierres_periodo_alumno', 'asistencias_diarias', 'registros_asistencia_curso', 'tokens_acceso_docente', 'instancias_carga_boletin', 'alumno_responable', 'inscripciones', 'alumnos', 'responsables'];
+const operational = ['visados_boletin', 'evaluaciones_criterios', 'evaluaciones_materia', 'cierres_periodo_alumno', 'asistencias_diarias', 'registros_asistencia_curso', 'tokens_acceso_docente', 'instancias_carga_boletin', 'alumno_responable', 'inscripciones', 'alumnos', 'responsables'];
 const catalogs = ['ciclos_lectivos', 'niveles', 'cursos', 'periodos', 'materias', 'curso_materias', 'criterios_evaluacion', 'escalas_calificacion', 'valores_escala', 'meses_calendario', 'eventos_calendario'];
 
 function parseCsv(content) {
@@ -241,7 +241,7 @@ async function main() {
   const expectedEvaluations = rows.reduce((sum, row) => sum + configs.get(row.curso_nombre).materials.length * 2, 0);
   assert.equal(final.evaluaciones_materia, expectedEvaluations);
   assert.equal(final.evaluaciones_criterios, expectedEvaluations * 5);
-  for (const name of ['asistencias_diarias', 'registros_asistencia_curso', 'cierres_periodo_alumno', 'tokens_acceso_docente', 'visados_boletin', 'emisiones_boletin']) assert.equal(final[name], 0);
+  for (const name of ['asistencias_diarias', 'registros_asistencia_curso', 'cierres_periodo_alumno', 'tokens_acceso_docente', 'visados_boletin']) assert.equal(final[name], 0);
   const finalEnrollments = await list('inscripciones', admin.token);
   assert.ok(finalEnrollments.every(item => item.cursada_estado === 'CONFIRMADA' && item.bimestre_desde === 1 && item.bimestre_hasta === 4));
   const report = { origin, completedAt: new Date().toISOString(), backupPath, final, formula: 'valor[(numero_orden + bimestre + indice_materia - 2) % cantidad_valores]; catálogo por orden_visual, sin No corresponde; criterios iguales a la nota de materia; PPI false', courses: [...configs].map(([name, config]) => ({ name, students: rows.filter(row => row.curso_nombre === name).length, subjects: config.materials.map(item => data.materias.find(subject => subject.id === item.materia_id).nombre), values: config.values.map(item => item.etiqueta) })) };

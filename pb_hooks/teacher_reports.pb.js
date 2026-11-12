@@ -83,33 +83,3 @@ routerAdd("GET", "/api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionI
   return reports.staffSnapshot(c)
 }, $apis.requireRecordAuth("users"))
 
-routerAdd("GET", "/api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionId/emisiones", (c) => {
-  const reports = require(`${__hooks}/lib/teacherReports.js`)
-  return reports.lookupReportEmission(c)
-}, $apis.requireRecordAuth("users"))
-
-routerAdd("POST", "/api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionId/emisiones", (c) => {
-  const reports = require(`${__hooks}/lib/teacherReports.js`)
-  return reports.publishReportEmission(c)
-}, $apis.requireRecordAuth("users"), $apis.bodyLimit(12582912))
-
-routerAdd("GET", "/api/cys/directivo/emisiones-informe/:emisionId/archivo", (c) => {
-  const reports = require(`${__hooks}/lib/teacherReports.js`)
-  return reports.downloadReportEmission(c)
-}, $apis.requireRecordAuth("users"))
-
-onRecordAfterUpdateRequest((e) => {
-  const reports = require(`${__hooks}/lib/teacherReports.js`)
-  const dao = $app.dao()
-  const enrollments = dao.findRecordsByFilter(
-    "inscripciones",
-    "alumno_id = {:alumnoId}",
-    "",
-    0,
-    0,
-    { alumnoId: e.record.getId() }
-  )
-  enrollments.forEach((enrollment) => {
-    reports.invalidateStudentReportEmissions(dao, enrollment.getId(), "Cambió la ficha del alumno.")
-  })
-}, "alumnos")
