@@ -474,5 +474,13 @@ Para la descarga masiva por curso o materia:
 1. **Preparación secuencial**: `SharedBatchPdfModal` procesa cada alumno elegible uno a uno para no sobrecargar el worker headless Chromium.
 2. **Retención en memoria**: Cada PDF generado exitosamente se retiene como `Uint8Array` junto con su `huella` en la memoria del navegador.
 3. **Revalidación previa al empaquetado**: Antes de armar el ZIP, `revalidateStudentPdf` realiza una última consulta ligera a PocketBase (`GET .../instantanea`) para cada alumno retenido. Si las notas, apoyos o visados cambiaron mientras se generaban los compañeros del lote, se solicita la regeneración del PDF desactualizado.
-4. **Armado instantáneo con `fflate`**: Una vez garantizada la vigencia de todos los alumnos elegibles, `buildInMemoryPdfZip` empaqueta los buffers en memoria en un único archivo ZIP sin compresión (nivel 0), resuelve nombres duplicados agregando sufijos numéricos y dispara la descarga en el navegador con `downloadBlob`.
+4. **Armado instantáneo con `fflate`**: Una vez garantizada la vigencia de todos los alumnos elegibles, `buildInMemoryPdfZip` empaqueta los buffers en memoria en un único archivo ZIP sin compresión (nivel 0), resuelve nombres duplicados agregando sufijos numéricos y dispara la descarga en el navegador con `triggerBlobDownload`.
+
+### 4. Hito productivo y limpieza de almacenamiento en VPS — 12 de noviembre de 2026
+
+El 12 de noviembre de 2026 se promovió la arquitectura stateless en el VPS de producción:
+- **Worker PDF (`cys-pdf`)**: publicado en `/opt/cys-pdf/releases/20261112-160411` mediante `deploy/publish-pdf-worker.ps1`, superando la prueba sintética en producción (`{"productionWorker":"ok","boletinPages":13,"informePages":1,"boletinReads":2,"informeReads":2}`) y recarga de Caddy.
+- **PocketBase (`pocketbase.service`)**: actualizado mediante `deploy/publish-pocketbase.ps1` con respaldo en `/root/pb/deploy_backups/20261112-160505`, aplicando la migración `1792600000_removed_pdf_emissions_storage.js` y eliminando `pb_hooks/lib/pdfEmissions.js`.
+- **Saneamiento de disco (`deploy/cleanup-vps-pdf-storage.ps1`)**: se eliminaron los 8 directorios históricos de emisiones (`cysemissions001`) alojados en `deploy_backups` y `milestones` y se ejecutó `PRAGMA wal_checkpoint(TRUNCATE);`. El peso de `/root/pb/pb_data/storage` quedó en `4.0K`, `/root/pb/deploy_backups` se redujo de `659M` a `72M`, y `/root/pb/milestones` de `59M` a `3.4M`.
+
 
