@@ -1,4 +1,4 @@
-param(
+﻿param(
   [string]$RemoteHost = "129.121.52.187",
   [int]$Port = 22022,
   [string]$RemoteUser = "root",
@@ -29,7 +29,6 @@ if ($LASTEXITCODE -ne 0) { throw "No se pudo crear el staging remoto." }
 
 $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\teacherAccess.js"; Target = "teacherAccess.js" },
-  @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\pdfEmissions.js"; Target = "pdfEmissions.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\teacher_access.pb.js"; Target = "teacher_access.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\curriculum.js"; Target = "curriculum.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\curriculum.pb.js"; Target = "curriculum.pb.js" },
@@ -65,6 +64,7 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1792440100_updated_teacher_reports_templates_catalog.js"; Target = "1792440100_updated_teacher_reports_templates_catalog.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1792440200_multi_course_teacher_report_links.js"; Target = "1792440200_multi_course_teacher_report_links.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1792500000_added_kindergarten_level_and_courses.js"; Target = "1792500000_added_kindergarten_level_and_courses.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1792600000_removed_pdf_emissions_storage.js"; Target = "1792600000_removed_pdf_emissions_storage.js" },
   @{ Source = Join-Path $PSScriptRoot "pocketbase.service"; Target = "pocketbase.service" },
   @{ Source = Join-Path $PSScriptRoot "apply-pocketbase-workflow.sh"; Target = "apply-pocketbase-workflow.sh" }
 )

@@ -153,11 +153,7 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.deepEqual(lateSnapshot.body.datos.dependencias.map(p => p.bimestre), [2]);
     assert.equal(lateSnapshot.body.datos.apoyos.poseeApoyos, 'NO');
     assert.equal((await saveScope(enrollment.id, { hasta: 1 })).status, 409);
-    const emission = await create('emisiones_boletin', { inscripcion_id: enrollment.id, periodo_id: periods[1].id, corte: 2, estado: 'DISPONIBLE', huella: beforePdf.body.huella, version: 'a'.repeat(64), instantanea: beforePdf.body.datos });
     assert.equal((await saveScope(enrollment.id, { hasta: 2 })).status, 200);
-    const invalidated = (await request('/api/collections/emisiones_boletin/records/' + emission.id, 'GET', null, admin.body.token)).body;
-    assert.equal(invalidated.estado, 'INVALIDADO');
-    assert.equal(invalidated.instantanea, null);
     assert.notEqual((await snapshot(2)).body.huella, beforePdf.body.huella);
     const stages = (await request('/api/cys/directivo/etapas/' + periods[2].id, 'GET', null, token)).body;
     assert.deepEqual(stages.cursos.find(row => row.cursoId === course.id).inscripcionesEvaluables, [late.id]);

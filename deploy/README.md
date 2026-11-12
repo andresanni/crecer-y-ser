@@ -105,9 +105,34 @@ Si falla el arranque, revisar primero el journal y conservar intacto el backup p
 
 ## Generador PDF en el VPS
 
-Despues de publicar PocketBase, ejecutar `./deploy/publish-pdf-worker.ps1`. Construye el bundle de impresion, crea un archivo temporal fuera del repositorio, instala dependencias fijadas por lockfile y Chromium, configura `cys-pdf.service`, prueba PDF/ZIP sinteticos y publica las rutas del worker mediante Caddy. Requiere SSH root por el mismo puerto y clave que PocketBase. `/etc/cys-pdf.env` conserva el secreto privado y los origenes admitidos; no se rota en sucesivos despliegues. El primer instalador obtiene Node LTS 24 y verifica el checksum oficial; despliegues posteriores reutilizan `/opt/cys-node` (actualmente 24.21.0).
+Despues de publicar PocketBase, ejecutar `./deploy/publish-pdf-worker.ps1`. Construye el bundle de renderizado estático (`dist-render`), crea un archivo temporal fuera del repositorio, instala dependencias fijadas por lockfile y Chromium headless, configura `cys-pdf.service`, valida la generación en memoria y publica las rutas del worker mediante Caddy. Requiere SSH root por el mismo puerto y clave que PocketBase. El primer instalador obtiene Node LTS 24 y verifica el checksum oficial; despliegues posteriores reutilizan `/opt/cys-node` (actualmente 24.21.0).
 
-El worker escucha solo en 127.0.0.1:8093, tiene sandbox Chromium y corre como cys-pdf. Sus archivos internos no pasan por el proxy. `deploy/test-production-worker.mjs` prueba el middleware desplegado con datos y backend sinteticos, sin mutar PocketBase productivo. `deploy/test-pocketbase-release.sh` ensaya migraciones contra una copia consistente y saneada del VPS antes de promoverlas. El historial detallado y rollback estan en `docs/gradebook-pdf-emission.md`. Respaldar `/etc/cys-pdf.env` por el canal privado de operaciones, nunca en Git.
+El generador es **100% stateless en memoria**: no escribe archivos PDF en disco ni interactúa como escritor contra PocketBase. Las colecciones `emisiones_boletin` y `emisiones_informe` fueron eliminadas (migración `1792600000_removed_pdf_emissions_storage.js`). Por esta razón, la clave secreta `CYS_PDF_WORKER_KEY` ya no es requerida. `/etc/cys-pdf.env` conserva únicamente los orígenes HTTP permitidos (`CYS_PDF_ALLOWED_ORIGINS`).
+
+El servicio `cys-pdf` escucha localmente en `127.0.0.1:8093`, ejecuta Chromium con sandbox bajo el usuario sin privilegios `cys-pdf` y limita la memoria a 900 MB. Caddy expone exclusivamente dos rutas HTTP hacia el worker:
+- `POST /api/cys/pdf/generar`: generación stateless en caliente de Boletines de Primaria.
+- `POST /api/cys/pdf/informe/generar`: generación stateless en caliente de Informes de Maestras.
+
+Sus endpoints internos y health check no se exponen al exterior. `deploy/test-production-worker.mjs` prueba el middleware desplegado con datos y backend sintéticos sin mutar PocketBase productivo. El historial detallado y rollback están en `docs/gradebook-pdf-emission.md`.
+
+## Limpieza de Almacenamiento de PDFs en el VPS de Producción
+
+Para sanear el disco del VPS tras la transición a la arquitectura stateless en memoria, se provee el script de mantenimiento `deploy/cleanup-vps-pdf-storage.ps1`:
+
+```powershell
+# Modo simulado (diagnóstico sin borrado)
+./deploy/cleanup-vps-pdf-storage.ps1 -DryRun
+
+# Modo ejecución (purga física y compactación WAL)
+./deploy/cleanup-vps-pdf-storage.ps1
+```
+
+El script:
+1. Inspecciona el espacio en disco (`df -h /root/pb`) y el peso actual de `pb_data/storage`, `deploy_backups` y `milestones`.
+2. Busca exhaustivamente todas las carpetas `cysemissions001` y `cysrptemis00001` dentro de `storage`, backups y milestones.
+3. Con `-DryRun`, reporta las rutas encontradas y el espacio que ocupan sin realizar alteraciones.
+4. En modo ejecución, elimina de manera segura y exclusiva esos directorios de emisiones obsoletas (manteniendo intactas las bases de datos y migraciones), compacta el WAL de SQLite con `PRAGMA wal_checkpoint(TRUNCATE);` y reporta el espacio recuperado.
+5. Adicionalmente, el script de despliegue `deploy/apply-pocketbase-workflow.sh` purga automáticamente estas carpetas en cada nueva release antes y después de tomar el backup de storage.
 
 ## Backend de registros de primaria preparado en el worktree
 

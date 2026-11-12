@@ -80,24 +80,6 @@ test('La instantánea rechaza faltantes antes de devolver una huella o leer nota
   assert.match(result.body.message, /primer bimestre/);
 });
 
-test('Un PDF guardado pierde acceso si la nueva instantánea tiene datos incompletos', () => {
-  const data = { estado: 'DISPONIBLE', inscripcion_id: 'student', periodo_id: 'period', huella: 'old', instantanea: {} };
-  const emission = { getString: key => data[key], set: (key, value) => { data[key] = value; } };
-  const dao = { runInTransaction: callback => callback(dao), findRecordById: () => emission, saveRecord() {} };
-  const pdfContext = vm.createContext({
-    module: { exports: {} },
-    $app: { dao: () => dao, newFilesystem: () => { throw new Error('No debe servir bytes'); } },
-    require: () => ({ buildDocumentSnapshot: () => ({ status: 422, body: { codigo: 'DATOS_DOCUMENTALES_INCOMPLETOS' } }) }),
-  });
-  vm.runInContext(readFileSync('pb_hooks/lib/pdfEmissions.js', 'utf8'), pdfContext);
-  const result = pdfContext.module.exports.download({
-    response: () => ({ header: () => ({ set() {} }) }), pathParam: () => 'emission', json: (status, body) => ({ status, body }),
-  });
-  assert.equal(result.status, 409);
-  assert.equal(data.estado, 'INVALIDADO');
-  assert.equal(data.instantanea, null);
-});
-
 test('Cursadas parciales exigen datos de procedencia y pases', () => {
   const lateIssues = issues({ bimestre_desde: 2 });
   assert.ok(lateIssues.some(item => item.campo === 'administrativo.escuelaInicial' && item.origen === 'cursada'));

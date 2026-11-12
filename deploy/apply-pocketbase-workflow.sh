@@ -9,7 +9,6 @@ case "$stage_dir" in
 esac
 
 test -f "$stage_dir/teacherAccess.js"
-test -f "$stage_dir/pdfEmissions.js"
 test -f "$stage_dir/teacher_access.pb.js"
 test -f "$stage_dir/curriculum.js"
 test -f "$stage_dir/curriculum.pb.js"
@@ -45,6 +44,7 @@ test -f "$stage_dir/1792440000_created_teacher_reports_collections_and_seed.js"
 test -f "$stage_dir/1792440100_updated_teacher_reports_templates_catalog.js"
 test -f "$stage_dir/1792440200_multi_course_teacher_report_links.js"
 test -f "$stage_dir/1792500000_added_kindergarten_level_and_courses.js"
+test -f "$stage_dir/1792600000_removed_pdf_emissions_storage.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -58,7 +58,11 @@ trap 'systemctl start pocketbase' EXIT
 
 cp -a /root/pb/pb_data/data.db "$backup_dir/data.db"
 cp -a /root/pb/pb_migrations "$backup_dir/pb_migrations"
-if test -d /root/pb/pb_data/storage; then cp -a /root/pb/pb_data/storage "$backup_dir/storage"; fi
+rm -rf /root/pb/pb_data/storage/cysemissions001 /root/pb/pb_data/storage/cysrptemis00001
+if test -d /root/pb/pb_data/storage; then
+  cp -a /root/pb/pb_data/storage "$backup_dir/storage"
+  rm -rf "$backup_dir/storage/cysemissions001" "$backup_dir/storage/cysrptemis00001"
+fi
 if test -f /root/pb/pb_data/auxiliary.db; then
   cp -a /root/pb/pb_data/auxiliary.db "$backup_dir/auxiliary.db"
 fi
@@ -105,7 +109,7 @@ cp -a /etc/systemd/system/pocketbase.service "$backup_dir/pocketbase.service"
 
 install -d -m 0755 /root/pb/pb_hooks/lib /root/pb/pb_migrations
 if test -f /root/pb/pb_hooks/lib/pdfEmissions.js; then cp -a /root/pb/pb_hooks/lib/pdfEmissions.js "$backup_dir/"; fi
-install -m 0644 "$stage_dir/pdfEmissions.js" /root/pb/pb_hooks/lib/pdfEmissions.js
+rm -f /root/pb/pb_hooks/lib/pdfEmissions.js
 install -m 0644 "$stage_dir/teacherAccess.js" /root/pb/pb_hooks/lib/teacherAccess.js
 install -m 0644 "$stage_dir/teacher_access.pb.js" /root/pb/pb_hooks/teacher_access.pb.js
 install -m 0644 "$stage_dir/curriculum.js" /root/pb/pb_hooks/lib/curriculum.js
@@ -143,6 +147,7 @@ install -m 0644 "$stage_dir/1792440000_created_teacher_reports_collections_and_s
 install -m 0644 "$stage_dir/1792440100_updated_teacher_reports_templates_catalog.js" /root/pb/pb_migrations/1792440100_updated_teacher_reports_templates_catalog.js
 install -m 0644 "$stage_dir/1792440200_multi_course_teacher_report_links.js" /root/pb/pb_migrations/1792440200_multi_course_teacher_report_links.js
 install -m 0644 "$stage_dir/1792500000_added_kindergarten_level_and_courses.js" /root/pb/pb_migrations/1792500000_added_kindergarten_level_and_courses.js
+install -m 0644 "$stage_dir/1792600000_removed_pdf_emissions_storage.js" /root/pb/pb_migrations/1792600000_removed_pdf_emissions_storage.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 

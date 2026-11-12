@@ -123,6 +123,7 @@ async function main() {
               instancia_id: instance.id,
               inscripcion_id: insc.id,
               estado: 'PENDIENTE_REVISION',
+              generacion_visado: 0,
               revision_contenido: 1,
               revision_visada: null,
             });
@@ -141,6 +142,7 @@ async function main() {
           if (existingVisado) {
             await request(`/api/collections/visados_boletin/records/${existingVisado.id}`, token, 'PATCH', {
               estado: 'VISADO',
+              generacion_visado: Math.max(1, (existingVisado.generacion_visado || 0) + 1),
               revision_visada: existingVisado.revision_contenido,
               visado_at: new Date().toISOString(),
             });
@@ -149,6 +151,7 @@ async function main() {
               instancia_id: instance.id,
               inscripcion_id: insc.id,
               estado: 'VISADO',
+              generacion_visado: 1,
               revision_contenido: 1,
               revision_visada: 1,
               visado_at: new Date().toISOString(),

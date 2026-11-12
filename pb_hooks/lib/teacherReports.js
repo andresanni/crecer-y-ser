@@ -159,7 +159,7 @@ function isPrimaryCourse(dao, course) {
   }
   var name = (record.getString("nombre") || "").trim()
   if (/sala/i.test(name)) return false
-  return /^[1-7]\s*[°º]?$/.test(name) || /^([1-7])\s*(?:[°º]|grado)?(?:\s|$)/i.test(name)
+  return /^[1-7]\.?\s*[°º]?$/.test(name) || /^([1-7])\.?\s*(?:[°º]|grado)?(?:\s|$)/i.test(name)
 }
 
 function courseGradeNumber(course) {
@@ -167,7 +167,7 @@ function courseGradeNumber(course) {
   if (/sala/i.test(name)) return 0
   var gradoRaw = course.getString("grado") || name
   var trimmed = String(gradoRaw).trim()
-  var match = trimmed.match(/^([1-7])\s*(?:[°º]|grado)?(?:\s|$)/i)
+  var match = trimmed.match(/^([1-7])\.?\s*(?:[°º]|grado)?(?:\s|$)/i)
   return match ? Number(match[1]) : 0
 }
 
@@ -773,38 +773,6 @@ function reportCompleteness(dao, workflow, template, items) {
     pendientes: pendingStudents,
     cursadasPendientes: pendingScopes
   }
-}
-
-function invalidateReportEmissions(dao, instanciaId, inscripcionId, reason) {
-  var filter = "instancia_id = {:instanciaId} && estado = 'VIGENTE'"
-  var params = { instanciaId: instanciaId }
-  if (inscripcionId) {
-    filter += " && inscripcion_id = {:inscripcionId}"
-    params.inscripcionId = inscripcionId
-  }
-  var records = findByFilter(dao, "emisiones_informe", filter, "", params)
-  records.forEach((record) => {
-    record.set("estado", "INVALIDADA")
-    record.set("instantanea", null)
-    record.set("motivo", reason)
-    dao.saveRecord(record)
-  })
-}
-
-function invalidateStudentReportEmissions(dao, inscripcionId, reason) {
-  var records = findByFilter(
-    dao,
-    "emisiones_informe",
-    "inscripcion_id = {:inscripcionId} && estado = 'VIGENTE'",
-    "",
-    { inscripcionId: inscripcionId }
-  )
-  records.forEach((record) => {
-    record.set("estado", "INVALIDADA")
-    record.set("instantanea", null)
-    record.set("motivo", reason)
-    dao.saveRecord(record)
-  })
 }
 
 function issue(c) {
@@ -1610,7 +1578,6 @@ function updateTeacherName(c) {
     workflow.set("docente_apellido", teacherLastName)
     workflow.set("revision", workflow.getInt("revision") + 1)
     txDao.saveRecord(workflow)
-    invalidateReportEmissions(txDao, workflow.getId(), "", "Cambió el nombre o apellido de la docente.")
     response = {
       instancia: workflowDto(workflow)
     }
@@ -1683,7 +1650,6 @@ function saveStaffStudent(c) {
     var items = templateItems(txDao, template.getId())
     saveStudentEvaluation(txDao, workflow, template, items, enrollment, data, true)
 
-    invalidateReportEmissions(txDao, workflow.getId(), enrollment.getId(), "Cambió el contenido del informe en revisión directiva.")
     approval.set("generacion_visado", approval.getInt("generacion_visado") + 1)
     approval.set("revision_contenido", approval.getInt("revision_contenido") + 1)
     approval.set("estado", "PENDIENTE_REVISION")
@@ -1767,7 +1733,6 @@ function changeApproval(c, approve) {
       throw new BadRequestError("El informe del alumno todavía está incompleto.")
     }
 
-    invalidateReportEmissions(txDao, workflow.getId(), enrollment.getId(), "Cambió la autorización del informe.")
     approval.set("generacion_visado", approval.getInt("generacion_visado") + 1)
     if (approve) {
       approval.set("estado", "VISADO")
@@ -1935,171 +1900,8 @@ function staffSnapshot(c) {
   return c.json(result.status, result.body)
 }
 
-function revokeEmissionRecord(dao, record, reason) {
-  record.set("estado", "INVALIDADA")
-  record.set("instantanea", null)
-  record.set("motivo", reason)
-  dao.saveRecord(record)
-}
-
-function lookupReportEmission(c) {
-  noStore(c)
-  var result = null
-  $app.dao().runInTransaction((txDao) => {
-    var snapshot = buildReportDocumentSnapshot(
-      txDao,
-      c.pathParam("instanciaId"),
-      c.pathParam("inscripcionId")
-    )
-    if (snapshot.status !== 200) return
-    var records = findByFilter(
-      txDao,
-      "emisiones_informe",
-      "instancia_id = {:instanciaId} && inscripcion_id = {:inscripcionId} && estado = 'VIGENTE'",
-      "-created",
-      {
-        instanciaId: c.pathParam("instanciaId"),
-        inscripcionId: c.pathParam("inscripcionId")
-      }
-    )
-    records.forEach((record) => {
-      if (record.getString("huella") !== snapshot.body.huella) {
-        revokeEmissionRecord(txDao, record, "Datos o visado desactualizados.")
-      } else if (record.getString("version") === c.queryParam("version")) {
-        result = {
-          id: record.getId(),
-          huella: record.getString("huella")
-        }
-      }
-    })
-  })
-  return c.json(200, { emision: result })
-}
-
-function publishReportEmission(c) {
-  noStore(c)
-  var key = $os.getenv("CYS_PDF_WORKER_KEY")
-  if (!key || !$security.equal(key, c.request().header.get("X-CYS-PDF-Worker"))) {
-    throw new ForbiddenError("Generador no autorizado.")
-  }
-  var version = c.formValue("version")
-  var hash = c.formValue("huella")
-  var archivoSha256 = c.formValue("archivoSha256")
-  if (!/^[a-f0-9]{64}$/.test(version) || !/^[a-f0-9]{64}$/.test(hash) || !/^[a-f0-9]{64}$/.test(archivoSha256)) {
-    throw new BadRequestError("Versión no válida.")
-  }
-  var upload = $filesystem.fileFromMultipart(c.formFile("archivo"))
-  var resultId
-  var created = false
-  var failure = false
-
-  $app.dao().runInTransaction((txDao) => {
-    var snapshot = buildReportDocumentSnapshot(
-      txDao,
-      c.pathParam("instanciaId"),
-      c.pathParam("inscripcionId")
-    )
-    if (snapshot.status !== 200 || snapshot.body.huella !== hash) {
-      failure = true
-      return
-    }
-    var data = snapshot.body.datos
-    var existing = findByFilter(
-      txDao,
-      "emisiones_informe",
-      "instancia_id = {:instanciaId} && inscripcion_id = {:inscripcionId} && estado = 'VIGENTE' && huella = {:hash} && version = {:version}",
-      "",
-      {
-        instanciaId: data.instanciaId,
-        inscripcionId: data.inscripcionId,
-        hash: hash,
-        version: version
-      }
-    )
-    if (existing.length > 0) {
-      resultId = existing[0].getId()
-      return
-    }
-    var previous = findByFilter(
-      txDao,
-      "emisiones_informe",
-      "instancia_id = {:instanciaId} && inscripcion_id = {:inscripcionId} && estado = 'VIGENTE'",
-      "",
-      {
-        instanciaId: data.instanciaId,
-        inscripcionId: data.inscripcionId
-      }
-    )
-    previous.forEach((record) => revokeEmissionRecord(txDao, record, "Reemplazado por una nueva emisión."))
-
-    var record = new Record(txDao.findCollectionByNameOrId("emisiones_informe"))
-    record.set("instancia_id", data.instanciaId)
-    record.set("inscripcion_id", data.inscripcionId)
-    record.set("huella", hash)
-    record.set("version", version)
-    record.set("archivo_sha256", archivoSha256)
-    record.set("estado", "VIGENTE")
-    record.set("instantanea", data)
-    record.set("emisor", c.get("authRecord").getId())
-    var label = reportFilenameLabel(data.tipoInforme, data.materia)
-    record.set("nombre", data.alumno.apellidos + ", " + data.alumno.nombres + " - " + label + ".pdf")
-    var form = new RecordUpsertForm($app, record)
-    form.setDao(txDao)
-    form.addFiles("archivo", upload)
-    form.submit()
-    created = true
-    resultId = record.getId()
-  })
-
-  if (failure) {
-    return c.json(409, { message: "Los datos o el visado del informe cambiaron durante la generación." })
-  }
-  return c.json(200, { id: resultId, created: created })
-}
-
-function downloadReportEmission(c) {
-  noStore(c)
-  var record
-  var valid = false
-  $app.dao().runInTransaction((txDao) => {
-    record = requireRecord(txDao, "emisiones_informe", c.pathParam("emisionId"))
-    if (record.getString("estado") !== "VIGENTE") return
-    var snapshot
-    try {
-      snapshot = buildReportDocumentSnapshot(
-        txDao,
-        record.getString("instancia_id"),
-        record.getString("inscripcion_id")
-      )
-    } catch (_) {
-      snapshot = { status: 422 }
-    }
-    if (snapshot.status !== 200 || snapshot.body.huella !== record.getString("huella")) {
-      revokeEmissionRecord(txDao, record, "Datos o visado desactualizados.")
-      return
-    }
-    valid = true
-  })
-  if (!valid) {
-    return c.json(409, { message: "Este PDF ya no está vigente. Debe generarse nuevamente." })
-  }
-  var storage = $app.newFilesystem()
-  try {
-    return storage.serve(
-      c.response(),
-      c.request(),
-      record.baseFilesPath() + "/" + record.getString("archivo"),
-      record.getString("nombre")
-    )
-  } finally {
-    storage.close()
-  }
-}
-
 module.exports = {
   cutoffTermForReportType: cutoffTermForReportType,
-  invalidateReportEmissions: invalidateReportEmissions,
-  invalidateStudentReportEmissions: invalidateStudentReportEmissions,
   buildReportDocumentSnapshot: buildReportDocumentSnapshot,
   issue: issue,
   issueLink: issue,
@@ -2119,8 +1921,6 @@ module.exports = {
   saveStaffStudent: saveStaffStudent,
   approveStudent: approveStudent,
   revokeStudentApproval: revokeStudentApproval,
-  staffSnapshot: staffSnapshot,
-  lookupReportEmission: lookupReportEmission,
-  publishReportEmission: publishReportEmission,
-  downloadReportEmission: downloadReportEmission
+  staffSnapshot: staffSnapshot
 }
+

@@ -69,8 +69,10 @@ erDiagram
     instancias_informe ||--o{ evaluaciones_informe : "1 por alumno"
     evaluaciones_informe ||--o{ respuestas_item_informe : "1 por ítem"
     instancias_informe ||--o{ visados_informe : "1 por alumno entregado"
-    instancias_informe ||--o{ emisiones_informe : "PDFs protegidos"
 ```
+
+> [!NOTE]
+> La colección `emisiones_informe` fue eliminada mediante la migración `1792600000_removed_pdf_emissions_storage.js`. La generación de PDFs se realiza 100% stateless en memoria consumiendo `GET /api/cys/directivo/informes/:instanciaId/alumnos/:cursadaId/instantanea`.
 
 ---
 
@@ -195,7 +197,7 @@ erDiagram
 ### Fase 1: Informes Finales (`CICLO_FINAL` — Áreas Especiales) (Completada — 20 de octubre de 2026)
 
 #### Paso 1.1: Migración de Esquema y Seed Inicial de Plantillas (Completado — 19 de octubre de 2026)
-1. Migración creada en `pb_migrations/1792440000_created_teacher_reports_collections_and_seed.js` con las 8 colecciones (`plantillas_informe`, `items_plantilla_informe`, `instancias_informe`, `tokens_acceso_informe`, `evaluaciones_informe`, `respuestas_item_informe`, `visados_informe` y `emisiones_informe`), índices únicos y bloqueo total de escrituras directas (`createRule: null`, `updateRule: null`, `deleteRule: null`).
+1. Migración creada en `pb_migrations/1792440000_created_teacher_reports_collections_and_seed.js` con las colecciones del módulo (`plantillas_informe`, `items_plantilla_informe`, `instancias_informe`, `tokens_acceso_informe`, `evaluaciones_informe`, `respuestas_item_informe`, `visados_informe` y la inicial `emisiones_informe`), índices únicos y bloqueo total de escrituras directas (`createRule: null`, `updateRule: null`, `deleteRule: null`). Posteriormente, la persistencia en disco de PDFs y la colección `emisiones_informe` fueron desmanteladas de forma definitiva mediante la migración `1792600000_removed_pdf_emissions_storage.js`.
 
 #### Paso 1.2: Gateways HTTP en `pb_hooks` (Enlaces, Docente y Directivo) (Completado — 19 de octubre de 2026)
 1. Implementados `pb_hooks/lib/teacherReports.js` y `pb_hooks/teacher_reports.pb.js`, registrados en `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh`, e integrados con la sincronización e invalidación por cambios de cursada en `pb_hooks/lib/teacherAccess.js`.
@@ -212,10 +214,10 @@ erDiagram
    - Integración de contadores de progreso en el modal de alumnos (`X/Y completos` en carga docente, `X/Y visados` en supervisión directiva) y remoción del botón redundante de progreso en la barra móvil.
    - Formato simplificado de materias especiales en la interfaz de usuario (`Artes Visuales`, `Música`, `Inglés` y `Tecnología` a través de `formatMateriaNombreUI`), preservando la denominación oficial de base de datos para la emisión de PDF.
 
-#### Paso 1.4: Plantilla Documental A4 y Emisión Reactiva de PDFs (`CICLO_FINAL`) (Completado — 20 de octubre de 2026)
-1. Implementados los endpoints `GET /api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionId/instantanea`, `GET/POST /api/cys/directivo/informes/:instanciaId/alumnos/:inscripcionId/emisiones` y `GET /api/cys/directivo/emisiones-informe/:emisionId/archivo`, junto con el hook de invalidación reactiva ante cambios en `alumnos` y verificación transaccional de `huella`.
+#### Paso 1.4: Plantilla Documental A4 y Emisión Reactiva de PDFs (`CICLO_FINAL`) (Actualizado — Noviembre de 2026)
+1. Implementado el endpoint canónico `GET /api/cys/directivo/informes/:instanciaId/alumnos/:cursadaId/instantanea` con verificación transaccional de elegibilidad y cálculo de `huella` SHA-256. Los antiguos endpoints de persistencia (`/emisiones` y `/archivo`) fueron eliminados en `1792600000_removed_pdf_emissions_storage.js`.
 2. Construido el esqueleto documental A4 (`informe-render.html`, `src/modules/informes/documentos/InformeDocument.tsx` e `InformeDocument.module.css`) con soporte de 1 y 2 páginas, leyenda opcional `Contenidos`, tabla plana o con `rowSpan` por bloques, recuadro de `Desempeño General` con nota libre de observaciones al pie y tabla de firmas (`MAESTRA` y `DIRECCIÓN: MYRIAM GRACIELA ADDUCCI`) en cada hoja.
-3. Conectada la descarga individual (`DownloadInformeButton`) y el lote ZIP del curso (`BatchInformeModal`) con el worker de PDF (`scripts/local-pdf-plugin.ts` y `scripts/build-pdf-worker.mjs`).
+3. Generación 100% stateless en caliente mediante el worker PDF (`/api/cys/pdf/informe/generar` en producción, `/__cys/pdf-informe` en desarrollo), unificada con la infraestructura compartida en `src/shared/pdf/` (`SharedDownloadPdfButton`, `SharedBatchPdfModal`, `pdfClient.ts`, `pdfZipBuilder.ts`). Descarga individual y lotes ZIP del curso ensamblados directamente en memoria sin almacenamiento en disco ni base de datos.
 
 #### Paso 1.5: Completitud del Catálogo de Plantillas de Ciclo Final (Completado — 20 de octubre de 2026)
 1. Incorporadas mediante migración (`pb_migrations/1792440100_updated_teacher_reports_templates_catalog.js`) las grillas oficiales definitivas de las 5 materias especiales de `CICLO_FINAL`: los 3 bloques de grados de Educación Física (`1-3`, `4-5`, `6-7`), las grillas unificadas `1-7` de Artes Visuales, Inglés, Educación Musical y Tecnología, la resolución automática de la escala de `Desempeño General` según 1.er o 2.° Ciclo y el campo opcional de libre escritura `observaciones`.
