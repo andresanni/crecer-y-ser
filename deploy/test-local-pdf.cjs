@@ -235,6 +235,7 @@ test('Generación local stateless: autenticación, vigencia, generación en cali
     const firstBytes = Buffer.from(await firstCall.arrayBuffer());
     const parsed1 = await PDFDocument.load(firstBytes);
     assert.equal(parsed1.getPageCount(), 13);
+    assert.equal(parsed1.getTitle(), 'Prueba, Estudiante - BOLETIN 1 BIMESTRE');
     assert.ok(
       parsed1
         .getPages()
@@ -288,6 +289,7 @@ test('Generación local stateless: autenticación, vigencia, generación en cali
     const reportBytes = Buffer.from(await reportCall.arrayBuffer());
     const parsedReport = await PDFDocument.load(reportBytes);
     assert.equal(parsedReport.getPageCount(), 1);
+    assert.equal(parsedReport.getTitle(), 'Pérez, Juan - INFORME 1 BIMESTRE - MÚSICA');
     assert.ok(
       parsedReport
         .getPages()

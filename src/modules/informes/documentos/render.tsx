@@ -23,6 +23,18 @@ if (import.meta.env.DEV || import.meta.env.VITE_DOCUMENT_RENDER === 'true') {
     .then(async (response) => {
       if (!response.ok) throw new Error('No hay una instantánea de informe para renderizar.');
       const snapshot = (await response.json()) as InformeDocumentSnapshot;
+      if (snapshot?.datos?.alumno) {
+        const prefix =
+          snapshot.datos.tipoInforme === 'CICLO_FINAL'
+            ? 'INFORME FINAL'
+            : snapshot.datos.tipoInforme === 'PRIMER_CUATRIMESTRE'
+              ? 'INFORME 1 CUATRIMESTRE'
+              : 'INFORME 1 BIMESTRE';
+        const suffix = snapshot.datos.materia?.etiquetaPdf
+          ? ` - ${snapshot.datos.materia.etiquetaPdf.toUpperCase()}`
+          : '';
+        document.title = `${snapshot.datos.alumno.apellidos}, ${snapshot.datos.alumno.nombres} - ${prefix}${suffix}`;
+      }
       createRoot(document.getElementById('root')!).render(
         <RenderInformeDocument data={snapshot.datos} />,
       );

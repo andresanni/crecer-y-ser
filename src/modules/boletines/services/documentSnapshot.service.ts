@@ -51,7 +51,7 @@ export function downloadDocumentProof(
     import.meta.env.DEV ? '/__cys/pdf-prueba' : `${pb.baseURL}/api/cys/pdf/generar`,
     { inscripcionId, periodoId, huella },
     signal,
-    'boletin-prueba.pdf',
+    'boletin.pdf',
     'No se pudo generar el PDF.',
   );
 }

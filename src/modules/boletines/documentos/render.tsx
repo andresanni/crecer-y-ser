@@ -28,6 +28,9 @@ if (import.meta.env.DEV || import.meta.env.VITE_DOCUMENT_RENDER === 'true') {
   void fetch('/__cys/render-input').then(async response => {
     if (!response.ok) throw new Error('No hay una instantánea para renderizar.');
     const snapshot = await response.json() as DocumentSnapshot;
+    if (snapshot?.datos?.alumno) {
+      document.title = `${snapshot.datos.alumno.apellidos}, ${snapshot.datos.alumno.nombres} - BOLETIN ${snapshot.datos.bimestreCorte} BIMESTRE`;
+    }
     const result = adaptarInstantaneaDocumental(snapshot, institucionBoletin);
     if (!result.documento || result.bloqueos.length || result.pendientes.length) throw new Error([...result.bloqueos, ...result.pendientes].join(' '));
     createRoot(document.getElementById('root')!).render(<RenderDocument data={result.documento} />);

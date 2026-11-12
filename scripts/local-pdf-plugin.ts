@@ -60,11 +60,15 @@ const reportFilename = (datos: InformeDocumentSnapshot['datos']) => {
   return safe(`${datos.alumno.apellidos}, ${datos.alumno.nombres} - ${prefix}${suffix}`);
 };
 
+const boletinFilename = (datos: DocumentSnapshot['datos']) =>
+  safe(`${datos.alumno.apellidos}, ${datos.alumno.nombres} - BOLETIN ${datos.bimestreCorte} BIMESTRE`);
+
 async function renderDocumentWithChromium(
   renderOrigin: string,
   htmlPath: string,
   inputPath: string,
   snapshot: unknown,
+  documentTitle: string,
   useChromiumSandbox?: boolean,
 ): Promise<Buffer> {
   const browser = await chromium.launch({
@@ -86,6 +90,10 @@ async function renderDocumentWithChromium(
     await page.locator('body[data-render-state]').waitFor({ state: 'attached', timeout: 30000 });
     const failure = await page.locator('body').getAttribute('data-render-error');
     if (failure) throw new PdfError(failure, 422);
+    await page.evaluate((title) => {
+      const doc = (globalThis as { document?: { title: string } }).document;
+      if (doc) doc.title = title;
+    }, documentTitle);
     return await page.pdf({ preferCSSPageSize: true, printBackground: true, displayHeaderFooter: false });
   } finally {
     await browser.close();
@@ -192,11 +200,13 @@ export function createPdfMiddleware(
         if (snapshot.huella !== input.huella) {
           throw new PdfError('El informe cambió. Actualizá los datos y volvé a descargar el PDF.', 409);
         }
+        const baseName = reportFilename(snapshot.datos);
         const pdf = await renderDocumentWithChromium(
           renderOrigin,
           '/informe-render.html',
           '/__cys/render-informe-input',
           snapshot,
+          baseName,
           runtime.chromium,
         );
         const itemPages = new Set(snapshot.datos.items.map((it) => it.pagina || 1)).size;
@@ -213,7 +223,7 @@ export function createPdfMiddleware(
             409,
           );
         }
-        const name = `${reportFilename(snapshot.datos)}.pdf`;
+        const name = `${baseName}.pdf`;
         response.setHeader('Content-Type', 'application/pdf');
         response.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
         response.setHeader('X-CYS-PDF-Result', 'generated');
@@ -245,11 +255,13 @@ export function createPdfMiddleware(
       if (snapshot.huella !== input.huella) {
         throw new PdfError('El boletín cambió. Actualizá los datos y volvé a descargar el PDF.', 409);
       }
+      const baseName = boletinFilename(snapshot.datos);
       const pdf = await renderDocumentWithChromium(
         renderOrigin,
         '/boletin-render.html',
         '/__cys/render-input',
         snapshot,
+        baseName,
         runtime.chromium,
       );
       const expectedPages = Number(snapshot.datos.curso.nombre.trim()[0]) >= 4 ? 14 : 13;
@@ -261,8 +273,7 @@ export function createPdfMiddleware(
           409,
         );
       }
-      const { alumno, bimestreCorte } = snapshot.datos;
-      const name = `${safe(`${alumno.apellidos}, ${alumno.nombres} - BOLETIN ${bimestreCorte} BIMESTRE`)}.pdf`;
+      const name = `${baseName}.pdf`;
       response.setHeader('Content-Type', 'application/pdf');
       response.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`);
       response.setHeader('X-CYS-PDF-Result', 'generated');
