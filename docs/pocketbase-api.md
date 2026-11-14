@@ -77,7 +77,7 @@ Aplica a todas las siguientes rutas:
 - `POST /api/cys/docente/enviar`.
 - `GET /api/cys/directivo/instancias/:cursoId/:periodoId`.
 - `GET/PUT /api/cys/directivo/alumnos/:inscripcionId`.
-- `GET /api/cys/directivo/etapas/:periodoId` y `GET /api/cys/directivo/revision/:cursoId/:periodoId`.
+- `GET /api/cys/directivo/etapas/:periodoId`, `GET /api/cys/directivo/progreso/:periodoId` y `GET /api/cys/directivo/revision/:cursoId/:periodoId`.
 - `POST /api/cys/directivo/boletines/:inscripcionId/visar` y `/retirar-visado`.
 - `GET /api/cys/directivo/boletines/:inscripcionId/instantanea`.
 - Rutas del constructor curricular `/api/cys/directivo/configuracion/*`.
@@ -244,7 +244,9 @@ Cada operación revalida dentro de la transacción que el curso posea escala (`r
 
 ## Etapas y visado de boletines
 
-`GET /api/cys/directivo/etapas/:periodoId` devuelve, para cada curso con escala, `etapa`, `revision`, `totalBoletines` y `visados`. Las etapas son `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF`. Son una proyección del servidor: el estado persistido de control sigue siendo `BORRADOR_DOCENTE` o `CONTROL_DIRECTIVO`. Cursos sin escala son excluidos de esta proyección.
+`GET /api/cys/directivo/etapas/:periodoId` devuelve, para cada curso con escala, `cursoNombre`, `etapa`, `revision`, `totalBoletines`, `visados`, `inscripcionesEvaluables`, `cursadasPendientes` y el resumen `tokenDocente` vigente (o `null`). Las etapas son `PENDIENTE_CONFIGURACION`, `PENDIENTE_EMISION`, `CARGA_DOCENTE`, `CARGA_PAUSADA`, `REVISION_DIRECTIVA` y `LISTO_PARA_PDF`. Son una proyección del servidor: el estado persistido de control sigue siendo `BORRADOR_DOCENTE` o `CONTROL_DIRECTIVO`. Cursos sin escala son excluidos de esta proyección.
+
+`GET /api/cys/directivo/progreso/:periodoId` requiere sesión institucional (`users`), responde con `Cache-Control: no-store` y calcula en una única transacción SQLite el avance académico por curso con escala (`totalAlumnos`, `alumnosCompletos`, `alumnosEnProgreso`, `alumnosSinIniciar` y `porcentaje`), considerando materias académicas, materias de conducta (criterios completos sin exigir calificación general) y cierres de período (`cierres_periodo_alumno`). La migración `1792700000_added_gradebook_progress_indexes.js` indexa `evaluaciones_materia(periodo_id, inscripcion_id)`, `evaluaciones_criterios(evaluacion_materia_id)` y `cierres_periodo_alumno(periodo_id, inscripcion_id)` para evitar descargas masivas y consultas secuenciales en el cliente.
 
 `GET /api/cys/directivo/revision/:cursoId/:periodoId` devuelve desde una transacción la instancia, su revisión, el conteo y la lista de boletines con `estado`, `revisionContenido`, fecha y usuario de visado. `alumnosSinIncorporar` informa matrículas evaluables ausentes de la entrega, incluidas bajas dentro del rango confirmado. Los boletines históricos se migran como `PENDIENTE_REVISION`; ningún registro se visa por inferencia.
 

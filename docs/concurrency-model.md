@@ -40,10 +40,11 @@ No se permite construir una instantánea editable combinando consultas independi
 
 ## Sincronización en el frontend
 
-PocketBase Realtime publica cambios de `instancias_carga_boletin`. El store de concurrencia de Zustand conserva la última versión observada por curso y período y un contador de invalidación por período.
+PocketBase Realtime publica cambios de `instancias_carga_boletin` y `tokens_acceso_docente`. El store de concurrencia de Zustand conserva la última versión observada por curso y período y un contador de invalidación por período (`periodSequences`), mientras que `useGradebookDashboardStore` conserva por `periodoId` la última proyección SWR del tablero (`etapas` y `progresoByCurso`) con control secuencial monotónico (`latestRequestSeq`) para descartar respuestas HTTP fuera de orden.
 
-- El tablero de cursos vuelve a consultar sus resúmenes cuando cambia una instancia del período visible.
-- El tablero agrupa los eventos cercanos del mismo período antes de releer los resúmenes, con una espera máxima acotada. Conserva la tabla visible durante la consulta, serializa las lecturas y vuelve a consultar si recibió otro cambio mientras una lectura estaba en curso. La actualización manual y el cierre del gestor de enlaces solicitan una lectura inmediata.
+- El tablero de cursos vuelve a consultar sus etapas y progreso agregado (`/api/cys/directivo/etapas/:periodoId` y `/api/cys/directivo/progreso/:periodoId`) cuando cambia una instancia o enlace del período visible.
+- Al volver desde un curso o reabrir un período ya visitado, el tablero renderiza inmediatamente el último snapshot cacheado y revalida silenciosamente en segundo plano. En frío (sin caché previo), muestra la tabla apenas responde `/etapas/:periodoId` y mantiene un placeholder de altura fija en la columna de llenado hasta que responde `/progreso/:periodoId`.
+- Además de Realtime (con agrupación acotada de eventos cercanos), el tablero revalida al recuperar foco o visibilidad de la pestaña (`focus` / `visibilitychange`), al cerrar el gestor de enlaces o confirmación de cursada y mediante la recarga manual. La lectura conserva la tabla visible durante la actualización y serializa solicitudes en vuelo.
 - La planilla adopta la nueva revisión y recalcula el resumen de alumnos.
 - Si el alumno visible no tiene cambios locales, el detalle se vuelve a leer.
 - Si existe una materia en edición o cambios locales, se marca conflicto y se bloquea el guardado. La interfaz conserva el borrador local hasta que la persona decide cargar la versión actual.

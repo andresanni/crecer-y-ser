@@ -37,18 +37,19 @@ import { boletinService } from '../services/boletin.service';
 import { useAppStore } from '../../../store/appStore';
 import { getGradeColorConfig } from '../../alumnos/utils/gradeColors';
 import { GestorEnlacesModal } from './GestorEnlacesModal';
-import type {
-  Periodo,
-  MonitoreoInstitucionalData,
-} from '../models/boletin.model';
-import type { Curso } from '../../inscripciones/models/inscripcion.model';
+import type { CursoMonitoreoResumen } from '../models/boletin.model';
 import { useGradebookRealtime } from '../hooks/useGradebookRealtime';
 import { useGradebookConcurrencyStore } from '../store/gradebookConcurrencyStore';
+import {
+  buildMonitoreoCursos,
+  useGradebookDashboardStore,
+} from '../store/gradebookDashboardStore';
 
 const { Text } = Typography;
-type CursoMonitoreo = MonitoreoInstitucionalData['cursos'][number];
 const REALTIME_REFRESH_DELAY_MS = 1200;
 const REALTIME_REFRESH_MAX_WAIT_MS = 4000;
+const FOCUS_REVALIDATE_THROTTLE_MS = 1500;
+const EMPTY_PERIODOS: never[] = [];
 
 interface CargaNotasDashboardPageProps {
   periodoId: string;
@@ -64,40 +65,56 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
   const { cicloActual } = useAppStore();
   useGradebookRealtime();
 
+  const cachedCursos = useGradebookDashboardStore((state) => state.cursos);
+  const cachedPeriodos = useGradebookDashboardStore((state) => (
+    cicloActual?.id ? state.periodosByCiclo[cicloActual.id] : undefined
+  ));
+  const periodCache = useGradebookDashboardStore((state) => state.snapshotsByPeriodo[periodoId]);
+  const setCursos = useGradebookDashboardStore((state) => state.setCursos);
+  const setPeriodos = useGradebookDashboardStore((state) => state.setPeriodos);
+  const beginRefresh = useGradebookDashboardStore((state) => state.beginRefresh);
+  const receiveEtapas = useGradebookDashboardStore((state) => state.receiveEtapas);
+  const receiveProgreso = useGradebookDashboardStore((state) => state.receiveProgreso);
+  const markProgresoError = useGradebookDashboardStore((state) => state.markProgresoError);
+  const markSynced = useGradebookDashboardStore((state) => state.markSynced);
 
-  const [periodos, setPeriodos] = useState<Periodo[]>([]);
-  const [cursos, setCursos] = useState<Curso[]>([]);
-  const [data, setData] = useState<MonitoreoInstitucionalData>({
-    cursos: [],
-  });
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const cursos = cachedCursos || [];
+  const periodos = cachedPeriodos || EMPTY_PERIODOS;
+  const hasLoadedEtapas = Boolean(periodCache?.etapas);
+  const progresoError = Boolean(periodCache?.progresoError);
+
+  const dataCursos = useMemo(
+    () => buildMonitoreoCursos(periodCache?.etapas || null, periodCache?.progresoByCurso || null),
+    [periodCache?.etapas, periodCache?.progresoByCurso],
+  );
+
   const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'refreshing'>('refreshing');
   const [loadError, setLoadError] = useState(false);
   const refreshMonitoreo = useRef<(immediate?: boolean) => void>(() => undefined);
-
 
   const [pendingCourse, setPendingCourse] = useState<string | null>(null);
   const [scopeId, setScopeId] = useState<string | null>(null);
   const [gestorModalOpen, setGestorModalOpen] = useState<boolean>(false);
   const [selectedCursoForModal, setSelectedCursoForModal] = useState<string | null>(null);
 
-
   useEffect(() => {
     let active = true;
     const fetchInitData = async () => {
       try {
-        const cursosData = await boletinService.getCursos();
+        const [cursosData, periodosData] = await Promise.all([
+          boletinService.getCursos(),
+          cicloActual?.id ? boletinService.getPeriodosByCiclo(cicloActual.id) : Promise.resolve(null),
+        ]);
         if (!active) return;
         setCursos(cursosData);
-
-        if (cicloActual?.id) {
-          const periodosData = await boletinService.getPeriodosByCiclo(cicloActual.id);
-          if (!active) return;
-          setPeriodos(periodosData);
+        if (cicloActual?.id && periodosData) {
+          setPeriodos(cicloActual.id, periodosData);
         }
       } catch (err) {
         console.error(err);
-        message.error('Error al cargar cursos y períodos');
+        if (active) {
+          message.error('Error al cargar cursos y períodos');
+        }
       }
     };
 
@@ -105,8 +122,7 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
     return () => {
       active = false;
     };
-  }, [cicloActual?.id, message]);
-
+  }, [cicloActual?.id, message, setCursos, setPeriodos]);
 
   useEffect(() => {
     let active = true;
@@ -115,6 +131,7 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
     let immediateAfterFlight = false;
     let pendingSince = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastFocusRevalidateAt = 0;
 
     const run = async () => {
       if (timer) clearTimeout(timer);
@@ -122,17 +139,46 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
       pendingSince = 0;
       inFlight = true;
       setSyncStatus('refreshing');
+      const requestSeq = beginRefresh(periodoId);
+
+      const etapasTask = boletinService
+        .getEtapasPeriodo(periodoId)
+        .then((etapas) => {
+          if (!active) return false;
+          receiveEtapas(periodoId, requestSeq, etapas);
+          setLoadError(false);
+          return true;
+        })
+        .catch((err) => {
+          if (!active) return false;
+          console.error(err);
+          const hasCache = Boolean(useGradebookDashboardStore.getState().snapshotsByPeriodo[periodoId]?.etapas);
+          if (!hasCache) {
+            setLoadError(true);
+          }
+          message.error('Error al cargar el estado de los cursos');
+          return false;
+        });
+
+      const progresoTask = boletinService
+        .getProgresoPeriodo(periodoId)
+        .then((progreso) => {
+          if (!active) return false;
+          receiveProgreso(periodoId, requestSeq, progreso);
+          return true;
+        })
+        .catch((err) => {
+          if (!active) return false;
+          console.error(err);
+          markProgresoError(periodoId, requestSeq);
+          return false;
+        });
+
       try {
-        const res = await boletinService.getMonitoreoInstitucional(periodoId);
-        if (!active) return;
-        setData(res);
-        setHasLoaded(true);
-        setLoadError(false);
-      } catch (err) {
-        if (!active) return;
-        console.error(err);
-        setLoadError(true);
-        message.error('Error al cargar el estado de los cursos');
+        const [etapasOk, progresoOk] = await Promise.all([etapasTask, progresoTask]);
+        if (active && etapasOk && progresoOk) {
+          markSynced(periodoId, requestSeq);
+        }
       } finally {
         inFlight = false;
         if (active) {
@@ -168,28 +214,50 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
       timer = setTimeout(() => void run(), Math.min(REALTIME_REFRESH_DELAY_MS, Math.max(0, remaining)));
     };
 
+    const revalidateOnReturn = () => {
+      if (!active || document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      const lastSynced = useGradebookDashboardStore.getState().snapshotsByPeriodo[periodoId]?.lastSyncedAt || 0;
+      if (now - lastSynced < FOCUS_REVALIDATE_THROTTLE_MS) return;
+      if (now - lastFocusRevalidateAt < FOCUS_REVALIDATE_THROTTLE_MS) return;
+      lastFocusRevalidateAt = now;
+      schedule(true);
+    };
+
     refreshMonitoreo.current = schedule;
     const unsubscribe = useGradebookConcurrencyStore.subscribe((state, previous) => {
       if (state.periodSequences[periodoId] !== previous.periodSequences[periodoId]) {
-        schedule();
+        schedule(false);
       }
     });
+    window.addEventListener('focus', revalidateOnReturn);
+    document.addEventListener('visibilitychange', revalidateOnReturn);
     void run();
 
     return () => {
       active = false;
       unsubscribe();
+      window.removeEventListener('focus', revalidateOnReturn);
+      document.removeEventListener('visibilitychange', revalidateOnReturn);
       if (timer) clearTimeout(timer);
       refreshMonitoreo.current = () => undefined;
     };
-  }, [periodoId, message]);
+  }, [
+    beginRefresh,
+    markProgresoError,
+    markSynced,
+    message,
+    periodoId,
+    receiveEtapas,
+    receiveProgreso,
+  ]);
 
   const selectedPeriodo = useMemo(
     () => periodos.find((periodo) => periodo.id === periodoId),
     [periodoId, periodos],
   );
 
-  const columns: ColumnsType<CursoMonitoreo> = [
+  const columns: ColumnsType<CursoMonitoreoResumen> = [
     {
       title: 'GRADO',
       dataIndex: 'cursoNombre',
@@ -221,12 +289,42 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
       key: 'progreso',
       width: '23%',
       render: (_, cur) => {
+        if (!cur.progresoLoaded) {
+          return (
+            <div className={styles.progressCell}>
+              {!!cur.cursadasPendientes?.length && (
+                <Button size="small" onClick={() => setPendingCourse(cur.cursoId)}>
+                  {cur.cursadasPendientes.length} cursadas por confirmar
+                </Button>
+              )}
+              <div className={styles.progressMeta}>
+                <Text type="secondary" style={{ fontSize: 12.5 }}>
+                  {progresoError ? 'No se pudo calcular el progreso' : 'Actualizando progreso...'}
+                </Text>
+                <Text type="secondary" style={{ fontSize: 12.5 }}>
+                  —
+                </Text>
+              </div>
+              <Progress
+                percent={0}
+                showInfo={false}
+                size="small"
+                className={progresoError ? undefined : styles.progressSkeleton}
+              />
+            </div>
+          );
+        }
+
         const isCompleto = cur.estado === 'COMPLETO';
         const isEnProgreso = cur.estado === 'EN_PROGRESO';
         const isPausado = cur.estado === 'PAUSADO';
         return (
           <div className={styles.progressCell}>
-            {!!cur.cursadasPendientes?.length && <Button size="small" onClick={() => setPendingCourse(cur.cursoId)}>{cur.cursadasPendientes.length} cursadas por confirmar</Button>}
+            {!!cur.cursadasPendientes?.length && (
+              <Button size="small" onClick={() => setPendingCourse(cur.cursoId)}>
+                {cur.cursadasPendientes.length} cursadas por confirmar
+              </Button>
+            )}
             <div className={styles.progressMeta}>
               <Text strong style={{ fontSize: 12.5 }}>{cur.alumnosCompletos} de {cur.totalAlumnos} alumnos</Text>
               <Text strong style={{ fontSize: 12.5, color: isCompleto ? 'var(--cys-color-success-text)' : isEnProgreso || isPausado ? 'var(--cys-color-warning-text)' : 'var(--cys-color-text-description)' }}>
@@ -342,9 +440,11 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
     },
   ];
 
-
   return (
-    <SectionLayout title="Bimestres" icon={<TableOutlined />} actions={
+    <SectionLayout
+      title="Bimestres"
+      icon={<TableOutlined />}
+      actions={
         <Space size="middle" wrap>
           <Button icon={<ArrowLeftOutlined />} onClick={onBackToPeriodSelection}>
             Cambiar bimestre
@@ -372,8 +472,8 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
             </Badge>
           </Tooltip>
         </Space>
-      }>
-
+      }
+    >
       <div className={styles.periodBanner}>
         <div className={styles.periodIdentity}>
           <span className={styles.periodIconBox} aria-hidden="true">
@@ -390,18 +490,18 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         </div>
       </div>
 
-      {!hasLoaded && syncStatus === 'refreshing' ? (
+      {!hasLoadedEtapas && syncStatus === 'refreshing' ? (
         <Card style={{ textAlign: 'center', padding: 80, borderRadius: 16 }}>
-          <Spin size="large" description="Calculando estado de avance de la escuela..." />
+          <Spin size="large" description="Cargando estado de los cursos..." />
         </Card>
-      ) : !hasLoaded && loadError ? (
+      ) : !hasLoadedEtapas && loadError ? (
         <Alert
           type="error"
           showIcon
           title="No se pudo cargar el estado de los cursos"
           action={<Button onClick={() => refreshMonitoreo.current(true)}>Reintentar</Button>}
         />
-      ) : data.cursos.length === 0 ? (
+      ) : dataCursos.length === 0 ? (
         <Card className={ui.loadingPanel}>
           <Empty description="No hay grados para este bimestre." />
         </Card>
@@ -410,7 +510,7 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
           <Table
             className="students-table"
             columns={columns}
-            dataSource={data.cursos}
+            dataSource={dataCursos}
             rowKey="cursoId"
             pagination={false}
             tableLayout="fixed"
@@ -419,7 +519,6 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         </Card>
       )}
 
-      { }
       <GestorEnlacesModal
         open={gestorModalOpen}
         onClose={() => {
@@ -433,8 +532,15 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
       />
       <Modal open={Boolean(pendingCourse) && !scopeId} title="Cursadas por confirmar" onCancel={() => setPendingCourse(null)} footer={null}>
         <Alert type="warning" showIcon title="Confirmá los bimestres evaluables antes de nuevas entregas." />
-        <Table rowKey="inscripcionId" size="small" dataSource={data.cursos.find(course => course.cursoId === pendingCourse)?.cursadasPendientes || []}
-          columns={[{ title: 'Alumno', dataIndex: 'nombreCompleto' }, { title: 'Cursada', render: (_, row) => <Button onClick={() => setScopeId(row.inscripcionId)}>Confirmar</Button> }]} />
+        <Table
+          rowKey="inscripcionId"
+          size="small"
+          dataSource={dataCursos.find((course) => course.cursoId === pendingCourse)?.cursadasPendientes || []}
+          columns={[
+            { title: 'Alumno', dataIndex: 'nombreCompleto' },
+            { title: 'Cursada', render: (_, row) => <Button onClick={() => setScopeId(row.inscripcionId)}>Confirmar</Button> },
+          ]}
+        />
       </Modal>
       {scopeId && <CursadaModal key={scopeId} inscripcionId={scopeId} onClose={() => setScopeId(null)} onSuccess={() => refreshMonitoreo.current(true)} />}
     </SectionLayout>

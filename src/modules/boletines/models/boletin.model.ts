@@ -429,6 +429,34 @@ export type EtapaBoletinCurso =
   | 'REVISION_DIRECTIVA'
   | 'LISTO_PARA_PDF';
 
+export interface CursoEtapaDto {
+  cursoId: string;
+  cursoNombre: string;
+  inscripcionesEvaluables: string[];
+  cursadasPendientes: Array<{ inscripcionId: string; nombreCompleto: string }>;
+  etapa: EtapaBoletinCurso;
+  revision: number | null;
+  totalBoletines: number;
+  visados: number;
+  tokenDocente: {
+    id: string;
+    tokenPrefijo: string;
+    cursoId: string;
+    periodoId: string;
+    docenteNombre: string;
+    recuperable: boolean;
+  } | null;
+}
+
+export interface CursoProgresoDto {
+  cursoId: string;
+  totalAlumnos: number;
+  alumnosCompletos: number;
+  alumnosEnProgreso: number;
+  alumnosSinIniciar: number;
+  porcentaje: number;
+}
+
 export interface CursoMonitoreoResumen {
   cursadasPendientes?: Array<{ inscripcionId: string; nombreCompleto: string }>;
   cursoId: string;
@@ -439,6 +467,7 @@ export interface CursoMonitoreoResumen {
   alumnosEnProgreso: number;
   alumnosSinIniciar: number;
   porcentaje: number;
+  progresoLoaded: boolean;
   estado: EstadoMonitoreoCurso;
   etapa: EtapaBoletinCurso;
   visados: number;

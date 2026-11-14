@@ -45,6 +45,7 @@ test -f "$stage_dir/1792440100_updated_teacher_reports_templates_catalog.js"
 test -f "$stage_dir/1792440200_multi_course_teacher_report_links.js"
 test -f "$stage_dir/1792500000_added_kindergarten_level_and_courses.js"
 test -f "$stage_dir/1792600000_removed_pdf_emissions_storage.js"
+test -f "$stage_dir/1792700000_added_gradebook_progress_indexes.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -148,6 +149,7 @@ install -m 0644 "$stage_dir/1792440100_updated_teacher_reports_templates_catalog
 install -m 0644 "$stage_dir/1792440200_multi_course_teacher_report_links.js" /root/pb/pb_migrations/1792440200_multi_course_teacher_report_links.js
 install -m 0644 "$stage_dir/1792500000_added_kindergarten_level_and_courses.js" /root/pb/pb_migrations/1792500000_added_kindergarten_level_and_courses.js
 install -m 0644 "$stage_dir/1792600000_removed_pdf_emissions_storage.js" /root/pb/pb_migrations/1792600000_removed_pdf_emissions_storage.js
+install -m 0644 "$stage_dir/1792700000_added_gradebook_progress_indexes.js" /root/pb/pb_migrations/1792700000_added_gradebook_progress_indexes.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 
@@ -167,6 +169,8 @@ status_code="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api
 test "$status_code" = "401"
 stage_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/cys/directivo/etapas/aaaaaaaaaaaaaaa)"
 test "$stage_status" = "401"
+progress_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/cys/directivo/progreso/aaaaaaaaaaaaaaa)"
+test "$progress_status" = "401"
 review_status="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/api/cys/directivo/revision/aaaaaaaaaaaaaaa/bbbbbbbbbbbbbbb)"
 test "$review_status" = "401"
 curriculum_status="$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE http://127.0.0.1:8090/api/cys/directivo/configuracion/materias/aaaaaaaaaaaaaaa)"
