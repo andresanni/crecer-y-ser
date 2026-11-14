@@ -628,15 +628,19 @@ function materialDto(dao, record) {
   }
 }
 
+function isConductSubjectName(name) {
+  var normalized = String(name || "").trim().toUpperCase()
+  return (
+    normalized.indexOf("TRABAJO EN EL AULA") !== -1 ||
+    normalized.indexOf("TRABAJO PERSONAL") !== -1 ||
+    normalized.indexOf("CONVIVENCIA") !== -1 ||
+    normalized.indexOf("CONDUCTA") !== -1
+  )
+}
+
 function isConductSubject(dao, courseMaterial) {
   var subject = requireRecord(dao, "materias", courseMaterial.getString("materia_id"))
-  var name = subject.getString("nombre").trim().toUpperCase()
-  return (
-    name.indexOf("TRABAJO EN EL AULA") !== -1 ||
-    name.indexOf("TRABAJO PERSONAL") !== -1 ||
-    name.indexOf("CONVIVENCIA") !== -1 ||
-    name.indexOf("CONDUCTA") !== -1
-  )
+  return isConductSubjectName(subject.getString("nombre"))
 }
 
 function studentReadyForApproval(dao, workflow, enrollment) {
@@ -770,19 +774,24 @@ function configurationReady(dao, course, period) {
   return materials.every((material) => Object.keys(criteriaMap(dao, material.getId())).length === 5)
 }
 
+function gradebookCourses(dao) {
+  var courses = findByFilter(dao, "cursos", "id != ''", "orden,nombre", {})
+    .filter((course) => isGradebookCourse(dao, course))
+  courses.sort((a, b) => {
+    var orderA = a.getInt("orden") || 0
+    var orderB = b.getInt("orden") || 0
+    if (orderA !== orderB) return orderA - orderB
+    return a.getString("nombre").localeCompare(b.getString("nombre"))
+  })
+  return courses
+}
+
 function staffStages(c) {
   noStore(c)
   var response
   $app.dao().runInTransaction((txDao) => {
     var period = requireRecord(txDao, "periodos", c.pathParam("periodoId"))
-    var courses = findByFilter(txDao, "cursos", "id != ''", "orden,nombre", {})
-      .filter((course) => isGradebookCourse(txDao, course))
-    courses.sort((a, b) => {
-      var orderA = a.getInt("orden") || 0
-      var orderB = b.getInt("orden") || 0
-      if (orderA !== orderB) return orderA - orderB
-      return a.getString("nombre").localeCompare(b.getString("nombre"))
-    })
+    var courses = gradebookCourses(txDao)
     response = courses.map((course) => {
       var workflow = findWorkflow(txDao, course.getId(), period.getId())
       var token = findFirstByFilter(
@@ -813,16 +822,170 @@ function staffStages(c) {
       }
       return {
         cursoId: course.getId(),
+        cursoNombre: course.getString("nombre"),
         inscripcionesEvaluables: courseEnrollments(txDao, course.getId(), period.getString("ciclo_id")).filter((enrollment) => enrollmentParticipates(enrollment, period.getInt("numero_periodo"))).map((enrollment) => enrollment.getId()),
         cursadasPendientes: pendingEnrollmentScopes(txDao, { getString: (field) => field === "curso_id" ? course.getId() : period.getId() }),
         etapa: stage,
         revision: workflow ? workflow.getInt("revision") : null,
         totalBoletines: approvals.length,
-        visados: approvedCount
+        visados: approvedCount,
+        tokenDocente: token ? Object.assign(tokenDto(token), { tokenPrefijo: token.getString("token_prefijo") }) : null
       }
     })
   })
   return c.json(200, { cursos: response })
+}
+
+function staffProgress(c) {
+  noStore(c)
+  var periodIdParam = c.pathParam("periodoId")
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    var period = requireRecord(txDao, "periodos", periodIdParam)
+    var cycleId = period.getString("ciclo_id")
+    var periodId = period.getId()
+    var periodNumber = period.getInt("numero_periodo")
+    var courses = gradebookCourses(txDao)
+
+    var materialRows = arrayOf(new DynamicModel({
+      id: "",
+      curso_id: "",
+      materia_nombre: ""
+    }))
+    txDao.db().newQuery(
+      "SELECT cm.id AS id, cm.curso_id AS curso_id, COALESCE(m.nombre, '') AS materia_nombre " +
+      "FROM curso_materias cm " +
+      "LEFT JOIN materias m ON m.id = cm.materia_id " +
+      "WHERE cm.ciclo_id = {:cycleId}"
+    ).bind({ cycleId: cycleId }).all(materialRows)
+
+    var courseMaterialsMap = {}
+    var conductMaterialMap = {}
+    materialRows.forEach((row) => {
+      if (!courseMaterialsMap[row.curso_id]) {
+        courseMaterialsMap[row.curso_id] = []
+      }
+      courseMaterialsMap[row.curso_id].push(row.id)
+      conductMaterialMap[row.id] = isConductSubjectName(row.materia_nombre)
+    })
+
+    var criteriaCountRows = arrayOf(new DynamicModel({
+      curso_materia_id: "",
+      total: 0
+    }))
+    txDao.db().newQuery(
+      "SELECT ce.curso_materia_id AS curso_materia_id, COUNT(*) AS total " +
+      "FROM criterios_evaluacion ce " +
+      "INNER JOIN curso_materias cm ON cm.id = ce.curso_materia_id " +
+      "WHERE cm.ciclo_id = {:cycleId} " +
+      "GROUP BY ce.curso_materia_id"
+    ).bind({ cycleId: cycleId }).all(criteriaCountRows)
+
+    var criteriaCountMap = {}
+    criteriaCountRows.forEach((row) => {
+      criteriaCountMap[row.curso_materia_id] = Number(row.total) || 0
+    })
+
+    var evalCriteriaRows = arrayOf(new DynamicModel({
+      evaluacion_materia_id: "",
+      total: 0
+    }))
+    txDao.db().newQuery(
+      "SELECT ec.evaluacion_materia_id AS evaluacion_materia_id, COUNT(DISTINCT ec.criterio_id) AS total " +
+      "FROM evaluaciones_criterios ec " +
+      "INNER JOIN evaluaciones_materia em ON em.id = ec.evaluacion_materia_id " +
+      "WHERE em.periodo_id = {:periodId} AND COALESCE(ec.valor_escala_id, '') != '' " +
+      "GROUP BY ec.evaluacion_materia_id"
+    ).bind({ periodId: periodId }).all(evalCriteriaRows)
+
+    var evalCriteriaCountMap = {}
+    evalCriteriaRows.forEach((row) => {
+      evalCriteriaCountMap[row.evaluacion_materia_id] = Number(row.total) || 0
+    })
+
+    var evalRows = arrayOf(new DynamicModel({
+      id: "",
+      inscripcion_id: "",
+      curso_materia_id: "",
+      calificacion_general_id: ""
+    }))
+    txDao.db().newQuery(
+      "SELECT id, inscripcion_id, curso_materia_id, COALESCE(calificacion_general_id, '') AS calificacion_general_id " +
+      "FROM evaluaciones_materia " +
+      "WHERE periodo_id = {:periodId}"
+    ).bind({ periodId: periodId }).all(evalRows)
+
+    var completeByEnrollment = {}
+    evalRows.forEach((row) => {
+      var totalCriteria = criteriaCountMap[row.curso_materia_id] || 0
+      var evaluatedCriteria = evalCriteriaCountMap[row.id] || 0
+      var hasAllCriteria = totalCriteria === 0 || evaluatedCriteria >= totalCriteria
+      var isConduct = Boolean(conductMaterialMap[row.curso_materia_id])
+      var complete = isConduct ? hasAllCriteria : (Boolean(row.calificacion_general_id) && hasAllCriteria)
+      if (!completeByEnrollment[row.inscripcion_id]) {
+        completeByEnrollment[row.inscripcion_id] = {}
+      }
+      completeByEnrollment[row.inscripcion_id][row.curso_materia_id] = complete
+    })
+
+    var closureRows = arrayOf(new DynamicModel({
+      inscripcion_id: ""
+    }))
+    txDao.db().newQuery(
+      "SELECT inscripcion_id " +
+      "FROM cierres_periodo_alumno " +
+      "WHERE periodo_id = {:periodId}"
+    ).bind({ periodId: periodId }).all(closureRows)
+
+    var closuresByEnrollment = {}
+    closureRows.forEach((row) => {
+      closuresByEnrollment[row.inscripcion_id] = true
+    })
+
+    response = courses.map((course) => {
+      var enrollments = courseEnrollments(txDao, course.getId(), cycleId)
+        .filter((enrollment) => enrollmentParticipates(enrollment, periodNumber))
+      var materialIds = courseMaterialsMap[course.getId()] || []
+      var totalMaterials = materialIds.length
+      var completeCount = 0
+      var inProgressCount = 0
+      var notStartedCount = 0
+
+      enrollments.forEach((enrollment) => {
+        var enrollmentId = enrollment.getId()
+        var enrollmentMaterials = completeByEnrollment[enrollmentId] || {}
+        var hasClosure = Boolean(closuresByEnrollment[enrollmentId])
+        var completeMaterials = 0
+
+        materialIds.forEach((materialId) => {
+          if (enrollmentMaterials[materialId]) {
+            completeMaterials += 1
+          }
+        })
+
+        if (totalMaterials > 0 && completeMaterials === totalMaterials && hasClosure) {
+          completeCount += 1
+        } else if (completeMaterials > 0 || hasClosure) {
+          inProgressCount += 1
+        } else {
+          notStartedCount += 1
+        }
+      })
+
+      var totalAlumnos = enrollments.length
+      var percentage = totalAlumnos > 0 ? Math.round((completeCount / totalAlumnos) * 100) : 0
+
+      return {
+        cursoId: course.getId(),
+        totalAlumnos: totalAlumnos,
+        alumnosCompletos: completeCount,
+        alumnosEnProgreso: inProgressCount,
+        alumnosSinIniciar: notStartedCount,
+        porcentaje: percentage
+      }
+    })
+  })
+  return c.json(200, { periodoId: periodIdParam, cursos: response })
 }
 
 function context(c) {
@@ -1551,6 +1714,7 @@ module.exports = {
   staffReview: staffReview,
   synchronizeReviewEnrollments: synchronizeReviewEnrollments,
   staffStages: staffStages,
+  staffProgress: staffProgress,
   approveStudent: approveStudent,
   revokeStudentApproval: revokeStudentApproval,
   submitPeriod: submitPeriod,

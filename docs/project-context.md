@@ -1,5 +1,12 @@
 # Contexto actual de Crecer y Ser
 
+## Optimización de carga y caché SWR en tablero de Bimestres — Noviembre de 2026
+
+Se optimizó el tablero directivo de seguimiento de boletines por bimestre (`MonitoreoProgresoPage.tsx`):
+- **Cálculo agregado en PocketBase e índices SQLite** (`pb_migrations/1792700000_added_gradebook_progress_indexes.js`, `pb_hooks/lib/teacherAccess.js`): Se incorporó `GET /api/cys/directivo/progreso/:periodoId` con `Cache-Control: no-store` para resolver en SQLite los conteos de criterios, evaluaciones y cierres por período en lugar de iterar ~20+ consultas secuenciales desde el navegador, y se enriqueció `GET /api/cys/directivo/etapas/:periodoId` con `cursoNombre` y el resumen de `tokenDocente`.
+- **Carga desacoplada en 2 etapas y SWR en Zustand** (`src/modules/boletines/store/gradebookDashboardStore.ts`): El tablero renderiza inmediatamente en frío apenas responde `/etapas/:periodoId` con placeholder de altura fija en `LLENADO` (`Actualizando progreso...`) hasta recibir `/progreso/:periodoId`, y conserva caché SWR por `periodoId` con `latestRequestSeq` para reingresos instantáneos desde `Abrir curso`.
+- **Revalidación en vivo sin F5**: Se preservó la suscripción Realtime (`instancias_carga_boletin` y `tokens_acceso_docente` en `useGradebookRealtime.ts`), el botón manual, el cierre de modales y se sumó revalidación silenciosa en segundo plano al recuperar foco/visibilidad de la pestaña.
+
 ## Arquitectura unificada de PDFs y generación stateless en memoria — Noviembre de 2026
 
 Se unificó la generación de PDFs en todo el sistema y se eliminó por completo el almacenamiento en disco de archivos PDF en el VPS de producción:

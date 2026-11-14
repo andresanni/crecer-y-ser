@@ -450,7 +450,9 @@
         }
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE INDEX `idx_cierres_periodo_alumno_periodo_inscripcion` ON `cierres_periodo_alumno` (`periodo_id`, `inscripcion_id`)"
+    ],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
     "createRule": null,
@@ -770,7 +772,9 @@
         }
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE INDEX `idx_evaluaciones_criterios_eval_materia` ON `evaluaciones_criterios` (`evaluacion_materia_id`)"
+    ],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
     "createRule": null,
@@ -859,7 +863,9 @@
         }
       }
     ],
-    "indexes": [],
+    "indexes": [
+      "CREATE INDEX `idx_evaluaciones_materia_periodo_inscripcion` ON `evaluaciones_materia` (`periodo_id`, `inscripcion_id`)"
+    ],
     "listRule": "@request.auth.id != \"\"",
     "viewRule": "@request.auth.id != \"\"",
     "createRule": null,

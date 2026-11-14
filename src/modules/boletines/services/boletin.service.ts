@@ -34,17 +34,12 @@ import {
   type ProgresoAlumnoDetalle,
   type ProgresoCursoResumen,
   type EstadoProgresoAlumno,
-  type EstadoMonitoreoCurso,
-  type EtapaBoletinCurso,
-  type CursoMonitoreoResumen,
-  type MonitoreoInstitucionalData,
-  type TokenAccesoDocente,
+  type CursoEtapaDto,
+  type CursoProgresoDto,
   type ProgresoConstructorCurso,
   esMateriaConducta,
 } from '../models/boletin.model';
 import type { AlumnoRecord } from '../../alumnos/models/alumno.model';
-import { extractGradeNumber, compareGrados } from '../../alumnos/utils/gradeColors';
-import { accesoDocenteService } from './accesoDocente.service';
 
 const COLLECTION_CURSOS = 'cursos';
 const COLLECTION_MATERIAS = 'materias';
@@ -619,200 +614,22 @@ export const boletinService = {
 
 
 
-  getMonitoreoInstitucional: async (
-    periodoId: string
-  ): Promise<MonitoreoInstitucionalData> => {
-    if (!periodoId) {
-      return {
-        cursos: [],
-      };
-    }
+  getEtapasPeriodo: async (periodoId: string): Promise<CursoEtapaDto[]> => {
+    if (!periodoId) return [];
+    const response = await pb.send<{ cursos: CursoEtapaDto[] }>(
+      `/api/cys/directivo/etapas/${encodeURIComponent(periodoId)}`,
+      { requestKey: null },
+    );
+    return response.cursos || [];
+  },
 
-    try {
-      const periodo = await boletinService.getPeriodoById(periodoId);
-
-      const cursosRecords = await pb.collection(COLLECTION_CURSOS).getFullList<CursoRecord>({
-        filter: 'escala_id != ""',
-        expand: 'nivel_id',
-        sort: 'orden,nombre',
-      });
-      const cursos = cursosRecords.map(cursoAdapter);
-
-
-      cursos.sort((a, b) => compareGrados(a.nombre, b.nombre));
-
-
-      const cmRecords = await pb.collection(COLLECTION_CURSO_MATERIAS).getFullList<CursoMateriaRecord>({
-        filter: `ciclo_id = "${periodo.cicloId}"`,
-        expand: 'materia_id',
-      });
-      const cursoMateriasMap: Record<string, CursoMateria[]> = {};
-      const cmMateriaNombreMap: Record<string, string> = {};
-      for (const cur of cursos) {
-        cursoMateriasMap[cur.id] = [];
-      }
-      for (const cm of cmRecords) {
-        cmMateriaNombreMap[cm.id] = cm.expand?.materia_id?.nombre || '';
-        if (cursoMateriasMap[cm.curso_id]) {
-          cursoMateriasMap[cm.curso_id].push(cursoMateriaAdapter(cm));
-        }
-      }
-
-
-      const critRecords = await pb.collection(COLLECTION_CRITERIOS).getFullList<CriterioEvaluacionRecord>();
-      const criteriosMap: Record<string, number> = {};
-      for (const cr of critRecords) {
-        criteriosMap[cr.curso_materia_id] = (criteriosMap[cr.curso_materia_id] || 0) + 1;
-      }
-
-
-      const [tokenRecords, stageResponse] = await Promise.all([
-        accesoDocenteService.list(undefined, periodoId),
-        pb.send<{ cursos: Array<{
-          cursoId: string;
-          inscripcionesEvaluables: string[];
-          cursadasPendientes: Array<{ inscripcionId: string; nombreCompleto: string }>;
-          etapa: EtapaBoletinCurso;
-          visados: number;
-          totalBoletines: number;
-        }> }>(`/api/cys/directivo/etapas/${periodoId}`, { requestKey: null }),
-      ]);
-      const cursoInscripcionesMap = Object.fromEntries(stageResponse.cursos.map(stage => [stage.cursoId, stage.inscripcionesEvaluables]));
-      const tokens = tokenRecords;
-      const stagesByCourse = new Map(stageResponse.cursos.map((stage) => [stage.cursoId, stage]));
-
-      const tokensCursoMap: Record<string, TokenAccesoDocente> = {};
-      for (const t of tokens) {
-        if (t.cursoId && !tokensCursoMap[t.cursoId]) {
-          tokensCursoMap[t.cursoId] = t;
-        }
-      }
-
-
-      const evalRecords = await pb.collection(COLLECTION_EVALUACIONES_MATERIA).getFullList<EvaluacionMateriaRecord>({
-        filter: `periodo_id = "${periodoId}"`,
-      });
-
-      const evalIds = evalRecords.map((e) => e.id);
-      const critEvaluadosMap: Record<string, number> = {};
-
-      if (evalIds.length > 0) {
-        const chunkSize = 40;
-        for (let i = 0; i < evalIds.length; i += chunkSize) {
-          const chunk = evalIds.slice(i, i + chunkSize);
-          const idFilter = chunk.map((id) => `evaluacion_materia_id = "${id}"`).join(' || ');
-          const evalCritRecords = await pb.collection(COLLECTION_EVALUACIONES_CRITERIOS).getFullList<EvaluacionCriterioRecord>({
-            filter: idFilter,
-          });
-          for (const ec of evalCritRecords) {
-            critEvaluadosMap[ec.evaluacion_materia_id] = (critEvaluadosMap[ec.evaluacion_materia_id] || 0) + 1;
-          }
-        }
-      }
-
-      const evalAlumnoMateriaMap: Record<string, Record<string, boolean>> = {};
-      for (const e of evalRecords) {
-        if (!evalAlumnoMateriaMap[e.inscripcion_id]) {
-          evalAlumnoMateriaMap[e.inscripcion_id] = {};
-        }
-        const totalCrits = criteriosMap[e.curso_materia_id] || 0;
-        const evaluados = critEvaluadosMap[e.id] || 0;
-        const matNombre = cmMateriaNombreMap[e.curso_materia_id];
-        const esConducta = esMateriaConducta(matNombre);
-        const hasCalGral = Boolean(e.calificacion_general_id);
-        const hasAllCrits = totalCrits === 0 || evaluados >= totalCrits;
-        evalAlumnoMateriaMap[e.inscripcion_id][e.curso_materia_id] = esConducta
-          ? hasAllCrits
-          : (hasCalGral && hasAllCrits);
-      }
-
-
-      const cierreRecords = await pb.collection(COLLECTION_CIERRES_PERIODO).getFullList<CierrePeriodoAlumnoRecord>({
-        filter: `periodo_id = "${periodoId}"`,
-      });
-      const cierresMap: Record<string, boolean> = {};
-      for (const c of cierreRecords) {
-        cierresMap[c.inscripcion_id] = true;
-      }
-
-
-      const cursosResumen: CursoMonitoreoResumen[] = [];
-
-      for (const cur of cursos) {
-        const inscIds = cursoInscripcionesMap[cur.id] || [];
-        const totalAlumnosCurso = inscIds.length;
-        const materiasCurso = cursoMateriasMap[cur.id] || [];
-        const totalMateriasCurso = materiasCurso.length;
-        const tokenGeneral = tokensCursoMap[cur.id];
-        const stage = stagesByCourse.get(cur.id);
-        if (!stage) throw new Error(`Falta la etapa del curso ${cur.id}`);
-        const entregado = stage.etapa === 'REVISION_DIRECTIVA' || stage.etapa === 'LISTO_PARA_PDF';
-
-        let alumnosCompletosCurso = 0;
-        let alumnosEnProgresoCurso = 0;
-        let alumnosSinIniciarCurso = 0;
-
-        for (const inscId of inscIds) {
-          const aluMats = evalAlumnoMateriaMap[inscId] || {};
-          const tieneAsistencia = Boolean(cierresMap[inscId]);
-
-          let matsCompletas = 0;
-          for (const cm of materiasCurso) {
-            if (aluMats[cm.id]) {
-              matsCompletas++;
-            }
-          }
-
-          if (totalMateriasCurso > 0 && matsCompletas === totalMateriasCurso && tieneAsistencia) {
-            alumnosCompletosCurso++;
-          } else if (matsCompletas > 0 || tieneAsistencia) {
-            alumnosEnProgresoCurso++;
-          } else {
-            alumnosSinIniciarCurso++;
-          }
-        }
-
-        const porcentajeCurso = totalAlumnosCurso > 0
-          ? Math.round((alumnosCompletosCurso / totalAlumnosCurso) * 100)
-          : 0;
-
-        let estado: EstadoMonitoreoCurso = 'SIN_INICIAR';
-        if (entregado) {
-          estado = 'COMPLETO';
-        } else if (stage.etapa === 'CARGA_PAUSADA') {
-          estado = 'PAUSADO';
-        } else if (stage.etapa === 'CARGA_DOCENTE') {
-          estado = 'EN_PROGRESO';
-        } else if (stage.etapa === 'PENDIENTE_EMISION') {
-          estado = 'SIN_ENLACE';
-        }
-
-        cursosResumen.push({
-          cursoId: cur.id,
-          cursoNombre: cur.nombre,
-          gradoNumero: extractGradeNumber(cur.nombre),
-          totalAlumnos: totalAlumnosCurso,
-          alumnosCompletos: alumnosCompletosCurso,
-          alumnosEnProgreso: alumnosEnProgresoCurso,
-          alumnosSinIniciar: alumnosSinIniciarCurso,
-          porcentaje: porcentajeCurso,
-          estado,
-          etapa: stage.etapa,
-          cursadasPendientes: stage.cursadasPendientes,
-          visados: stage.visados,
-          totalBoletines: stage.totalBoletines,
-          entregado,
-          tokenDocente: tokenGeneral,
-        });
-      }
-
-      return {
-        cursos: cursosResumen,
-      };
-    } catch (err) {
-      console.error('[boletinService.getMonitoreoInstitucional] Error:', err);
-      throw err;
-    }
+  getProgresoPeriodo: async (periodoId: string): Promise<CursoProgresoDto[]> => {
+    if (!periodoId) return [];
+    const response = await pb.send<{ periodoId: string; cursos: CursoProgresoDto[] }>(
+      `/api/cys/directivo/progreso/${encodeURIComponent(periodoId)}`,
+      { requestKey: null },
+    );
+    return response.cursos || [];
   },
   getProgresoConstructorCursos: async (cicloId: string): Promise<Record<string, ProgresoConstructorCurso>> => {
     try {

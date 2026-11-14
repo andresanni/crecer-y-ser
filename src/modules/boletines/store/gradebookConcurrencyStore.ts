@@ -14,6 +14,7 @@ interface GradebookConcurrencyState {
   periodSequences: Record<string, number>;
   receiveWorkflow: (workflow: GradebookWorkflowVersion) => void;
   receiveDeletedWorkflow: (workflow: GradebookWorkflowVersion) => void;
+  bumpPeriodSequence: (periodoId: string) => void;
 }
 
 export const gradebookScopeKey = (cursoId: string, periodoId: string) => `${cursoId}:${periodoId}`;
@@ -53,6 +54,15 @@ export const useGradebookConcurrencyStore = create<GradebookConcurrencyState>((s
       periodSequences: {
         ...state.periodSequences,
         [workflow.periodoId]: (state.periodSequences[workflow.periodoId] || 0) + 1,
+      },
+    };
+  }),
+  bumpPeriodSequence: (periodoId) => set((state) => {
+    if (!periodoId) return state;
+    return {
+      periodSequences: {
+        ...state.periodSequences,
+        [periodoId]: (state.periodSequences[periodoId] || 0) + 1,
       },
     };
   }),

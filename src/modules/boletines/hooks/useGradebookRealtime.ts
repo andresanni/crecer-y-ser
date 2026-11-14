@@ -11,6 +11,10 @@ interface WorkflowRealtimeRecord extends RecordModel {
   revision: number;
 }
 
+interface TokenRealtimeRecord extends RecordModel {
+  periodo_id?: string;
+}
+
 const toWorkflowVersion = (record: WorkflowRealtimeRecord) => ({
   id: record.id,
   cursoId: record.curso_id,
@@ -22,9 +26,9 @@ const toWorkflowVersion = (record: WorkflowRealtimeRecord) => ({
 export const useGradebookRealtime = () => {
   useEffect(() => {
     let active = true;
-    let unsubscribe: (() => void) | undefined;
+    const unsubscribers: Array<() => void> = [];
     const subscribe = async () => {
-      const stop = await pb.collection('instancias_carga_boletin').subscribe<WorkflowRealtimeRecord>(
+      const stopWorkflows = await pb.collection('instancias_carga_boletin').subscribe<WorkflowRealtimeRecord>(
         '*',
         (event: RecordSubscription<WorkflowRealtimeRecord>) => {
           if (!active) return;
@@ -38,17 +42,35 @@ export const useGradebookRealtime = () => {
         },
       );
       if (!active) {
-        stop();
+        stopWorkflows();
         return;
       }
-      unsubscribe = stop;
+      unsubscribers.push(stopWorkflows);
+
+      if (pb.authStore.isValid) {
+        const stopTokens = await pb.collection('tokens_acceso_docente').subscribe<TokenRealtimeRecord>(
+          '*',
+          (event: RecordSubscription<TokenRealtimeRecord>) => {
+            if (!active) return;
+            const periodoId = event.record.periodo_id;
+            if (periodoId) {
+              useGradebookConcurrencyStore.getState().bumpPeriodSequence(periodoId);
+            }
+          },
+        );
+        if (!active) {
+          stopTokens();
+          return;
+        }
+        unsubscribers.push(stopTokens);
+      }
     };
     void subscribe().catch((error) => {
       if (active) console.error('No se pudo iniciar la sincronización de boletines.', error);
     });
     return () => {
       active = false;
-      unsubscribe?.();
+      unsubscribers.forEach((stop) => stop());
     };
   }, []);
 };
