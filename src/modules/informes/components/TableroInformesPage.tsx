@@ -38,16 +38,22 @@ import {
   formatMateriaNombreUI,
   TIPOS_INFORME_META,
   type CeldaEtapaInforme,
-  type EtapasInformeData,
   type TipoInforme,
 } from '../models/informe.model';
 import { informesService } from '../services/informes.service';
 import { useInformesRealtime } from '../hooks/useInformesRealtime';
+import {
+  buildInformesDashboardKey,
+  useInformesDashboardStore,
+} from '../store/informesDashboardStore';
 import { GestorEnlacesInformesModal } from './GestorEnlacesInformesModal';
 import { EditarDocenteInformeModal } from './EditarDocenteInformeModal';
 import styles from './TableroInformesPage.module.css';
 
 const { Text } = Typography;
+const REALTIME_REFRESH_DELAY_MS = 400;
+const REALTIME_REFRESH_MAX_WAIT_MS = 1500;
+const FOCUS_REVALIDATE_THROTTLE_MS = 5000;
 
 interface TableroInformesPageProps {
   tipoInforme: TipoInforme;
@@ -71,11 +77,32 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
   const { cicloActual } = useAppStore();
   const meta = TIPOS_INFORME_META[tipoInforme];
 
-  const [data, setData] = useState<EtapasInformeData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const cicloId = cicloActual?.id;
+  const cacheKey = cicloId ? buildInformesDashboardKey(cicloId, tipoInforme) : null;
+  const snapshot = useInformesDashboardStore((state) => (
+    cacheKey ? state.snapshotsByKey[cacheKey] : undefined
+  ));
+  const beginRefresh = useInformesDashboardStore((state) => state.beginRefresh);
+  const receiveEtapas = useInformesDashboardStore((state) => state.receiveEtapas);
+  const setSelectedMateria = useInformesDashboardStore((state) => state.setSelectedMateria);
 
-  const [selectedMateriaId, setSelectedMateriaId] = useState<string | null>(null);
+  const data = snapshot?.etapas ?? null;
+  const selectedMateriaId = useMemo(() => {
+    if (!data) return snapshot?.selectedMateriaId ?? null;
+    if (
+      snapshot?.selectedMateriaId &&
+      data.materiasEspeciales.some((m) => m.id === snapshot.selectedMateriaId)
+    ) {
+      return snapshot.selectedMateriaId;
+    }
+    return data.materiasEspeciales[0]?.id ?? null;
+  }, [data, snapshot?.selectedMateriaId]);
+
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'pending' | 'refreshing'>(() => (
+    !cicloId || data ? 'idle' : 'refreshing'
+  ));
+  const effectiveSyncStatus = cicloId ? syncStatus : 'idle';
+  const [loadError, setLoadError] = useState(false);
 
   const [gestorOpen, setGestorOpen] = useState(false);
   const [modalCursoId, setModalCursoId] = useState<string | null>(null);
@@ -85,71 +112,106 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
   const [pendingCourseId, setPendingCourseId] = useState<string | null>(null);
   const [scopeInscripcionId, setScopeInscripcionId] = useState<string | null>(null);
 
-  const cicloId = cicloActual?.id;
-  const refreshRef = useRef<() => void>(() => undefined);
-
-  const fetchEtapas = useCallback(async () => {
-    if (!cicloId) return;
-    setLoading(true);
-    try {
-      const res = await informesService.getEtapas(cicloId, tipoInforme);
-      setData(res);
-      setLoadError(false);
-      setSelectedMateriaId((prev) => (
-        prev && res.materiasEspeciales.some((m) => m.id === prev)
-          ? prev
-          : res.materiasEspeciales[0]?.id ?? null
-      ));
-    } catch (err) {
-      console.error(err);
-      setLoadError(true);
-      message.error('No se pudo cargar el estado de los informes');
-    } finally {
-      setLoading(false);
-    }
-  }, [cicloId, message, tipoInforme]);
+  const refreshDashboard = useRef<(immediate?: boolean) => void>(() => undefined);
 
   useEffect(() => {
-    refreshRef.current = () => {
-      void fetchEtapas();
-    };
-  }, [fetchEtapas]);
+    if (!cicloId || !cacheKey) return;
 
-  useEffect(() => {
-    if (!cicloId) return;
     let active = true;
-    const loadInitial = async () => {
-      setLoading(true);
+    let inFlight = false;
+    let dirty = false;
+    let immediateAfterFlight = false;
+    let pendingSince = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let lastFocusRevalidateAt = 0;
+
+    const run = async () => {
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      pendingSince = 0;
+      inFlight = true;
+      setSyncStatus('refreshing');
+      const requestSeq = beginRefresh(cacheKey);
+
       try {
         const res = await informesService.getEtapas(cicloId, tipoInforme);
         if (!active) return;
-        setData(res);
+        receiveEtapas(cacheKey, requestSeq, res);
         setLoadError(false);
-        setSelectedMateriaId((prev) => (
-          prev && res.materiasEspeciales.some((m) => m.id === prev)
-            ? prev
-            : res.materiasEspeciales[0]?.id ?? null
-        ));
       } catch (err) {
         if (!active) return;
         console.error(err);
-        setLoadError(true);
+        const hasCache = Boolean(
+          useInformesDashboardStore.getState().snapshotsByKey[cacheKey]?.etapas,
+        );
+        if (!hasCache) {
+          setLoadError(true);
+        }
         message.error('No se pudo cargar el estado de los informes');
       } finally {
-        if (active) setLoading(false);
+        inFlight = false;
+        if (active) {
+          if (dirty) {
+            const immediate = immediateAfterFlight;
+            dirty = false;
+            immediateAfterFlight = false;
+            schedule(immediate);
+          } else {
+            setSyncStatus('idle');
+          }
+        }
       }
     };
-    void loadInitial();
+
+    const schedule = (immediate = false) => {
+      if (!active) return;
+      if (inFlight) {
+        dirty = true;
+        immediateAfterFlight ||= immediate;
+        if (!pendingSince) pendingSince = Date.now();
+        return;
+      }
+      if (timer) clearTimeout(timer);
+      timer = undefined;
+      if (immediate) {
+        void run();
+        return;
+      }
+      if (!pendingSince) pendingSince = Date.now();
+      const remaining = REALTIME_REFRESH_MAX_WAIT_MS - (Date.now() - pendingSince);
+      setSyncStatus('pending');
+      timer = setTimeout(() => void run(), Math.min(REALTIME_REFRESH_DELAY_MS, Math.max(0, remaining)));
+    };
+
+    const revalidateOnReturn = () => {
+      if (!active || document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      const lastSynced = useInformesDashboardStore.getState().snapshotsByKey[cacheKey]?.lastSyncedAt || 0;
+      if (now - lastSynced < FOCUS_REVALIDATE_THROTTLE_MS) return;
+      if (now - lastFocusRevalidateAt < FOCUS_REVALIDATE_THROTTLE_MS) return;
+      lastFocusRevalidateAt = now;
+      schedule(true);
+    };
+
+    refreshDashboard.current = schedule;
+    window.addEventListener('focus', revalidateOnReturn);
+    document.addEventListener('visibilitychange', revalidateOnReturn);
+    void run();
+
     return () => {
       active = false;
+      window.removeEventListener('focus', revalidateOnReturn);
+      document.removeEventListener('visibilitychange', revalidateOnReturn);
+      if (timer) clearTimeout(timer);
+      refreshDashboard.current = () => undefined;
     };
-  }, [cicloId, message, tipoInforme]);
+  }, [beginRefresh, cacheKey, cicloId, message, receiveEtapas, tipoInforme]);
 
   const handleRealtimeChange = useCallback(() => {
-    refreshRef.current();
+    refreshDashboard.current(false);
   }, []);
 
-  useInformesRealtime(handleRealtimeChange);
+  useInformesRealtime(handleRealtimeChange, { debounceMs: 0, listenFocus: false });
 
   const cursosById = useMemo(
     () => new Map((data?.cursos || []).map((c) => [c.id, c])),
@@ -407,13 +469,13 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
           >
             Gestor de Enlaces Mágicos
           </Button>
-          <Tooltip title="Actualizar estado de los informes">
-            <Badge dot={false}>
+          <Tooltip title={effectiveSyncStatus === 'pending' ? 'Hay cambios pendientes · actualizar ahora' : 'Actualizar estado de los informes'}>
+            <Badge dot={effectiveSyncStatus === 'pending'}>
               <Button
                 icon={<ReloadOutlined />}
-                loading={loading}
-                onClick={() => void fetchEtapas()}
-                aria-label="Actualizar estado de los informes"
+                loading={effectiveSyncStatus === 'refreshing'}
+                onClick={() => refreshDashboard.current(true)}
+                aria-label={effectiveSyncStatus === 'pending' ? 'Actualizar ahora: hay cambios pendientes' : 'Actualizar estado de los informes'}
               />
             </Badge>
           </Tooltip>
@@ -447,7 +509,11 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
                   key={mat.id}
                   size="small"
                   type={selectedMateriaId === mat.id ? 'primary' : 'default'}
-                  onClick={() => setSelectedMateriaId(mat.id)}
+                  onClick={() => {
+                    if (cacheKey) {
+                      setSelectedMateria(cacheKey, mat.id);
+                    }
+                  }}
                 >
                   {formatMateriaNombreUI(mat.nombre)}
                 </Button>
@@ -457,7 +523,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
         </Card>
       )}
 
-      {!data && loading ? (
+      {!data && effectiveSyncStatus === 'refreshing' ? (
         <Card style={{ textAlign: 'center', padding: 80, borderRadius: 16 }}>
           <Spin size="large" description="Calculando estado de los informes..." />
         </Card>
@@ -466,7 +532,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
           type="error"
           showIcon
           title="No se pudo cargar el tablero de informes"
-          action={<Button onClick={() => void fetchEtapas()}>Reintentar</Button>}
+          action={<Button onClick={() => refreshDashboard.current(true)}>Reintentar</Button>}
         />
       ) : filteredRows.length === 0 ? (
         <Card className={ui.loadingPanel}>
@@ -497,7 +563,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
           celdas={data.celdas}
           activeCursoId={modalCursoId}
           activeMateriaId={modalMateriaId}
-          onChanged={() => void fetchEtapas()}
+          onChanged={() => refreshDashboard.current(true)}
         />
       )}
 
@@ -508,7 +574,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
         docenteApellidoInicial={editingTeacherCell?.docenteApellido || ''}
         expectedRevision={editingTeacherCell?.revision}
         onClose={() => setEditingTeacherCell(null)}
-        onSaved={() => void fetchEtapas()}
+        onSaved={() => refreshDashboard.current(true)}
       />
 
       <Modal
@@ -547,7 +613,7 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
           key={scopeInscripcionId}
           inscripcionId={scopeInscripcionId}
           onClose={() => setScopeInscripcionId(null)}
-          onSuccess={() => void fetchEtapas()}
+          onSuccess={() => refreshDashboard.current(true)}
         />
       )}
     </SectionLayout>

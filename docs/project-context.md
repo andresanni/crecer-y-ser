@@ -1,5 +1,12 @@
 # Contexto actual de Crecer y Ser
 
+## Optimización de carga, Realtime y caché SWR en tablero de Informes — Noviembre de 2026
+
+Se optimizó el tablero directivo de seguimiento de informes (`TableroInformesPage.tsx`, `pb_hooks/lib/teacherReports.js`):
+- **Eliminación de consultas N+1 y agregación SQLite en servidor (`staffStages`)**: `GET /api/cys/directivo/informes/etapas/:cicloId/:tipoInforme` precarga cursos, niveles, plantillas, ítems, instancias, enlaces, inscripciones del ciclo y alumnos con cursada pendiente, y calcula completitud y visados mediante agregación SQL en lote (`GROUP BY` sobre `respuestas_item_informe` unido a `evaluaciones_informe` e `items_plantilla_informe`, y lectura única de `visados_informe`).
+- **Control de tormenta Realtime (`useInformesRealtime.ts`)**: Se retiró `respuestas_item_informe` de las suscripciones Realtime del tablero y revisión (cada guardado docente ya actualiza `evaluaciones_informe` e `instancias_informe` en la misma transacción) y se añadió debounce/maxWait junto con serialización de lecturas pendientes (`inFlight` / `dirty` / `pending` dot) y throttle de revalidación al recuperar foco o visibilidad.
+- **Caché SWR en Zustand (`informesDashboardStore.ts`)**: El tablero conserva por `${cicloId}:${tipoInforme}` el último snapshot y la asignatura seleccionada (`selectedMateriaId`) con control secuencial monotónico (`latestRequestSeq`) para volver desde `Abrir informe` en 0 ms sin `<Spin>` bloqueante mientras revalida silenciosamente en segundo plano.
+
 ## Optimización de carga y caché SWR en tablero de Bimestres — Noviembre de 2026
 
 Se optimizó el tablero directivo de seguimiento de boletines por bimestre (`MonitoreoProgresoPage.tsx`):

@@ -1280,11 +1280,37 @@ function staffStages(c) {
   var response
   $app.dao().runInTransaction((txDao) => {
     var cycle = requireRecord(txDao, "ciclos_lectivos", c.pathParam("cicloId"))
+    var cycleId = cycle.getId()
     var tipoInforme = stringValue(c.pathParam("tipoInforme"), 30)
     var needSubject = requiresSpecialSubject(tipoInforme)
-    var courses = findByFilter(txDao, "cursos", "id != ''", "orden,nombre", {})
+    var cutoff = cutoffTermForReportType(tipoInforme)
+
+    var allCourses = findByFilter(txDao, "cursos", "id != ''", "orden,nombre", {})
+    var courseById = {}
+    allCourses.forEach((course) => {
+      courseById[course.getId()] = course
+    })
+
+    var allLevels = findByFilter(txDao, "niveles", "id != ''", "", {})
+    var levelById = {}
+    allLevels.forEach((level) => {
+      levelById[level.getId()] = level
+    })
+
+    var isPrimaryCourseCached = function (course) {
+      var levelId = course.getString("nivel_id")
+      if (levelId) {
+        var level = levelById[levelId]
+        return level ? /primar/i.test(level.getString("nombre")) : false
+      }
+      var name = (course.getString("nombre") || "").trim()
+      if (/sala/i.test(name)) return false
+      return /^[1-7]\.?\s*[°º]?$/.test(name) || /^([1-7])\.?\s*(?:[°º]|grado)?(?:\s|$)/i.test(name)
+    }
+
+    var courses = allCourses
     if (tipoInforme === "PRIMER_BIMESTRE" || tipoInforme === "PRIMER_CUATRIMESTRE" || tipoInforme === "CICLO_FINAL") {
-      courses = courses.filter((course) => isPrimaryCourse(txDao, course))
+      courses = courses.filter(isPrimaryCourseCached)
     }
     courses.sort((a, b) => {
       var orderA = a.getInt("orden") || 0
@@ -1294,16 +1320,232 @@ function staffStages(c) {
       if (gradeDiff !== 0) return gradeDiff
       return a.getString("nombre").localeCompare(b.getString("nombre"))
     })
+
     var specialSubjects = listSpecialSubjects(txDao)
+
+    var allWorkflows = findByFilter(txDao, "instancias_informe", "id != ''", "", {})
+    var workflowById = {}
+    var workflowByScope = {}
+    allWorkflows.forEach((wf) => {
+      workflowById[wf.getId()] = wf
+      if (wf.getString("ciclo_id") === cycleId && wf.getString("tipo_informe") === tipoInforme) {
+        var scopeKey = wf.getString("curso_id") + ":" + (wf.getString("materia_id") || "")
+        workflowByScope[scopeKey] = wf
+      }
+    })
 
     var allTokens = findByFilter(txDao, "tokens_acceso_informe", "id != ''", "", {})
     var tokenDtoByInstanciaId = {}
     allTokens.forEach((tokenRecord) => {
-      var wfList = tokenWorkflows(txDao, tokenRecord)
+      var ids = tokenInstanceIds(tokenRecord)
+      var wfList = []
+      ids.forEach((id) => {
+        var wf = workflowById[id]
+        if (wf && wf.getString("estado") === "BORRADOR_DOCENTE") {
+          wfList.push(wf)
+        }
+      })
       if (wfList.length === 0) return
+      wfList.sort((a, b) => {
+        var courseA = courseById[a.getString("curso_id")]
+        var courseB = courseById[b.getString("curso_id")]
+        var gradeDiff = (courseA ? courseGradeNumber(courseA) : 99) - (courseB ? courseGradeNumber(courseB) : 99)
+        if (gradeDiff !== 0) return gradeDiff
+        return a.getId().localeCompare(b.getId())
+      })
       wfList.forEach((wf) => {
         tokenDtoByInstanciaId[wf.getId()] = tokenDto(tokenRecord, wfList, wf)
       })
+    })
+
+    var allTemplates = findByFilter(txDao, "plantillas_informe", "id != ''", "codigo", {})
+    var fallbackStandardTemplate = null
+    allTemplates.forEach((tmpl) => {
+      if (!fallbackStandardTemplate && tmpl.getString("codigo") === "CONDUCTA_ESTANDAR_26") {
+        fallbackStandardTemplate = tmpl
+      }
+    })
+
+    var allTemplateItems = findByFilter(txDao, "items_plantilla_informe", "id != ''", "orden_visual,id", {})
+    var itemsByTemplateId = {}
+    allTemplateItems.forEach((item) => {
+      var tmplId = item.getString("plantilla_id")
+      if (!itemsByTemplateId[tmplId]) {
+        itemsByTemplateId[tmplId] = []
+      }
+      itemsByTemplateId[tmplId].push(item)
+    })
+
+    var templateMetaCache = {}
+    var getTemplateMeta = function (template, course) {
+      var cycleBand = courseGradeNumber(course) >= 4 ? "2" : "1"
+      var cacheKey = template.getId() + ":" + cycleBand
+      if (!templateMetaCache[cacheKey]) {
+        var tDto = templateDto(template, course)
+        templateMetaCache[cacheKey] = {
+          validItemScale: allowedScaleCodesMap(tDto.escalaItems),
+          requiereDesempenoGeneral: tDto.requiereDesempenoGeneral,
+          validGeneralScale: allowedScaleCodesMap(tDto.escalaDesempenoGeneral)
+        }
+      }
+      return templateMetaCache[cacheKey]
+    }
+
+    var resolveTemplateCached = function (tipo, course, materiaId) {
+      var grade = courseGradeNumber(course)
+      if (grade === 0) return null
+      if (tipo === "CICLO_FINAL") {
+        if (!materiaId) return null
+        var candidates = allTemplates.filter((tmpl) =>
+          tmpl.getString("tipo_informe") === "CICLO_FINAL" &&
+          tmpl.getString("materia_id") === materiaId &&
+          tmpl.getInt("grado_desde") <= grade &&
+          tmpl.getInt("grado_hasta") >= grade
+        )
+        if (candidates.length === 0) return null
+        candidates.sort((a, b) => {
+          var spanA = a.getInt("grado_hasta") - a.getInt("grado_desde")
+          var spanB = b.getInt("grado_hasta") - b.getInt("grado_desde")
+          if (spanA !== spanB) return spanA - spanB
+          return a.getString("codigo").localeCompare(b.getString("codigo"))
+        })
+        return candidates[0]
+      }
+      var matches = allTemplates.filter((tmpl) =>
+        tmpl.getString("tipo_informe") === tipo &&
+        tmpl.getInt("grado_desde") <= grade &&
+        tmpl.getInt("grado_hasta") >= grade
+      )
+      return matches.length > 0 ? matches[0] : fallbackStandardTemplate
+    }
+
+    var cycleEnrollments = findByFilter(
+      txDao,
+      "inscripciones",
+      "ciclo_id = {:cycleId}",
+      "numero_orden",
+      { cycleId: cycleId }
+    )
+    var hasPendingEnrollments = cycleEnrollments.some((enrollment) => enrollmentScope(enrollment).estado === "PENDIENTE")
+    var pendingStudentById = {}
+    if (hasPendingEnrollments) {
+      var pendingStudentRows = arrayOf(new DynamicModel({
+        id: "",
+        apellidos: "",
+        nombres: ""
+      }))
+      txDao.db().newQuery(
+        "SELECT DISTINCT a.id AS id, COALESCE(a.apellidos, '') AS apellidos, COALESCE(a.nombres, '') AS nombres " +
+        "FROM alumnos a " +
+        "INNER JOIN inscripciones i ON i.alumno_id = a.id " +
+        "WHERE i.ciclo_id = {:cycleId} " +
+        "AND COALESCE(NULLIF(i.cursada_estado, ''), 'PENDIENTE') = 'PENDIENTE'"
+      ).bind({ cycleId: cycleId }).all(pendingStudentRows)
+      pendingStudentRows.forEach((row) => {
+        pendingStudentById[row.id] = row
+      })
+    }
+
+    var evaluableByCourseId = {}
+    var evaluableIdsByCourseId = {}
+    var pendingScopesByCourseId = {}
+    cycleEnrollments.forEach((enrollment) => {
+      var cId = enrollment.getString("curso_id")
+      if (!evaluableByCourseId[cId]) {
+        evaluableByCourseId[cId] = []
+        evaluableIdsByCourseId[cId] = []
+        pendingScopesByCourseId[cId] = []
+      }
+      if (enrollmentParticipates(enrollment, cutoff)) {
+        evaluableByCourseId[cId].push(enrollment)
+        evaluableIdsByCourseId[cId].push(enrollment.getId())
+      }
+      if (enrollmentScope(enrollment).estado === "PENDIENTE") {
+        var studentId = enrollment.getString("alumno_id")
+        var student = pendingStudentById[studentId]
+        var apellidos = student ? student.apellidos : ""
+        var nombres = student ? student.nombres : ""
+        pendingScopesByCourseId[cId].push({
+          inscripcionId: enrollment.getId(),
+          alumnoId: studentId,
+          nombreCompleto: (apellidos + ", " + nombres).trim()
+        })
+      }
+    })
+
+    var evalRows = arrayOf(new DynamicModel({
+      evaluacion_id: "",
+      instancia_id: "",
+      inscripcion_id: "",
+      desempeno_general_valor: ""
+    }))
+    txDao.db().newQuery(
+      "SELECT ev.id AS evaluacion_id, ev.instancia_id AS instancia_id, ev.inscripcion_id AS inscripcion_id, " +
+      "COALESCE(ev.desempeno_general_valor, '') AS desempeno_general_valor " +
+      "FROM evaluaciones_informe ev " +
+      "INNER JOIN instancias_informe inst ON inst.id = ev.instancia_id " +
+      "WHERE inst.ciclo_id = {:cycleId} AND inst.tipo_informe = {:tipoInforme}"
+    ).bind({ cycleId: cycleId, tipoInforme: tipoInforme }).all(evalRows)
+    var evalByScope = {}
+    evalRows.forEach((row) => {
+      evalByScope[row.instancia_id + ":" + row.inscripcion_id] = row
+    })
+
+    var responseCountRows = arrayOf(new DynamicModel({
+      evaluacion_id: "",
+      plantilla_id: "",
+      valor_codigo: "",
+      total: 0
+    }))
+    txDao.db().newQuery(
+      "SELECT r.evaluacion_informe_id AS evaluacion_id, it.plantilla_id AS plantilla_id, " +
+      "r.valor_codigo AS valor_codigo, COUNT(*) AS total " +
+      "FROM respuestas_item_informe r " +
+      "INNER JOIN evaluaciones_informe ev ON ev.id = r.evaluacion_informe_id " +
+      "INNER JOIN instancias_informe inst ON inst.id = ev.instancia_id " +
+      "INNER JOIN items_plantilla_informe it ON it.id = r.item_id " +
+      "WHERE inst.ciclo_id = {:cycleId} AND inst.tipo_informe = {:tipoInforme} " +
+      "AND COALESCE(r.valor_codigo, '') != '' " +
+      "GROUP BY r.evaluacion_informe_id, it.plantilla_id, r.valor_codigo"
+    ).bind({ cycleId: cycleId, tipoInforme: tipoInforme }).all(responseCountRows)
+    var responseCountsByEvalId = {}
+    responseCountRows.forEach((row) => {
+      if (!responseCountsByEvalId[row.evaluacion_id]) {
+        responseCountsByEvalId[row.evaluacion_id] = []
+      }
+      responseCountsByEvalId[row.evaluacion_id].push({
+        plantillaId: row.plantilla_id,
+        valorCodigo: row.valor_codigo,
+        total: Number(row.total) || 0
+      })
+    })
+
+    var approvalRows = arrayOf(new DynamicModel({
+      instancia_id: "",
+      inscripcion_id: "",
+      estado: ""
+    }))
+    txDao.db().newQuery(
+      "SELECT v.instancia_id AS instancia_id, v.inscripcion_id AS inscripcion_id, COALESCE(v.estado, '') AS estado " +
+      "FROM visados_informe v " +
+      "INNER JOIN instancias_informe inst ON inst.id = v.instancia_id " +
+      "WHERE inst.ciclo_id = {:cycleId} AND inst.tipo_informe = {:tipoInforme}"
+    ).bind({ cycleId: cycleId, tipoInforme: tipoInforme }).all(approvalRows)
+    var approvalStatsByInstanciaId = {}
+    approvalRows.forEach((row) => {
+      if (!approvalStatsByInstanciaId[row.instancia_id]) {
+        approvalStatsByInstanciaId[row.instancia_id] = {
+          totalInformes: 0,
+          visados: 0,
+          includedMap: {}
+        }
+      }
+      var stats = approvalStatsByInstanciaId[row.instancia_id]
+      stats.totalInformes += 1
+      if (row.estado === "VISADO") {
+        stats.visados += 1
+      }
+      stats.includedMap[row.inscripcion_id] = true
     })
 
     var scopes = []
@@ -1319,22 +1561,42 @@ function staffStages(c) {
 
     var cells = scopes.map((scope) => {
       var course = scope.course
+      var courseId = course.getId()
       var materiaId = scope.subjectId
-      var template = resolveTemplate(txDao, tipoInforme, course, materiaId)
-      var items = template ? templateItems(txDao, template.getId()) : []
-      var workflow = findWorkflow(txDao, cycle.getId(), tipoInforme, course.getId(), materiaId)
+      var template = resolveTemplateCached(tipoInforme, course, materiaId)
+      var templateId = template ? template.getId() : null
+      var items = templateId ? (itemsByTemplateId[templateId] || []) : []
+      var workflow = workflowByScope[courseId + ":" + (materiaId || "")] || null
       var linkDto = workflow ? tokenDtoByInstanciaId[workflow.getId()] || null : null
 
-      var evaluable = evaluableEnrollmentsForScope(txDao, course.getId(), cycle.getId(), tipoInforme)
-      var pendingScopes = pendingEnrollmentScopesForCourse(txDao, course.getId(), cycle.getId())
+      var evaluable = evaluableByCourseId[courseId] || []
+      var evaluableIds = evaluableIdsByCourseId[courseId] || []
+      var pendingScopes = pendingScopesByCourseId[courseId] || []
       var stage = "PENDIENTE_CONFIGURACION"
-      var approvals = []
+      var totalInformes = 0
       var approvedCount = 0
       var completeStudentsCount = 0
 
       if (workflow && template && items.length > 0) {
+        var tMeta = getTemplateMeta(template, course)
+        var workflowId = workflow.getId()
         evaluable.forEach((enrollment) => {
-          if (studentEvaluationSnapshot(txDao, workflow, template, items, enrollment).completo) {
+          var ev = evalByScope[workflowId + ":" + enrollment.getId()]
+          if (!ev) return
+          var generalValid =
+            !tMeta.requiereDesempenoGeneral ||
+            Boolean(ev.desempeno_general_valor && tMeta.validGeneralScale[ev.desempeno_general_valor])
+          if (!generalValid) return
+          var countsForEval = responseCountsByEvalId[ev.evaluacion_id]
+          var answeredCount = 0
+          if (countsForEval) {
+            countsForEval.forEach((entry) => {
+              if (entry.plantillaId === templateId && tMeta.validItemScale[entry.valorCodigo]) {
+                answeredCount += entry.total
+              }
+            })
+          }
+          if (answeredCount >= items.length) {
             completeStudentsCount += 1
           }
         })
@@ -1347,26 +1609,19 @@ function staffStages(c) {
       } else if (workflow.getString("estado") === "BORRADOR_DOCENTE") {
         stage = linkDto ? "CARGA_DOCENTE" : "CARGA_PAUSADA"
       } else {
-        approvals = findByFilter(
-          txDao,
-          "visados_informe",
-          "instancia_id = {:instanciaId}",
-          "",
-          { instanciaId: workflow.getId() }
-        )
-        approvedCount = approvals.filter((approval) => approval.getString("estado") === "VISADO").length
-        stage =
-          approvals.length > 0 &&
-          approvedCount === approvals.length &&
-          missingReviewEnrollments(txDao, workflow, approvals).length === 0
-            ? "LISTO_PARA_PDF"
-            : "REVISION_DIRECTIVA"
+        var approvalStats = approvalStatsByInstanciaId[workflow.getId()]
+        totalInformes = approvalStats ? approvalStats.totalInformes : 0
+        approvedCount = approvalStats ? approvalStats.visados : 0
+        var hasMissing = totalInformes > 0 && evaluableIds.some((id) => !approvalStats.includedMap[id])
+        stage = totalInformes > 0 && approvedCount === totalInformes && !hasMissing
+          ? "LISTO_PARA_PDF"
+          : "REVISION_DIRECTIVA"
       }
 
       return {
-        cursoId: course.getId(),
+        cursoId: courseId,
         materiaId: materiaId || null,
-        plantillaId: template ? template.getId() : null,
+        plantillaId: templateId,
         plantillaCodigo: template ? template.getString("codigo") : null,
         totalItems: items.length,
         instanciaId: workflow ? workflow.getId() : null,
@@ -1375,9 +1630,9 @@ function staffStages(c) {
         docenteNombre: workflow ? workflow.getString("docente_nombre") : null,
         docenteApellido: workflow ? workflow.getString("docente_apellido") : null,
         enlace: linkDto,
-        inscripcionesEvaluables: evaluable.map((enrollment) => enrollment.getId()),
+        inscripcionesEvaluables: evaluableIds,
         alumnosCompletos: completeStudentsCount,
-        totalInformes: approvals.length,
+        totalInformes: totalInformes,
         visados: approvedCount,
         cursadasPendientes: pendingScopes
       }
@@ -1385,7 +1640,7 @@ function staffStages(c) {
 
     response = {
       ciclo: {
-        id: cycle.getId(),
+        id: cycleId,
         nombre: cycle.getString("nombre"),
         ano: cycle.getInt("ano")
       },
