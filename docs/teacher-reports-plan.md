@@ -199,13 +199,15 @@ erDiagram
 #### Paso 1.1: Migración de Esquema y Seed Inicial de Plantillas (Completado — 19 de octubre de 2026)
 1. Migración creada en `pb_migrations/1792440000_created_teacher_reports_collections_and_seed.js` con las colecciones del módulo (`plantillas_informe`, `items_plantilla_informe`, `instancias_informe`, `tokens_acceso_informe`, `evaluaciones_informe`, `respuestas_item_informe`, `visados_informe` y la inicial `emisiones_informe`), índices únicos y bloqueo total de escrituras directas (`createRule: null`, `updateRule: null`, `deleteRule: null`). Posteriormente, la persistencia en disco de PDFs y la colección `emisiones_informe` fueron desmanteladas de forma definitiva mediante la migración `1792600000_removed_pdf_emissions_storage.js`.
 
-#### Paso 1.2: Gateways HTTP en `pb_hooks` (Enlaces, Docente y Directivo) (Completado — 19 de octubre de 2026)
+#### Paso 1.2: Gateways HTTP en `pb_hooks` (Enlaces, Docente y Directivo) (Actualizado — Noviembre de 2026)
 1. Implementados `pb_hooks/lib/teacherReports.js` y `pb_hooks/teacher_reports.pb.js`, registrados en `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh`, e integrados con la sincronización e invalidación por cambios de cursada en `pb_hooks/lib/teacherAccess.js`.
+2. Optimizado `staffStages` (`GET /api/cys/directivo/informes/etapas/:cicloId/:tipoInforme`) mediante precarga de catálogos e inscripciones y agregación SQL en lote (`GROUP BY`) para eliminar el bucle N+1 por celda/alumno.
 
-#### Paso 1.3: Módulo Frontend `/app/informes` y Ruta Docente `/carga-informe` (Completado — 20 de octubre de 2026)
+#### Paso 1.3: Módulo Frontend `/app/informes` y Ruta Docente `/carga-informe` (Actualizado — Noviembre de 2026)
 1. Incorporados `/app/informes` en `MainLayout` y `App.tsx`, y `/carga-informe` (`CargaInformePublicaPage`) en el router público.
 2. Construido el módulo vertical `src/modules/informes` con selector de instancia, tablero institucional organizado permanentemente por Asignatura, modales de enlaces y docente, editor único compartido `VistaInformePorAlumno` y revisión institucional `RevisionInformePage`.
-3. Incorporada experiencia responsive móvil integral en `/carga-informe` y `VistaInformePorAlumno`:
+3. Incorporada caché SWR por `${cicloId}:${tipoInforme}` en `informesDashboardStore.ts` (preservando la asignatura activa al volver desde `RevisionInformePage`), control secuencial `latestRequestSeq`, coalescing de refrescos en vuelo y debounce/throttle en `useInformesRealtime.ts` (sin suscripción redundante a `respuestas_item_informe`).
+4. Incorporada experiencia responsive móvil integral en `/carga-informe` y `VistaInformePorAlumno`:
    - Barra sticky minimalista de navegación de alumnos con selector modal táctil con búsqueda inmediata y bloqueo de scroll de fondo, eliminando conflictos de desplazamiento con la página.
    - Selector compacto de navegación entre grados asignados para enlaces multigrado con modal dedicado en mobile, preservando el panel de pastillas horizontal en desktop.
    - Botones de valoración con distribución flex equilibrada y envoltorio multilínea de etiquetas legibles.
