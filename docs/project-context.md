@@ -1,5 +1,11 @@
 # Contexto actual de Crecer y Ser
 
+## Ayudas orientativas e historial de bimestres en Boletines — Noviembre de 2026
+
+Se incorporaron ayudas poco intrusivas y no bloqueantes en el flujo de Boletines (sin migraciones de esquema, reutilizando `valores_escala.peso_numerico` y `periodos.numero_periodo`):
+- **Referencia de bimestres anteriores (`pb_hooks/lib/teacherAccess.js`, `VistaPorAlumno.tsx`)**: `studentSnapshot` (compartido por `/carga` y `/app/boletines/calificaciones`) devuelve `historialBimestres` con las notas y el estado de `PPI` de bimestres anteriores evaluables del mismo ciclo (0 en B1, hasta 3 en B4). Se presentan como chips compactos abreviados (`B1 AL-7`, `B2 AV-8`, etc. con tooltip completo) junto a cada criterio y a la Calificación General, y chips de historial de `PPI` (`B1 Sí` / `B1 No`) en el encabezado de cada materia académica.
+- **Sugerencias orientativas solo en revisión directiva (`staffReview`, `RevisionCursoOverview.tsx`, `VistaPorAlumno.tsx`)**: Excluyendo `Convivencia` y `Trabajo en el aula`, compara la Calificación General contra el promedio de los pesos numéricos de los 5 criterios (sugerencia cuando la diferencia es `>= 1` punto) y detecta cambios de `PPI` respecto del último bimestre anterior evaluado (`sugerenciasPpi`), mostrando insignias suaves en tono índigo (`<BulbOutlined />`). El tablero general de progreso (`MonitoreoProgresoPage.tsx`) permanece intacto; en la vista del curso (`RevisionCursoOverview.tsx`), `Visado` / `Sin visar` destaca en una columna derecha dedicada junto a un filtro rápido (`Todos`, `Con sugerencias`, `Pendientes de visado`). Dentro de la libreta directiva (`VistaPorAlumno.tsx`), una lamparita sutil junto al nombre del alumno indica al instante si hay sugerencias y permite saltar directamente con un clic (o desde un selector rápido si hay varias materias) a la tarjeta correspondiente con resaltado breve.
+
 ## Ayudas visuales orientativas para revisión directiva de Informes — Noviembre de 2026
 
 Se incorporaron ayudas visuales puramente orientativas e informativas para la revisión directiva en `/app/informes` (aplicables a `CICLO_FINAL` y compatibles con todas las escalas, incluida `CONDUCTA_ESTANDAR_26` con polaridad inversa en ítems de conflicto):

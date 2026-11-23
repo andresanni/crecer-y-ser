@@ -14,6 +14,19 @@ export interface GradebookSubjectState {
   criteriosValores: Record<string, string>;
 }
 
+export interface GradebookHistoricalSubjectState {
+  ppi: boolean;
+  calificacionGeneralId: string | null;
+  criteriosValores: Record<string, string>;
+}
+
+export interface GradebookHistoricalTerm {
+  bimestre: number;
+  periodoId: string;
+  periodoNombre: string;
+  materias: Record<string, GradebookHistoricalSubjectState>;
+}
+
 export interface GradebookSupportState {
   promocionoConAcompanamiento: string;
   poseeApoyos: string;
@@ -24,6 +37,7 @@ export interface GradebookStudentSnapshot {
   bimestreApoyos?: number;
   revision?: number;
   materias: Record<string, GradebookSubjectState>;
+  historialBimestres?: GradebookHistoricalTerm[];
   cierre: CierrePeriodoAlumno | null;
   apoyos: GradebookSupportState | null;
 }

@@ -61,6 +61,63 @@
   font-size: 15px;
 }
 
+.studentHintButton {
+  align-items: center;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  color: #4338ca;
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  gap: 4px;
+  line-height: 1.2;
+  padding: 2px 8px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.studentHintButton:hover {
+  background: #e0e7ff;
+  border-color: #a5b4fc;
+}
+
+.studentHintPopoverList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+}
+
+.studentHintPopoverItem {
+  align-items: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--cys-color-text);
+  cursor: pointer;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  padding: 6px 8px;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  width: 100%;
+}
+
+.studentHintPopoverItem:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.studentHintPopoverDetail {
+  color: #4338ca;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .studentRefreshStatus {
   font-size: 12px;
   white-space: nowrap;
@@ -83,6 +140,11 @@
 
 .evaluationCardModified:global(.ant-card) {
   border-color: var(--cys-color-primary);
+}
+
+.evaluationCardHighlighted:global(.ant-card) {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.28) !important;
 }
 
 .evaluationHeader {
@@ -140,7 +202,23 @@
 }
 
 .evaluationHeaderTools {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.ppiToolsRow {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+
+.ppiControlGroup {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
 }
 
 .evaluationActions {
@@ -159,25 +237,129 @@
   border-radius: var(--cys-border-radius-sm);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 20px;
+  gap: 8px 16px;
   padding: 7px 14px;
 }
 
 .criterionDescription {
-  flex: 1 1 60ch;
-  max-width: 68ch;
+  flex: 1 1 52ch;
+  max-width: 64ch;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
 .criterionGrade {
+  align-items: center;
   display: flex;
-  flex: 0 1 280px;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   justify-content: flex-end;
   margin-left: auto;
   max-width: 100%;
   min-width: 0;
   text-align: right;
+}
+
+.historyChipsGroup {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.historyChip {
+  align-items: center;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  display: inline-flex;
+  font-size: 11px;
+  gap: 4px;
+  line-height: 1.2;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.historyTerm {
+  color: #64748b;
+  font-weight: 700;
+}
+
+.historyGrade {
+  color: #334155;
+  font-weight: 700;
+}
+
+.headerHintTag {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  color: #4338ca;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 4px;
+  line-height: 1.2;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.ppiHistoryGroup {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ppiHistoryChip {
+  align-items: center;
+  border-radius: 6px;
+  display: inline-flex;
+  font-size: 10.5px;
+  font-weight: 700;
+  gap: 3px;
+  line-height: 1.2;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.ppiHistoryChipYes {
+  background: #f3e8ff;
+  border: 1px solid #d8b4fe;
+  color: #6b21a8;
+}
+
+.ppiHistoryChipNo {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.averageHintPill {
+  align-items: center;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  color: #4338ca;
+  display: inline-flex;
+  font-size: 11.5px;
+  font-weight: 600;
+  gap: 5px;
+  line-height: 1.2;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+
+.generalGradeRight {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  justify-content: flex-end;
+  margin-left: auto;
+  max-width: 100%;
 }
 
 .studentProgressBar {
@@ -193,7 +375,7 @@
   border-radius: var(--cys-border-radius-sm);
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px 12px;
   justify-content: space-between;
   margin-top: 4px;
   padding: 8px 14px;
@@ -202,9 +384,10 @@
 .generalGradeTitle {
   align-items: center;
   display: flex;
-  flex: 1 1 240px;
+  flex: 1 1 200px;
+  flex-wrap: wrap;
   gap: 8px;
-  min-width: 240px;
+  min-width: 180px;
 }
 
 .gradeSummary {
@@ -298,8 +481,37 @@
   }
 
   .evaluationHeading {
-    flex: 1 1 auto;
+    flex: 1 1 100%;
     min-width: 0;
+  }
+
+  .evaluationHeaderTools {
+    border-top: 1px solid rgba(255, 255, 255, 0.18);
+    padding-top: 6px;
+    width: 100%;
+  }
+
+  .evaluationHeaderTools > :global(.ant-space-item) {
+    width: 100%;
+  }
+
+  .ppiToolsRow {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .ppiControlGroup {
+    margin-left: auto;
+  }
+
+  .historyChipsGroup {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .historyChip {
+    font-size: 11px;
+    padding: 2px 7px;
   }
 
   .evaluationTitle:global(.ant-typography) {
@@ -319,10 +531,23 @@
   }
 
   .criterionGrade {
+    align-items: stretch;
     flex: 1 1 auto;
+    flex-direction: column;
+    gap: 6px;
     justify-content: stretch;
     margin-left: 0;
     max-width: 100%;
+    text-align: left;
+    width: 100%;
+  }
+
+  .generalGradeRight {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 6px;
+    justify-content: stretch;
+    margin-left: 0;
     width: 100%;
   }
 
