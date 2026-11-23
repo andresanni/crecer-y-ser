@@ -1,5 +1,12 @@
 # Contexto actual de Crecer y Ser
 
+## Informes de Ciclo Final para Nivel Inicial (Jardín) — 23 de noviembre de 2026
+
+Se habilitaron los Informes de Ciclo Final (`CICLO_FINAL`) para las dos salas de Nivel Inicial (**Sala de 2 y 3 años** y **Sala de 4 y 5 años**) en las 3 materias especiales aplicables (**Educación Física**, **Inglés** y **Educación Musical**), manteniendo bloqueados *Artes Visuales*, *Tecnología*, `PRIMER_CUATRIMESTRE`, `PRIMER_BIMESTRE`, Boletines y Asistencias Primaria para Jardín:
+- **Migración y catálogo** (`pb_migrations/1792900000_added_kindergarten_final_report_templates.js`, registrada en `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh`): habilita `grado_desde = 0` / `grado_hasta = 0` en `plantillas_informe` y siembra `FINAL_ED_FISICA_INICIAL` (24 ítems, escala de 3 niveles, 1 hoja A4), `FINAL_INGLES_INICIAL` (18 ítems) y `FINAL_MUSICA_INICIAL` (16 ítems), compartidas entre ambas salas con Desempeño General conceptual (igual a 1.er Ciclo, sin números).
+- **Gateways y snapshot PDF (`pb_hooks/lib/teacherReports.js`)**: resuelve plantillas por nivel y materia, ordena salas antes de grados mediante `orden`, emite `nivel: "INICIAL"`, `grado: "2 y 3 años" | "4 y 5 años"` y `turno: "J.C"` estático (preparado para futura lectura dinámica de `modalidad_jornada`), permite enlaces mágicos combinando salas y grados de una misma materia especial y ajusta los indicadores de semáforo para no aplicar heurísticas A–D sobre `FINAL_ED_FISICA_INICIAL`.
+- **Plantilla A4 y UI (`src/modules/informes/`)**: `InformeDocument` muestra `SALA`, `TURNO: J.C`, `EDUCACIÓN INICIAL`, `E. Inicial` y aplica calibración compacta `.itemsTableDense` para grillas planas de 24 ítems en 1 hoja A4 con 10 mm de salvaguarda inferior; el tablero usa `KINDERGARTEN_PALETTE` y `GradeSetSelector` separa visualmente Nivel Inicial y Nivel Primario según la asignatura seleccionada. Verificado con `deploy/test-informes-inicial-http.cjs`, `deploy/test-informes-workflow-http.cjs`, `deploy/test-teacher-reports-migration.cjs`, Playwright A4, `npm run lint` y `npm run build`.
+
 ## Ayudas orientativas e historial de bimestres en Boletines — Noviembre de 2026
 
 Se incorporaron ayudas poco intrusivas y no bloqueantes en el flujo de Boletines (sin migraciones de esquema, reutilizando `valores_escala.peso_numerico` y `periodos.numero_periodo`):

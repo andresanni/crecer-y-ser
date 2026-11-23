@@ -23,7 +23,7 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import ui from '../../../shared/styles/ui.module.css';
-import { formatMateriaNombreUI, TIPOS_INFORME_META } from '../models/informe.model';
+import { formatMateriaNombreUI, isInicialCursoInforme, TIPOS_INFORME_META } from '../models/informe.model';
 import { createMagicLinkInformeAccess } from '../models/informeAccess.model';
 import type { InformeSubmissionResult } from '../models/informeDataSource.model';
 import {
@@ -192,6 +192,13 @@ export const CargaInformePublicaPage: React.FC = () => {
   const tipoMeta = TIPOS_INFORME_META[instancia.tipoInforme];
   const teacherFullName = `${instancia.docenteNombre} ${instancia.docenteApellido}`.trim();
   const hasMultipleCourses = cursosAsignados.length > 1;
+  const hasInicialCourses = cursosAsignados.some((c) => isInicialCursoInforme({ nombre: c.cursoNombre, nivel: c.nivel }));
+  const hasPrimarioCourses = cursosAsignados.some((c) => !isInicialCursoInforme({ nombre: c.cursoNombre, nivel: c.nivel }));
+  const assignedCoursesLabel = hasInicialCourses && hasPrimarioCourses
+    ? 'Salas y grados asignados'
+    : hasInicialCourses
+      ? 'Salas asignadas'
+      : 'Grados asignados';
 
   const currentCourseIndex = cursosAsignados.findIndex((c) => c.instanciaId === instancia.id);
   const currentCourseItem = currentCourseIndex >= 0 ? cursosAsignados[currentCourseIndex] : null;
@@ -272,7 +279,7 @@ export const CargaInformePublicaPage: React.FC = () => {
               <Space size={8}>
                 <AppstoreOutlined style={{ color: 'var(--cys-color-primary-text)' }} />
                 <Text strong>
-                  Grados asignados en este enlace ({cursosAsignados.length}):
+                  {assignedCoursesLabel} en este enlace ({cursosAsignados.length}):
                 </Text>
               </Space>
               <div className={styles.coursesSwitcherPills}>
@@ -359,7 +366,7 @@ export const CargaInformePublicaPage: React.FC = () => {
 
       {hasMultipleCourses && (
         <Modal
-          title={`Grados asignados (${cursosAsignados.length})`}
+          title={`${assignedCoursesLabel} (${cursosAsignados.length})`}
           open={courseModalOpen}
           onCancel={() => setCourseModalOpen(false)}
           footer={null}

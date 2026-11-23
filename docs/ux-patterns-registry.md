@@ -83,7 +83,7 @@ Toda tarea que modifique archivos listados en la Sección 4 debe cumplir estas t
   - Entrega atómica por curso/grado con confirmación explícita previa e invalidación inmediata del acceso correspondiente.
 - **Variantes válidas por dominio**:
   - **Boletines**: alcance fijo `1 curso × 1 período`; sin selector de grados.
-  - **Informes (`CICLO_FINAL` / `PRIMER_CUATRIMESTRE`)**: soporte para set multi-grado (`cursoIds`) en un mismo enlace, con selector de grado activo, indicador de progreso por grado y entrega independiente por grado.
+  - **Informes (`CICLO_FINAL` / `PRIMER_CUATRIMESTRE`)**: soporte para set multi-grado (`cursoIds`) en un mismo enlace, con selector de grado/sala activo, indicador de progreso por curso y entrega independiente. En `CICLO_FINAL` admite además salas de Nivel Inicial (Educación Física, Inglés y Música) combinables con grados primarios en un mismo enlace, adaptando el rótulo del selector (`Salas asignadas` / `Salas y grados asignados`) y mostrando `J.C` como turno.
   - **Informes (`PRIMER_BIMESTRE`)**: alcance de 1 curso de maestra de grado (`materia_id = null`), con la misma base del portal de informes.
 
 ---
@@ -119,7 +119,7 @@ Toda tarea que modifique archivos listados en la Sección 4 debe cumplir estas t
   - **Confirmación de cursadas pendientes**: acceso homogéneo a `CursadaModal` cuando existen matrículas pendientes de confirmación antes de nuevas entregas.
 - **Variantes válidas por dominio**:
   - **Boletines**: carga desacoplada en 2 etapas (`/etapas/:periodoId` + `/progreso/:periodoId`) y 7 filas directas por bimestre.
-  - **Informes (`CICLO_FINAL` / `PRIMER_CUATRIMESTRE`)**: selector superior por Materia Especial (conservado en store SWR por ciclo y tipo) y acción secundaria para editar `nombre` y `apellido` de la docente.
+  - **Informes (`CICLO_FINAL` / `PRIMER_CUATRIMESTRE`)**: selector superior por Materia Especial (conservado en store SWR por ciclo y tipo) y acción secundaria para editar `nombre` y `apellido` de la docente. En `CICLO_FINAL`, las asignaturas habilitadas para Jardín (Educación Física, Inglés y Música) muestran primero las salas de Nivel Inicial con insignias `KINDERGARTEN_PALETTE` bajo el encabezado `SALA / GRADO` (variante exclusiva de dominio; Boletines excluye Nivel Inicial).
   - **Informes (`PRIMER_BIMESTRE`)**: 7 filas directas por grado sin selector de materia especial.
 
 ---
@@ -152,7 +152,7 @@ Toda tarea que modifique archivos listados en la Sección 4 debe cumplir estas t
   - Bloqueo claro de emisión para cursos ya entregados (`CONTROL_DIRECTIVO` / `REVISION_DIRECTIVA` / `LISTO_PARA_PDF`).
 - **Variantes válidas por dominio**:
   - **Boletines**: selección de 1 curso + 1 período y campo único `docenteNombre`.
-  - **Informes — Áreas Especiales (`CICLO_FINAL` y `PRIMER_CUATRIMESTRE`)**: selección múltiple de grados (`cursoIds`) mediante fila compacta de checks (`GradeSetSelector`), selector de materia especial, y captura obligatoria separada de `docenteNombre` y `docenteApellido` para el pie del PDF en un formulario compacto de 2 filas.
+  - **Informes — Áreas Especiales (`CICLO_FINAL` y `PRIMER_CUATRIMESTRE`)**: selección múltiple de cursos (`cursoIds`) mediante fila compacta de checks (`GradeSetSelector`), selector de materia especial, y captura obligatoria separada de `docenteNombre` y `docenteApellido` para el pie del PDF en un formulario compacto de 2 filas. En `CICLO_FINAL`, cuando la materia aplica a Jardín, `GradeSetSelector` agrupa una fila superior de Nivel Inicial y la fila de 7 columnas de Nivel Primario, filtrando las salas automáticamente al cambiar de materia (variante exclusiva de dominio; Boletines excluye Nivel Inicial).
   - **Informes — Maestras de Grado (`PRIMER_BIMESTRE`)** *(ramificación implementada hacia el modelo simple de Boletines)*: emisión estricta de **1 enlace por grado** (`<Select>` simple de un único `cursoId` sin `GradeSetSelector` ni materia especial en `GestorEnlacesInformesModal.tsx`, y rechazo explícito de `rawCourseIds.length > 1` en `issue` de `pb_hooks/lib/teacherReports.js`). Conserva `docenteNombre` y `docenteApellido` separados en una única fila para satisfacer el pie de firma del PDF y `reportDocumentPreparation`.
 
 ---

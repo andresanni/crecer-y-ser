@@ -4,8 +4,30 @@
 }
 
 .checkboxGroup {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   width: 100%;
+}
+
+.levelGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.levelHeading {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--cys-color-text-secondary);
+}
+
+.inicialRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 210px));
+  gap: 6px;
 }
 
 .gradeRow {
@@ -175,6 +197,10 @@
 }
 
 @media (max-width: 540px) {
+  .inicialRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .gradeRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

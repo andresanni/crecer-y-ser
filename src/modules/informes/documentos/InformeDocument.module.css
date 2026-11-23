@@ -563,6 +563,30 @@
   color: #1a4480;
 }
 
+.itemsTableDense th {
+  padding: 1.3mm 1.5mm;
+}
+
+.itemsTableDense .itemsHeaderOption {
+  width: 18mm;
+  font-size: 8.5pt;
+}
+
+.itemsTableDense td {
+  padding: 0.65mm 1.6mm;
+}
+
+.itemsTableDense .itemTextCell {
+  font-size: 8.4pt;
+  line-height: 1.16;
+  letter-spacing: -0.1px;
+}
+
+.itemsTableDense .itemMarkCell {
+  font-size: 10.5pt;
+  line-height: 1;
+}
+
 .desempenoCard {
   background: #f8fafc;
   border: 1.5px solid #1a4480;

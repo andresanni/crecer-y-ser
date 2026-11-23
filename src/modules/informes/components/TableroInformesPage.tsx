@@ -36,6 +36,7 @@ import { getGradeColorConfig } from '../../alumnos/utils/gradeColors';
 import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 import {
   formatMateriaNombreUI,
+  isInicialCursoInforme,
   TIPOS_INFORME_META,
   type CeldaEtapaInforme,
   type TipoInforme,
@@ -247,29 +248,39 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
     return cell?.cursadasPendientes || [];
   }, [data, pendingCourseId]);
 
+  const hasInicialRows = useMemo(
+    () =>
+      filteredRows.some((row) => {
+        const curso = cursosById.get(row.cursoId);
+        return isInicialCursoInforme(curso || { nombre: row.cursoNombre });
+      }),
+    [cursosById, filteredRows],
+  );
+
   const columns: ColumnsType<TableroRow> = [
     {
-      title: 'GRADO',
+      title: hasInicialRows ? 'SALA / GRADO' : 'GRADO',
       dataIndex: 'cursoNombre',
       key: 'grado',
       width: '13%',
       className: styles.gradeColumn,
       render: (cursoNombre: string) => {
         const gradeConfig = getGradeColorConfig(cursoNombre);
+        const isKindergarten = Boolean(gradeConfig.roomKey);
         return (
           <Tag
             style={{
-              backgroundColor: 'var(--cys-color-primary-bg)',
-              color: 'var(--cys-color-primary-text)',
-              border: '1px solid var(--cys-color-primary-border)',
+              backgroundColor: isKindergarten ? gradeConfig.bgColor : 'var(--cys-color-primary-bg)',
+              color: isKindergarten ? gradeConfig.textColor : 'var(--cys-color-primary-text)',
+              border: `1px solid ${isKindergarten ? gradeConfig.borderColor : 'var(--cys-color-primary-border)'}`,
               fontWeight: 800,
-              fontSize: 14,
+              fontSize: isKindergarten ? 13 : 14,
               padding: '3px 10px',
               borderRadius: 7,
               margin: 0,
             }}
           >
-            {gradeConfig.shortLabel}
+            {isKindergarten ? gradeConfig.label : gradeConfig.shortLabel}
           </Tag>
         );
       },

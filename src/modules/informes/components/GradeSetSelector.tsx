@@ -5,7 +5,13 @@ import {
   ExclamationCircleOutlined,
   LinkOutlined,
 } from '@ant-design/icons';
-import type { CeldaEtapaInforme, CursoInformeResumen } from '../models/informe.model';
+import { getGradeColorConfig } from '../../alumnos/utils/gradeColors';
+import {
+  compareCursosInforme,
+  isInicialCursoInforme,
+  type CeldaEtapaInforme,
+  type CursoInformeResumen,
+} from '../models/informe.model';
 import styles from './GradeSetSelector.module.css';
 
 interface GradeSetSelectorProps {
@@ -37,7 +43,7 @@ export const GradeSetSelector: React.FC<GradeSetSelectorProps> = ({
   cellsByCourseId,
 }) => {
   const sortedCursos = useMemo(
-    () => [...cursos].sort((a, b) => a.gradoNumero - b.gradoNumero),
+    () => [...cursos].sort(compareCursosInforme),
     [cursos],
   );
 
@@ -97,12 +103,83 @@ export const GradeSetSelector: React.FC<GradeSetSelectorProps> = ({
 
   const selectedSet = useMemo(() => new Set(value), [value]);
 
+  const inicialItems = useMemo(
+    () => items.filter((item) => isInicialCursoInforme(item.curso)),
+    [items],
+  );
+  const primarioItems = useMemo(
+    () => items.filter((item) => !isInicialCursoInforme(item.curso)),
+    [items],
+  );
+  const hasBothLevels = inicialItems.length > 0 && primarioItems.length > 0;
+
   const handleGroupChange = (checkedValues: Array<string | number | boolean>) => {
     const checkedSet = new Set(checkedValues.map(String));
     const ordered = sortedCursos
       .filter((curso) => checkedSet.has(curso.id))
       .map((curso) => curso.id);
     onChange?.(ordered);
+  };
+
+  const renderItem = (item: GradeOptionItem) => {
+    const { curso, status, disabled, tooltip } = item;
+    const isInicial = isInicialCursoInforme(curso);
+    const visual = getGradeColorConfig(curso.nombre);
+    const displayName = isInicial ? visual.label : curso.nombre;
+
+    if (disabled) {
+      const lockedClassName = [
+        styles.gradeItem,
+        styles.gradeItemLocked,
+        status === 'delivered'
+          ? styles.gradeItemDelivered
+          : status === 'linked'
+            ? styles.gradeItemLinked
+            : styles.gradeItemUnconfigured,
+      ].join(' ');
+
+      return (
+        <Tooltip key={curso.id} title={tooltip}>
+          <div className={lockedClassName} aria-disabled="true">
+            <span className={styles.lockedIcon}>
+              {status === 'delivered' ? (
+                <CheckCircleOutlined />
+              ) : status === 'linked' ? (
+                <LinkOutlined />
+              ) : (
+                <ExclamationCircleOutlined />
+              )}
+            </span>
+            <span className={styles.gradeName}>{displayName}</span>
+            <span className={styles.gradeStatus}>
+              {status === 'delivered'
+                ? 'Entregado'
+                : status === 'linked'
+                  ? 'Con enlace'
+                  : 'Sin plantilla'}
+            </span>
+          </div>
+        </Tooltip>
+      );
+    }
+
+    const isSelected = selectedSet.has(curso.id);
+    return (
+      <Checkbox
+        key={curso.id}
+        value={curso.id}
+        className={[
+          styles.gradeItem,
+          styles.gradeItemSelectable,
+          isSelected ? styles.gradeItemSelected : '',
+        ].filter(Boolean).join(' ')}
+      >
+        <span className={styles.selectableContent}>
+          <span className={styles.gradeName}>{displayName}</span>
+          <span className={styles.gradeTurno}>{curso.turno}</span>
+        </span>
+      </Checkbox>
+    );
   };
 
   return (
@@ -112,64 +189,22 @@ export const GradeSetSelector: React.FC<GradeSetSelectorProps> = ({
         onChange={handleGroupChange}
         className={styles.checkboxGroup}
       >
-        <div className={styles.gradeRow}>
-          {items.map((item) => {
-            const { curso, status, disabled, tooltip } = item;
-            if (disabled) {
-              const lockedClassName = [
-                styles.gradeItem,
-                styles.gradeItemLocked,
-                status === 'delivered'
-                  ? styles.gradeItemDelivered
-                  : status === 'linked'
-                    ? styles.gradeItemLinked
-                    : styles.gradeItemUnconfigured,
-              ].join(' ');
-
-              return (
-                <Tooltip key={curso.id} title={tooltip}>
-                  <div className={lockedClassName} aria-disabled="true">
-                    <span className={styles.lockedIcon}>
-                      {status === 'delivered' ? (
-                        <CheckCircleOutlined />
-                      ) : status === 'linked' ? (
-                        <LinkOutlined />
-                      ) : (
-                        <ExclamationCircleOutlined />
-                      )}
-                    </span>
-                    <span className={styles.gradeName}>{curso.nombre}</span>
-                    <span className={styles.gradeStatus}>
-                      {status === 'delivered'
-                        ? 'Entregado'
-                        : status === 'linked'
-                          ? 'Con enlace'
-                          : 'Sin plantilla'}
-                    </span>
-                  </div>
-                </Tooltip>
-              );
-            }
-
-            const isSelected = selectedSet.has(curso.id);
-            return (
-              <Checkbox
-                key={curso.id}
-                value={curso.id}
-                className={[
-                  styles.gradeItem,
-                  styles.gradeItemSelectable,
-                  isSelected ? styles.gradeItemSelected : '',
-                ].filter(Boolean).join(' ')}
-              >
-                <span className={styles.selectableContent}>
-                  <span className={styles.gradeName}>{curso.nombre}</span>
-                  <span className={styles.gradeTurno}>{curso.turno}</span>
-                </span>
-              </Checkbox>
-            );
-          })}
-        </div>
+        {inicialItems.length > 0 && (
+          <div className={styles.levelGroup}>
+            {hasBothLevels && <span className={styles.levelHeading}>Nivel Inicial</span>}
+            <div className={styles.inicialRow}>
+              {inicialItems.map(renderItem)}
+            </div>
+          </div>
+        )}
+        {primarioItems.length > 0 && (
+          <div className={styles.levelGroup}>
+            {hasBothLevels && <span className={styles.levelHeading}>Nivel Primario</span>}
+            <div className={styles.gradeRow}>
+              {primarioItems.map(renderItem)}
+            </div>
+          </div>
+        )}
       </Checkbox.Group>
     </div>
   );

@@ -1,14 +1,14 @@
 # Plan de Implementación y Especificación Canónica: Informes de Maestras
 
-Actualizado: 20 de octubre de 2026.
+Actualizado: 23 de noviembre de 2026.
 
 ## 1. Propósito y Alcance Funcional
 
-El módulo de **Informes de Maestras** gestiona la carga docente, entrega atómica por curso, revisión directiva, visado individual y emisión reactiva de PDFs para las tres instancias anuales de informes pedagógicos y de conducta del nivel primario:
+El módulo de **Informes de Maestras** gestiona la carga docente, entrega atómica por curso, revisión directiva, visado individual y emisión reactiva de PDFs para las tres instancias anuales de informes pedagógicos y de conducta del nivel primario y los informes de Ciclo Final de Áreas Especiales para Nivel Inicial (Jardín):
 
 | Instancia (`tipo_informe`) | Responsable de llenado | Cardinalidad por ciclo lectivo | Contenido evaluado | Corte de cursada evaluable |
 | --- | --- | --- | --- | --- |
-| `CICLO_FINAL` | Maestras de Áreas Especiales | `1 Curso × 1 Materia Especial` (7 × 5 = 35 instancias) | Ítems de desempeño propios de cada área especial (planos o agrupados en bloques), leyenda opcional de escala, **Desempeño General** obligatorio al pie (según escala de 1.er o 2.° Ciclo) y campo opcional de **Observaciones / devolución** de libre escritura. | Incluye 4.º bimestre (`bimestre_desde <= 4 && bimestre_hasta >= 4`) |
+| `CICLO_FINAL` | Maestras de Áreas Especiales | Primaria: `7 Grados × 5 Materias Especiales` (35 instancias) + Inicial: `2 Salas × 3 Materias Especiales` (Educación Física, Inglés y Música = 6 instancias; total 41 instancias) | Ítems de desempeño propios de cada área especial y nivel (planos o agrupados en bloques), leyenda opcional de escala, **Desempeño General** obligatorio al pie (escala conceptual en Nivel Inicial y 1.er Ciclo; alfanumérica en 2.° Ciclo) y campo opcional de **Observaciones / devolución** de libre escritura. | Incluye 4.º bimestre (`bimestre_desde <= 4 && bimestre_hasta >= 4`) |
 | `PRIMER_CUATRIMESTRE` | Maestras de Áreas Especiales | `1 Curso × 1 Materia Especial` (7 × 5 = 35 instancias) | 26 ítems fijos de **Conducta** (`SIEMPRE \| A VECES \| NUNCA`) + **Observaciones** en hoja 2. Sin desempeño general. | Incluye 2.º bimestre (`bimestre_desde <= 2 && bimestre_hasta >= 2`) |
 | `PRIMER_BIMESTRE` | Maestra de Grado | `1 Curso` (7 instancias, relación 1 a 1 con el grado) | Mismos 26 ítems fijos de **Conducta** (`SIEMPRE \| A VECES \| NUNCA`) + **Observaciones** en hoja 2. Sin desempeño general. | Incluye 1.er bimestre (`bimestre_desde <= 1 && bimestre_hasta >= 1`) |
 
@@ -191,6 +191,15 @@ erDiagram
 ### 3.6. Informe de Conducta Estándar (`CONDUCTA_ESTANDAR_26` — 1.er Bimestre y 1.er Cuatrimestre)
 - **Título de tabla**: `CONDUCTAS` (`SIEMPRE | A VECES | NUNCA`, 26 preguntas fijas en Hoja 1 + `Observaciones` en Hoja 2).
 
+### 3.7. Informes Ciclo Final — Nivel Inicial (Sala de 2 y 3 años y Sala de 4 y 5 años)
+- **Alcance exclusivo**: aplica únicamente a `CICLO_FINAL` en las 3 materias especiales **Educación Física**, **Inglés** y **Educación Musical** (excluyendo *Tecnología* y *Artes Visuales*, así como `PRIMER_CUATRIMESTRE` y `PRIMER_BIMESTRE`). Ambas salas comparten exactamente las mismas consignas por materia (`grado_desde = 0`, `grado_hasta = 0`).
+- **Cabecera y datos institucionales PDF**: muestra `SALA:` (`2 y 3 años` / `4 y 5 años`) en reemplazo de `GRADO:`, `TURNO: J.C` de forma estática inicial (preparado para migración futura a `inscripciones.modalidad_jornada`), subtítulo `EDUCACIÓN INICIAL` debajo de la materia y `E. Inicial` en la tarjeta de `Desempeño General`.
+- **Escalas**: los 3 modelos usan escala de ítems de 3 niveles (`No Alcanzado | En proceso de Alcanzar | Alcanzado`, sin bloques ni leyenda A–D) y escala conceptual de **Desempeño General** igual a 1.er Ciclo (sin números).
+- **Plantillas catalogadas (`pb_migrations/1792900000_added_kindergarten_final_report_templates.js`)**:
+  1. **Educación Física Inicial (`FINAL_ED_FISICA_INICIAL`, 24 ítems, 1 hoja A4)**: título `Contenidos de Educación Física`, calibración compacta `.itemsTableDense` para garantizar 1 página A4 sin desbordes y salvaguarda inferior de `10.0mm` con y sin observaciones PPI.
+  2. **Inglés Inicial (`FINAL_INGLES_INICIAL`, 18 ítems, 1 hoja A4)**: título `Contenidos de Inglés`, con consignas orales y de comprensión adaptadas a Jardín.
+  3. **Educación Musical Inicial (`FINAL_MUSICA_INICIAL`, 16 ítems, 1 hoja A4)**: título `Contenidos de Educación Musical`, con consignas de expresión corporal, canto, instrumentos y escucha activa adaptadas a Jardín.
+
 ---
 
 ## 4. Hoja de Ruta Granular por Etapas
@@ -312,6 +321,11 @@ erDiagram
    - Probado y verificado en Playwright tanto con observaciones (PPI) como sin observaciones: **cero desbordes**, generando exactamente 2 páginas A4 físicas.
 5. **Previsualización Interactiva y Banco de Pruebas**:
    - `InformePreview.tsx` actualizado con `ED_FISICA_G1_ITEMS`, `ED_FISICA_G2_ITEMS` y `ED_FISICA_G3_ITEMS`, permitiendo seleccionar dinámicamente el grado (1.° a 7.°) con actualización automática de la plantilla, consignas, docente asignado (Gimena Cruzado Zevallos en 1-5, Alan Fisser en 6-7) y alumno modelo.
+
+#### Paso 1.12: Incorporación de Nivel Inicial (Jardín) en `CICLO_FINAL` (Completado — 23 de noviembre de 2026)
+1. **Esquema y catálogo (`pb_migrations/1792900000_added_kindergarten_final_report_templates.js`)**: habilitado `grado_desde = 0` y `grado_hasta = 0` en `plantillas_informe` y sembradas las 3 plantillas oficiales de Jardín (`FINAL_ED_FISICA_INICIAL`, `FINAL_INGLES_INICIAL`, `FINAL_MUSICA_INICIAL`), registradas en `deploy/publish-pocketbase.ps1` y `deploy/apply-pocketbase-workflow.sh`.
+2. **Gateways y aislamiento selectivo (`pb_hooks/lib/teacherReports.js`)**: `CICLO_FINAL` expone y habilita *Sala de 2 y 3 años* y *Sala de 4 y 5 años* únicamente para Educación Física, Inglés y Música (rechazando con `400` Artes Visuales, Tecnología, `PRIMER_CUATRIMESTRE` y `PRIMER_BIMESTRE`), admite enlaces mixtos salas + grados, expone `nivel: "INICIAL"`, `grado: "2 y 3 años" | "4 y 5 años"` y `turno: "J.C"` estático, y corrige los indicadores de semáforo para distinguir `FINAL_ED_FISICA_INICIAL` (escala de 3 niveles) de Educación Física Primaria (escala A–D).
+3. **Plantilla A4 y UI (`/app/informes`, `/carga-informe`, `/plantilla-informe.html`)**: `InformeDocument` adapta `SALA`, `TURNO: J.C`, `EDUCACIÓN INICIAL`, `E. Inicial` y modo compacto `.itemsTableDense` para 24 consignas en 1 hoja A4 verificada con Playwright + `pdf-lib`; `TableroInformesPage` aplica `KINDERGARTEN_PALETTE`, `GradeSetSelector` agrupa Nivel Inicial y Nivel Primario en filas diferenciadas, y `GestorEnlacesInformesModal` filtra dinámicamente las salas según la materia especial elegida.
 
 > [!IMPORTANT]
 > **Hito actual (25 de octubre de 2026 — Fase 1 Culminada al 100%)**:

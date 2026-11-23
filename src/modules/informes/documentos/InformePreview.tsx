@@ -3,6 +3,10 @@ import { InformeDocument } from './InformeDocument';
 import type { InformeDocumentSnapshotDatos } from './informeSnapshot.model';
 import './preview.css';
 
+type PreviewNivel = 'INICIAL' | 'PRIMARIO';
+type PreviewMateriaCodigo = 'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA' | 'INGLES' | 'ED_FISICA';
+type PreviewSalaCodigo = 'SALA_2_3' | 'SALA_4_5';
+
 const ARTES_VISUALES_ITEMS = [
   'Relación con la materia.',
   'Relación con el docente.',
@@ -85,6 +89,73 @@ const INGLES_ITEMS = [
   'Progresa en escritura.',
   'Incorpora nuevo vocabulario.',
   'Comprende consignas de trabajo o narraciones en inglés.',
+];
+
+const ED_FISICA_INICIAL_ITEMS = [
+  'Exploración de las posibilidades motrices de su propio cuerpo, en forma global y segmentaria.',
+  'Exploración de los diferentes desplazamientos y apoyos.',
+  'Exploración de diferentes elementos.',
+  'Discriminación y reconocimientos de diferencias y semejanzas con el cuerpo de los otros.',
+  'Exploración de los sentidos identificando sensaciones y percepciones.',
+  'Vivencias relacionadas con los movimientos de tensión y relajación.',
+  'Desarrollo de las habilidades motoras locomotivas y no locomotivas.',
+  'Incorporación de habilidades motoras manipulativas.',
+  'Coordinación de dos habilidades motoras diferentes.',
+  'Aplicación de blancos fijos y móviles.',
+  'Orientación del cuerpo con el espacio, desplazamientos.',
+  'Coordinación de habilidades motoras sorteando obstáculos.',
+  'Ajuste del movimiento propio al espacio, a los objetos y al movimiento de los otros.',
+  'Vivencia y regulación de la velocidad.',
+  'Transporte de elementos sobre distintas partes del cuerpo.',
+  'Desplazamientos sobre líneas rectas y curvas, sobre superficies amplias y reducidas.',
+  'Desplazamientos sobre distintas elevaciones y pendientes.',
+  'Iniciación a la técnica del rol adelante.',
+  'Iniciación a la técnica del rol de atrás.',
+  'Aplicación de circuitos combinados con destrezas.',
+  'Organización de juegos grupales e individuales.',
+  'Aplicación de reglas simples.',
+  'Uso de refugios grupales e individuales.',
+  'Empleo de habilidades motoras adquiridas durante los juegos',
+];
+
+const INGLES_INICIAL_ITEMS = [
+  'Demuestra interés por el aprendizaje de la lengua extranjera.',
+  'Manejo de estructuras sencillas en Inglés.',
+  'Comprensión de estructuras sencillas de salutación y cortesía.',
+  'Progreso en el desarrollo de la atención y de la observación del idioma durante el transcurso de la clase.',
+  'Mantiene buena relación con la docente.',
+  'Mantiene buena relación con sus pares.',
+  'Atención en clase.',
+  'Participación en clase.',
+  'Cumple con los materiales para la materia.',
+  'Disfruta de escuchar cuentos y canciones.',
+  'Su pronunciación es clara.',
+  'Escucha la producción de sus pares.',
+  'Utiliza el idioma inglés para narrar, describir y/o pedir.',
+  'Interpreta mensajes orales.',
+  'Interactúa oralmente con compañeros y docentes.',
+  'Maneja oralmente estructuras de presentación.',
+  'Incorpora nuevo vocabulario.',
+  'Comprende consignas de trabajo o narraciones en inglés.',
+];
+
+const MUSICA_INICIAL_ITEMS = [
+  'Participa activamente de la clase.',
+  'Mantiene una buena relación con sus pares.',
+  '¿Respeta las pautas dadas?',
+  'Canta grupalmente.',
+  'Canta en forma individual.',
+  'Cuida los instrumentos del jardín.',
+  'Toca correctamente los instrumentos musicales.',
+  '¿Reconoce mediante la expresión corporal las diferentes cualidades de la música?',
+  'Es correcto en la ejecución rítmica.',
+  'Disfruta del baile libre.',
+  'Le gusta el baile pautado.',
+  'Muestra interés por los diferentes estilos musicales.',
+  'Tiene una audición activa de acuerdo a su edad.',
+  'Realiza acompañamientos rítmicos a canciones',
+  'Participa de relatos / cuadros sonoros proponiendo diferentes sonidos',
+  'Realiza y se interesa por el registro grabado de sonorizaciones o canciones',
 ];
 
 const ED_FISICA_G1_ITEMS = [
@@ -266,15 +337,65 @@ const EJEMPLOS_OBSERVACIONES = [
   },
 ];
 
+const INICIAL_MATERIAS: PreviewMateriaCodigo[] = ['ED_FISICA', 'INGLES', 'MUSICA'];
+
+function readInitialQueryParams(): {
+  nivel: PreviewNivel;
+  materia: PreviewMateriaCodigo;
+  sala: PreviewSalaCodigo;
+  grado: number;
+  obs: string;
+  desempeno: string;
+} {
+  const params = new URLSearchParams(window.location.search);
+  const rawNivel = (params.get('nivel') || '').toUpperCase();
+  const nivel: PreviewNivel = rawNivel === 'PRIMARIO' ? 'PRIMARIO' : 'INICIAL';
+
+  const rawMateria = (params.get('materia') || '').toUpperCase();
+  const validPrimaryMaterias: PreviewMateriaCodigo[] = [
+    'ARTES_VISUALES',
+    'MUSICA',
+    'TECNOLOGIA',
+    'INGLES',
+    'ED_FISICA',
+  ];
+  let materia: PreviewMateriaCodigo = nivel === 'INICIAL' ? 'ED_FISICA' : 'ARTES_VISUALES';
+  if (validPrimaryMaterias.includes(rawMateria as PreviewMateriaCodigo)) {
+    const candidate = rawMateria as PreviewMateriaCodigo;
+    if (nivel === 'PRIMARIO' || INICIAL_MATERIAS.includes(candidate)) {
+      materia = candidate;
+    }
+  }
+
+  const rawSala = (params.get('sala') || '').toUpperCase();
+  const sala: PreviewSalaCodigo = rawSala === '4_5' || rawSala === 'SALA_4_5' ? 'SALA_4_5' : 'SALA_2_3';
+
+  const rawGrado = Number(params.get('grado'));
+  const grado = Number.isInteger(rawGrado) && rawGrado >= 1 && rawGrado <= 7 ? rawGrado : 3;
+
+  const rawObs = params.get('obs') || 'ppi';
+  const obs = EJEMPLOS_OBSERVACIONES.some((ej) => ej.id === rawObs) ? rawObs : 'ppi';
+
+  const defaultDesempeno = nivel === 'PRIMARIO' && grado >= 4 ? 'ALCANZADO_6_7' : 'ALCANZADO';
+  const desempeno = params.get('desempeno') || defaultDesempeno;
+
+  return { nivel, materia, sala, grado, obs, desempeno };
+}
+
 export function InformePreview() {
-  const [materiaCodigo, setMateriaCodigo] = useState<'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA' | 'INGLES' | 'ED_FISICA'>('ARTES_VISUALES');
-  const [gradoNumero, setGradoNumero] = useState<number>(3);
-  const [ejemploObservacionId, setEjemploObservacionId] = useState<string>('ppi');
-  const [desempenoCodigo, setDesempenoCodigo] = useState<string>('ALCANZADO');
+  const initialParams = useMemo(() => readInitialQueryParams(), []);
+  const [nivel, setNivel] = useState<PreviewNivel>(initialParams.nivel);
+  const [materiaCodigo, setMateriaCodigo] = useState<PreviewMateriaCodigo>(initialParams.materia);
+  const [salaCodigo, setSalaCodigo] = useState<PreviewSalaCodigo>(initialParams.sala);
+  const [gradoNumero, setGradoNumero] = useState<number>(initialParams.grado);
+  const [ejemploObservacionId, setEjemploObservacionId] = useState<string>(initialParams.obs);
+  const [desempenoCodigo, setDesempenoCodigo] = useState<string>(initialParams.desempeno);
   const [mostrarSubtituloColegio, setMostrarSubtituloColegio] = useState<boolean>(true);
 
-  const esSegundoCiclo = gradoNumero >= 4;
+  const isInicial = nivel === 'INICIAL';
+  const esSegundoCiclo = !isInicial && gradoNumero >= 4;
   const isEdFisica = materiaCodigo === 'ED_FISICA';
+  const isEdFisicaPrimaria = !isInicial && isEdFisica;
 
   const escalaDesempeno = useMemo(
     () => (esSegundoCiclo ? ESCALA_DESEMPENO_SEGUNDO_CICLO : ESCALA_DESEMPENO_PRIMER_CICLO),
@@ -292,13 +413,23 @@ export function InformePreview() {
   }, [ejemploObservacionId]);
 
   const rawItemTexts = useMemo(() => {
+    if (isInicial) {
+      if (materiaCodigo === 'INGLES') return INGLES_INICIAL_ITEMS;
+      if (materiaCodigo === 'MUSICA') return MUSICA_INICIAL_ITEMS;
+      return ED_FISICA_INICIAL_ITEMS;
+    }
     if (materiaCodigo === 'MUSICA') return MUSICA_ITEMS;
     if (materiaCodigo === 'TECNOLOGIA') return TECNOLOGIA_ITEMS;
     if (materiaCodigo === 'INGLES') return INGLES_ITEMS;
     return ARTES_VISUALES_ITEMS;
-  }, [materiaCodigo]);
+  }, [isInicial, materiaCodigo]);
 
   const plantillaCodigo = useMemo(() => {
+    if (isInicial) {
+      if (materiaCodigo === 'INGLES') return 'FINAL_INGLES_INICIAL';
+      if (materiaCodigo === 'MUSICA') return 'FINAL_MUSICA_INICIAL';
+      return 'FINAL_ED_FISICA_INICIAL';
+    }
     if (materiaCodigo === 'MUSICA') return 'FINAL_MUSICA_BASE';
     if (materiaCodigo === 'TECNOLOGIA') return 'FINAL_TECNOLOGIA_BASE';
     if (materiaCodigo === 'INGLES') return 'FINAL_INGLES_BASE';
@@ -308,18 +439,19 @@ export function InformePreview() {
       return 'FINAL_ED_FISICA_G6_7';
     }
     return 'FINAL_ARTES_VISUALES_G2';
-  }, [materiaCodigo, gradoNumero]);
+  }, [isInicial, materiaCodigo, gradoNumero]);
 
   const tituloTabla = useMemo(() => {
+    if (isInicial && materiaCodigo === 'ED_FISICA') return 'Contenidos de Educación Física';
     if (materiaCodigo === 'MUSICA') return 'Contenidos de Educación Musical';
     if (materiaCodigo === 'TECNOLOGIA') return 'Contenidos de Tecnología';
     if (materiaCodigo === 'INGLES') return 'Contenidos de Inglés';
     if (materiaCodigo === 'ED_FISICA') return 'Logros del Area Educacion Fisica';
     return 'Contenidos de Artes Visuales';
-  }, [materiaCodigo]);
+  }, [isInicial, materiaCodigo]);
 
   const items = useMemo(() => {
-    if (isEdFisica) {
+    if (isEdFisicaPrimaria) {
       const edItems =
         gradoNumero <= 3
           ? ED_FISICA_G1_ITEMS
@@ -337,25 +469,25 @@ export function InformePreview() {
       }));
     }
     return rawItemTexts.map((texto, idx) => ({
-      id: `item-${materiaCodigo.toLowerCase()}-${idx + 1}`,
-      plantillaId: `plantilla-${materiaCodigo.toLowerCase()}`,
+      id: `item-${plantillaCodigo.toLowerCase()}-${idx + 1}`,
+      plantillaId: `plantilla-${plantillaCodigo.toLowerCase()}`,
       bloqueNombre: null,
       bloqueOrden: null,
       ordenVisual: idx + 1,
       pagina: 1,
       texto,
     }));
-  }, [isEdFisica, gradoNumero, rawItemTexts, materiaCodigo, plantillaCodigo]);
+  }, [isEdFisicaPrimaria, gradoNumero, rawItemTexts, plantillaCodigo]);
 
   const respuestas = useMemo(
     () =>
       items.map((item, idx) => ({
         itemId: item.id,
-        valorCodigo: isEdFisica
+        valorCodigo: isEdFisicaPrimaria
           ? PATRON_EDUCACION_FISICA[idx % PATRON_EDUCACION_FISICA.length]
           : PATRON_TRES_NIVELES[idx % PATRON_TRES_NIVELES.length],
       })),
-    [items, isEdFisica],
+    [items, isEdFisicaPrimaria],
   );
 
   const data: InformeDocumentSnapshotDatos = useMemo(() => {
@@ -381,8 +513,11 @@ export function InformePreview() {
             ? 'Educación Física'
             : 'Artes Visuales';
 
+    const salaNombre = salaCodigo === 'SALA_4_5' ? 'Sala de 4 y 5 años' : 'Sala de 2 y 3 años';
+    const salaEtiqueta = salaCodigo === 'SALA_4_5' ? '4 y 5 años' : '2 y 3 años';
+
     return {
-      instanciaId: `instancia-preview-${materiaCodigo.toLowerCase()}`,
+      instanciaId: `instancia-preview-${plantillaCodigo.toLowerCase()}`,
       inscripcionId: 'inscripcion-preview-1',
       tipoInforme: 'CICLO_FINAL',
       ciclo: {
@@ -390,13 +525,23 @@ export function InformePreview() {
         nombre: 'Ciclo Lectivo 2026',
         ano: 2026,
       },
-      curso: {
-        id: `curso-${gradoNumero}`,
-        nombre: `${gradoNumero}º Grado`,
-        grado: `${gradoNumero}º`,
-        gradoNumero,
-        turno: 'Mañana',
-      },
+      curso: isInicial
+        ? {
+            id: salaCodigo.toLowerCase(),
+            nombre: salaNombre,
+            grado: salaEtiqueta,
+            gradoNumero: 0,
+            turno: 'J.C',
+            nivel: 'INICIAL',
+          }
+        : {
+            id: `curso-${gradoNumero}`,
+            nombre: `${gradoNumero}º Grado`,
+            grado: `${gradoNumero}º`,
+            gradoNumero,
+            turno: 'Mañana',
+            nivel: 'PRIMARIO',
+          },
       materia: {
         id: `materia-${materiaCodigo.toLowerCase()}`,
         nombre: nombreMateria,
@@ -422,11 +567,11 @@ export function InformePreview() {
         codigo: plantillaCodigo,
         tipoInforme: 'CICLO_FINAL',
         materiaId: `materia-${materiaCodigo.toLowerCase()}`,
-        gradoDesde: isEdFisica ? (gradoNumero <= 3 ? 1 : gradoNumero <= 5 ? 4 : 6) : 1,
-        gradoHasta: isEdFisica ? (gradoNumero <= 3 ? 3 : gradoNumero <= 5 ? 5 : 7) : 7,
+        gradoDesde: isInicial ? 0 : isEdFisicaPrimaria ? (gradoNumero <= 3 ? 1 : gradoNumero <= 5 ? 4 : 6) : 1,
+        gradoHasta: isInicial ? 0 : isEdFisicaPrimaria ? (gradoNumero <= 3 ? 3 : gradoNumero <= 5 ? 5 : 7) : 7,
         tituloTabla,
-        escalaItems: isEdFisica ? ESCALA_EDUCACION_FISICA : ESCALA_TRES_NIVELES,
-        mostrarLeyendaEscala: isEdFisica,
+        escalaItems: isEdFisicaPrimaria ? ESCALA_EDUCACION_FISICA : ESCALA_TRES_NIVELES,
+        mostrarLeyendaEscala: isEdFisicaPrimaria,
         requiereDesempenoGeneral: true,
         escalaDesempenoGeneral: escalaDesempeno,
         permiteObservaciones: true,
@@ -446,8 +591,11 @@ export function InformePreview() {
       },
     };
   }, [
+    isInicial,
+    salaCodigo,
     materiaCodigo,
     isEdFisica,
+    isEdFisicaPrimaria,
     gradoNumero,
     plantillaCodigo,
     tituloTabla,
@@ -459,47 +607,90 @@ export function InformePreview() {
     respuestas,
   ]);
 
+  const handleNivelChange = (nextNivel: PreviewNivel) => {
+    setNivel(nextNivel);
+    if (nextNivel === 'INICIAL') {
+      if (!INICIAL_MATERIAS.includes(materiaCodigo)) {
+        setMateriaCodigo('ED_FISICA');
+      }
+      setDesempenoCodigo('ALCANZADO');
+      return;
+    }
+    setDesempenoCodigo(gradoNumero >= 4 ? 'DESTACADO_10' : 'ALCANZADO');
+  };
+
   return (
     <div>
       <header className="preview-toolbar">
         <div className="preview-toolbar-left">
           <span className="preview-toolbar-title">Previsualización en vivo · Informe Ciclo Final</span>
           <div className="preview-toolbar-group">
+            <label htmlFor="preview-nivel-select">Nivel:</label>
+            <select
+              id="preview-nivel-select"
+              value={nivel}
+              onChange={(e) => handleNivelChange(e.target.value as PreviewNivel)}
+            >
+              <option value="INICIAL">Nivel Inicial (Jardín)</option>
+              <option value="PRIMARIO">Nivel Primario</option>
+            </select>
+          </div>
+          <div className="preview-toolbar-group">
             <label htmlFor="preview-materia-select">Materia:</label>
             <select
               id="preview-materia-select"
               value={materiaCodigo}
-              onChange={(e) =>
-                setMateriaCodigo(
-                  e.target.value as 'ARTES_VISUALES' | 'MUSICA' | 'TECNOLOGIA' | 'INGLES' | 'ED_FISICA',
-                )
-              }
+              onChange={(e) => setMateriaCodigo(e.target.value as PreviewMateriaCodigo)}
             >
-              <option value="ED_FISICA">Educación Física (2 páginas · 3 variantes por grado)</option>
-              <option value="INGLES">Lenguas Adicionales - Inglés (18 consignas)</option>
-              <option value="TECNOLOGIA">Tecnología, Diseño y Programación (17 consignas)</option>
-              <option value="MUSICA">Educación Artística - Música (19 consignas)</option>
-              <option value="ARTES_VISUALES">Educación Artística - Artes Visuales (18 consignas)</option>
+              {isInicial ? (
+                <>
+                  <option value="ED_FISICA">Educación Física (24 consignas · 1 página)</option>
+                  <option value="INGLES">Lenguas Adicionales - Inglés (18 consignas)</option>
+                  <option value="MUSICA">Educación Artística - Música (16 consignas)</option>
+                </>
+              ) : (
+                <>
+                  <option value="ED_FISICA">Educación Física (2 páginas · 3 variantes por grado)</option>
+                  <option value="INGLES">Lenguas Adicionales - Inglés (18 consignas)</option>
+                  <option value="TECNOLOGIA">Tecnología, Diseño y Programación (17 consignas)</option>
+                  <option value="MUSICA">Educación Artística - Música (19 consignas)</option>
+                  <option value="ARTES_VISUALES">Educación Artística - Artes Visuales (18 consignas)</option>
+                </>
+              )}
             </select>
           </div>
-          <div className="preview-toolbar-group">
-            <label htmlFor="preview-grado-select">Grado:</label>
-            <select
-              id="preview-grado-select"
-              value={gradoNumero}
-              onChange={(e) => {
-                const nextGrado = Number(e.target.value);
-                setGradoNumero(nextGrado);
-                setDesempenoCodigo(nextGrado >= 4 ? 'DESTACADO_10' : 'DESTACADO');
-              }}
-            >
-              {[1, 2, 3, 4, 5, 6, 7].map((g) => (
-                <option key={g} value={g}>
-                  {g}º Grado ({g <= 3 ? '1.er Ciclo - Conceptual' : '2.° Ciclo - Numérico'})
-                </option>
-              ))}
-            </select>
-          </div>
+          {isInicial ? (
+            <div className="preview-toolbar-group">
+              <label htmlFor="preview-sala-select">Sala:</label>
+              <select
+                id="preview-sala-select"
+                value={salaCodigo}
+                onChange={(e) => setSalaCodigo(e.target.value as PreviewSalaCodigo)}
+              >
+                <option value="SALA_2_3">Sala de 2 y 3 años (Turno J.C)</option>
+                <option value="SALA_4_5">Sala de 4 y 5 años (Turno J.C)</option>
+              </select>
+            </div>
+          ) : (
+            <div className="preview-toolbar-group">
+              <label htmlFor="preview-grado-select">Grado:</label>
+              <select
+                id="preview-grado-select"
+                value={gradoNumero}
+                onChange={(e) => {
+                  const nextGrado = Number(e.target.value);
+                  setGradoNumero(nextGrado);
+                  setDesempenoCodigo(nextGrado >= 4 ? 'DESTACADO_10' : 'DESTACADO');
+                }}
+              >
+                {[1, 2, 3, 4, 5, 6, 7].map((g) => (
+                  <option key={g} value={g}>
+                    {g}º Grado ({g <= 3 ? '1.er Ciclo - Conceptual' : '2.° Ciclo - Numérico'})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="preview-toolbar-group">
             <label htmlFor="preview-desempeno-select">Desempeño General:</label>
             <select

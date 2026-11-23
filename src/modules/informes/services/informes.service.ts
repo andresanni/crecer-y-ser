@@ -64,6 +64,8 @@ export interface TeacherInformeContext {
     nombre: string;
     grado: string;
     turno: string;
+    nivel?: 'INICIAL' | 'PRIMARIO';
+    orden?: number;
   };
   materia: {
     id: string;

@@ -120,7 +120,7 @@ test('Esquema, reglas de acceso y seed de plantillas de informes en PocketBase t
       sort: 'codigo',
       expand: 'materia_id',
     });
-    assert.equal(templates.length, 8, 'Deben existir las 8 plantillas del catálogo');
+    assert.equal(templates.length, 11, 'Deben existir las 11 plantillas del catálogo');
 
     const expectedCounts = {
       CONDUCTA_ESTANDAR_26: 26,
@@ -128,8 +128,11 @@ test('Esquema, reglas de acceso y seed de plantillas de informes en PocketBase t
       FINAL_ED_FISICA_G2: 24,
       FINAL_ED_FISICA_G4_5: 20,
       FINAL_ED_FISICA_G6_7: 22,
+      FINAL_ED_FISICA_INICIAL: 24,
       FINAL_INGLES_BASE: 18,
+      FINAL_INGLES_INICIAL: 18,
       FINAL_MUSICA_BASE: 19,
+      FINAL_MUSICA_INICIAL: 16,
       FINAL_TECNOLOGIA_BASE: 17,
     };
 
@@ -156,11 +159,17 @@ test('Esquema, reglas de acceso y seed de plantillas de informes en PocketBase t
         assert.equal(template.requiere_desempeno_general, true);
       }
 
-      if (template.codigo.startsWith('FINAL_ED_FISICA_')) {
+      if (template.codigo.startsWith('FINAL_ED_FISICA_') && !template.codigo.endsWith('_INICIAL')) {
         assert.equal(template.mostrar_leyenda_escala, true);
         assert.equal(template.escala_items.length, 4);
         const blocks = [...new Set(items.map((item) => item.bloque_nombre))];
         assert.deepEqual(blocks, ['Desplazamientos', 'Rolidos', 'Apoyos', 'Saltos']);
+      }
+      if (template.codigo.endsWith('_INICIAL')) {
+        assert.equal(template.grado_desde, 0);
+        assert.equal(template.grado_hasta, 0);
+        assert.equal(template.mostrar_leyenda_escala, false);
+        assert.equal(template.escala_items.length, 3);
       }
       if (template.codigo === 'FINAL_ED_FISICA_G2') {
         assert.equal(template.grado_desde, 1);

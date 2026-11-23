@@ -29,8 +29,11 @@ import { useModalSessionKey } from '../../../shared/hooks/useModalSessionKey';
 import { FormModal } from '../../../shared/components/FormModal';
 import { focusFirstFormError } from '../../../shared/utils/formValidation';
 import ui from '../../../shared/styles/ui.module.css';
+import { getGradeColorConfig } from '../../alumnos/utils/gradeColors';
 import {
+  compareCursosInforme,
   formatMateriaNombreUI,
+  isInicialCursoInforme,
   TIPOS_INFORME_META,
   type CeldaEtapaInforme,
   type CursoInformeResumen,
@@ -104,7 +107,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
   const requiresSubject = meta.requiereMateriaEspecial;
 
   const sortedCursos = useMemo(
-    () => [...cursos].sort((a, b) => a.gradoNumero - b.gradoNumero),
+    () => [...cursos].sort(compareCursosInforme),
     [cursos],
   );
 
@@ -165,6 +168,16 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
     return map;
   }, [celdas, requiresSubject, watchedMateriaId]);
 
+  const coursesForCurrentSubject = useMemo(
+    () => sortedCursos.filter((curso) => cellsForCurrentSubject.has(curso.id)),
+    [cellsForCurrentSubject, sortedCursos],
+  );
+
+  const hasInicialInCurrentSubject = useMemo(
+    () => coursesForCurrentSubject.some((curso) => isInicialCursoInforme(curso)),
+    [coursesForCurrentSubject],
+  );
+
   const hasAnyUnavailableCourse = useMemo(() => {
     if (selectedCourseIds.length === 0) return false;
     return selectedCourseIds.some((cId) => {
@@ -189,7 +202,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
       const cursosDetalle = courseIdsList
         .map((id) => cursosById.get(id))
         .filter((c): c is CursoInformeResumen => Boolean(c))
-        .sort((a, b) => a.gradoNumero - b.gradoNumero)
+        .sort(compareCursosInforme)
         .map((c) => ({ id: c.id, nombre: c.nombre, turno: c.turno }));
 
       const materia = cell.materiaId ? materiasById.get(cell.materiaId) : undefined;
@@ -263,10 +276,11 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
       );
       onChanged();
       const count = targetCourseIds.length;
+      const hasSelectedInicial = targetCourseIds.some((id) => isInicialCursoInforme(cursosById.get(id)));
       showIssuedLink(
         issued.secreto,
         count > 1
-          ? `Enlace generado para ${count} grados con éxito`
+          ? `Enlace generado para ${count} ${hasSelectedInicial ? 'cursos' : 'grados'} con éxito`
           : 'Enlace de informe generado con éxito',
       );
     } catch (err) {
@@ -345,11 +359,19 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
               {record.materiaNombre}
             </Tag>
           )}
-          {record.cursosDetalle.map((c) => (
-            <Tag key={c.id} color="blue" className={styles.courseTag}>
-              {c.nombre}
-            </Tag>
-          ))}
+          {record.cursosDetalle.map((c) => {
+            const visual = getGradeColorConfig(c.nombre);
+            const isKindergarten = Boolean(visual.roomKey);
+            return (
+              <Tag
+                key={c.id}
+                color={isKindergarten ? visual.tagPreset : 'blue'}
+                className={styles.courseTag}
+              >
+                {isKindergarten ? visual.label : c.nombre}
+              </Tag>
+            );
+          })}
         </Space>
       ),
     },
@@ -486,12 +508,25 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
 
                   <Col xs={24} lg={19}>
                     <Form.Item
-                      label="Set de grados a incluir en el enlace"
+                      label={
+                        hasInicialInCurrentSubject
+                          ? 'Set de salas y grados a incluir en el enlace'
+                          : 'Set de grados a incluir en el enlace'
+                      }
                       name="cursoIds"
-                      rules={[{ required: true, type: 'array', min: 1, message: 'Seleccione al menos un grado' }]}
+                      rules={[
+                        {
+                          required: true,
+                          type: 'array',
+                          min: 1,
+                          message: hasInicialInCurrentSubject
+                            ? 'Seleccione al menos una sala o grado'
+                            : 'Seleccione al menos un grado',
+                        },
+                      ]}
                     >
                       <GradeSetSelector
-                        cursos={sortedCursos}
+                        cursos={coursesForCurrentSubject}
                         cellsByCourseId={cellsForCurrentSubject}
                       />
                     </Form.Item>

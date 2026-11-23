@@ -1,3 +1,5 @@
+import { compareGrados, isKindergartenCourse } from '../../alumnos/utils/gradeColors';
+
 export type TipoInforme = 'CICLO_FINAL' | 'PRIMER_CUATRIMESTRE' | 'PRIMER_BIMESTRE';
 
 export type EstadoInstanciaInforme = 'BORRADOR_DOCENTE' | 'CONTROL_DIRECTIVO';
@@ -194,6 +196,8 @@ export interface CursoAsignadoDocenteInforme {
   cursoNombre: string;
   grado: string;
   turno: string;
+  nivel?: 'INICIAL' | 'PRIMARIO';
+  orden?: number;
   plantillaCodigo: string;
   totalAlumnos: number;
   alumnosCompletos: number;
@@ -214,7 +218,30 @@ export interface CursoInformeResumen {
   grado: string;
   gradoNumero: number;
   turno: string;
+  nivel?: 'INICIAL' | 'PRIMARIO';
+  orden?: number;
 }
+
+export const isInicialCursoInforme = (
+  curso?: { nombre?: string | null; gradoNumero?: number | null; nivel?: 'INICIAL' | 'PRIMARIO' } | null,
+): boolean => {
+  if (!curso) return false;
+  if (curso.nivel === 'INICIAL') return true;
+  if (curso.nivel === 'PRIMARIO') return false;
+  return curso.gradoNumero === 0 || isKindergartenCourse(curso.nombre);
+};
+
+export const compareCursosInforme = (
+  a: { nombre?: string | null; gradoNumero?: number | null; orden?: number | null },
+  b: { nombre?: string | null; gradoNumero?: number | null; orden?: number | null },
+): number => {
+  const orderA = a.orden && a.orden > 0 ? a.orden : 0;
+  const orderB = b.orden && b.orden > 0 ? b.orden : 0;
+  if (orderA > 0 && orderB > 0 && orderA !== orderB) {
+    return orderA - orderB;
+  }
+  return compareGrados(a.nombre, b.nombre);
+};
 
 export interface CursadaPendienteInforme {
   inscripcionId: string;
@@ -360,6 +387,7 @@ export interface RevisionInformeData {
     nombre: string;
     grado: string;
     turno: string;
+    nivel?: 'INICIAL' | 'PRIMARIO';
   };
   materia: {
     id: string;
@@ -400,6 +428,11 @@ export const isInverseConductItemText = (texto: string): boolean => {
   return keywords.some((kw) => normalized.includes(kw));
 };
 
+const usesAbcdScaleTemplate = (plantillaCodigo: string): boolean => {
+  const tpl = String(plantillaCodigo || '').trim().toUpperCase();
+  return tpl.includes('ED_FISICA') && !tpl.includes('INICIAL');
+};
+
 export const classifyInformeItemTone = (
   plantillaCodigo: string,
   itemTexto: string,
@@ -410,8 +443,7 @@ export const classifyInformeItemTone = (
   if (code === 'ALCANZADO') return 'verde';
   if (code === 'EN_PROCESO') return 'amarillo';
   if (code === 'NO_ALCANZADO') return 'rojo';
-  const tpl = String(plantillaCodigo || '').trim().toUpperCase();
-  if (tpl.includes('ED_FISICA') || code === 'A' || code === 'B' || code === 'C' || code === 'D') {
+  if (usesAbcdScaleTemplate(plantillaCodigo) || code === 'A' || code === 'B' || code === 'C' || code === 'D') {
     if (code === 'D' || code === 'C') return 'verde';
     if (code === 'B') return 'amarillo';
     if (code === 'A') return 'neutro';
@@ -505,7 +537,7 @@ export const computeLiveStudentSemaforo = (
   itemsAisladosIds?: string[],
 ): { semaforo: SemaforoInformeResumen; disonancias: DisonanciaInformeItem[] } => {
   const semaforo: SemaforoInformeResumen = { verde: 0, amarillo: 0, rojo: 0, neutro: 0 };
-  const isEdFisica = String(plantilla.codigo || '').trim().toUpperCase().includes('ED_FISICA');
+  const isEdFisica = usesAbcdScaleTemplate(plantilla.codigo);
   const isolatedSet = new Set(itemsAisladosIds || []);
   const isolatedOrders: number[] = [];
 

@@ -146,10 +146,22 @@ function requireSpecialSubject(dao, materiaId) {
   return record
 }
 
-function isPrimaryCourse(dao, course) {
+function isKindergartenSpecialSubjectCode(codigoEspecial) {
+  return (
+    codigoEspecial === "EDUCACION_FISICA" ||
+    codigoEspecial === "INGLES" ||
+    codigoEspecial === "MUSICA"
+  )
+}
+
+function isPrimaryCourse(dao, course, levelById) {
   var record = typeof course === "string" ? requireRecord(dao, "cursos", course) : course
   var levelId = record.getString("nivel_id")
   if (levelId) {
+    if (levelById) {
+      var cachedLevel = levelById[levelId]
+      return cachedLevel ? /primar/i.test(cachedLevel.getString("nombre")) : false
+    }
     try {
       var level = requireRecord(dao, "niveles", levelId)
       return /primar/i.test(level.getString("nombre"))
@@ -162,6 +174,25 @@ function isPrimaryCourse(dao, course) {
   return /^[1-7]\.?\s*[°º]?$/.test(name) || /^([1-7])\.?\s*(?:[°º]|grado)?(?:\s|$)/i.test(name)
 }
 
+function isKindergartenCourse(dao, course, levelById) {
+  var record = typeof course === "string" ? requireRecord(dao, "cursos", course) : course
+  var levelId = record.getString("nivel_id")
+  if (levelId) {
+    if (levelById) {
+      var cachedLevel = levelById[levelId]
+      return cachedLevel ? /inic|jard[ií]n/i.test(cachedLevel.getString("nombre")) : false
+    }
+    try {
+      var level = requireRecord(dao, "niveles", levelId)
+      return /inic|jard[ií]n/i.test(level.getString("nombre"))
+    } catch (_) {
+      return false
+    }
+  }
+  var name = (record.getString("nombre") || "").trim()
+  return /sala/i.test(name)
+}
+
 function courseGradeNumber(course) {
   var name = course.getString("nombre") || ""
   if (/sala/i.test(name)) return 0
@@ -171,15 +202,68 @@ function courseGradeNumber(course) {
   return match ? Number(match[1]) : 0
 }
 
-function resolveTemplate(dao, tipoInforme, course, materiaId) {
+function courseSortWeight(course) {
+  if (!course) return 999
+  var orden = course.getInt("orden")
+  if (orden > 0) return orden
+  var name = (course.getString("nombre") || "").trim()
+  if (/sala.*2.*3/i.test(name)) return 2
+  if (/sala.*4.*5/i.test(name)) return 4
   var grade = courseGradeNumber(course)
-  if (grade === 0) return null
+  if (grade > 0) return 10 + grade
+  return 99
+}
+
+function compareCourses(a, b) {
+  var weightDiff = courseSortWeight(a) - courseSortWeight(b)
+  if (weightDiff !== 0) return weightDiff
+  var gradeDiff = (a ? courseGradeNumber(a) : 99) - (b ? courseGradeNumber(b) : 99)
+  if (gradeDiff !== 0) return gradeDiff
+  return (a ? a.getString("nombre") : "").localeCompare(b ? b.getString("nombre") : "")
+}
+
+function courseDisplayGrado(course, isInicial) {
+  var rawGrado = (course.getString("grado") || "").trim()
+  if (!isInicial) return rawGrado
+  if (rawGrado) return rawGrado
+  return (course.getString("nombre") || "").trim().replace(/^sala\s+de\s+/i, "").trim()
+}
+
+function courseDisplayTurno(course, isInicial) {
+  if (isInicial) return "J.C"
+  return course.getString("turno")
+}
+
+function usesAbcdScaleTemplate(templateCode) {
+  var normalized = String(templateCode || "").trim().toUpperCase()
+  return normalized.indexOf("ED_FISICA") !== -1 && normalized.indexOf("INICIAL") === -1
+}
+
+function resolveTemplate(dao, tipoInforme, course, materiaId) {
+  var isInicial = isKindergartenCourse(dao, course)
   if (tipoInforme === "CICLO_FINAL") {
     if (!materiaId) return null
+    if (isInicial) {
+      var subject = findById(dao, "materias", materiaId)
+      var subjectMeta = subject ? classifySpecialSubject(subject.getString("nombre")) : null
+      if (!subjectMeta || !isKindergartenSpecialSubjectCode(subjectMeta.codigoEspecial)) {
+        return null
+      }
+      var inicialCandidates = findByFilter(
+        dao,
+        "plantillas_informe",
+        "tipo_informe = 'CICLO_FINAL' && materia_id = {:materiaId} && grado_desde = 0 && grado_hasta = 0",
+        "codigo",
+        { materiaId: materiaId }
+      )
+      return inicialCandidates.length > 0 ? inicialCandidates[0] : null
+    }
+    var grade = courseGradeNumber(course)
+    if (grade === 0) return null
     var candidates = findByFilter(
       dao,
       "plantillas_informe",
-      "tipo_informe = 'CICLO_FINAL' && materia_id = {:materiaId} && grado_desde <= {:grade} && grado_hasta >= {:grade}",
+      "tipo_informe = 'CICLO_FINAL' && materia_id = {:materiaId} && grado_desde >= 1 && grado_desde <= {:grade} && grado_hasta >= {:grade}",
       "codigo",
       { materiaId: materiaId, grade: grade }
     )
@@ -192,12 +276,15 @@ function resolveTemplate(dao, tipoInforme, course, materiaId) {
     })
     return candidates[0]
   }
+  if (isInicial) return null
+  var nonFinalGrade = courseGradeNumber(course)
+  if (nonFinalGrade === 0) return null
   var matches = findByFilter(
     dao,
     "plantillas_informe",
-    "tipo_informe = {:tipo} && grado_desde <= {:grade} && grado_hasta >= {:grade}",
+    "tipo_informe = {:tipo} && grado_desde >= 1 && grado_desde <= {:grade} && grado_hasta >= {:grade}",
     "codigo",
-    { tipo: tipoInforme, grade: grade }
+    { tipo: tipoInforme, grade: nonFinalGrade }
   )
   if (matches.length > 0) return matches[0]
   return findFirst(dao, "plantillas_informe", "codigo", "CONDUCTA_ESTANDAR_26")
@@ -267,8 +354,7 @@ function classifyReportItemResponse(templateCode, itemText, valorCodigo) {
   if (code === "ALCANZADO") return "verde"
   if (code === "EN_PROCESO") return "amarillo"
   if (code === "NO_ALCANZADO") return "rojo"
-  var tpl = String(templateCode || "").trim().toUpperCase()
-  if (tpl.indexOf("ED_FISICA") !== -1 || code === "A" || code === "B" || code === "C" || code === "D") {
+  if (usesAbcdScaleTemplate(templateCode) || code === "A" || code === "B" || code === "C" || code === "D") {
     if (code === "D" || code === "C") return "verde"
     if (code === "B") return "amarillo"
     if (code === "A") return "neutro"
@@ -313,7 +399,7 @@ function classifyGeneralPerformanceBand(generalCode) {
 
 function computeCourseReviewInsights(templateCode, requiresGeneral, items, studentEntries) {
   var normalizedTpl = String(templateCode || "").trim().toUpperCase()
-  var isEdFisica = normalizedTpl.indexOf("ED_FISICA") !== -1
+  var isEdFisica = usesAbcdScaleTemplate(normalizedTpl)
   var itemById = {}
   var itemStatsById = {}
 
@@ -606,8 +692,8 @@ function tokenWorkflows(dao, record) {
   workflows.sort((a, b) => {
     var courseA = findById(dao, "cursos", a.getString("curso_id"))
     var courseB = findById(dao, "cursos", b.getString("curso_id"))
-    var gradeDiff = (courseA ? courseGradeNumber(courseA) : 99) - (courseB ? courseGradeNumber(courseB) : 99)
-    if (gradeDiff !== 0) return gradeDiff
+    var courseDiff = compareCourses(courseA, courseB)
+    if (courseDiff !== 0) return courseDiff
     return a.getId().localeCompare(b.getId())
   })
   return workflows
@@ -1026,33 +1112,41 @@ function issue(c) {
     throw new BadRequestError("Se seleccionaron demasiados cursos para un mismo enlace.")
   }
 
-  var selectedCourses = rawCourseIds.map((cId) => requireRecord(dao, "cursos", cId))
-  if (tipoInforme === "PRIMER_BIMESTRE" || tipoInforme === "PRIMER_CUATRIMESTRE" || tipoInforme === "CICLO_FINAL") {
-    var hasNonPrimary = selectedCourses.some((course) => !isPrimaryCourse(dao, course))
-    if (hasNonPrimary) {
-      throw new BadRequestError("Este tipo de informe corresponde únicamente a Nivel Primario.")
-    }
-  }
-  selectedCourses.sort((a, b) => {
-    var orderA = a.getInt("orden") || 0
-    var orderB = b.getInt("orden") || 0
-    if (orderA !== orderB) return orderA - orderB
-    var gradeDiff = courseGradeNumber(a) - courseGradeNumber(b)
-    if (gradeDiff !== 0) return gradeDiff
-    return a.getString("nombre").localeCompare(b.getString("nombre"))
-  })
-
-  if (!teacherFirstName || !teacherLastName) {
-    throw new BadRequestError("El nombre y el apellido de la docente son obligatorios.")
-  }
-
+  var subjectMeta = null
   if (needSubject) {
     if (!materiaId) {
       throw new BadRequestError("La materia especial es obligatoria para este tipo de informe.")
     }
-    requireSpecialSubject(dao, materiaId)
+    var subjectRecord = requireSpecialSubject(dao, materiaId)
+    subjectMeta = classifySpecialSubject(subjectRecord.getString("nombre"))
   } else if (materiaId) {
     throw new BadRequestError("El informe de primer bimestre abarca el curso completo sin materia especial.")
+  }
+
+  var selectedCourses = rawCourseIds.map((cId) => requireRecord(dao, "cursos", cId))
+  if (tipoInforme === "PRIMER_BIMESTRE" || tipoInforme === "PRIMER_CUATRIMESTRE") {
+    var hasNonPrimary = selectedCourses.some((course) => !isPrimaryCourse(dao, course))
+    if (hasNonPrimary) {
+      throw new BadRequestError("Este tipo de informe corresponde únicamente a Nivel Primario.")
+    }
+  } else if (tipoInforme === "CICLO_FINAL") {
+    selectedCourses.forEach((course) => {
+      if (isPrimaryCourse(dao, course)) return
+      if (isKindergartenCourse(dao, course)) {
+        if (!subjectMeta || !isKindergartenSpecialSubjectCode(subjectMeta.codigoEspecial)) {
+          throw new BadRequestError(
+            "En Nivel Inicial el Informe de Ciclo Final corresponde únicamente a Educación Física, Inglés y Educación Musical."
+          )
+        }
+        return
+      }
+      throw new BadRequestError("El curso seleccionado no está habilitado para este tipo de informe.")
+    })
+  }
+  selectedCourses.sort(compareCourses)
+
+  if (!teacherFirstName || !teacherLastName) {
+    throw new BadRequestError("El nombre y el apellido de la docente son obligatorios.")
   }
 
   var response
@@ -1238,6 +1332,7 @@ function context(c) {
 
   var cursosAsignados = draftWorkflows.map((wf) => {
     var wfCourse = requireRecord(dao, "cursos", wf.getString("curso_id"))
+    var wfIsInicial = isKindergartenCourse(dao, wfCourse)
     var wfTemplate = requireRecord(dao, "plantillas_informe", wf.getString("plantilla_id"))
     var wfItems = templateItems(dao, wfTemplate.getId())
     var wfCompleteness = reportCompleteness(dao, wf, wfTemplate, wfItems)
@@ -1245,8 +1340,10 @@ function context(c) {
       instanciaId: wf.getId(),
       cursoId: wfCourse.getId(),
       cursoNombre: wfCourse.getString("nombre"),
-      grado: wfCourse.getString("grado"),
-      turno: wfCourse.getString("turno"),
+      grado: courseDisplayGrado(wfCourse, wfIsInicial),
+      turno: courseDisplayTurno(wfCourse, wfIsInicial),
+      nivel: wfIsInicial ? "INICIAL" : "PRIMARIO",
+      orden: courseSortWeight(wfCourse),
       plantillaCodigo: wfTemplate.getString("codigo"),
       totalAlumnos: wfCompleteness.totalAlumnos,
       alumnosCompletos: wfCompleteness.alumnosCompletos,
@@ -1254,6 +1351,8 @@ function context(c) {
       revision: wf.getInt("revision")
     }
   })
+
+  var courseIsInicial = isKindergartenCourse(dao, course)
 
   return c.json(200, {
     acceso: tokenDto(access, draftWorkflows, workflow),
@@ -1267,8 +1366,10 @@ function context(c) {
     curso: {
       id: course.getId(),
       nombre: course.getString("nombre"),
-      grado: course.getString("grado"),
-      turno: course.getString("turno")
+      grado: courseDisplayGrado(course, courseIsInicial),
+      turno: courseDisplayTurno(course, courseIsInicial),
+      nivel: courseIsInicial ? "INICIAL" : "PRIMARIO",
+      orden: courseSortWeight(course)
     },
     materia: subject
       ? {
@@ -1508,30 +1609,26 @@ function staffStages(c) {
     })
 
     var isPrimaryCourseCached = function (course) {
-      var levelId = course.getString("nivel_id")
-      if (levelId) {
-        var level = levelById[levelId]
-        return level ? /primar/i.test(level.getString("nombre")) : false
-      }
-      var name = (course.getString("nombre") || "").trim()
-      if (/sala/i.test(name)) return false
-      return /^[1-7]\.?\s*[°º]?$/.test(name) || /^([1-7])\.?\s*(?:[°º]|grado)?(?:\s|$)/i.test(name)
+      return isPrimaryCourse(txDao, course, levelById)
+    }
+
+    var isKindergartenCourseCached = function (course) {
+      return isKindergartenCourse(txDao, course, levelById)
     }
 
     var courses = allCourses
-    if (tipoInforme === "PRIMER_BIMESTRE" || tipoInforme === "PRIMER_CUATRIMESTRE" || tipoInforme === "CICLO_FINAL") {
+    if (tipoInforme === "PRIMER_BIMESTRE" || tipoInforme === "PRIMER_CUATRIMESTRE") {
       courses = courses.filter(isPrimaryCourseCached)
+    } else if (tipoInforme === "CICLO_FINAL") {
+      courses = courses.filter((course) => isPrimaryCourseCached(course) || isKindergartenCourseCached(course))
     }
-    courses.sort((a, b) => {
-      var orderA = a.getInt("orden") || 0
-      var orderB = b.getInt("orden") || 0
-      if (orderA !== orderB) return orderA - orderB
-      var gradeDiff = courseGradeNumber(a) - courseGradeNumber(b)
-      if (gradeDiff !== 0) return gradeDiff
-      return a.getString("nombre").localeCompare(b.getString("nombre"))
-    })
+    courses.sort(compareCourses)
 
     var specialSubjects = listSpecialSubjects(txDao)
+    var specialSubjectById = {}
+    specialSubjects.forEach((subj) => {
+      specialSubjectById[subj.id] = subj
+    })
 
     var allWorkflows = findByFilter(txDao, "instancias_informe", "id != ''", "", {})
     var workflowById = {}
@@ -1559,8 +1656,8 @@ function staffStages(c) {
       wfList.sort((a, b) => {
         var courseA = courseById[a.getString("curso_id")]
         var courseB = courseById[b.getString("curso_id")]
-        var gradeDiff = (courseA ? courseGradeNumber(courseA) : 99) - (courseB ? courseGradeNumber(courseB) : 99)
-        if (gradeDiff !== 0) return gradeDiff
+        var courseDiff = compareCourses(courseA, courseB)
+        if (courseDiff !== 0) return courseDiff
         return a.getId().localeCompare(b.getId())
       })
       wfList.forEach((wf) => {
@@ -1602,13 +1699,28 @@ function staffStages(c) {
     }
 
     var resolveTemplateCached = function (tipo, course, materiaId) {
-      var grade = courseGradeNumber(course)
-      if (grade === 0) return null
+      var isInicial = isKindergartenCourseCached(course)
       if (tipo === "CICLO_FINAL") {
         if (!materiaId) return null
+        if (isInicial) {
+          var subj = specialSubjectById[materiaId]
+          if (!subj || !isKindergartenSpecialSubjectCode(subj.codigoEspecial)) {
+            return null
+          }
+          var inicialCandidates = allTemplates.filter((tmpl) =>
+            tmpl.getString("tipo_informe") === "CICLO_FINAL" &&
+            tmpl.getString("materia_id") === materiaId &&
+            tmpl.getInt("grado_desde") === 0 &&
+            tmpl.getInt("grado_hasta") === 0
+          )
+          return inicialCandidates.length > 0 ? inicialCandidates[0] : null
+        }
+        var grade = courseGradeNumber(course)
+        if (grade === 0) return null
         var candidates = allTemplates.filter((tmpl) =>
           tmpl.getString("tipo_informe") === "CICLO_FINAL" &&
           tmpl.getString("materia_id") === materiaId &&
+          tmpl.getInt("grado_desde") >= 1 &&
           tmpl.getInt("grado_desde") <= grade &&
           tmpl.getInt("grado_hasta") >= grade
         )
@@ -1621,10 +1733,14 @@ function staffStages(c) {
         })
         return candidates[0]
       }
+      if (isInicial) return null
+      var nonFinalGrade = courseGradeNumber(course)
+      if (nonFinalGrade === 0) return null
       var matches = allTemplates.filter((tmpl) =>
         tmpl.getString("tipo_informe") === tipo &&
-        tmpl.getInt("grado_desde") <= grade &&
-        tmpl.getInt("grado_hasta") >= grade
+        tmpl.getInt("grado_desde") >= 1 &&
+        tmpl.getInt("grado_desde") <= nonFinalGrade &&
+        tmpl.getInt("grado_hasta") >= nonFinalGrade
       )
       return matches.length > 0 ? matches[0] : fallbackStandardTemplate
     }
@@ -1760,8 +1876,12 @@ function staffStages(c) {
 
     var scopes = []
     courses.forEach((course) => {
+      var courseIsInicial = isKindergartenCourseCached(course)
       if (needSubject) {
         specialSubjects.forEach((subj) => {
+          if (courseIsInicial && !isKindergartenSpecialSubjectCode(subj.codigoEspecial)) {
+            return
+          }
           scopes.push({ course: course, subjectId: subj.id, subjectName: subj.nombre })
         })
       } else {
@@ -1856,13 +1976,18 @@ function staffStages(c) {
       },
       tipoInforme: tipoInforme,
       requiereMateriaEspecial: needSubject,
-      cursos: courses.map((course) => ({
-        id: course.getId(),
-        nombre: course.getString("nombre"),
-        grado: course.getString("grado"),
-        gradoNumero: courseGradeNumber(course),
-        turno: course.getString("turno")
-      })),
+      cursos: courses.map((course) => {
+        var courseIsInicial = isKindergartenCourseCached(course)
+        return {
+          id: course.getId(),
+          nombre: course.getString("nombre"),
+          grado: courseDisplayGrado(course, courseIsInicial),
+          gradoNumero: courseGradeNumber(course),
+          turno: courseDisplayTurno(course, courseIsInicial),
+          nivel: courseIsInicial ? "INICIAL" : "PRIMARIO",
+          orden: courseSortWeight(course)
+        }
+      }),
       materiasEspeciales: specialSubjects,
       celdas: cells
     }
@@ -1947,6 +2072,8 @@ function staffReview(c) {
       return a.nombreCompleto.localeCompare(b.nombreCompleto)
     })
 
+    var reviewCourseIsInicial = isKindergartenCourse(txDao, course)
+
     response = {
       instancia: workflowDto(workflow),
       ciclo: {
@@ -1957,8 +2084,9 @@ function staffReview(c) {
       curso: {
         id: course.getId(),
         nombre: course.getString("nombre"),
-        grado: course.getString("grado"),
-        turno: course.getString("turno")
+        grado: courseDisplayGrado(course, reviewCourseIsInicial),
+        turno: courseDisplayTurno(course, reviewCourseIsInicial),
+        nivel: reviewCourseIsInicial ? "INICIAL" : "PRIMARIO"
       },
       materia: subject
         ? {
@@ -2318,6 +2446,8 @@ function buildReportDocumentSnapshot(dao, instanciaId, inscripcionId) {
   var generalCode = evalSnapshot.evaluacion.desempenoGeneralValor || ""
   var generalEntry = generalCode ? generalScaleMap[generalCode] : null
 
+  var snapshotCourseIsInicial = isKindergartenCourse(dao, course)
+
   var datos = {
     instanciaId: workflow.getId(),
     inscripcionId: enrollment.getId(),
@@ -2330,9 +2460,10 @@ function buildReportDocumentSnapshot(dao, instanciaId, inscripcionId) {
     curso: {
       id: course.getId(),
       nombre: course.getString("nombre"),
-      grado: course.getString("grado"),
+      grado: courseDisplayGrado(course, snapshotCourseIsInicial),
       gradoNumero: courseGradeNumber(course),
-      turno: course.getString("turno")
+      turno: courseDisplayTurno(course, snapshotCourseIsInicial),
+      nivel: snapshotCourseIsInicial ? "INICIAL" : "PRIMARIO"
     },
     materia: subject
       ? {

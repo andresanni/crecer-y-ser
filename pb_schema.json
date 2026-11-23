@@ -2372,11 +2372,11 @@
         "id": "rpttpl_gdesde01",
         "name": "grado_desde",
         "type": "number",
-        "required": true,
+        "required": false,
         "presentable": false,
         "unique": false,
         "options": {
-          "min": 1,
+          "min": 0,
           "max": 7,
           "noDecimal": true
         }
@@ -2386,11 +2386,11 @@
         "id": "rpttpl_ghasta01",
         "name": "grado_hasta",
         "type": "number",
-        "required": true,
+        "required": false,
         "presentable": false,
         "unique": false,
         "options": {
-          "min": 1,
+          "min": 0,
           "max": 7,
           "noDecimal": true
         }
