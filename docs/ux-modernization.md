@@ -54,6 +54,7 @@ El marco visual aprobado el 9 de octubre de 2026 utiliza el mismo azul muy claro
 | Foco de validación | `src/shared/utils/formValidation.ts` |
 | Composición reutilizable menor | `src/shared/styles/ui.module.css` |
 | Estilo propio de una pantalla | CSS Module dentro de su módulo |
+| Arquetipos UX compartidos, paridad y criterios de unificación/ramificación | `docs/ux-patterns-registry.md` |
 
 `src/index.css` contiene reglas globales e históricas todavía vigentes. Debe reducirse gradualmente al migrar cada área; no es el destino para nuevas reglas específicas.
 

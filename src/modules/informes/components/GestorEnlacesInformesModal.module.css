@@ -1,7 +1,7 @@
 .content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 
 .createCard {
@@ -9,27 +9,24 @@
   background: var(--cys-color-fill-quaternary);
 }
 
-.createCard :global(.ant-card-head) {
-  min-height: 44px;
-  border-color: var(--cys-color-border-secondary);
-}
-
 .createCard :global(.ant-card-body) {
-  padding: 16px 18px 4px;
-}
-
-.cardTitle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-family: var(--font-heading);
-  font-size: 14px;
-  font-weight: 650;
+  padding: 14px 18px 2px;
 }
 
 .submitColumn {
   display: flex;
   align-items: flex-end;
+}
+
+.submitColumnAligned {
+  display: flex;
+  align-items: flex-start;
+}
+
+@media (min-width: 992px) {
+  .submitColumnAligned {
+    padding-top: 28px;
+  }
 }
 
 .submitButton {

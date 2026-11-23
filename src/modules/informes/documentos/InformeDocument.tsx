@@ -87,6 +87,16 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
   }, [hasBlocks, items]);
 
   const isSpecialCycleFinal = tipoInforme === 'CICLO_FINAL';
+  const isInicial =
+    curso.nivel === 'INICIAL' ||
+    (curso.gradoNumero === 0 && /sala/i.test(curso.nombre || curso.grado || ''));
+  const courseFieldLabel = isInicial ? 'SALA:' : 'GRADO:';
+  const courseFieldValue = isInicial
+    ? curso.grado || curso.nombre.replace(/^sala\s+de\s+/i, '').trim()
+    : `${curso.gradoNumero}º`;
+  const turnoFieldValue = curso.turno || (isInicial ? 'J.C' : '');
+  const nivelSubtitle = isInicial ? 'EDUCACIÓN INICIAL' : 'EDUCACIÓN PRIMARIA';
+  const desempenoNivelLabel = isInicial ? 'E. Inicial' : 'E. Primaria';
   const instanceTitle =
     tipoInforme === 'CICLO_FINAL'
       ? 'Ciclo Final'
@@ -156,8 +166,8 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
               <span className={styles.dataValue}>{alumno.apellidos}</span>
             </div>
             <div className={styles.dataField}>
-              <span className={styles.dataLabel}>GRADO:</span>
-              <span className={styles.dataValue}>{curso.gradoNumero}º</span>
+              <span className={styles.dataLabel}>{courseFieldLabel}</span>
+              <span className={styles.dataValue}>{courseFieldValue}</span>
             </div>
           </div>
           <div className={styles.studentRow}>
@@ -167,7 +177,7 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
             </div>
             <div className={styles.dataField}>
               <span className={styles.dataLabel}>TURNO:</span>
-              <span className={styles.dataValue}>{curso.turno}</span>
+              <span className={styles.dataValue}>{turnoFieldValue}</span>
             </div>
           </div>
         </div>
@@ -193,7 +203,7 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
             {rightSubjectLabel}
           </span>
           <div className={styles.subjectLine} />
-          <span className={styles.subjectSubtitle}>EDUCACIÓN PRIMARIA</span>
+          <span className={styles.subjectSubtitle}>{nivelSubtitle}</span>
         </div>
       </div>
     </>
@@ -242,6 +252,7 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
     <div className={styles.documentRoot}>
       {pages.map((page, pageIdx) => {
         const isLastItemsPage = pageIdx === pages.length - 1;
+        const isDensePage = !hasBlocks && page.rows.length >= 22;
         return (
           <section key={page.pageNumber} className={styles.page}>
             <div className={styles.topSection}>
@@ -282,7 +293,7 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
                         </tbody>
                       </table>
                     )}
-                    <table className={styles.itemsTable}>
+                    <table className={isDensePage ? `${styles.itemsTable} ${styles.itemsTableDense}` : styles.itemsTable}>
                       <thead>
                         <tr>
                           <th
@@ -346,7 +357,7 @@ export const InformeDocument: React.FC<InformeDocumentProps> = ({
                       <div className={styles.desempenoCenter}>
                         <span className={styles.desempenoHeading}>Desempeño General</span>
                         <span className={styles.desempenoSub}>
-                          E. Primaria &nbsp;&nbsp; {rightSubjectLabel}
+                          {desempenoNivelLabel} &nbsp;&nbsp; {rightSubjectLabel}
                         </span>
                       </div>
                       <span className={styles.desempenoValue}>

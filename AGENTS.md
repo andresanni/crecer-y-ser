@@ -19,6 +19,7 @@ Antes de modificar código, consultar:
 11. `docs/gradebook-dataset-ingestion.md` antes de preparar, validar o ingestar calificaciones históricas o generar plantillas de boletines.
 12. `docs/primary-attendance-records.md` antes de modificar la gestión de registros de asistencia mensual de primaria.
 13. `docs/teacher-reports-plan.md` cuando el trabajo afecte informes de maestras (1.er bimestre, 1.er cuatrimestre o ciclo final de áreas especiales), sus enlaces mágicos, visados o generación de PDF.
+14. `docs/ux-patterns-registry.md` cuando el trabajo afecte dinámicas operativas compartidas entre módulos (enlaces mágicos, editores por alumno, tableros de seguimiento, vistas de revisión por curso o decisiones de unificación/ramificación de componentes).
 
 ## Reglas de trabajo
 
@@ -34,6 +35,7 @@ Antes de modificar código, consultar:
 - No copiar `pb_data` de desarrollo al VPS. Promover cambios mediante migraciones y hooks versionados; toda copia de producción usada localmente debe sanearse según `docs/pocketbase-environments.md`.
 - Mantener `deploy/pocketbase-dev-seed` exclusivamente para datos sintéticos locales; nunca incluirlo entre los artefactos del VPS ni introducir allí datos derivados de personas reales.
 - Mantener un único editor de boletines compartido y resolver las diferencias entre docentes y dirección mediante políticas de acceso y orígenes de datos.
+- Aplicar el **Gate de Paridad UX** (`docs/ux-patterns-registry.md`): al modificar un archivo suscripto a un arquetipo compartido, verificar primero sus invariantes UX y, tras validar la mejora en la feature piloto (antes de cerrar la rama/PR), preguntar explícitamente al usuario si se replica en los módulos hermanos, se promueve un shell visual a `src/shared/` o se registra como pendiente/variante exclusiva, actualizando el registro en el mismo cambio.
 - No escribir evaluaciones, criterios ni cierres directamente desde el cliente; toda escritura de planilla debe atravesar el gateway correspondiente al rol y respetar el estado del workflow.
 - Ejecutar `npm run lint` y `npm run build` después de cambios de código.
 - Tratar el warning actual de tamaño del bundle como deuda conocida; no ocultarlo cambiando el límite sin optimizar la carga.

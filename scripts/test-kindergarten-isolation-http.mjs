@@ -224,8 +224,8 @@ async function main() {
   }
   console.log('✓ Verificación boletines/mutaciones: asignación y enlaces rechazados con HTTP 400.')
 
-  const reportTypes = ['PRIMER_BIMESTRE', 'PRIMER_CUATRIMESTRE', 'CICLO_FINAL']
-  for (const reportType of reportTypes) {
+  const primaryOnlyReportTypes = ['PRIMER_BIMESTRE', 'PRIMER_CUATRIMESTRE']
+  for (const reportType of primaryOnlyReportTypes) {
     const reportStagesRes = await requestJson(
       `${pbUrl}/api/cys/directivo/informes/etapas/${cycle.id}/${reportType}`,
       { headers: staffHeaders }
@@ -235,8 +235,8 @@ async function main() {
       200,
       `Error al consultar etapas de informes para ${reportType}`
     )
-    const reportCells = reportStagesRes.body?.filas || reportStagesRes.body?.etapas || []
-    const reportCourseIds = new Set(reportCells.map((c) => c.cursoId || c.curso?.id || c.id).filter(Boolean))
+    const reportCourses = reportStagesRes.body?.cursos || []
+    const reportCourseIds = new Set(reportCourses.map((c) => c.id).filter(Boolean))
 
     for (const k of kindergartenCourses) {
       assert.strictEqual(
@@ -265,7 +265,59 @@ async function main() {
       )
     }
   }
-  console.log('✓ Verificación informes primarios: etapas y emisión de salas de Inicial bloqueadas con HTTP 400.')
+
+  const finalStagesRes = await requestJson(
+    `${pbUrl}/api/cys/directivo/informes/etapas/${cycle.id}/CICLO_FINAL`,
+    { headers: staffHeaders }
+  )
+  assert.strictEqual(finalStagesRes.status, 200, 'Error al consultar etapas de informes para CICLO_FINAL')
+  const finalSubjects = finalStagesRes.body?.materiasEspeciales || []
+  const finalCells = finalStagesRes.body?.celdas || []
+  const excludedSubjects = finalSubjects.filter(
+    (s) => s.codigoEspecial === 'ARTES_VISUALES' || s.codigoEspecial === 'TECNOLOGIA'
+  )
+  const allowedSubjects = finalSubjects.filter(
+    (s) =>
+      s.codigoEspecial === 'EDUCACION_FISICA' ||
+      s.codigoEspecial === 'INGLES' ||
+      s.codigoEspecial === 'MUSICA'
+  )
+
+  for (const k of kindergartenCourses) {
+    for (const subj of allowedSubjects) {
+      const matchingCell = finalCells.find((c) => c.cursoId === k.id && c.materiaId === subj.id)
+      assert.ok(
+        matchingCell,
+        `La sala ${k.nombre} debe figurar en CICLO_FINAL para ${subj.nombre}`
+      )
+    }
+    for (const subj of excludedSubjects) {
+      const forbiddenCell = finalCells.find((c) => c.cursoId === k.id && c.materiaId === subj.id)
+      assert.strictEqual(
+        Boolean(forbiddenCell),
+        false,
+        `La sala ${k.nombre} no debe figurar en CICLO_FINAL para ${subj.nombre}`
+      )
+      const forbiddenIssueRes = await requestJson(`${pbUrl}/api/cys/enlaces-informes`, {
+        method: 'POST',
+        headers: staffHeaders,
+        body: JSON.stringify({
+          cicloId: cycle.id,
+          tipoInforme: 'CICLO_FINAL',
+          cursoId: k.id,
+          materiaId: subj.id,
+          docenteNombre: 'Docente',
+          docenteApellido: 'Prueba'
+        })
+      })
+      assert.strictEqual(
+        forbiddenIssueRes.status,
+        400,
+        `Emitir informe CICLO_FINAL de ${subj.nombre} para ${k.nombre} debió retornar 400 pero retornó ${forbiddenIssueRes.status}`
+      )
+    }
+  }
+  console.log('✓ Verificación informes: Inicial aislado de B1/C1 y de Artes Visuales/Tecnología en Ciclo Final; habilitado en Ed. Física, Inglés y Música.')
   console.log('Todos los tests HTTP de aislamiento para Nivel Inicial pasaron exitosamente.')
 }
 

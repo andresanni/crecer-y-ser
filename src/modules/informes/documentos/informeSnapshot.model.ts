@@ -13,6 +13,7 @@ export interface InformeDocumentSnapshotDatos {
     grado: string;
     gradoNumero: number;
     turno: string;
+    nivel?: 'INICIAL' | 'PRIMARIO';
   };
   materia: {
     id: string;

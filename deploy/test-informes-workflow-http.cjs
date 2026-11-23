@@ -175,8 +175,8 @@ test('Flujo HTTP completo de Informes de Maestras: enlaces, carga progresiva, en
     );
     assert.equal(stagesRes.status, 200);
     assert.equal(stagesRes.body.materiasEspeciales.length, 5);
-    assert.equal(stagesRes.body.cursos.length, 2);
-    assert.equal(stagesRes.body.celdas.length, 10);
+    assert.equal(stagesRes.body.cursos.length, 4);
+    assert.equal(stagesRes.body.celdas.length, 16);
 
     const edFisica = stagesRes.body.materiasEspeciales.find((m) => m.codigoEspecial === 'EDUCACION_FISICA');
     const artesVisuales = stagesRes.body.materiasEspeciales.find((m) => m.codigoEspecial === 'ARTES_VISUALES');
