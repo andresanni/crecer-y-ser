@@ -25,6 +25,8 @@ dev -> feature/<nombre> -> pull request opcional hacia dev
 
 Los nombres deben ser breves y descriptivos. Las ramas temporales se eliminan después de confirmar que su historial quedó integrado. Esta excepción para `dev` dura hasta que la aplicación tenga su primera versión operativa; en ese momento se revisará la política de integración.
 
+Cuando una mejora validada impacte un arquetipo UX compartido documentado en `docs/ux-patterns-registry.md`, la propagación de paridad hacia los módulos hermanos (o la promoción de su shell visual a `src/shared/`) puede y debe resolverse dentro de la misma rama o pull request, evitando duplicar ciclos de commits, revisiones y despliegues.
+
 No se trabaja directamente sobre `master` y no se usa `master` como rama de desarrollo cotidiano.
 
 ## Integración en `dev`
