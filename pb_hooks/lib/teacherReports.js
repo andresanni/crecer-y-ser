@@ -245,6 +245,213 @@ function resolveDesempenoGeneralScale(record, course) {
   return stored.length > 0 ? stored : DESEMPENO_PRIMER_CICLO
 }
 
+function isInverseConductItemText(text) {
+  var normalized = normalizeKey(text)
+  var keywords = [
+    "dificultades",
+    "agresion",
+    "descalifica",
+    "resistencia",
+    "dispersa",
+    "deja dispersar",
+    "habla cuando",
+    "convers",
+    "interrumpe"
+  ]
+  return keywords.some((kw) => normalized.indexOf(kw) !== -1)
+}
+
+function classifyReportItemResponse(templateCode, itemText, valorCodigo) {
+  var code = String(valorCodigo || "").trim().toUpperCase()
+  if (!code) return null
+  if (code === "ALCANZADO") return "verde"
+  if (code === "EN_PROCESO") return "amarillo"
+  if (code === "NO_ALCANZADO") return "rojo"
+  var tpl = String(templateCode || "").trim().toUpperCase()
+  if (tpl.indexOf("ED_FISICA") !== -1 || code === "A" || code === "B" || code === "C" || code === "D") {
+    if (code === "D" || code === "C") return "verde"
+    if (code === "B") return "amarillo"
+    if (code === "A") return "neutro"
+  }
+  if (code === "SIEMPRE" || code === "A_VECES" || code === "NUNCA") {
+    if (code === "A_VECES") return "amarillo"
+    var inverse = isInverseConductItemText(itemText)
+    if (code === "SIEMPRE") return inverse ? "rojo" : "verde"
+    if (code === "NUNCA") return inverse ? "verde" : "rojo"
+  }
+  return "neutro"
+}
+
+function classifyGeneralPerformanceBand(generalCode) {
+  var code = String(generalCode || "").trim().toUpperCase()
+  if (!code || code === "NO_CORRESPONDE" || code === "NC") return null
+  if (
+    code === "DESTACADO" ||
+    code === "DESTACADO_10" ||
+    code === "AVANZADO" ||
+    code === "AVANZADO_9" ||
+    code === "AVANZADO_8"
+  ) {
+    return "ALTO"
+  }
+  if (code === "ALCANZADO" || code === "ALCANZADO_7" || code === "ALCANZADO_6") {
+    return "MEDIO"
+  }
+  if (code === "EN_PROCESO" || code === "EN_PROCESO_5" || code === "EN_PROCESO_4") {
+    return "PROCESO"
+  }
+  if (
+    code === "NO_ALCANZO" ||
+    code === "NO_ALCANZO_3" ||
+    code === "NO_ALCANZO_2" ||
+    code === "NO_ALCANZO_1"
+  ) {
+    return "BAJO"
+  }
+  return null
+}
+
+function computeCourseReviewInsights(templateCode, requiresGeneral, items, studentEntries) {
+  var normalizedTpl = String(templateCode || "").trim().toUpperCase()
+  var isEdFisica = normalizedTpl.indexOf("ED_FISICA") !== -1
+  var itemById = {}
+  var itemStatsById = {}
+
+  items.forEach((item) => {
+    var id = typeof item.getId === "function" ? item.getId() : item.id
+    var texto = typeof item.getString === "function" ? item.getString("texto") : item.texto
+    var ordenVisual = typeof item.getInt === "function" ? item.getInt("orden_visual") : item.ordenVisual
+    itemById[id] = { id: id, texto: texto, ordenVisual: ordenVisual }
+    itemStatsById[id] = { workedCount: 0, aCount: 0 }
+  })
+
+  if (isEdFisica) {
+    studentEntries.forEach((entry) => {
+      var seenForStudent = {}
+      ;(entry.respuestas || []).forEach((resp) => {
+        if (!itemById[resp.itemId] || seenForStudent[resp.itemId]) return
+        seenForStudent[resp.itemId] = true
+        var code = String(resp.valorCodigo || "").trim().toUpperCase()
+        if (!code) return
+        if (code === "A") {
+          itemStatsById[resp.itemId].aCount += 1
+        } else {
+          itemStatsById[resp.itemId].workedCount += 1
+        }
+      })
+    })
+  }
+
+  var isolatedAItemIds = {}
+  if (isEdFisica) {
+    Object.keys(itemStatsById).forEach((itemId) => {
+      var stats = itemStatsById[itemId]
+      var total = stats.workedCount + stats.aCount
+      if (
+        stats.workedCount >= 2 &&
+        stats.aCount >= 1 &&
+        stats.aCount < stats.workedCount &&
+        stats.aCount <= Math.max(2, Math.floor(total * 0.25))
+      ) {
+        isolatedAItemIds[itemId] = true
+      }
+    })
+  }
+
+  var byKey = {}
+  var alumnosConRojos = 0
+  var alumnosConAmarillos = 0
+  var alumnosConDisonancias = 0
+  var alumnosConAtencion = 0
+
+  studentEntries.forEach((entry) => {
+    var semaforo = { verde: 0, amarillo: 0, rojo: 0, neutro: 0 }
+    var itemsAisladosIds = []
+    var isolatedOrders = []
+    var seenForStudent = {}
+
+    ;(entry.respuestas || []).forEach((resp) => {
+      var item = itemById[resp.itemId]
+      if (!item || seenForStudent[resp.itemId]) return
+      seenForStudent[resp.itemId] = true
+      var tone = classifyReportItemResponse(normalizedTpl, item.texto, resp.valorCodigo)
+      if (tone) {
+        semaforo[tone] += 1
+      }
+      var code = String(resp.valorCodigo || "").trim().toUpperCase()
+      if (isolatedAItemIds[resp.itemId] && code === "A") {
+        itemsAisladosIds.push(resp.itemId)
+        isolatedOrders.push(item.ordenVisual)
+      }
+    })
+
+    var disonancias = []
+    var band = requiresGeneral ? classifyGeneralPerformanceBand(entry.desempenoGeneralValor) : null
+
+    if (band === "ALTO" && (semaforo.rojo >= 1 || (isEdFisica && semaforo.amarillo >= 2))) {
+      disonancias.push({
+        codigo: "NOTA_ALTA_CON_ROJOS",
+        mensaje: "Desempeño general alto con valoración baja en algún indicador."
+      })
+    }
+
+    if (
+      semaforo.verde > 0 &&
+      semaforo.amarillo === 0 &&
+      semaforo.rojo === 0 &&
+      (band === "PROCESO" || band === "BAJO")
+    ) {
+      disonancias.push({
+        codigo: "TODO_VERDE_NOTA_BAJA",
+        mensaje: "Todos los indicadores logrados con desempeño general en proceso o bajo."
+      })
+    }
+
+    if (
+      semaforo.rojo > semaforo.verde + semaforo.amarillo &&
+      (band === "MEDIO" || band === "ALTO")
+    ) {
+      disonancias.push({
+        codigo: "MAYORIA_ROJA_NOTA_APROBADA",
+        mensaje: "Predominio de indicadores bajos con desempeño general alcanzado o superior."
+      })
+    }
+
+    if (itemsAisladosIds.length > 0) {
+      isolatedOrders.sort((a, b) => a - b)
+      disonancias.push({
+        codigo: "ITEM_A_AISLADO",
+        mensaje:
+          "Registra «A» (no trabajado) en " +
+          (isolatedOrders.length > 1 ? "los ítems " : "el ítem ") +
+          isolatedOrders.join(", ") +
+          " mientras el resto del curso tiene calificación."
+      })
+    }
+
+    if (semaforo.rojo > 0) alumnosConRojos += 1
+    if (semaforo.amarillo > 0) alumnosConAmarillos += 1
+    if (disonancias.length > 0) alumnosConDisonancias += 1
+    if (semaforo.rojo > 0 || disonancias.length > 0) alumnosConAtencion += 1
+
+    byKey[entry.key] = {
+      semaforo: semaforo,
+      disonancias: disonancias,
+      itemsAisladosIds: itemsAisladosIds
+    }
+  })
+
+  return {
+    byKey: byKey,
+    resumenCurso: {
+      alumnosConRojos: alumnosConRojos,
+      alumnosConAmarillos: alumnosConAmarillos,
+      alumnosConDisonancias: alumnosConDisonancias,
+      alumnosConAtencion: alumnosConAtencion
+    }
+  }
+}
+
 function templateDto(record, course) {
   return {
     id: record.getId(),
@@ -1672,6 +1879,8 @@ function staffReview(c) {
       : null
     var template = requireRecord(txDao, "plantillas_informe", workflow.getString("plantilla_id"))
     var items = templateItems(txDao, template.getId())
+    var tDto = templateDto(template, course)
+    var generalScaleMap = allowedScaleCodesMap(tDto.escalaDesempenoGeneral)
     var approvals = findByFilter(
       txDao,
       "visados_informe",
@@ -1681,12 +1890,20 @@ function staffReview(c) {
     )
     var missingEnrollments = missingReviewEnrollments(txDao, workflow, approvals)
     var approvedCount = 0
+    var insightEntries = []
 
     var students = approvals.map((approval) => {
       if (approval.getString("estado") === "VISADO") approvedCount += 1
       var enrollment = requireRecord(txDao, "inscripciones", approval.getString("inscripcion_id"))
       var studentRecord = requireRecord(txDao, "alumnos", enrollment.getString("alumno_id"))
       var evalSnapshot = studentEvaluationSnapshot(txDao, workflow, template, items, enrollment)
+      var generalCode = evalSnapshot.evaluacion.desempenoGeneralValor || ""
+      var generalEntry = generalCode ? generalScaleMap[generalCode] : null
+      insightEntries.push({
+        key: enrollment.getId(),
+        desempenoGeneralValor: generalCode,
+        respuestas: evalSnapshot.evaluacion.respuestas
+      })
       return Object.assign(approvalDto(approval), {
         nombreCompleto: (studentRecord.getString("apellidos") + ", " + studentRecord.getString("nombres")).trim(),
         apellidos: studentRecord.getString("apellidos"),
@@ -1696,9 +1913,28 @@ function staffReview(c) {
         itemsRespondidos: evalSnapshot.itemsRespondidos,
         totalItems: evalSnapshot.totalItems,
         desempenoGeneralValor: evalSnapshot.evaluacion.desempenoGeneralValor,
+        desempenoGeneralEtiqueta: generalEntry ? generalEntry.etiqueta : null,
         elegibilidadPdf: evaluateReportPdfEligibility(approval, studentRecord, workflow),
         preparacionDocumental: reportDocumentPreparation(studentRecord, workflow)
       })
+    })
+
+    var courseInsights = computeCourseReviewInsights(
+      template.getString("codigo"),
+      template.getBool("requiere_desempeno_general"),
+      items,
+      insightEntries
+    )
+
+    students.forEach((student) => {
+      var insight = courseInsights.byKey[student.inscripcionId] || {
+        semaforo: { verde: 0, amarillo: 0, rojo: 0, neutro: 0 },
+        disonancias: [],
+        itemsAisladosIds: []
+      }
+      student.semaforo = insight.semaforo
+      student.disonancias = insight.disonancias
+      student.itemsAisladosIds = insight.itemsAisladosIds
     })
 
     students.sort((a, b) => {
@@ -1727,7 +1963,7 @@ function staffReview(c) {
             nombre: subject.getString("nombre")
           }
         : null,
-      plantilla: templateDto(template),
+      plantilla: tDto,
       items: items.map(itemDto),
       etapa:
         approvals.length > 0 && approvedCount === approvals.length && missingEnrollments.length === 0
@@ -1742,6 +1978,7 @@ function staffReview(c) {
         workflow.getString("ciclo_id"),
         workflow.getString("tipo_informe")
       ).map((enrollment) => enrollment.getId()),
+      resumenCurso: courseInsights.resumenCurso,
       informes: students
     }
   })

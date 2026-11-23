@@ -254,6 +254,27 @@ export interface EtapasInformeData {
   celdas: CeldaEtapaInforme[];
 }
 
+export type InformeSemaforoTone = 'verde' | 'amarillo' | 'rojo' | 'neutro';
+
+export interface SemaforoInformeResumen {
+  verde: number;
+  amarillo: number;
+  rojo: number;
+  neutro: number;
+}
+
+export interface DisonanciaInformeItem {
+  codigo: string;
+  mensaje: string;
+}
+
+export interface ResumenRevisionCursoInforme {
+  alumnosConRojos: number;
+  alumnosConAmarillos: number;
+  alumnosConDisonancias: number;
+  alumnosConAtencion: number;
+}
+
 export interface AlumnoInformeRow {
   inscripcionId: string;
   numeroOrden: number | null;
@@ -265,6 +286,11 @@ export interface AlumnoInformeRow {
   totalItems: number;
   desempenoGeneralCompleto: boolean;
   estadoVisado?: EstadoVisadoInforme;
+  desempenoGeneralValor?: string | null;
+  desempenoGeneralEtiqueta?: string | null;
+  semaforo?: SemaforoInformeResumen;
+  disonancias?: DisonanciaInformeItem[];
+  itemsAisladosIds?: string[];
 }
 
 export interface RespuestaItemInforme {
@@ -314,6 +340,10 @@ export interface InformeRevisionAlumno extends VisadoInformeDto {
   itemsRespondidos: number;
   totalItems: number;
   desempenoGeneralValor: string | null;
+  desempenoGeneralEtiqueta?: string | null;
+  semaforo?: SemaforoInformeResumen;
+  disonancias?: DisonanciaInformeItem[];
+  itemsAisladosIds?: string[];
   elegibilidadPdf: ElegibilidadPdfInforme;
   preparacionDocumental: PreparacionDocumentalInforme;
 }
@@ -342,5 +372,194 @@ export interface RevisionInformeData {
   visados: number;
   alumnosSinIncorporar: number;
   inscripcionesEvaluables: string[];
+  resumenCurso?: ResumenRevisionCursoInforme;
   informes: InformeRevisionAlumno[];
 }
+
+const normalizeInsightText = (text: string): string => (
+  String(text || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+);
+
+export const isInverseConductItemText = (texto: string): boolean => {
+  const normalized = normalizeInsightText(texto);
+  const keywords = [
+    'dificultades',
+    'agresion',
+    'descalifica',
+    'resistencia',
+    'dispersa',
+    'deja dispersar',
+    'habla cuando',
+    'convers',
+    'interrumpe',
+  ];
+  return keywords.some((kw) => normalized.includes(kw));
+};
+
+export const classifyInformeItemTone = (
+  plantillaCodigo: string,
+  itemTexto: string,
+  valorCodigo: string,
+): InformeSemaforoTone => {
+  const code = String(valorCodigo || '').trim().toUpperCase();
+  if (!code) return 'neutro';
+  if (code === 'ALCANZADO') return 'verde';
+  if (code === 'EN_PROCESO') return 'amarillo';
+  if (code === 'NO_ALCANZADO') return 'rojo';
+  const tpl = String(plantillaCodigo || '').trim().toUpperCase();
+  if (tpl.includes('ED_FISICA') || code === 'A' || code === 'B' || code === 'C' || code === 'D') {
+    if (code === 'D' || code === 'C') return 'verde';
+    if (code === 'B') return 'amarillo';
+    if (code === 'A') return 'neutro';
+  }
+  if (code === 'SIEMPRE' || code === 'A_VECES' || code === 'NUNCA') {
+    if (code === 'A_VECES') return 'amarillo';
+    const inverse = isInverseConductItemText(itemTexto);
+    if (code === 'SIEMPRE') return inverse ? 'rojo' : 'verde';
+    if (code === 'NUNCA') return inverse ? 'verde' : 'rojo';
+  }
+  return 'neutro';
+};
+
+export const classifyGeneralPerformanceBand = (
+  generalCode: string | null | undefined,
+): 'ALTO' | 'MEDIO' | 'PROCESO' | 'BAJO' | null => {
+  const code = String(generalCode || '').trim().toUpperCase();
+  if (!code || code === 'NO_CORRESPONDE' || code === 'NC') return null;
+  if (
+    code === 'DESTACADO' ||
+    code === 'DESTACADO_10' ||
+    code === 'AVANZADO' ||
+    code === 'AVANZADO_9' ||
+    code === 'AVANZADO_8'
+  ) {
+    return 'ALTO';
+  }
+  if (code === 'ALCANZADO' || code === 'ALCANZADO_7' || code === 'ALCANZADO_6') {
+    return 'MEDIO';
+  }
+  if (code === 'EN_PROCESO' || code === 'EN_PROCESO_5' || code === 'EN_PROCESO_4') {
+    return 'PROCESO';
+  }
+  if (
+    code === 'NO_ALCANZO' ||
+    code === 'NO_ALCANZO_3' ||
+    code === 'NO_ALCANZO_2' ||
+    code === 'NO_ALCANZO_1'
+  ) {
+    return 'BAJO';
+  }
+  return null;
+};
+
+export const getGeneralPerformanceTone = (
+  valorCodigo: string | null | undefined,
+): InformeSemaforoTone => {
+  const band = classifyGeneralPerformanceBand(valorCodigo);
+  if (band === 'ALTO' || band === 'MEDIO') return 'verde';
+  if (band === 'PROCESO') return 'amarillo';
+  if (band === 'BAJO') return 'rojo';
+  return 'neutro';
+};
+
+const DESEMPENO_SHORT_LABELS: Record<string, string> = {
+  NO_ALCANZO: 'NA',
+  EN_PROCESO: 'EP',
+  ALCANZADO: 'AL',
+  AVANZADO: 'AV',
+  DESTACADO: 'DE',
+  NO_CORRESPONDE: 'NC',
+  NC: 'NC',
+  NO_ALCANZO_1: 'NA-1',
+  NO_ALCANZO_2: 'NA-2',
+  NO_ALCANZO_3: 'NA-3',
+  EN_PROCESO_4: 'EP-4',
+  EN_PROCESO_5: 'EP-5',
+  ALCANZADO_6: 'AL-6',
+  ALCANZADO_7: 'AL-7',
+  AVANZADO_8: 'AV-8',
+  AVANZADO_9: 'AV-9',
+  DESTACADO_10: 'DE-10',
+};
+
+export const formatDesempenoGeneralShortLabel = (
+  valorCodigo?: string | null,
+  etiqueta?: string | null,
+): string => {
+  const code = String(valorCodigo || '').trim().toUpperCase();
+  if (code && DESEMPENO_SHORT_LABELS[code]) {
+    return DESEMPENO_SHORT_LABELS[code];
+  }
+  return etiqueta || valorCodigo || '';
+};
+
+export const computeLiveStudentSemaforo = (
+  plantilla: PlantillaInforme,
+  items: ItemPlantillaInforme[],
+  respuestasMap: Record<string, string>,
+  desempenoGeneralValor: string,
+  itemsAisladosIds?: string[],
+): { semaforo: SemaforoInformeResumen; disonancias: DisonanciaInformeItem[] } => {
+  const semaforo: SemaforoInformeResumen = { verde: 0, amarillo: 0, rojo: 0, neutro: 0 };
+  const isEdFisica = String(plantilla.codigo || '').trim().toUpperCase().includes('ED_FISICA');
+  const isolatedSet = new Set(itemsAisladosIds || []);
+  const isolatedOrders: number[] = [];
+
+  for (const item of items) {
+    const code = String(respuestasMap[item.id] || '').trim();
+    if (!code) continue;
+    const tone = classifyInformeItemTone(plantilla.codigo, item.texto, code);
+    semaforo[tone] += 1;
+    if (isEdFisica && isolatedSet.has(item.id) && code.toUpperCase() === 'A') {
+      isolatedOrders.push(item.ordenVisual);
+    }
+  }
+
+  const disonancias: DisonanciaInformeItem[] = [];
+  const band = plantilla.requiereDesempenoGeneral
+    ? classifyGeneralPerformanceBand(desempenoGeneralValor)
+    : null;
+
+  if (band === 'ALTO' && (semaforo.rojo >= 1 || (isEdFisica && semaforo.amarillo >= 2))) {
+    disonancias.push({
+      codigo: 'NOTA_ALTA_CON_ROJOS',
+      mensaje: 'Desempeño general alto con valoración baja en algún indicador.',
+    });
+  }
+
+  if (
+    semaforo.verde > 0 &&
+    semaforo.amarillo === 0 &&
+    semaforo.rojo === 0 &&
+    (band === 'PROCESO' || band === 'BAJO')
+  ) {
+    disonancias.push({
+      codigo: 'TODO_VERDE_NOTA_BAJA',
+      mensaje: 'Todos los indicadores logrados con desempeño general en proceso o bajo.',
+    });
+  }
+
+  if (
+    semaforo.rojo > semaforo.verde + semaforo.amarillo &&
+    (band === 'MEDIO' || band === 'ALTO')
+  ) {
+    disonancias.push({
+      codigo: 'MAYORIA_ROJA_NOTA_APROBADA',
+      mensaje: 'Predominio de indicadores bajos con desempeño general alcanzado o superior.',
+    });
+  }
+
+  if (isolatedOrders.length > 0) {
+    isolatedOrders.sort((a, b) => a - b);
+    disonancias.push({
+      codigo: 'ITEM_A_AISLADO',
+      mensaje: `Registra «A» (no trabajado) en ${isolatedOrders.length > 1 ? 'los ítems ' : 'el ítem '}${isolatedOrders.join(', ')} mientras el resto del curso tiene calificación.`,
+    });
+  }
+
+  return { semaforo, disonancias };
+};

@@ -1,5 +1,11 @@
 # Contexto actual de Crecer y Ser
 
+## Ayudas visuales orientativas para revisión directiva de Informes — Noviembre de 2026
+
+Se incorporaron ayudas visuales puramente orientativas e informativas para la revisión directiva en `/app/informes` (aplicables a `CICLO_FINAL` y compatibles con todas las escalas, incluida `CONDUCTA_ESTANDAR_26` con polaridad inversa en ítems de conflicto):
+- **Cálculo en servidor y vivo en cliente (`pb_hooks/lib/teacherReports.js`, `src/modules/informes/models/informe.model.ts`)**: `staffReview` y `computeLiveStudentSemaforo` calculan `semaforo` (`verde`, `amarillo`, `rojo`, `neutro`), detección de `«A»` aislado por ítem en Educación Física y sugerencias de disonancia entre ítems y Desempeño General (`NOTA_ALTA_CON_ROJOS`, `TODO_VERDE_NOTA_BAJA`, `MAYORIA_ROJA_NOTA_APROBADA`, `ITEM_A_AISLADO`), sin bloquear visados ni PDFs y sin exigir texto en `observaciones` (reservado a PPI y apoyo). `staffReview` resuelve además `templateDto(template, course)` para mostrar correctamente la escala de 1.er y 2.° Ciclo.
+- **Presentación suave y jerarquía clara (`InformesVisualIndicators.tsx`, `RevisionInformePage.tsx`, `VistaInformePorAlumno.tsx`)**: El tablero general de grados (`TableroInformesPage.tsx`) conserva únicamente el seguimiento limpio de llenado y visado. En la vista por curso (`RevisionInformePage.tsx`), el estado `Visado` / `Sin visar` se destaca en una zona derecha dedicada e independiente de la fila de estadísticas académicas, que muestra el Desempeño General abreviado (`AL`, `AV`, `AV-9`, etc. con tooltip completo), semáforo compacto y sugerencias suaves (`<BulbOutlined />` en índigo pastel). Dentro del editor (`VistaInformePorAlumno.tsx` en modo `readOnly`), se ofrece semáforo por ítem, botón `Ver solo ítems a observar`, banner orientativo ante disonancias y mini-indicadores en el selector de alumnos.
+
 ## Optimización de carga, Realtime y caché SWR en tablero de Informes — Noviembre de 2026
 
 Se optimizó el tablero directivo de seguimiento de informes (`TableroInformesPage.tsx`, `pb_hooks/lib/teacherReports.js`):
