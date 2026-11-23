@@ -152,7 +152,8 @@ Toda tarea que modifique archivos listados en la Sección 4 debe cumplir estas t
   - Bloqueo claro de emisión para cursos ya entregados (`CONTROL_DIRECTIVO` / `REVISION_DIRECTIVA` / `LISTO_PARA_PDF`).
 - **Variantes válidas por dominio**:
   - **Boletines**: selección de 1 curso + 1 período y campo único `docenteNombre`.
-  - **Informes**: selección múltiple de grados (`cursoIds`) con atajos (`Todos`, `1.er Ciclo`, `2.° Ciclo`), materia especial (en `CICLO_FINAL` y `PRIMER_CUATRIMESTRE`), y captura obligatoria separada de `docenteNombre` y `docenteApellido` para el pie del PDF.
+  - **Informes — Áreas Especiales (`CICLO_FINAL` y `PRIMER_CUATRIMESTRE`)**: selección múltiple de grados (`cursoIds`) mediante fila compacta de checks (`GradeSetSelector`), selector de materia especial, y captura obligatoria separada de `docenteNombre` y `docenteApellido` para el pie del PDF en un formulario compacto de 2 filas.
+  - **Informes — Maestras de Grado (`PRIMER_BIMESTRE`)** *(ramificación implementada hacia el modelo simple de Boletines)*: emisión estricta de **1 enlace por grado** (`<Select>` simple de un único `cursoId` sin `GradeSetSelector` ni materia especial en `GestorEnlacesInformesModal.tsx`, y rechazo explícito de `rawCourseIds.length > 1` en `issue` de `pb_hooks/lib/teacherReports.js`). Conserva `docenteNombre` y `docenteApellido` separados en una única fila para satisfacer el pie de firma del PDF y `reportDocumentPreparation`.
 
 ---
 
@@ -167,6 +168,7 @@ Estado relevado el 23 de noviembre de 2026 como línea base para futuras iteraci
 | `UX-04` | **Encabezado público `/carga` vs `/carga-informe`**: clases `.publicHeaderCard`, `.teacherContainer`, `.schoolLogo`, `.teacherTitle` y media queries mobile duplicadas entre módulos. | Duplicación directa | Extraer `PublicPortalHeader` en `src/shared/components/` cuando se ajuste el layout o la identidad visual de cualquiera de los portales docentes. |
 | `UX-06` | **Constantes de debounce Realtime y throttle de foco**: Boletines usa `1200 / 4000 / 1500 ms`; Informes usa `400 / 1500 / 5000 ms`. | Ajuste técnico menor | Evaluar unificación de umbrales o helper compartido de suscripción Realtime/SWR al implementar Fase 2 de Informes. |
 | `UX-07` | **Contenedor de revisión del curso**: en Boletines la vista general está separada en `RevisionCursoOverview.tsx`; en Informes convive dentro de `RevisionInformePage.tsx`. | Diferencia estructural | Mantener desacoplado mientras no haya fricción; si se extrae `ReviewCourseToolbar` o la fila base de alumno, ambos pueden consumirlo sin unificar los contenedores completos. |
+| `UX-08` | **Ramificación intencional en `GestorEnlacesInformesModal.tsx`**: `CICLO_FINAL` y `PRIMER_CUATRIMESTRE` usan `GradeSetSelector` multi-grado + materia especial; `PRIMER_BIMESTRE` (maestras de grado) usa `<Select>` simple de 1 grado (como Boletines) con guarda `rawCourseIds.length > 1` en `pb_hooks/lib/teacherReports.js`, conservando nombre y apellido separados para PDF. | Variante intencional implementada | Mantener esta ramificación al habilitar Fase 3 (`PRIMER_BIMESTRE`); no reintroducir selección multi-grado en `PRIMER_BIMESTRE`. |
 
 ---
 

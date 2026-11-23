@@ -22,7 +22,6 @@ import {
   DeleteOutlined,
   KeyOutlined,
   LinkOutlined,
-  PlusCircleOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -40,6 +39,7 @@ import {
   type TokenAccesoInforme,
 } from '../models/informe.model';
 import { informesService } from '../services/informes.service';
+import { GradeSetSelector } from './GradeSetSelector';
 import styles from './GestorEnlacesInformesModal.module.css';
 
 interface GestorEnlacesInformesModalProps {
@@ -56,7 +56,8 @@ interface GestorEnlacesInformesModalProps {
 }
 
 interface EnlaceInformeFormValues {
-  cursoIds: string[];
+  cursoId?: string;
+  cursoIds?: string[];
   materiaId?: string;
   docenteNombre: string;
   docenteApellido: string;
@@ -102,10 +103,15 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
   const meta = TIPOS_INFORME_META[tipoInforme];
   const requiresSubject = meta.requiereMateriaEspecial;
 
+  const sortedCursos = useMemo(
+    () => [...cursos].sort((a, b) => a.gradoNumero - b.gradoNumero),
+    [cursos],
+  );
+
   const initialSubjectId = requiresSubject
     ? activeMateriaId || materiasEspeciales[0]?.id || ''
     : undefined;
-  const fallbackCourseId = activeCursoId || cursos[0]?.id || '';
+  const fallbackCourseId = activeCursoId || sortedCursos[0]?.id || '';
 
   const initialCourseIds = useMemo(() => {
     const isAvailable = (cId: string) => {
@@ -123,15 +129,21 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
       return [fallbackCourseId];
     }
 
-    const availableForInitialSubject = cursos
+    const availableForInitialSubject = sortedCursos
       .filter((c) => isAvailable(c.id))
       .map((c) => c.id);
 
     return availableForInitialSubject.slice(0, 1);
-  }, [celdas, cursos, fallbackCourseId, initialSubjectId, requiresSubject]);
+  }, [celdas, fallbackCourseId, initialSubjectId, requiresSubject, sortedCursos]);
 
+  const initialSingleCourseId = initialCourseIds[0];
   const watchedMateriaId = Form.useWatch('materiaId', form) ?? initialSubjectId;
+  const watchedCursoId = Form.useWatch('cursoId', form) ?? initialSingleCourseId;
   const watchedCursoIds = Form.useWatch('cursoIds', form) ?? initialCourseIds;
+  const selectedCourseIds = useMemo(
+    () => (requiresSubject ? (watchedCursoIds ?? []) : (watchedCursoId ? [watchedCursoId] : [])),
+    [requiresSubject, watchedCursoId, watchedCursoIds],
+  );
 
   const cursosById = useMemo(
     () => new Map(cursos.map((curso) => [curso.id, curso])),
@@ -154,14 +166,14 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
   }, [celdas, requiresSubject, watchedMateriaId]);
 
   const hasAnyUnavailableCourse = useMemo(() => {
-    if (!watchedCursoIds || watchedCursoIds.length === 0) return false;
-    return watchedCursoIds.some((cId) => {
+    if (selectedCourseIds.length === 0) return false;
+    return selectedCourseIds.some((cId) => {
       const cell = cellsForCurrentSubject.get(cId);
       return !cell || Boolean(cell.enlace) || isDeliveredStage(cell.etapa) || cell.etapa === 'PENDIENTE_CONFIGURACION';
     });
-  }, [cellsForCurrentSubject, watchedCursoIds]);
+  }, [cellsForCurrentSubject, selectedCourseIds]);
 
-  const isSubmitDisabled = !watchedCursoIds || watchedCursoIds.length === 0 || hasAnyUnavailableCourse;
+  const isSubmitDisabled = selectedCourseIds.length === 0 || hasAnyUnavailableCourse;
 
   const tokens = useMemo<EnlaceInformeRow[]>(() => {
     const byId = new Map<string, EnlaceInformeRow>();
@@ -224,13 +236,18 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
   };
 
   const handleCreateToken = async (values: EnlaceInformeFormValues) => {
+    const targetCourseIds = requiresSubject
+      ? (values.cursoIds || [])
+      : (values.cursoId ? [values.cursoId] : []);
+    if (targetCourseIds.length === 0) return;
+
     try {
       setCreating(true);
       const issued = await informesService.createEnlace({
         cicloId,
         tipoInforme,
-        cursoId: values.cursoIds[0],
-        cursoIds: values.cursoIds,
+        cursoId: targetCourseIds[0],
+        cursoIds: targetCourseIds,
         materiaId: requiresSubject ? values.materiaId : undefined,
         docenteNombre: values.docenteNombre.trim(),
         docenteApellido: values.docenteApellido.trim(),
@@ -239,13 +256,13 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
         ...current,
         [issued.enlace.id]: issued.secreto,
       }));
-      form.setFieldsValue({
-        cursoIds: [],
-        docenteNombre: '',
-        docenteApellido: '',
-      });
+      form.setFieldsValue(
+        requiresSubject
+          ? { cursoIds: [], docenteNombre: '', docenteApellido: '' }
+          : { cursoId: undefined, docenteNombre: '', docenteApellido: '' },
+      );
       onChanged();
-      const count = values.cursoIds.length;
+      const count = targetCourseIds.length;
       showIssuedLink(
         issued.secreto,
         count > 1
@@ -318,7 +335,7 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
       ),
     },
     {
-      title: requiresSubject ? 'Materia Especial y Set de Grados' : 'Set de Grados',
+      title: requiresSubject ? 'Materia Especial y Set de Grados' : 'Grado',
       key: 'alcance',
       render: (_, record) => (
         <Space size={[6, 6]} wrap>
@@ -354,7 +371,11 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
           </Tooltip>
           <Popconfirm
             title="¿Eliminar este enlace?"
-            description="El acceso docente se deshabilitará para los grados incluidos, pero el borrador guardado quedará intacto."
+            description={
+              requiresSubject
+                ? 'El acceso docente se deshabilitará para los grados incluidos, pero el borrador guardado quedará intacto.'
+                : 'El acceso docente se deshabilitará para este grado, pero el borrador guardado quedará intacto.'
+            }
             onConfirm={() => void handleDeleteToken(record.id)}
             okText="Eliminar enlace"
             cancelText="Cancelar"
@@ -385,22 +406,13 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
       footer={<Button onClick={onClose}>Cerrar</Button>}
     >
       <div className={styles.content}>
-        <Card
-          size="small"
-          className={styles.createCard}
-          title={
-            <span className={styles.cardTitle}>
-              <PlusCircleOutlined className={ui.primary} />
-              Emitir enlace docente por set de grados
-            </span>
-          }
-        >
+        <Card size="small" className={styles.createCard}>
           <Form<EnlaceInformeFormValues>
             form={form}
             layout="vertical"
             requiredMark
             initialValues={{
-              cursoIds: initialCourseIds,
+              ...(requiresSubject ? { cursoIds: initialCourseIds } : { cursoId: initialSingleCourseId }),
               materiaId: initialSubjectId,
               docenteNombre: initialCourseIds[0]
                 ? cellsForCurrentSubject.get(initialCourseIds[0])?.docenteNombre || ''
@@ -426,109 +438,161 @@ const GestorEnlacesInformesModalSession: React.FC<GestorEnlacesInformesModalProp
                 syncTeacherFromSelection(validCourseIds, newSubjectId);
               } else if ('cursoIds' in changed) {
                 syncTeacherFromSelection(allValues.cursoIds || [], allValues.materiaId);
+              } else if ('cursoId' in changed) {
+                syncTeacherFromSelection(allValues.cursoId ? [allValues.cursoId] : [], undefined);
               }
             }}
             onFinish={handleCreateToken}
             onFinishFailed={(error) => focusFirstFormError(form, error)}
           >
-            <Row gutter={[14, 0]}>
-              {requiresSubject && (
-                <Col xs={24} sm={10} md={9}>
-                  <Form.Item
-                    label="Materia especial"
-                    name="materiaId"
-                    rules={[{ required: true, message: 'Seleccione la materia especial' }]}
-                  >
-                    <Select
-                      placeholder="Seleccionar materia"
-                      options={materiasEspeciales.map((m) => ({
-                        value: m.id,
-                        label: formatMateriaNombreUI(m.nombre),
-                      }))}
-                    />
-                  </Form.Item>
-                </Col>
+            <Row gutter={[12, 0]}>
+              {requiresSubject ? (
+                <>
+                  <Col xs={24} sm={24} md={8}>
+                    <Form.Item
+                      label="Materia especial"
+                      name="materiaId"
+                      rules={[{ required: true, message: 'Seleccione la materia especial' }]}
+                    >
+                      <Select
+                        placeholder="Seleccionar materia"
+                        options={materiasEspeciales.map((m) => ({
+                          value: m.id,
+                          label: formatMateriaNombreUI(m.nombre),
+                        }))}
+                      />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} sm={12} md={8}>
+                    <Form.Item
+                      label="Nombre(s) docente"
+                      name="docenteNombre"
+                      rules={[{ required: true, whitespace: true, message: 'Ingrese el nombre' }]}
+                    >
+                      <Input prefix={<UserOutlined />} placeholder="Ej. María" />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} sm={12} md={8}>
+                    <Form.Item
+                      label="Apellido(s) docente"
+                      name="docenteApellido"
+                      rules={[{ required: true, whitespace: true, message: 'Ingrese el apellido' }]}
+                    >
+                      <Input placeholder="Ej. Rodríguez" />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} lg={19}>
+                    <Form.Item
+                      label="Set de grados a incluir en el enlace"
+                      name="cursoIds"
+                      rules={[{ required: true, type: 'array', min: 1, message: 'Seleccione al menos un grado' }]}
+                    >
+                      <GradeSetSelector
+                        cursos={sortedCursos}
+                        cellsByCourseId={cellsForCurrentSubject}
+                      />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} lg={5} className={styles.submitColumnAligned}>
+                    <Form.Item className={ui.fullWidth}>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        icon={<LinkOutlined />}
+                        loading={creating}
+                        disabled={isSubmitDisabled}
+                        className={`btn-primary-gradient ${styles.submitButton}`}
+                      >
+                        {selectedCourseIds.length > 1
+                          ? `Generar enlace (${selectedCourseIds.length})`
+                          : 'Generar enlace'}
+                      </Button>
+                    </Form.Item>
+                  </Col>
+                </>
+              ) : (
+                <>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item
+                      label="Grado"
+                      name="cursoId"
+                      rules={[{ required: true, message: 'Seleccione un grado' }]}
+                    >
+                      <Select
+                        placeholder="Seleccionar grado"
+                        options={sortedCursos.map((c) => {
+                          const cell = cellsForCurrentSubject.get(c.id);
+                          const hasActiveLink = Boolean(cell?.enlace);
+                          const delivered = cell ? isDeliveredStage(cell.etapa) : false;
+                          const unconfigured = !cell || cell.etapa === 'PENDIENTE_CONFIGURACION';
+
+                          let label = `${c.nombre} (${c.turno})`;
+                          if (delivered) {
+                            label = `${c.nombre} (Ya entregado)`;
+                          } else if (unconfigured) {
+                            label = `${c.nombre} (Sin plantilla)`;
+                          } else if (hasActiveLink) {
+                            const teacher = [
+                              cell?.docenteApellido || cell?.enlace?.docenteApellido,
+                              cell?.docenteNombre || cell?.enlace?.docenteNombre,
+                            ]
+                              .filter(Boolean)
+                              .join(', ');
+                            label = teacher
+                              ? `${c.nombre} (Con enlace activo - ${teacher})`
+                              : `${c.nombre} (Con enlace activo)`;
+                          }
+
+                          return {
+                            value: c.id,
+                            disabled: delivered || unconfigured || hasActiveLink,
+                            label,
+                          };
+                        })}
+                      />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item
+                      label="Nombre(s) docente"
+                      name="docenteNombre"
+                      rules={[{ required: true, whitespace: true, message: 'Ingrese el nombre' }]}
+                    >
+                      <Input prefix={<UserOutlined />} placeholder="Ej. María" />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item
+                      label="Apellido(s) docente"
+                      name="docenteApellido"
+                      rules={[{ required: true, whitespace: true, message: 'Ingrese el apellido' }]}
+                    >
+                      <Input placeholder="Ej. Rodríguez" />
+                    </Form.Item>
+                  </Col>
+
+                  <Col xs={24} sm={12} md={6} className={styles.submitColumn}>
+                    <Form.Item className={ui.fullWidth}>
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        icon={<LinkOutlined />}
+                        loading={creating}
+                        disabled={isSubmitDisabled}
+                        className={`btn-primary-gradient ${styles.submitButton}`}
+                      >
+                        Generar enlace
+                      </Button>
+                    </Form.Item>
+                  </Col>
+                </>
               )}
-
-              <Col xs={24} sm={requiresSubject ? 14 : 24} md={requiresSubject ? 15 : 24}>
-                <Form.Item
-                  label="Set de grados a incluir en el enlace"
-                  name="cursoIds"
-                  rules={[{ required: true, type: 'array', min: 1, message: 'Seleccione al menos un grado' }]}
-                >
-                  <Select
-                    mode="multiple"
-                    maxTagCount="responsive"
-                    placeholder="Seleccionar uno o más grados"
-                    options={cursos.map((c) => {
-                      const cell = cellsForCurrentSubject.get(c.id);
-                      const hasActiveLink = Boolean(cell?.enlace);
-                      const delivered = cell ? isDeliveredStage(cell.etapa) : false;
-                      const unconfigured = !cell || cell.etapa === 'PENDIENTE_CONFIGURACION';
-
-                      let label = `${c.nombre} (${c.turno})`;
-                      if (delivered) {
-                        label = `${c.nombre} (Ya entregado)`;
-                      } else if (unconfigured) {
-                        label = `${c.nombre} (Sin plantilla)`;
-                      } else if (hasActiveLink) {
-                        const teacher = [
-                          cell?.docenteApellido || cell?.enlace?.docenteApellido,
-                          cell?.docenteNombre || cell?.enlace?.docenteNombre,
-                        ]
-                          .filter(Boolean)
-                          .join(', ');
-                        label = teacher
-                          ? `${c.nombre} (Con enlace activo - ${teacher})`
-                          : `${c.nombre} (Con enlace activo)`;
-                      }
-
-                      return {
-                        value: c.id,
-                        disabled: delivered || unconfigured || hasActiveLink,
-                        label,
-                      };
-                    })}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={8}>
-                <Form.Item
-                  label="Nombre(s) docente"
-                  name="docenteNombre"
-                  rules={[{ required: true, whitespace: true, message: 'Ingrese el nombre' }]}
-                >
-                  <Input prefix={<UserOutlined />} placeholder="Ej. María" />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={12} md={8}>
-                <Form.Item
-                  label="Apellido(s) docente"
-                  name="docenteApellido"
-                  rules={[{ required: true, whitespace: true, message: 'Ingrese el apellido' }]}
-                >
-                  <Input placeholder="Ej. Rodríguez" />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} sm={24} md={8} className={styles.submitColumn}>
-                <Form.Item className={ui.fullWidth}>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    icon={<LinkOutlined />}
-                    loading={creating}
-                    disabled={isSubmitDisabled}
-                    className={`btn-primary-gradient ${styles.submitButton}`}
-                  >
-                    {watchedCursoIds && watchedCursoIds.length > 1
-                      ? `Generar enlace (${watchedCursoIds.length} grados)`
-                      : 'Generar enlace'}
-                  </Button>
-                </Form.Item>
-              </Col>
             </Row>
           </Form>
         </Card>

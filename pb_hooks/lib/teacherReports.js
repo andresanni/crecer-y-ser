@@ -1019,6 +1019,9 @@ function issue(c) {
   if (rawCourseIds.length === 0) {
     throw new BadRequestError("Seleccioná al menos un curso para emitir el enlace.")
   }
+  if (!needSubject && rawCourseIds.length > 1) {
+    throw new BadRequestError("El informe de primer bimestre admite un único grado por enlace.")
+  }
   if (rawCourseIds.length > 15) {
     throw new BadRequestError("Se seleccionaron demasiados cursos para un mismo enlace.")
   }
