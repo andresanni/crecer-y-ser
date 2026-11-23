@@ -26,6 +26,7 @@ import {
 import {
   SaveOutlined,
   BookOutlined,
+  BulbOutlined,
   LeftOutlined,
   RightOutlined,
   ClockCircleOutlined,
@@ -56,6 +57,9 @@ import {
 } from '../services/accesoDocente.service';
 import {
   esMateriaConducta,
+  evaluateMateriaAverageCoherence,
+  evaluateMateriaPpiChange,
+  formatCalificacionBoletinShortLabel,
   type CursoMateria,
   type Periodo,
   type ValorEscala,
@@ -66,6 +70,7 @@ import {
   type EstadoProgresoAlumno,
 } from '../models/boletin.model';
 import type { GradebookAccessPolicy } from '../models/gradebookAccess.model';
+import type { GradebookHistoricalTerm } from '../models/gradebookDataSource.model';
 import styles from './VistaPorAlumno.module.css';
 
 const criterioFieldKey = (cursoMateriaId: string, criterioId: string) => (
@@ -154,6 +159,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     () => [...valoresEscala].sort((a, b) => b.pesoNumerico - a.pesoNumerico || b.ordenVisual - a.ordenVisual),
     [valoresEscala],
   );
+  const valoresEscalaById = useMemo(
+    () => new Map(valoresEscala.map((v) => [v.id, v])),
+    [valoresEscala],
+  );
+  const isNumericScale = useMemo(
+    () => valoresEscala.some((v) => /(10|[1-9])$/.test(v.etiqueta.trim())),
+    [valoresEscala],
+  );
 
   const getClassNameForValor = useCallback((valorId?: string | null) => {
     if (!valorId) return 'cys-grade-select';
@@ -176,6 +189,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
 
   const [materiasState, setMateriasState] = useState<Record<string, MateriaAlumnoState>>({});
+  const [historialBimestres, setHistorialBimestres] = useState<GradebookHistoricalTerm[]>([]);
 
   const [asistenciaState, setAsistenciaState] = useState<AsistenciaAlumnoState>({
     asistencias: 0,
@@ -209,6 +223,24 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
 
   const [stickySelectorOpen, setStickySelectorOpen] = useState<boolean>(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState<string>('');
+  const [hintsPopoverOpen, setHintsPopoverOpen] = useState<boolean>(false);
+  const [highlightedMateriaId, setHighlightedMateriaId] = useState<string | null>(null);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+  }, []);
+
+  const scrollToMateria = useCallback((cursoMateriaId: string) => {
+    setHintsPopoverOpen(false);
+    const target = document.getElementById(`materia-card-${cursoMateriaId}`);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightedMateriaId(cursoMateriaId);
+      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
+      highlightTimerRef.current = setTimeout(() => setHighlightedMateriaId(null), 1800);
+    }
+  }, []);
 
   const searchedAlumnos = useMemo(() => {
     if (!studentSearchQuery.trim()) return alumnos;
@@ -321,6 +353,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         const cierre = snapshot.cierre;
         if (!active) return;
         setMateriasState(newMateriasState);
+        setHistorialBimestres(snapshot.historialBimestres || []);
         setEditingGradeField(null);
         setAsistenciaState({
           cierreId: cierre?.id,
@@ -852,6 +885,54 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     return { completedCount, total, percent };
   }, [cursoMaterias, materiasState, criteriosMap]);
 
+  const studentSuggestions = useMemo(() => {
+    if (!readOnly) return [];
+    const list: Array<{ cursoMateriaId: string; materiaNombre: string; detalles: string[]; count: number }> = [];
+    for (const cm of cursoMaterias) {
+      const mat = materiasState[cm.id];
+      if (!mat) continue;
+      const detalles: string[] = [];
+      const prom = evaluateMateriaAverageCoherence(
+        cm.id,
+        cm.materiaNombre,
+        mat.calificacionGeneralId,
+        mat.criteriosValores,
+        valoresEscala,
+      );
+      if (prom) {
+        const sugShort = prom.calificacionSugeridaEtiqueta
+          ? formatCalificacionBoletinShortLabel(prom.calificacionSugeridaEtiqueta)
+          : prom.promedioNumerico.toLocaleString('es-AR');
+        detalles.push(`Prom. ${sugShort}`);
+      }
+      const ppiChange = evaluateMateriaPpiChange(
+        cm.id,
+        cm.materiaNombre,
+        mat.ppi,
+        historialBimestres,
+      );
+      if (ppiChange) {
+        detalles.push(
+          `PPI B${ppiChange.bimestreAnterior}: ${ppiChange.ppiAnterior ? 'Sí' : 'No'} → ${ppiChange.ppiActual ? 'Sí' : 'No'}`,
+        );
+      }
+      if (detalles.length > 0) {
+        list.push({
+          cursoMateriaId: cm.id,
+          materiaNombre: cm.materiaNombre,
+          detalles,
+          count: detalles.length,
+        });
+      }
+    }
+    return list;
+  }, [cursoMaterias, historialBimestres, materiasState, readOnly, valoresEscala]);
+
+  const totalStudentSuggestions = useMemo(
+    () => studentSuggestions.reduce((acc, item) => acc + item.count, 0),
+    [studentSuggestions],
+  );
+
   const studentIdentity = currentAlumno ? (
     <div
       className={`${styles.studentIdentity} ${access.mode === 'magic-link' ? styles.studentIdentityInteractive : ''}`}
@@ -864,6 +945,59 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           <Typography.Text strong ellipsis className={styles.studentName}>
             {currentAlumno.nombreCompleto}
           </Typography.Text>
+          {readOnly && studentSuggestions.length === 1 && (
+            <Tooltip
+              title={`${studentSuggestions[0].materiaNombre} · ${studentSuggestions[0].detalles.join(' · ')}`}
+            >
+              <button
+                type="button"
+                className={styles.studentHintButton}
+                onClick={() => scrollToMateria(studentSuggestions[0].cursoMateriaId)}
+                aria-label={`Sugerencia en ${studentSuggestions[0].materiaNombre}`}
+              >
+                <BulbOutlined />
+                {totalStudentSuggestions > 1 && <span>{totalStudentSuggestions}</span>}
+              </button>
+            </Tooltip>
+          )}
+          {readOnly && studentSuggestions.length > 1 && (
+            <Popover
+              open={hintsPopoverOpen}
+              onOpenChange={setHintsPopoverOpen}
+              trigger="click"
+              placement="bottomLeft"
+              content={
+                <div className={styles.studentHintPopoverList}>
+                  {studentSuggestions.map((item) => (
+                    <button
+                      key={item.cursoMateriaId}
+                      type="button"
+                      className={styles.studentHintPopoverItem}
+                      onClick={() => scrollToMateria(item.cursoMateriaId)}
+                    >
+                      <Typography.Text strong style={{ fontSize: 12.5 }}>
+                        {item.materiaNombre}
+                      </Typography.Text>
+                      <span className={styles.studentHintPopoverDetail}>
+                        {item.detalles.join(' · ')}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              }
+            >
+              <Tooltip title={`${totalStudentSuggestions} sugerencias`}>
+                <button
+                  type="button"
+                  className={styles.studentHintButton}
+                  aria-label={`${totalStudentSuggestions} sugerencias`}
+                >
+                  <BulbOutlined />
+                  <span>{totalStudentSuggestions}</span>
+                </button>
+              </Tooltip>
+            </Popover>
+          )}
           {access.mode === 'magic-link' && (
             <DownOutlined style={{ fontSize: 11, color: 'var(--cys-color-primary-text)', flexShrink: 0 }} />
           )}
@@ -1427,10 +1561,104 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
               crits.every((c) => Boolean(mat.criteriosValores[c.id])) &&
               (esConducta || Boolean(mat.calificacionGeneralId));
 
+            const promedioSugerencia = readOnly
+              ? evaluateMateriaAverageCoherence(
+                cm.id,
+                cm.materiaNombre,
+                mat.calificacionGeneralId,
+                mat.criteriosValores,
+                valoresEscala,
+              )
+              : null;
+
+            const ppiSugerencia = readOnly
+              ? evaluateMateriaPpiChange(
+                cm.id,
+                cm.materiaNombre,
+                mat.ppi,
+                historialBimestres,
+              )
+              : null;
+
+            const renderHistoryChips = (
+              resolveValorId: (term: GradebookHistoricalTerm) => string | null | undefined,
+            ) => {
+              if (historialBimestres.length === 0) return null;
+              const chips: Array<{ bimestre: number; periodoNombre: string; etiqueta: string; shortLabel: string }> = [];
+              for (const term of historialBimestres) {
+                const vId = resolveValorId(term);
+                if (!vId) continue;
+                const vRec = valoresEscalaById.get(vId);
+                if (!vRec) continue;
+                chips.push({
+                  bimestre: term.bimestre,
+                  periodoNombre: term.periodoNombre,
+                  etiqueta: vRec.etiqueta,
+                  shortLabel: formatCalificacionBoletinShortLabel(vRec.etiqueta),
+                });
+              }
+              if (chips.length === 0) return null;
+              return (
+                <span className={styles.historyChipsGroup}>
+                  {chips.map((chip) => (
+                    <Tooltip key={chip.bimestre} title={`${chip.periodoNombre}: ${chip.etiqueta}`}>
+                      <span className={styles.historyChip}>
+                        <span className={styles.historyTerm}>B{chip.bimestre}</span>
+                        <span className={styles.historyGrade}>{chip.shortLabel}</span>
+                      </span>
+                    </Tooltip>
+                  ))}
+                </span>
+              );
+            };
+
+            const renderPpiHistoryChips = () => {
+              if (historialBimestres.length === 0) return null;
+              const chips: Array<{ bimestre: number; periodoNombre: string; ppi: boolean }> = [];
+              for (const term of historialBimestres) {
+                const priorMat = term.materias[cm.id];
+                if (!priorMat) continue;
+                chips.push({
+                  bimestre: term.bimestre,
+                  periodoNombre: term.periodoNombre,
+                  ppi: Boolean(priorMat.ppi),
+                });
+              }
+              if (chips.length === 0) return null;
+              return (
+                <span className={styles.ppiHistoryGroup}>
+                  {chips.map((chip) => (
+                    <Tooltip
+                      key={chip.bimestre}
+                      title={`${chip.periodoNombre} · PPI: ${chip.ppi ? 'Sí' : 'No'}`}
+                    >
+                      <span
+                        className={`${styles.ppiHistoryChip} ${
+                          chip.ppi ? styles.ppiHistoryChipYes : styles.ppiHistoryChipNo
+                        }`}
+                      >
+                        <span>B{chip.bimestre}</span>
+                        <span>{chip.ppi ? 'Sí' : 'No'}</span>
+                      </span>
+                    </Tooltip>
+                  ))}
+                </span>
+              );
+            };
+
+            const suggestedShortLabel = promedioSugerencia?.calificacionSugeridaEtiqueta
+              ? formatCalificacionBoletinShortLabel(promedioSugerencia.calificacionSugeridaEtiqueta)
+              : null;
+
+            const promedioTooltip = promedioSugerencia
+              ? `Prom. ${suggestedShortLabel || promedioSugerencia.promedioNumerico.toLocaleString('es-AR')}${isNumericScale && suggestedShortLabel ? ` (${promedioSugerencia.promedioNumerico.toLocaleString('es-AR')})` : ''} · Gral. ${formatCalificacionBoletinShortLabel(promedioSugerencia.calificacionGeneralEtiqueta)}`
+              : '';
+
             return (
               <Card
                 key={cm.id}
-                className={`${styles.evaluationCard} ${mat.isModified ? styles.evaluationCardModified : ''}`}
+                id={`materia-card-${cm.id}`}
+                className={`${styles.evaluationCard} ${mat.isModified ? styles.evaluationCardModified : ''} ${highlightedMateriaId === cm.id ? styles.evaluationCardHighlighted : ''}`}
                 styles={{ body: { padding: '16px 20px' } }}
               >
                 { }
@@ -1441,6 +1669,28 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                       <BookOutlined className={styles.evaluationTitleIcon} />
                       {cm.materiaNombre}
                     </Typography.Text>
+                    {promedioSugerencia && (
+                      <Tooltip title={promedioTooltip}>
+                        <span className={styles.headerHintTag}>
+                          <BulbOutlined />
+                          <span>
+                            Prom. {suggestedShortLabel || promedioSugerencia.promedioNumerico.toLocaleString('es-AR')}
+                          </span>
+                        </span>
+                      </Tooltip>
+                    )}
+                    {ppiSugerencia && (
+                      <Tooltip
+                        title={`PPI · B${ppiSugerencia.bimestreAnterior}: ${ppiSugerencia.ppiAnterior ? 'Sí' : 'No'} → Actual: ${ppiSugerencia.ppiActual ? 'Sí' : 'No'}`}
+                      >
+                        <span className={styles.headerHintTag}>
+                          <BulbOutlined />
+                          <span>
+                            PPI B{ppiSugerencia.bimestreAnterior}: {ppiSugerencia.ppiAnterior ? 'Sí' : 'No'} → {ppiSugerencia.ppiActual ? 'Sí' : 'No'}
+                          </span>
+                        </span>
+                      </Tooltip>
+                    )}
                     {!readOnly && (isMateriaComplete ? (
                       <Tag
                         icon={<CheckCircleOutlined />}
@@ -1459,67 +1709,72 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   </div>
 
                   { }
-                  <Space size={8} align="center" wrap className={styles.evaluationHeaderTools}>
-                    {!esConducta && (
-                      <Space size={6} align="center" style={{ flexShrink: 0 }}>
-                        <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
-                          <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
-                            PPI
-                          </Tag>
-                        </Tooltip>
-                        {isMateriaReadOnly ? (
-                          <Typography.Text strong style={{ color: '#ffffff' }}>
-                            {mat.ppi ? 'Sí' : 'No'}
-                          </Typography.Text>
-                        ) : (
-                          <Switch
+                  {(!esConducta || readOnly) && (
+                    <Space size={8} align="center" wrap className={styles.evaluationHeaderTools}>
+                      {!esConducta && (
+                        <div className={styles.ppiToolsRow}>
+                          {renderPpiHistoryChips()}
+                          <span className={styles.ppiControlGroup}>
+                            <Tooltip title="Proyecto Pedagógico Individual (Apoyo a la inclusión en esta materia)">
+                              <Tag color="purple" style={{ margin: 0, fontWeight: 700, borderRadius: 4 }}>
+                                PPI
+                              </Tag>
+                            </Tooltip>
+                            {isMateriaReadOnly ? (
+                              <Typography.Text strong style={{ color: '#ffffff' }}>
+                                {mat.ppi ? 'Sí' : 'No'}
+                              </Typography.Text>
+                            ) : (
+                              <Switch
+                                size="small"
+                                checked={mat.ppi}
+                                onChange={(checked) => handlePpiChange(cm.id, checked)}
+                                checkedChildren="SÍ"
+                                unCheckedChildren="NO"
+                                style={{ background: mat.ppi ? '#7c3aed' : undefined }}
+                              />
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {readOnly && (isEditingMateria ? (
+                        <Space
+                          size={6}
+                          className={styles.evaluationActions}
+                        >
+                          <Button
                             size="small"
-                            checked={mat.ppi}
-                            onChange={(checked) => handlePpiChange(cm.id, checked)}
-                            checkedChildren="SÍ"
-                            unCheckedChildren="NO"
-                            style={{ background: mat.ppi ? '#7c3aed' : undefined }}
-                          />
-                        )}
-                      </Space>
-                    )}
-                    {readOnly && (isEditingMateria ? (
-                      <Space
-                        size={6}
-                        className={styles.evaluationActions}
-                      >
-                        <Button
-                          size="small"
-                          icon={<CloseOutlined />}
-                          disabled={saving}
-                          onClick={() => handleDiscardMateria(Boolean(mat.isModified))}
-                        >
-                          Descartar
-                        </Button>
-                        <Button
-                          type="primary"
-                          size="small"
-                          icon={<SaveOutlined />}
-                          loading={saving}
-                          disabled={!mat.isModified || hasRevisionConflict || saveOutcomeUnknown}
-                          onClick={() => void handleSave()}
-                        >
-                          Guardar
-                        </Button>
-                      </Space>
-                    ) : (
-                      <Tooltip title={anotherEditorIsActive ? 'Guardá o descartá la sección que estás editando.' : 'Editar únicamente esta materia'}>
-                        <Button
-                          size="small"
-                          icon={<EditOutlined />}
-                          disabled={anotherEditorIsActive}
-                          onClick={() => setEditingMateriaId(cm.id)}
-                        >
-                          Editar
-                        </Button>
-                      </Tooltip>
-                    ))}
-                  </Space>
+                            icon={<CloseOutlined />}
+                            disabled={saving}
+                            onClick={() => handleDiscardMateria(Boolean(mat.isModified))}
+                          >
+                            Descartar
+                          </Button>
+                          <Button
+                            type="primary"
+                            size="small"
+                            icon={<SaveOutlined />}
+                            loading={saving}
+                            disabled={!mat.isModified || hasRevisionConflict || saveOutcomeUnknown}
+                            onClick={() => void handleSave()}
+                          >
+                            Guardar
+                          </Button>
+                        </Space>
+                      ) : (
+                        <Tooltip title={anotherEditorIsActive ? 'Guardá o descartá la sección que estás editando.' : 'Editar únicamente esta materia'}>
+                          <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            disabled={anotherEditorIsActive}
+                            onClick={() => setEditingMateriaId(cm.id)}
+                          >
+                            Editar
+                          </Button>
+                        </Tooltip>
+                      ))}
+                    </Space>
+                  )}
                 </div>
 
                 <Divider className={styles.evaluationDivider} />
@@ -1550,6 +1805,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                             </div>
 
                             <div className={styles.criterionGrade}>
+                            {renderHistoryChips((term) => term.materias[cm.id]?.criteriosValores[crit.id])}
                             {isMateriaReadOnly ? (
                               <Typography.Text
                                 strong
@@ -1559,14 +1815,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                                     : 'var(--cys-color-text-description)',
                                 }}
                               >
-                                {valoresEscala.find((v) => v.id === valActual)?.etiqueta || 'Sin calificar'}
+                                {valoresEscalaById.get(valActual || '')?.etiqueta || 'Sin calificar'}
                               </Typography.Text>
                             ) : access.mode === 'magic-link'
                               && valActual
                               && editingGradeField !== criterioFieldKey(cm.id, crit.id) ? (
                               <Space size={8} wrap className={styles.gradeSummary}>
                                 <Typography.Text strong className={styles.gradeValue}>
-                                  {valoresEscala.find((v) => v.id === valActual)?.etiqueta || 'Sin calificar'}
+                                  {valoresEscalaById.get(valActual)?.etiqueta || 'Sin calificar'}
                                 </Typography.Text>
                                 <Tooltip title="Modificar calificación">
                                   <Button
@@ -1654,8 +1910,24 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                                 <Typography.Text type="danger" aria-hidden="true"> *</Typography.Text>
                               )}
                             </Typography.Text>
+                            {promedioSugerencia && (
+                              <Tooltip title={promedioTooltip}>
+                                <span className={styles.averageHintPill}>
+                                  <BulbOutlined />
+                                  <span>
+                                    Prom. ítems:{' '}
+                                    {suggestedShortLabel || promedioSugerencia.promedioNumerico.toLocaleString('es-AR')}
+                                    {isNumericScale && suggestedShortLabel
+                                      ? ` (${promedioSugerencia.promedioNumerico.toLocaleString('es-AR')})`
+                                      : ''}
+                                  </span>
+                                </span>
+                              </Tooltip>
+                            )}
                           </div>
 
+                          <div className={styles.generalGradeRight}>
+                          {renderHistoryChips((term) => term.materias[cm.id]?.calificacionGeneralId)}
                           {isMateriaReadOnly ? (
                             <Typography.Text
                               strong
@@ -1665,14 +1937,14 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                                   : 'var(--cys-color-text-description)',
                               }}
                             >
-                              {valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || 'Sin calificar'}
+                              {valoresEscalaById.get(mat.calificacionGeneralId || '')?.etiqueta || 'Sin calificar'}
                             </Typography.Text>
                           ) : access.mode === 'magic-link'
                             && mat.calificacionGeneralId
                             && editingGradeField !== calificacionGeneralFieldKey(cm.id) ? (
                             <Space size={8} wrap className={styles.gradeSummary}>
                               <Typography.Text strong className={styles.gradeValue}>
-                                {valoresEscala.find((v) => v.id === mat.calificacionGeneralId)?.etiqueta || 'Sin calificar'}
+                                {valoresEscalaById.get(mat.calificacionGeneralId)?.etiqueta || 'Sin calificar'}
                               </Typography.Text>
                               <Tooltip title="Modificar calificación">
                                 <Button
@@ -1727,6 +1999,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                               )}
                             </div>
                           )}
+                          </div>
                         </div>
                       </Col>
                     )}

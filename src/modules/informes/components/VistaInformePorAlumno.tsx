@@ -18,12 +18,14 @@ import {
   Typography,
 } from 'antd';
 import {
+  BulbOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   CloseOutlined,
   DownOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
+  FilterOutlined,
   LeftOutlined,
   RightOutlined,
   SaveOutlined,
@@ -33,6 +35,9 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import {
+  classifyInformeItemTone,
+  computeLiveStudentSemaforo,
+  getGeneralPerformanceTone,
   isNoCorrespondeOption,
   type AlumnoInformeRow,
   type ItemPlantillaInforme,
@@ -45,6 +50,12 @@ import {
   InformeRevisionConflictError,
   InformeSubmissionIncompleteError,
 } from '../services/informes.service';
+import {
+  DisonanciaSuggestionBanner,
+  InformeTonePill,
+  MiniSemaforoIndicators,
+  SemaforoStudentPills,
+} from './InformesVisualIndicators';
 import styles from './VistaInformePorAlumno.module.css';
 
 const { Text } = Typography;
@@ -156,6 +167,7 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
   const [drawerFilter, setDrawerFilter] = useState<'TODOS' | 'PENDIENTES' | 'COMPLETOS'>('TODOS');
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const [showOnlyAttention, setShowOnlyAttention] = useState(false);
 
   const hasChanges = useMemo(() => {
     if (draftDesempeno !== savedDesempeno) return true;
@@ -288,31 +300,74 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
     [hasChanges, isStaffEditing, modal, onStudentChange, selectedInscripcionId, studentNavigationDisabled],
   );
 
+  const isEdFisica = useMemo(
+    () => String(plantilla.codigo || '').trim().toUpperCase().includes('ED_FISICA'),
+    [plantilla.codigo],
+  );
+
+  const isolatedItemSet = useMemo(
+    () => new Set(currentAlumno?.itemsAisladosIds || []),
+    [currentAlumno?.itemsAisladosIds],
+  );
+
+  const liveInsights = useMemo(
+    () =>
+      computeLiveStudentSemaforo(
+        plantilla,
+        items,
+        draftRespuestas,
+        draftDesempeno,
+        currentAlumno?.itemsAisladosIds,
+      ),
+    [currentAlumno?.itemsAisladosIds, draftDesempeno, draftRespuestas, items, plantilla],
+  );
+
+  const isAttentionItem = useCallback(
+    (item: ItemPlantillaInforme) => {
+      const code = (draftRespuestas[item.id] || '').trim();
+      if (!code) return false;
+      const tone = classifyInformeItemTone(plantilla.codigo, item.texto, code);
+      if (tone === 'amarillo' || tone === 'rojo') return true;
+      return Boolean(isEdFisica && code.toUpperCase() === 'A' && isolatedItemSet.has(item.id));
+    },
+    [draftRespuestas, isEdFisica, isolatedItemSet, plantilla.codigo],
+  );
+
+  const attentionItemsCount = useMemo(
+    () => items.filter(isAttentionItem).length,
+    [isAttentionItem, items],
+  );
+
+  const visibleItems = useMemo(
+    () => (readOnly && showOnlyAttention && !isStaffEditing ? items.filter(isAttentionItem) : items),
+    [isAttentionItem, isStaffEditing, items, readOnly, showOnlyAttention],
+  );
+
   const hasBlocks = useMemo(
-    () => items.some((item) => Boolean(item.bloqueNombre)),
-    [items],
+    () => visibleItems.some((item) => Boolean(item.bloqueNombre)),
+    [visibleItems],
   );
 
   const tableRows = useMemo<TableItemRow[]>(() => {
-    return items.map((item, idx) => {
+    return visibleItems.map((item, idx) => {
       if (!hasBlocks) {
         return { item, showBlockCell: false, blockRowSpan: 1 };
       }
       const blockName = item.bloqueNombre || '';
-      const prevBlock = idx > 0 ? items[idx - 1].bloqueNombre || '' : null;
+      const prevBlock = idx > 0 ? visibleItems[idx - 1].bloqueNombre || '' : null;
       if (idx > 0 && blockName === prevBlock) {
         return { item, showBlockCell: false, blockRowSpan: 0 };
       }
       let span = 1;
       while (
-        idx + span < items.length &&
-        (items[idx + span].bloqueNombre || '') === blockName
+        idx + span < visibleItems.length &&
+        (visibleItems[idx + span].bloqueNombre || '') === blockName
       ) {
         span += 1;
       }
       return { item, showBlockCell: true, blockRowSpan: span };
     });
-  }, [hasBlocks, items]);
+  }, [hasBlocks, visibleItems]);
 
   const availableEscalaItems = useMemo(
     () => plantilla.escalaItems.filter((opt) => !isNoCorrespondeOption(opt.codigo, opt.etiqueta)),
@@ -615,12 +670,17 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
                       <span className={styles.studentOptionName}>
                         {order}. {a.nombreCompleto}
                       </span>
-                      <Tag
-                        color={statusColor}
-                        className={styles.studentOptionTag}
-                      >
-                        {statusLabel}
-                      </Tag>
+                      <span className={styles.studentOptionRight}>
+                        {readOnly && (
+                          <MiniSemaforoIndicators semaforo={a.semaforo} disonancias={a.disonancias} />
+                        )}
+                        <Tag
+                          color={statusColor}
+                          className={styles.studentOptionTag}
+                        >
+                          {statusLabel}
+                        </Tag>
+                      </span>
                     </div>
                   ),
                 };
@@ -712,12 +772,21 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
               <Typography.Title level={5} style={{ margin: 0 }}>
                 {plantilla.tituloTabla}
               </Typography.Title>
-              <Tag
-                color={draftComplete ? 'success' : 'warning'}
-                icon={draftComplete ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
-              >
-                {answeredCountDraft} de {items.length} ítems calificados
-              </Tag>
+              {readOnly ? (
+                <SemaforoStudentPills semaforo={liveInsights.semaforo} compact showLabels />
+              ) : (
+                <Tag
+                  color={draftComplete ? 'success' : 'warning'}
+                  icon={draftComplete ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
+                >
+                  {answeredCountDraft} de {items.length} ítems calificados
+                </Tag>
+              )}
+              {readOnly && !draftComplete && (
+                <Tag color="warning" icon={<ClockCircleOutlined />}>
+                  {answeredCountDraft} de {items.length} ítems calificados
+                </Tag>
+              )}
               {hasChanges && (
                 <Tag color="processing" icon={<ExclamationCircleOutlined />}>
                   Cambios sin guardar
@@ -725,168 +794,216 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
               )}
             </div>
 
-            {readOnly && hasChanges && (
-              <Space size={8}>
-                <Button
-                  icon={<CloseOutlined />}
-                  disabled={saving}
-                  onClick={handleDiscardChanges}
-                >
-                  Descartar
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<SaveOutlined />}
-                  loading={saving}
-                  onClick={() => void handleSaveCurrentStudent()}
-                >
-                  Guardar corrección
-                </Button>
+            {(readOnly && ((attentionItemsCount > 0 || showOnlyAttention) || hasChanges)) && (
+              <Space size={8} wrap>
+                {(attentionItemsCount > 0 || showOnlyAttention) && (
+                  <Button
+                    size="small"
+                    icon={<FilterOutlined />}
+                    type={showOnlyAttention ? 'primary' : 'default'}
+                    ghost={showOnlyAttention}
+                    disabled={isStaffEditing}
+                    onClick={() => setShowOnlyAttention((prev) => !prev)}
+                  >
+                    {showOnlyAttention
+                      ? `Ver todos los ítems (${items.length})`
+                      : `Ver solo ítems a observar (${attentionItemsCount})`}
+                  </Button>
+                )}
+                {hasChanges && (
+                  <>
+                    <Button
+                      icon={<CloseOutlined />}
+                      disabled={saving}
+                      onClick={handleDiscardChanges}
+                    >
+                      Descartar
+                    </Button>
+                    <Button
+                      type="primary"
+                      icon={<SaveOutlined />}
+                      loading={saving}
+                      onClick={() => void handleSaveCurrentStudent()}
+                    >
+                      Guardar corrección
+                    </Button>
+                  </>
+                )}
               </Space>
             )}
           </div>
 
-          <div
-            tabIndex={0}
-            role="region"
-            aria-labelledby={tableCaptionId}
-            className={styles.tableRegion}
-          >
-            <table className={styles.itemsTable}>
-              <caption id={tableCaptionId} className="sr-only" style={{ display: 'none' }}>
-                {plantilla.tituloTabla} — {currentAlumno.nombreCompleto}
-              </caption>
-              <thead>
-                <tr>
-                  {hasBlocks && <th scope="col">Bloque</th>}
-                  <th scope="col" className={styles.orderCell}>N.°</th>
-                  <th scope="col">Indicador / Contenido</th>
-                  <th scope="col">Valoración</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tableRows.map(({ item, showBlockCell, blockRowSpan }) => {
-                  const currentCode = draftRespuestas[item.id] || '';
-                  return (
-                    <tr key={item.id}>
-                      {hasBlocks && showBlockCell && (
-                        <td rowSpan={blockRowSpan} className={styles.blockCell}>
-                          {item.bloqueNombre || 'General'}
+          {readOnly && (
+            <DisonanciaSuggestionBanner disonancias={liveInsights.disonancias} />
+          )}
+
+          {readOnly && showOnlyAttention && tableRows.length === 0 ? (
+            <div className={styles.allGreenNotice}>
+              <CheckCircleOutlined style={{ color: '#059669', fontSize: 18 }} />
+              <Text strong style={{ color: '#047857' }}>
+                Todos los indicadores de este alumno están en nivel logrado.
+              </Text>
+              <Button size="small" onClick={() => setShowOnlyAttention(false)}>
+                Ver todos los ítems ({items.length})
+              </Button>
+            </div>
+          ) : (
+            <div
+              tabIndex={0}
+              role="region"
+              aria-labelledby={tableCaptionId}
+              className={styles.tableRegion}
+            >
+              <table className={styles.itemsTable}>
+                <caption id={tableCaptionId} className="sr-only" style={{ display: 'none' }}>
+                  {plantilla.tituloTabla} — {currentAlumno.nombreCompleto}
+                </caption>
+                <thead>
+                  <tr>
+                    {hasBlocks && <th scope="col">Bloque</th>}
+                    <th scope="col" className={styles.orderCell}>N.°</th>
+                    <th scope="col">Indicador / Contenido</th>
+                    <th scope="col">Valoración</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableRows.map(({ item, showBlockCell, blockRowSpan }) => {
+                    const currentCode = draftRespuestas[item.id] || '';
+                    const currentTone = currentCode
+                      ? classifyInformeItemTone(plantilla.codigo, item.texto, currentCode)
+                      : null;
+                    const isIsolatedA = Boolean(
+                      readOnly &&
+                      isEdFisica &&
+                      currentCode.toUpperCase() === 'A' &&
+                      isolatedItemSet.has(item.id),
+                    );
+                    const rowToneClass = readOnly && !isStaffEditing
+                      ? currentTone === 'rojo'
+                        ? styles.rowToneRojo
+                        : isIsolatedA
+                          ? styles.rowToneAislado
+                          : ''
+                      : '';
+                    return (
+                      <tr key={item.id} className={rowToneClass}>
+                        {hasBlocks && showBlockCell && (
+                          <td rowSpan={blockRowSpan} className={styles.blockCell}>
+                            {item.bloqueNombre || 'General'}
+                          </td>
+                        )}
+                        <td className={styles.orderCell}>
+                          <span className={styles.itemIndexBadge}>{item.ordenVisual}</span>
                         </td>
-                      )}
-                      <td className={styles.orderCell}>
-                        <span className={styles.itemIndexBadge}>{item.ordenVisual}</span>
-                      </td>
-                      <th scope="row" className={styles.promptHeaderCell}>
-                        {item.texto}
-                      </th>
-                      <td className={styles.valueCell}>
-                        {!readOnly || isStaffEditing ? (
-                          <div className={styles.scaleOptionsGroup}>
-                            {availableEscalaItems.map((opt) => {
-                              const selected = currentCode === opt.codigo;
-                              return (
-                                <Button
-                                  key={opt.codigo}
-                                  size="small"
-                                  type={selected ? 'primary' : 'default'}
-                                  className={styles.scaleOptionButton}
-                                  onClick={() => handleSelectItemValue(item.id, opt.codigo)}
-                                >
-                                  {opt.etiqueta}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        ) : editingItemId === item.id ? (
-                          <div className={styles.scaleOptionsGroup} style={{ alignItems: 'center' }}>
-                            {availableEscalaItems.map((opt) => {
-                              const selected = currentCode === opt.codigo;
-                              return (
-                                <Button
-                                  key={opt.codigo}
-                                  size="small"
-                                  type={selected ? 'primary' : 'default'}
-                                  className={styles.scaleOptionButton}
-                                  onClick={() => {
-                                    handleSelectItemValue(item.id, opt.codigo);
-                                    setEditingItemId(null);
-                                  }}
-                                >
-                                  {opt.etiqueta}
-                                </Button>
-                              );
-                            })}
-                            <Tooltip title="Cancelar">
-                              <Button
-                                type="text"
-                                size="small"
-                                shape="circle"
-                                icon={<CloseOutlined />}
-                                onClick={() => setEditingItemId(null)}
-                                aria-label="Cancelar edición de este ítem"
-                              />
-                            </Tooltip>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                            <Tooltip title="Modificar valoración">
-                              <span
-                                role="button"
-                                tabIndex={0}
-                                onClick={() => !saving && setEditingItemId(item.id)}
-                                onKeyDown={(e) => {
-                                  if (!saving && (e.key === 'Enter' || e.key === ' ')) {
-                                    e.preventDefault();
-                                    setEditingItemId(item.id);
-                                  }
-                                }}
-                                style={{
-                                  cursor: saving ? 'not-allowed' : 'pointer',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                {currentCode ? (
-                                  <Tag
-                                    color="blue"
-                                    style={{
-                                      fontWeight: 700,
-                                      fontSize: 13,
-                                      padding: '2px 10px',
-                                      margin: 0,
-                                      cursor: 'inherit',
+                        <th scope="row" className={styles.promptHeaderCell}>
+                          {item.texto}
+                        </th>
+                        <td className={styles.valueCell}>
+                          {!readOnly || isStaffEditing ? (
+                            <div className={styles.scaleOptionsGroup}>
+                              {availableEscalaItems.map((opt) => {
+                                const selected = currentCode === opt.codigo;
+                                return (
+                                  <Button
+                                    key={opt.codigo}
+                                    size="small"
+                                    type={selected ? 'primary' : 'default'}
+                                    className={styles.scaleOptionButton}
+                                    onClick={() => handleSelectItemValue(item.id, opt.codigo)}
+                                  >
+                                    {opt.etiqueta}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                          ) : editingItemId === item.id ? (
+                            <div className={styles.scaleOptionsGroup} style={{ alignItems: 'center' }}>
+                              {availableEscalaItems.map((opt) => {
+                                const selected = currentCode === opt.codigo;
+                                return (
+                                  <Button
+                                    key={opt.codigo}
+                                    size="small"
+                                    type={selected ? 'primary' : 'default'}
+                                    className={styles.scaleOptionButton}
+                                    onClick={() => {
+                                      handleSelectItemValue(item.id, opt.codigo);
+                                      setEditingItemId(null);
                                     }}
                                   >
-                                    {escalaItemLabelByCode.get(currentCode) || currentCode}
-                                  </Tag>
-                                ) : (
-                                  <Text type="secondary" style={{ cursor: 'inherit' }}>
-                                    Sin calificar
-                                  </Text>
-                                )}
-                              </span>
-                            </Tooltip>
-                            <Tooltip title="Modificar valoración">
-                              <Button
-                                type="text"
-                                size="small"
-                                shape="circle"
-                                icon={<EditOutlined style={{ fontSize: 13, color: 'var(--cys-color-primary-text)' }} />}
-                                disabled={saving}
-                                onClick={() => setEditingItemId(item.id)}
-                                aria-label={`Modificar valoración de ítem ${item.ordenVisual}`}
-                              />
-                            </Tooltip>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                                    {opt.etiqueta}
+                                  </Button>
+                                );
+                              })}
+                              <Tooltip title="Cancelar">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  shape="circle"
+                                  icon={<CloseOutlined />}
+                                  onClick={() => setEditingItemId(null)}
+                                  aria-label="Cancelar edición de este ítem"
+                                />
+                              </Tooltip>
+                            </div>
+                          ) : (
+                            <div className={styles.valueReadOnlyGroup}>
+                              <Tooltip title="Modificar valoración">
+                                <span
+                                  role="button"
+                                  tabIndex={0}
+                                  onClick={() => !saving && setEditingItemId(item.id)}
+                                  onKeyDown={(e) => {
+                                    if (!saving && (e.key === 'Enter' || e.key === ' ')) {
+                                      e.preventDefault();
+                                      setEditingItemId(item.id);
+                                    }
+                                  }}
+                                  className={styles.clickablePillWrapper}
+                                  style={{ cursor: saving ? 'not-allowed' : 'pointer' }}
+                                >
+                                  {currentCode && currentTone ? (
+                                    <InformeTonePill
+                                      tone={currentTone}
+                                      label={escalaItemLabelByCode.get(currentCode) || currentCode}
+                                      className={styles.valueTonePill}
+                                    />
+                                  ) : (
+                                    <Text type="secondary" style={{ cursor: 'inherit' }}>
+                                      Sin calificar
+                                    </Text>
+                                  )}
+                                </span>
+                              </Tooltip>
+                              {isIsolatedA && (
+                                <Tooltip title="La mayoría de los alumnos del grado tienen este contenido evaluado con B, C o D. Verificá si corresponde «A» (no trabajado) o si fue un error de selección.">
+                                  <span className={styles.isolatedHintPill}>
+                                    <BulbOutlined />
+                                    <span>«A» aislado en el grado</span>
+                                  </span>
+                                </Tooltip>
+                              )}
+                              <Tooltip title="Modificar valoración">
+                                <Button
+                                  type="text"
+                                  size="small"
+                                  shape="circle"
+                                  icon={<EditOutlined style={{ fontSize: 13, color: 'var(--cys-color-primary-text)' }} />}
+                                  disabled={saving}
+                                  onClick={() => setEditingItemId(item.id)}
+                                  aria-label={`Modificar valoración de ítem ${item.ordenVisual}`}
+                                />
+                              </Tooltip>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {plantilla.requiereDesempenoGeneral && (
             <div className={styles.generalSection}>
@@ -970,18 +1087,11 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
                       }}
                     >
                       {draftDesempeno ? (
-                        <Tag
-                          color="success"
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 13.5,
-                            padding: '4px 12px',
-                            margin: 0,
-                            cursor: 'inherit',
-                          }}
-                        >
-                          {escalaDesempenoLabelByCode.get(draftDesempeno) || draftDesempeno}
-                        </Tag>
+                        <InformeTonePill
+                          tone={getGeneralPerformanceTone(draftDesempeno)}
+                          label={escalaDesempenoLabelByCode.get(draftDesempeno) || draftDesempeno}
+                          className={styles.generalTonePill}
+                        />
                       ) : (
                         <Text type="secondary" style={{ cursor: 'inherit' }}>
                           Sin calificación general
@@ -1231,9 +1341,17 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
                       {order}. {alumno.nombreCompleto}
                     </span>
                   </div>
-                  <Tag color={statusColor} className={styles.modalStudentItemTag}>
-                    {statusLabel}
-                  </Tag>
+                  <span className={styles.modalStudentItemRight}>
+                    {readOnly && (
+                      <MiniSemaforoIndicators
+                        semaforo={alumno.semaforo}
+                        disonancias={alumno.disonancias}
+                      />
+                    )}
+                    <Tag color={statusColor} className={styles.modalStudentItemTag}>
+                      {statusLabel}
+                    </Tag>
+                  </span>
                 </button>
               );
             })

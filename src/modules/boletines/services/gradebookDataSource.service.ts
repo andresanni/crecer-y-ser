@@ -1,5 +1,14 @@
-import type { GradebookDataSource, GradebookStudentWrite } from '../models/gradebookDataSource.model';
-import type { EstadoInstanciaCargaBoletin, InstanciaCargaBoletin } from '../models/boletin.model';
+import type {
+  GradebookDataSource,
+  GradebookHistoricalTerm,
+  GradebookStudentWrite,
+} from '../models/gradebookDataSource.model';
+import type {
+  BoletinPpiSugerencia,
+  BoletinPromedioSugerencia,
+  EstadoInstanciaCargaBoletin,
+  InstanciaCargaBoletin,
+} from '../models/boletin.model';
 import pb from '../../../core/pocketbase';
 import { ClientResponseError } from 'pocketbase';
 import { boletinService } from './boletin.service';
@@ -56,6 +65,8 @@ export interface StaffReviewBulletin {
   revisionVisada: number | null;
   visadoAt: string | null;
   visadoPor: string | null;
+  sugerenciasPromedio?: BoletinPromedioSugerencia[];
+  sugerenciasPpi?: BoletinPpiSugerencia[];
 }
 
 export interface StaffReviewDto {
@@ -77,6 +88,17 @@ interface StaffStudentDto {
     ppi: boolean;
     calificacionGeneralId: string | null;
     criterios: Array<{ criterioId: string; valorEscalaId: string }>;
+  }>;
+  historialBimestres?: Array<{
+    bimestre: number;
+    periodoId: string;
+    periodoNombre: string;
+    evaluaciones: Array<{
+      cursoMateriaId: string;
+      ppi?: boolean;
+      calificacionGeneralId: string | null;
+      criterios: Array<{ criterioId: string; valorEscalaId: string }>;
+    }>;
   }>;
   cierre: {
     id: string;
@@ -129,9 +151,27 @@ const loadStaffStudent = async (
       ])),
     },
   ]));
+  const historialBimestres: GradebookHistoricalTerm[] = (dto.historialBimestres || []).map((term) => ({
+    bimestre: term.bimestre,
+    periodoId: term.periodoId,
+    periodoNombre: term.periodoNombre,
+    materias: Object.fromEntries(
+      term.evaluaciones.map((evaluacion) => [
+        evaluacion.cursoMateriaId,
+        {
+          ppi: Boolean(evaluacion.ppi),
+          calificacionGeneralId: evaluacion.calificacionGeneralId,
+          criteriosValores: Object.fromEntries(
+            evaluacion.criterios.map((criterio) => [criterio.criterioId, criterio.valorEscalaId]),
+          ),
+        },
+      ]),
+    ),
+  }));
   return {
     revision: dto.revision,
     materias,
+    historialBimestres,
     bimestreApoyos: dto.bimestreApoyos,
     cierre: dto.cierre ? {
       id: dto.cierre.id,

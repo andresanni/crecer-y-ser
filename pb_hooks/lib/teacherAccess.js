@@ -324,6 +324,107 @@ function approvalDto(approval) {
   }
 }
 
+function isNoCorrespondeScaleLabel(label) {
+  var normalized = String(label || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[áàäâ]/g, "a")
+    .replace(/[éèëê]/g, "e")
+    .replace(/[íìïî]/g, "i")
+    .replace(/[óòöô]/g, "o")
+    .replace(/[úùüû]/g, "u")
+  return normalized === "no corresponde" || normalized.indexOf("no corresponde") === 0 || normalized === "nc"
+}
+
+function extractExplicitScaleNumber(label) {
+  var match = String(label || "").trim().match(/(10|[1-9])$/)
+  return match ? Number(match[1]) : null
+}
+
+function buildEffectiveScaleWeights(valuesById) {
+  var candidates = []
+  Object.keys(valuesById).forEach((id) => {
+    var rec = valuesById[id]
+    if (!rec) return
+    var label = rec.getString("etiqueta")
+    if (isNoCorrespondeScaleLabel(label)) return
+    var rawWeight = rec.getFloat("peso_numerico")
+    var explicitNumber = extractExplicitScaleNumber(label)
+    if (!(isFinite(rawWeight) && rawWeight > 0) && explicitNumber === null) return
+    candidates.push({
+      id: id,
+      record: rec,
+      label: label,
+      rawWeight: isFinite(rawWeight) && rawWeight > 0 ? rawWeight : 0,
+      order: rec.getInt("orden_visual") || 0,
+      explicitNumber: explicitNumber
+    })
+  })
+
+  var hasExplicitNumericScale = candidates.length > 0 && candidates.every((item) => item.explicitNumber !== null)
+  var weightById = {}
+  var weightedValuesList = []
+
+  if (hasExplicitNumericScale) {
+    candidates.forEach((item) => {
+      var effectiveWeight = item.rawWeight > 0 ? item.rawWeight : item.explicitNumber
+      weightById[item.id] = effectiveWeight
+      weightedValuesList.push({ record: item.record, weight: effectiveWeight })
+    })
+    return { weightById: weightById, weightedValuesList: weightedValuesList }
+  }
+
+  candidates.sort((a, b) => {
+    if (a.order !== b.order) return a.order - b.order
+    if (a.rawWeight !== b.rawWeight) return a.rawWeight - b.rawWeight
+    return a.label.localeCompare(b.label)
+  })
+  candidates.forEach((item, index) => {
+    var effectiveWeight = index + 1
+    weightById[item.id] = effectiveWeight
+    weightedValuesList.push({ record: item.record, weight: effectiveWeight })
+  })
+  return { weightById: weightById, weightedValuesList: weightedValuesList }
+}
+
+function findClosestScaleRecord(valuesList, targetWeight) {
+  var best = null
+  var bestDiff = Infinity
+  valuesList.forEach((entry) => {
+    var diff = Math.abs(entry.weight - targetWeight)
+    if (diff < bestDiff) {
+      bestDiff = diff
+      best = entry.record
+    }
+  })
+  return best
+}
+
+function evaluateSubjectAverageCoherence(courseMaterialId, subjectName, generalValueId, criteriaValueIds, valuesById, weightById, weightedValuesList) {
+  if (!generalValueId) return null
+  var generalRec = valuesById[generalValueId]
+  var generalWeight = weightById[generalValueId]
+  if (!generalRec || generalWeight === undefined) return null
+  var weights = []
+  criteriaValueIds.forEach((valueId) => {
+    var w = weightById[valueId]
+    if (w !== undefined) weights.push(w)
+  })
+  if (weights.length === 0) return null
+  var sum = 0
+  weights.forEach((w) => { sum += w })
+  var avg = sum / weights.length
+  if (Math.abs(generalWeight - avg) < 1) return null
+  var suggested = findClosestScaleRecord(weightedValuesList, avg)
+  return {
+    cursoMateriaId: courseMaterialId,
+    materiaNombre: subjectName,
+    promedioNumerico: Math.round(avg * 10) / 10,
+    calificacionGeneralEtiqueta: generalRec.getString("etiqueta"),
+    calificacionSugeridaEtiqueta: suggested ? suggested.getString("etiqueta") : null
+  }
+}
+
 function staffReview(c) {
   noStore(c)
   var response
@@ -339,16 +440,139 @@ function staffReview(c) {
       { workflowId: workflow.getId() }
     )
     var missingEnrollments = missingReviewEnrollments(txDao, workflow, approvals)
+
+    var materials = courseMaterials(txDao, workflow)
+    var academicMaterials = []
+    materials.forEach((mat) => {
+      var subject = requireRecord(txDao, "materias", mat.getString("materia_id"))
+      var subjectName = subject.getString("nombre")
+      if (!isConductSubjectName(subjectName)) {
+        academicMaterials.push({ id: mat.getId(), nombre: subjectName })
+      }
+    })
+    var valuesById = scaleValueMap(txDao, workflow)
+    var effectiveScale = buildEffectiveScaleWeights(valuesById)
+    var weightById = effectiveScale.weightById
+    var weightedValuesList = effectiveScale.weightedValuesList
+
+    var evalRows = arrayOf(new DynamicModel({
+      id: "",
+      inscripcion_id: "",
+      curso_materia_id: "",
+      ppi: false,
+      calificacion_general_id: ""
+    }))
+    txDao.db().newQuery(
+      "SELECT em.id AS id, em.inscripcion_id AS inscripcion_id, em.curso_materia_id AS curso_materia_id, " +
+      "COALESCE(em.ppi, 0) AS ppi, COALESCE(em.calificacion_general_id, '') AS calificacion_general_id " +
+      "FROM evaluaciones_materia em " +
+      "INNER JOIN inscripciones i ON i.id = em.inscripcion_id " +
+      "WHERE i.curso_id = {:courseId} AND em.periodo_id = {:periodId}"
+    ).bind({ courseId: course.getId(), periodId: period.getId() }).all(evalRows)
+
+    var evalByEnrollmentAndMaterial = {}
+    evalRows.forEach((row) => {
+      evalByEnrollmentAndMaterial[row.inscripcion_id + ":" + row.curso_materia_id] = row
+    })
+
+    var currentTerm = period.getInt("numero_periodo")
+    var lastPriorPpiByScope = {}
+    if (currentTerm > 1) {
+      var priorPpiRows = arrayOf(new DynamicModel({
+        inscripcion_id: "",
+        curso_materia_id: "",
+        ppi: false,
+        numero_periodo: 0
+      }))
+      txDao.db().newQuery(
+        "SELECT em.inscripcion_id AS inscripcion_id, em.curso_materia_id AS curso_materia_id, " +
+        "COALESCE(em.ppi, 0) AS ppi, p.numero_periodo AS numero_periodo " +
+        "FROM evaluaciones_materia em " +
+        "INNER JOIN inscripciones i ON i.id = em.inscripcion_id " +
+        "INNER JOIN periodos p ON p.id = em.periodo_id " +
+        "WHERE i.curso_id = {:courseId} AND p.ciclo_id = {:cycleId} AND p.numero_periodo < {:currentTerm} " +
+        "ORDER BY p.numero_periodo DESC"
+      ).bind({
+        courseId: course.getId(),
+        cycleId: period.getString("ciclo_id"),
+        currentTerm: currentTerm
+      }).all(priorPpiRows)
+
+      priorPpiRows.forEach((row) => {
+        var key = row.inscripcion_id + ":" + row.curso_materia_id
+        if (!lastPriorPpiByScope[key]) {
+          lastPriorPpiByScope[key] = {
+            bimestre: Number(row.numero_periodo) || 1,
+            ppi: Boolean(row.ppi)
+          }
+        }
+      })
+    }
+
+    var critRows = arrayOf(new DynamicModel({
+      evaluacion_materia_id: "",
+      valor_escala_id: ""
+    }))
+    txDao.db().newQuery(
+      "SELECT ec.evaluacion_materia_id AS evaluacion_materia_id, COALESCE(ec.valor_escala_id, '') AS valor_escala_id " +
+      "FROM evaluaciones_criterios ec " +
+      "INNER JOIN evaluaciones_materia em ON em.id = ec.evaluacion_materia_id " +
+      "INNER JOIN inscripciones i ON i.id = em.inscripcion_id " +
+      "WHERE i.curso_id = {:courseId} AND em.periodo_id = {:periodId}"
+    ).bind({ courseId: course.getId(), periodId: period.getId() }).all(critRows)
+
+    var criteriaValueIdsByEvalId = {}
+    critRows.forEach((row) => {
+      if (!row.valor_escala_id) return
+      if (!criteriaValueIdsByEvalId[row.evaluacion_materia_id]) {
+        criteriaValueIdsByEvalId[row.evaluacion_materia_id] = []
+      }
+      criteriaValueIdsByEvalId[row.evaluacion_materia_id].push(row.valor_escala_id)
+    })
+
     var approvedCount = 0
     var students = approvals.map((approval) => {
       if (approval.getString("estado") === "VISADO") approvedCount += 1
       var enrollment = requireRecord(txDao, "inscripciones", approval.getString("inscripcion_id"))
       var student = requireRecord(txDao, "alumnos", enrollment.getString("alumno_id"))
+      var firstTerm = firstEvaluableTerm(enrollment)
+      var sugerenciasPromedio = []
+      var sugerenciasPpi = []
+      academicMaterials.forEach((mat) => {
+        var scopeKey = enrollment.getId() + ":" + mat.id
+        var ev = evalByEnrollmentAndMaterial[scopeKey]
+        if (!ev) return
+        var criteriaIds = criteriaValueIdsByEvalId[ev.id] || []
+        var suggestion = evaluateSubjectAverageCoherence(
+          mat.id,
+          mat.nombre,
+          ev.calificacion_general_id,
+          criteriaIds,
+          valuesById,
+          weightById,
+          weightedValuesList
+        )
+        if (suggestion) {
+          sugerenciasPromedio.push(suggestion)
+        }
+        var priorPpi = lastPriorPpiByScope[scopeKey]
+        if (priorPpi && priorPpi.bimestre >= firstTerm && Boolean(ev.ppi) !== priorPpi.ppi) {
+          sugerenciasPpi.push({
+            cursoMateriaId: mat.id,
+            materiaNombre: mat.nombre,
+            bimestreAnterior: priorPpi.bimestre,
+            ppiAnterior: priorPpi.ppi,
+            ppiActual: Boolean(ev.ppi)
+          })
+        }
+      })
       return Object.assign(approvalDto(approval), {
         nombreCompleto: (student.getString("apellidos") + ", " + student.getString("nombres")).trim(),
         numeroOrden: enrollment.getInt("numero_orden") || null,
         elegibilidadPdf: evaluatePdfEligibility(txDao, enrollment, period),
-        preparacionDocumental: documentPreparation(txDao, enrollment, period, student)
+        preparacionDocumental: documentPreparation(txDao, enrollment, period, student),
+        sugerenciasPromedio: sugerenciasPromedio,
+        sugerenciasPpi: sugerenciasPpi
       })
     })
     response = {
@@ -1054,6 +1278,9 @@ function context(c) {
 
 function studentSnapshot(dao, access, enrollment) {
   var periodId = access.getString("periodo_id")
+  var period = requireRecord(dao, "periodos", periodId)
+  var currentTerm = period.getInt("numero_periodo")
+  var firstTerm = firstEvaluableTerm(enrollment)
   var materials = allowedMaterialMap(dao, access)
   var evaluations = findByFilter(
     dao,
@@ -1083,6 +1310,53 @@ function studentSnapshot(dao, access, enrollment) {
     }
   })
 
+  var historialBimestres = []
+  if (currentTerm > 1) {
+    var priorPeriods = findByFilter(
+      dao,
+      "periodos",
+      "ciclo_id = {:cycleId} && numero_periodo < {:currentTerm}",
+      "numero_periodo",
+      { cycleId: period.getString("ciclo_id"), currentTerm: currentTerm }
+    )
+    priorPeriods.forEach((priorPeriod) => {
+      var priorTerm = priorPeriod.getInt("numero_periodo")
+      if (priorTerm < firstTerm) return
+      var priorEvals = findByFilter(
+        dao,
+        "evaluaciones_materia",
+        "inscripcion_id = {:enrollmentId} && periodo_id = {:priorPeriodId}",
+        "",
+        { enrollmentId: enrollment.getId(), priorPeriodId: priorPeriod.getId() }
+      ).filter((record) => Boolean(materials[record.getString("curso_materia_id")]))
+      if (priorEvals.length === 0) return
+      var priorEvalDtos = priorEvals.map((evaluation) => {
+        var criteria = findByFilter(
+          dao,
+          "evaluaciones_criterios",
+          "evaluacion_materia_id = {:evaluationId}",
+          "",
+          { evaluationId: evaluation.getId() }
+        )
+        return {
+          cursoMateriaId: evaluation.getString("curso_materia_id"),
+          ppi: evaluation.getBool("ppi"),
+          calificacionGeneralId: evaluation.getString("calificacion_general_id") || null,
+          criterios: criteria.map((record) => ({
+            criterioId: record.getString("criterio_id"),
+            valorEscalaId: record.getString("valor_escala_id")
+          }))
+        }
+      })
+      historialBimestres.push({
+        bimestre: priorTerm,
+        periodoId: priorPeriod.getId(),
+        periodoNombre: priorPeriod.getString("nombre"),
+        evaluaciones: priorEvalDtos
+      })
+    })
+  }
+
   var closure = null
   var closureRecord = findFirstByFilter(
     dao,
@@ -1101,8 +1375,9 @@ function studentSnapshot(dao, access, enrollment) {
   }
 
   return {
-    bimestreApoyos: firstEvaluableTerm(enrollment),
+    bimestreApoyos: firstTerm,
     evaluaciones: evaluationDtos,
+    historialBimestres: historialBimestres,
     cierre: closure,
     apoyos: {
       promocionoConAcompanamiento: enrollment.getString("promociono_con_acompanamiento") || "-",

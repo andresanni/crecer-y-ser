@@ -7,6 +7,7 @@ import {
   Col,
   Empty,
   Row,
+  Segmented,
   Space,
   Spin,
   Tag,
@@ -29,14 +30,22 @@ import { ClientResponseError } from 'pocketbase';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
 import ui from '../../../shared/styles/ui.module.css';
 import {
+  formatDesempenoGeneralShortLabel,
   formatMateriaNombreUI,
+  getGeneralPerformanceTone,
   TIPOS_INFORME_META,
   type AlumnoInformeRow,
+  type InformeRevisionAlumno,
   type RevisionInformeData,
 } from '../models/informe.model';
 import { createStaffInformeAccess } from '../models/informeAccess.model';
 import { informesService } from '../services/informes.service';
 import { useInformesRealtime } from '../hooks/useInformesRealtime';
+import {
+  DisonanciaHintBadge,
+  InformeTonePill,
+  SemaforoStudentPills,
+} from './InformesVisualIndicators';
 import { VistaInformePorAlumno } from './VistaInformePorAlumno';
 import { EditarDocenteInformeModal } from './EditarDocenteInformeModal';
 import { DownloadInformeButton } from './DownloadInformeButton';
@@ -67,6 +76,7 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
   const [detailHasChanges, setDetailHasChanges] = useState(false);
   const [editingTeacherOpen, setEditingTeacherOpen] = useState(false);
   const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [listFilter, setListFilter] = useState<'TODOS' | 'ATENCION' | 'PENDIENTES'>('TODOS');
 
   const detailHasChangesRef = useRef(false);
   useEffect(() => {
@@ -137,8 +147,39 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
         !review.plantilla.requiereDesempenoGeneral || inf.desempenoGeneralValor,
       ),
       estadoVisado: inf.estado,
+      desempenoGeneralValor: inf.desempenoGeneralValor,
+      desempenoGeneralEtiqueta: inf.desempenoGeneralEtiqueta,
+      semaforo: inf.semaforo,
+      disonancias: inf.disonancias,
+      itemsAisladosIds: inf.itemsAisladosIds,
     }));
   }, [review]);
+
+  const hasObserveItems = useCallback(
+    (inf: InformeRevisionAlumno) => (
+      (inf.semaforo?.rojo ?? 0) > 0 ||
+      (inf.semaforo?.amarillo ?? 0) > 0 ||
+      (inf.disonancias?.length ?? 0) > 0
+    ),
+    [],
+  );
+
+  const countConObservacion = useMemo(
+    () => (review ? review.informes.filter(hasObserveItems).length : 0),
+    [hasObserveItems, review],
+  );
+
+  const countPendientesVisado = useMemo(
+    () => (review ? review.informes.filter((inf) => inf.estado !== 'VISADO').length : 0),
+    [review],
+  );
+
+  const filteredInformes = useMemo(() => {
+    if (!review) return [];
+    if (listFilter === 'ATENCION') return review.informes.filter(hasObserveItems);
+    if (listFilter === 'PENDIENTES') return review.informes.filter((inf) => inf.estado !== 'VISADO');
+    return review.informes;
+  }, [hasObserveItems, listFilter, review]);
 
   const selectedStudentReport = useMemo(
     () => review?.informes.find((inf) => inf.inscripcionId === selectedInscripcionId) || null,
@@ -416,11 +457,23 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
           ) : (
             <Card className={styles.container} styles={{ body: { padding: 0 } }}>
               <div className={styles.toolbar}>
-                <Space size={8} wrap>
+                <div className={styles.toolbarLeft}>
                   <Tag color="blue" style={{ margin: 0, fontWeight: 600 }}>
-                    Plantilla: {review.plantilla.tituloTabla} ({review.items.length} ítems)
+                    {review.plantilla.tituloTabla} · {review.items.length} ítems
                   </Tag>
-                </Space>
+                  {review.informes.length > 0 && (
+                    <Segmented
+                      className={styles.toolbarFilter}
+                      value={listFilter}
+                      onChange={(val) => setListFilter(val as 'TODOS' | 'ATENCION' | 'PENDIENTES')}
+                      options={[
+                        { label: `Todos (${review.informes.length})`, value: 'TODOS' },
+                        { label: `Con ítems a observar (${countConObservacion})`, value: 'ATENCION' },
+                        { label: `Pendientes de visado (${countPendientesVisado})`, value: 'PENDIENTES' },
+                      ]}
+                    />
+                  )}
+                </div>
                 <Tag
                   color={
                     review.visados === review.totalInformes && review.totalInformes > 0
@@ -436,10 +489,16 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
               <div className={styles.content}>
                 {review.informes.length === 0 ? (
                   <Empty description="No hay informes entregados en este curso" />
+                ) : filteredInformes.length === 0 ? (
+                  <Empty description="No hay alumnos en este filtro">
+                    <Button size="small" onClick={() => setListFilter('TODOS')}>
+                      Ver todos los alumnos
+                    </Button>
+                  </Empty>
                 ) : (
                   <Row gutter={[12, 12]}>
-                    {review.informes.map((inf, idx) => (
-                      <Col xs={24} md={12} key={inf.inscripcionId}>
+                    {filteredInformes.map((inf, idx) => (
+                      <Col xs={24} md={12} key={inf.inscripcionId} className={styles.studentCol}>
                         <button
                           type="button"
                           className={styles.studentCard}
@@ -450,14 +509,26 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
                               {inf.numeroOrden ?? idx + 1}
                             </span>
                             <div className={styles.studentName}>
-                              <Text strong>{inf.nombreCompleto}</Text>
+                              <Text strong className={styles.studentNameText}>{inf.nombreCompleto}</Text>
                               <div className={styles.studentTags}>
-                                <Tag
-                                  className={styles.statusTag}
-                                  color={inf.estado === 'VISADO' ? 'success' : 'warning'}
-                                >
-                                  {inf.estado === 'VISADO' ? 'Visado' : 'Pendiente de visado'}
-                                </Tag>
+                                {review.plantilla.requiereDesempenoGeneral && inf.desempenoGeneralEtiqueta && (
+                                  <Tooltip title={`Desempeño general: ${inf.desempenoGeneralEtiqueta}`}>
+                                    <span>
+                                      <InformeTonePill
+                                        tone={getGeneralPerformanceTone(inf.desempenoGeneralValor)}
+                                        label={formatDesempenoGeneralShortLabel(
+                                          inf.desempenoGeneralValor,
+                                          inf.desempenoGeneralEtiqueta,
+                                        )}
+                                        compact
+                                      />
+                                    </span>
+                                  </Tooltip>
+                                )}
+                                {inf.semaforo && (
+                                  <SemaforoStudentPills semaforo={inf.semaforo} compact />
+                                )}
+                                <DisonanciaHintBadge disonancias={inf.disonancias} label="Sugerencia" />
                                 {!inf.completo && (
                                   <Tag color="error" className={styles.secondaryTag}>
                                     Incompleto ({inf.itemsRespondidos}/{inf.totalItems})
@@ -471,7 +542,28 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
                               </div>
                             </div>
                           </div>
-                          <ArrowRightOutlined className={styles.arrow} />
+                          <span className={styles.studentRightSection}>
+                            <span
+                              className={`${styles.visadoBadge} ${
+                                inf.estado === 'VISADO'
+                                  ? styles.visadoBadgeApproved
+                                  : styles.visadoBadgePending
+                              }`}
+                            >
+                              {inf.estado === 'VISADO' ? (
+                                <>
+                                  <CheckCircleOutlined />
+                                  <span>Visado</span>
+                                </>
+                              ) : (
+                                <>
+                                  <ClockCircleOutlined />
+                                  <span>Sin visar</span>
+                                </>
+                              )}
+                            </span>
+                            <ArrowRightOutlined className={styles.arrow} />
+                          </span>
                         </button>
                       </Col>
                     ))}

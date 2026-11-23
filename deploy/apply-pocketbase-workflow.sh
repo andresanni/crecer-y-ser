@@ -46,6 +46,7 @@ test -f "$stage_dir/1792440200_multi_course_teacher_report_links.js"
 test -f "$stage_dir/1792500000_added_kindergarten_level_and_courses.js"
 test -f "$stage_dir/1792600000_removed_pdf_emissions_storage.js"
 test -f "$stage_dir/1792700000_added_gradebook_progress_indexes.js"
+test -f "$stage_dir/1792800000_normalized_first_cycle_scale_weights.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -150,6 +151,7 @@ install -m 0644 "$stage_dir/1792440200_multi_course_teacher_report_links.js" /ro
 install -m 0644 "$stage_dir/1792500000_added_kindergarten_level_and_courses.js" /root/pb/pb_migrations/1792500000_added_kindergarten_level_and_courses.js
 install -m 0644 "$stage_dir/1792600000_removed_pdf_emissions_storage.js" /root/pb/pb_migrations/1792600000_removed_pdf_emissions_storage.js
 install -m 0644 "$stage_dir/1792700000_added_gradebook_progress_indexes.js" /root/pb/pb_migrations/1792700000_added_gradebook_progress_indexes.js
+install -m 0644 "$stage_dir/1792800000_normalized_first_cycle_scale_weights.js" /root/pb/pb_migrations/1792800000_normalized_first_cycle_scale_weights.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 

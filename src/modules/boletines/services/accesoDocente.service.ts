@@ -89,6 +89,17 @@ interface TeacherStudentDto {
     calificacionGeneralId: string | null;
     criterios: Array<{ criterioId: string; valorEscalaId: string }>;
   }>;
+  historialBimestres?: Array<{
+    bimestre: number;
+    periodoId: string;
+    periodoNombre: string;
+    evaluaciones: Array<{
+      cursoMateriaId: string;
+      ppi?: boolean;
+      calificacionGeneralId: string | null;
+      criterios: Array<{ criterioId: string; valorEscalaId: string }>;
+    }>;
+  }>;
   cierre: null | {
     id: string;
     asistencias: number;
@@ -199,8 +210,26 @@ const mapStudentDto = (
       ),
     };
   }
+  const historialBimestres = (dto.historialBimestres || []).map((term) => ({
+    bimestre: term.bimestre,
+    periodoId: term.periodoId,
+    periodoNombre: term.periodoNombre,
+    materias: Object.fromEntries(
+      term.evaluaciones.map((evaluacion) => [
+        evaluacion.cursoMateriaId,
+        {
+          ppi: Boolean(evaluacion.ppi),
+          calificacionGeneralId: evaluacion.calificacionGeneralId,
+          criteriosValores: Object.fromEntries(
+            evaluacion.criterios.map((criterio) => [criterio.criterioId, criterio.valorEscalaId]),
+          ),
+        },
+      ]),
+    ),
+  }));
   return {
     materias,
+    historialBimestres,
     bimestreApoyos: dto.bimestreApoyos,
     cierre: dto.cierre ? {
       ...dto.cierre,

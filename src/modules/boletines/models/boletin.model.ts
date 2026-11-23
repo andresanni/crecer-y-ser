@@ -592,6 +592,183 @@ export const esMateriaConducta = (nombre?: string): boolean => {
   );
 };
 
+export interface BoletinPromedioSugerencia {
+  cursoMateriaId: string;
+  materiaNombre: string;
+  promedioNumerico: number;
+  calificacionGeneralEtiqueta: string;
+  calificacionSugeridaEtiqueta: string | null;
+}
+
+export interface BoletinPpiSugerencia {
+  cursoMateriaId: string;
+  materiaNombre: string;
+  bimestreAnterior: number;
+  ppiAnterior: boolean;
+  ppiActual: boolean;
+}
+
+const normalizeBoletinScaleLabel = (etiqueta?: string | null): string => (
+  String(etiqueta || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+);
+
+export const isNoCorrespondeEscalaEtiqueta = (etiqueta?: string | null): boolean => {
+  const norm = normalizeBoletinScaleLabel(etiqueta);
+  return norm === 'no corresponde' || norm.startsWith('no corresponde') || norm === 'nc';
+};
+
+export const formatCalificacionBoletinShortLabel = (etiqueta?: string | null): string => {
+  const raw = String(etiqueta || '').trim();
+  if (!raw) return '';
+  const norm = normalizeBoletinScaleLabel(raw);
+  if (isNoCorrespondeEscalaEtiqueta(norm)) return 'NC';
+  const numMatch = /^(.*?)\s*(?:-\s*)?(10|[1-9])$/.exec(norm);
+  const base = numMatch ? numMatch[1].trim() : norm;
+  const suffix = numMatch ? `-${numMatch[2]}` : '';
+
+  if (base.startsWith('no alcanzo')) return `NA${suffix}`;
+  if (base.startsWith('en proceso')) return `EP${suffix}`;
+  if (base === 'alcanzado') return `AL${suffix}`;
+  if (base === 'avanzado') return `AV${suffix}`;
+  if (base === 'destacado') return `DE${suffix}`;
+  if (base === 'excelente') return `EX${suffix}`;
+  if (base === 'muy bueno') return `MB${suffix}`;
+  if (base === 'bueno') return `B${suffix}`;
+  if (base === 'a fortalecer') return `AF${suffix}`;
+  return raw;
+};
+
+const extractExplicitScaleNumber = (etiqueta?: string | null): number | null => {
+  const match = /(10|[1-9])$/.exec(String(etiqueta || '').trim());
+  return match ? Number(match[1]) : null;
+};
+
+export const resolveValorEscalaPeso = (valor?: ValorEscala | null): number | null => {
+  if (!valor) return null;
+  if (isNoCorrespondeEscalaEtiqueta(valor.etiqueta)) return null;
+  if (Number.isFinite(valor.pesoNumerico) && valor.pesoNumerico > 0) {
+    return valor.pesoNumerico;
+  }
+  return extractExplicitScaleNumber(valor.etiqueta);
+};
+
+const buildEffectiveScaleWeights = (valoresEscala: ValorEscala[]): Map<string, number> => {
+  const candidates = valoresEscala
+    .filter((valor) => {
+      if (isNoCorrespondeEscalaEtiqueta(valor.etiqueta)) return false;
+      const hasPositiveWeight = Number.isFinite(valor.pesoNumerico) && valor.pesoNumerico > 0;
+      const explicitNumber = extractExplicitScaleNumber(valor.etiqueta);
+      return hasPositiveWeight || explicitNumber !== null;
+    })
+    .map((valor) => ({
+      valor,
+      explicitNumber: extractExplicitScaleNumber(valor.etiqueta),
+      rawWeight: Number.isFinite(valor.pesoNumerico) && valor.pesoNumerico > 0 ? valor.pesoNumerico : 0,
+      order: Number.isFinite(valor.ordenVisual) ? valor.ordenVisual : 0,
+    }));
+
+  const hasExplicitNumericScale = candidates.length > 0 && candidates.every((c) => c.explicitNumber !== null);
+  const weightById = new Map<string, number>();
+
+  if (hasExplicitNumericScale) {
+    for (const candidate of candidates) {
+      weightById.set(
+        candidate.valor.id,
+        candidate.rawWeight > 0 ? candidate.rawWeight : (candidate.explicitNumber as number),
+      );
+    }
+    return weightById;
+  }
+
+  candidates.sort((a, b) => {
+    if (a.order !== b.order) return a.order - b.order;
+    if (a.rawWeight !== b.rawWeight) return a.rawWeight - b.rawWeight;
+    return a.valor.etiqueta.localeCompare(b.valor.etiqueta);
+  });
+  candidates.forEach((candidate, index) => {
+    weightById.set(candidate.valor.id, index + 1);
+  });
+  return weightById;
+};
+
+export const evaluateMateriaAverageCoherence = (
+  cursoMateriaId: string,
+  materiaNombre: string,
+  calificacionGeneralId: string | null | undefined,
+  criteriosValores: Record<string, string>,
+  valoresEscala: ValorEscala[],
+): BoletinPromedioSugerencia | null => {
+  if (esMateriaConducta(materiaNombre) || !calificacionGeneralId) return null;
+  const byId = new Map(valoresEscala.map((v) => [v.id, v]));
+  const weightById = buildEffectiveScaleWeights(valoresEscala);
+  const generalValor = byId.get(calificacionGeneralId);
+  const generalPeso = weightById.get(calificacionGeneralId);
+  if (!generalValor || generalPeso === undefined) return null;
+
+  const pesos: number[] = [];
+  for (const valorId of Object.values(criteriosValores)) {
+    const peso = weightById.get(valorId);
+    if (peso !== undefined) pesos.push(peso);
+  }
+  if (pesos.length === 0) return null;
+
+  const promedio = pesos.reduce((acc, w) => acc + w, 0) / pesos.length;
+  if (Math.abs(generalPeso - promedio) < 1) return null;
+
+  let closest: ValorEscala | null = null;
+  let bestDiff = Infinity;
+  for (const candidate of valoresEscala) {
+    const candidatePeso = weightById.get(candidate.id);
+    if (candidatePeso === undefined) continue;
+    const diff = Math.abs(candidatePeso - promedio);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      closest = candidate;
+    }
+  }
+
+  return {
+    cursoMateriaId,
+    materiaNombre,
+    promedioNumerico: Math.round(promedio * 10) / 10,
+    calificacionGeneralEtiqueta: generalValor.etiqueta,
+    calificacionSugeridaEtiqueta: closest ? closest.etiqueta : null,
+  };
+};
+
+export const evaluateMateriaPpiChange = (
+  cursoMateriaId: string,
+  materiaNombre: string,
+  ppiActual: boolean,
+  historialBimestres: Array<{
+    bimestre: number;
+    materias: Record<string, { ppi: boolean }>;
+  }>,
+): BoletinPpiSugerencia | null => {
+  if (esMateriaConducta(materiaNombre) || historialBimestres.length === 0) return null;
+  let lastPrior: { bimestre: number; ppi: boolean } | null = null;
+  for (const term of historialBimestres) {
+    const priorMat = term.materias[cursoMateriaId];
+    if (!priorMat) continue;
+    if (!lastPrior || term.bimestre > lastPrior.bimestre) {
+      lastPrior = { bimestre: term.bimestre, ppi: Boolean(priorMat.ppi) };
+    }
+  }
+  if (!lastPrior || lastPrior.ppi === ppiActual) return null;
+  return {
+    cursoMateriaId,
+    materiaNombre,
+    bimestreAnterior: lastPrior.bimestre,
+    ppiAnterior: lastPrior.ppi,
+    ppiActual,
+  };
+};
+
 
 
 

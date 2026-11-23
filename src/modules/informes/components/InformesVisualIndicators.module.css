@@ -1,0 +1,195 @@
+.pillBase {
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 6px;
+  line-height: 1.2;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.pillCompact {
+  font-size: 11.5px;
+  gap: 5px;
+  padding: 2px 8px;
+}
+
+.dot {
+  border-radius: 999px;
+  flex-shrink: 0;
+  height: 7px;
+  width: 7px;
+}
+
+.toneVerde {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.toneVerde .dot {
+  background: #10b981;
+}
+
+.toneAmarillo {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.toneAmarillo .dot {
+  background: #f59e0b;
+}
+
+.toneRojo {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+.toneRojo .dot {
+  background: #e11d48;
+}
+
+.toneNeutro {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.toneNeutro .dot {
+  background: #94a3b8;
+}
+
+.toneMuted {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+}
+
+.toneMuted .dot {
+  background: #cbd5e1;
+}
+
+.suggestionPill {
+  align-items: center;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  color: #4338ca;
+  display: inline-flex;
+  font-size: 11.5px;
+  font-weight: 600;
+  gap: 5px;
+  line-height: 1.2;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+
+.semaforoGroup {
+  align-items: center;
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.miniDotGroup {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 5px;
+}
+
+.miniDotItem {
+  align-items: center;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 3px;
+}
+
+.miniDot {
+  border-radius: 999px;
+  height: 6px;
+  width: 6px;
+}
+
+.miniVerde {
+  color: #047857;
+}
+
+.miniVerde .miniDot {
+  background: #10b981;
+}
+
+.miniAmarillo {
+  color: #b45309;
+}
+
+.miniAmarillo .miniDot {
+  background: #f59e0b;
+}
+
+.miniRojo {
+  color: #be123c;
+}
+
+.miniRojo .miniDot {
+  background: #e11d48;
+}
+
+.miniBulb {
+  color: #4338ca;
+  font-size: 12px;
+}
+
+.suggestionBanner {
+  align-items: flex-start;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-left: 3px solid #6366f1;
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+}
+
+.suggestionBannerIcon {
+  color: #4338ca;
+  flex-shrink: 0;
+  font-size: 16px;
+  margin-top: 2px;
+}
+
+.suggestionBannerBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.suggestionBannerTitle {
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.suggestionBannerList {
+  color: #1e293b;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.suggestionBannerSingle {
+  color: #1e293b;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+}

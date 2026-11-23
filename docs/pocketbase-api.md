@@ -129,7 +129,7 @@ Devuelve el alcance autorizado: referencia del acceso, instancia de carga, curso
 
 ### `GET /api/cys/docente/alumnos/:inscripcionId`
 
-Devuelve evaluaciones de todas las materias, cierre del período y apoyos del alumno dentro del curso autorizado.
+Devuelve evaluaciones de todas las materias, `historialBimestres` (notas de bimestres anteriores evaluables del mismo ciclo para referencia, vacío en 1.er bimestre), cierre del período y apoyos del alumno dentro del curso autorizado.
 
 ### `PUT /api/cys/docente/alumnos/:inscripcionId`
 
@@ -210,7 +210,7 @@ Devuelve la instancia del curso y período, o `null` si la carga todavía no fue
 
 ### `GET /api/cys/directivo/alumnos/:inscripcionId?periodoId=:periodoId`
 
-Devuelve una instantánea institucional coherente con `revision`, evaluaciones, criterios evaluados, PPI, cierre e integración escolar. La pertenencia de la inscripción, el ciclo y el estado `CONTROL_DIRECTIVO` se validan antes de responder.
+Devuelve una instantánea institucional coherente con `revision`, evaluaciones, criterios evaluados, `historialBimestres` (notas de bimestres anteriores evaluables del mismo ciclo), PPI, cierre e integración escolar. La pertenencia de la inscripción, el ciclo y el estado `CONTROL_DIRECTIVO` se validan antes de responder.
 
 Todos los bloques y la revisión se leen dentro de una misma transacción. Esa `revision` es la única precondición válida para el siguiente guardado; no debe sustituirse por una revisión recibida por Realtime ni combinarse con datos cacheados de otra consulta.
 
@@ -248,7 +248,7 @@ Cada operación revalida dentro de la transacción que el curso posea escala (`r
 
 `GET /api/cys/directivo/progreso/:periodoId` requiere sesión institucional (`users`), responde con `Cache-Control: no-store` y calcula en una única transacción SQLite el avance académico por curso con escala (`totalAlumnos`, `alumnosCompletos`, `alumnosEnProgreso`, `alumnosSinIniciar` y `porcentaje`), considerando materias académicas, materias de conducta (criterios completos sin exigir calificación general) y cierres de período (`cierres_periodo_alumno`). La migración `1792700000_added_gradebook_progress_indexes.js` indexa `evaluaciones_materia(periodo_id, inscripcion_id)`, `evaluaciones_criterios(evaluacion_materia_id)` y `cierres_periodo_alumno(periodo_id, inscripcion_id)` para evitar descargas masivas y consultas secuenciales en el cliente.
 
-`GET /api/cys/directivo/revision/:cursoId/:periodoId` devuelve desde una transacción la instancia, su revisión, el conteo y la lista de boletines con `estado`, `revisionContenido`, fecha y usuario de visado. `alumnosSinIncorporar` informa matrículas evaluables ausentes de la entrega, incluidas bajas dentro del rango confirmado. Los boletines históricos se migran como `PENDIENTE_REVISION`; ningún registro se visa por inferencia.
+`GET /api/cys/directivo/revision/:cursoId/:periodoId` devuelve desde una transacción la instancia, su revisión, el conteo y la lista de boletines con `estado`, `revisionContenido`, fecha, usuario de visado, `sugerenciasPromedio` (desvíos orientativos `>= 1` punto entre el promedio de criterios y la calificación general en materias académicas, excluyendo Convivencia y Trabajo en el aula) y `sugerenciasPpi` (cambios de `PPI` respecto del último bimestre anterior evaluado del mismo ciclo). `alumnosSinIncorporar` informa matrículas evaluables ausentes de la entrega, incluidas bajas dentro del rango confirmado. Los boletines históricos se migran como `PENDIENTE_REVISION`; ningún registro se visa por inferencia.
 
 `POST /api/cys/directivo/revision/:cursoId/:periodoId/sincronizar-matricula` recibe `{ "expectedRevision": 7 }`. Agrega las matrículas evaluables confirmadas ausentes como visados pendientes, conserva las filas existentes e incrementa la revisión sólo si hubo incorporaciones. Un `409` indica que se debe releer el curso antes de repetir la operación.
 
