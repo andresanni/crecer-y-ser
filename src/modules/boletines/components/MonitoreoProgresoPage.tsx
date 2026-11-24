@@ -1,8 +1,8 @@
-import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 import ui from '../../../shared/styles/ui.module.css';
 import styles from './MonitoreoProgresoPage.module.css';
+import { CourseRosterExpandPanel } from '../../../shared/components/CourseRosterExpandPanel';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Card,
   Table,
@@ -17,7 +17,6 @@ import {
   App,
   Alert,
   Badge,
-  Modal,
 } from 'antd';
 import {
   TableOutlined,
@@ -30,6 +29,8 @@ import {
   EyeOutlined,
   ArrowLeftOutlined,
   CalendarOutlined,
+  DownOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useNavigate } from 'react-router-dom';
@@ -92,10 +93,15 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
   const [loadError, setLoadError] = useState(false);
   const refreshMonitoreo = useRef<(immediate?: boolean) => void>(() => undefined);
 
-  const [pendingCourse, setPendingCourse] = useState<string | null>(null);
-  const [scopeId, setScopeId] = useState<string | null>(null);
   const [gestorModalOpen, setGestorModalOpen] = useState<boolean>(false);
   const [selectedCursoForModal, setSelectedCursoForModal] = useState<string | null>(null);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const toggleExpandedRow = useCallback((cursoId: string) => {
+    setExpandedRowKeys((prev) => (
+      prev.includes(cursoId) ? prev.filter((k) => k !== cursoId) : [...prev, cursoId]
+    ));
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -262,25 +268,39 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
       title: 'GRADO',
       dataIndex: 'cursoNombre',
       key: 'grado',
-      width: '9%',
+      width: '11%',
       className: styles.gradeColumn,
-      render: (cursoNombre: string) => {
+      render: (cursoNombre: string, cur) => {
         const gradeConfig = getGradeColorConfig(cursoNombre);
+        const isExpanded = expandedRowKeys.includes(cur.cursoId);
         return (
-          <Tag
-            style={{
-              backgroundColor: 'var(--cys-color-primary-bg)',
-              color: 'var(--cys-color-primary-text)',
-              border: '1px solid var(--cys-color-primary-border)',
-              fontWeight: 800,
-              fontSize: 14,
-              padding: '3px 10px',
-              borderRadius: 7,
-              margin: 0,
-            }}
-          >
-            {gradeConfig.shortLabel}
-          </Tag>
+          <Tooltip title={isExpanded ? 'Ocultar nómina de alumnos' : 'Ver nómina de alumnos del curso'}>
+            <button
+              type="button"
+              className={styles.courseExpandTrigger}
+              onClick={() => toggleExpandedRow(cur.cursoId)}
+              aria-expanded={isExpanded}
+              aria-label={`Ver nómina de ${cursoNombre}`}
+            >
+              <span className={styles.courseExpandChevron} aria-hidden="true">
+                {isExpanded ? <DownOutlined /> : <RightOutlined />}
+              </span>
+              <Tag
+                style={{
+                  backgroundColor: 'var(--cys-color-primary-bg)',
+                  color: 'var(--cys-color-primary-text)',
+                  border: '1px solid var(--cys-color-primary-border)',
+                  fontWeight: 800,
+                  fontSize: 14,
+                  padding: '3px 10px',
+                  borderRadius: 7,
+                  margin: 0,
+                }}
+              >
+                {gradeConfig.shortLabel}
+              </Tag>
+            </button>
+          </Tooltip>
         );
       },
     },
@@ -292,11 +312,6 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         if (!cur.progresoLoaded) {
           return (
             <div className={styles.progressCell}>
-              {!!cur.cursadasPendientes?.length && (
-                <Button size="small" onClick={() => setPendingCourse(cur.cursoId)}>
-                  {cur.cursadasPendientes.length} cursadas por confirmar
-                </Button>
-              )}
               <div className={styles.progressMeta}>
                 <Text type="secondary" style={{ fontSize: 12.5 }}>
                   {progresoError ? 'No se pudo calcular el progreso' : 'Actualizando progreso...'}
@@ -320,11 +335,6 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         const isPausado = cur.estado === 'PAUSADO';
         return (
           <div className={styles.progressCell}>
-            {!!cur.cursadasPendientes?.length && (
-              <Button size="small" onClick={() => setPendingCourse(cur.cursoId)}>
-                {cur.cursadasPendientes.length} cursadas por confirmar
-              </Button>
-            )}
             <div className={styles.progressMeta}>
               <Text strong style={{ fontSize: 12.5 }}>{cur.alumnosCompletos} de {cur.totalAlumnos} alumnos</Text>
               <Text strong style={{ fontSize: 12.5, color: isCompleto ? 'var(--cys-color-success-text)' : isEnProgreso || isPausado ? 'var(--cys-color-warning-text)' : 'var(--cys-color-text-description)' }}>
@@ -515,6 +525,16 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
             pagination={false}
             tableLayout="fixed"
             scroll={{ x: 980 }}
+            expandable={{
+              expandedRowKeys,
+              showExpandColumn: false,
+              expandedRowRender: (cur) => (
+                <CourseRosterExpandPanel
+                  cacheKey={`${cur.cursoId}:${periodoId}:${periodCache?.lastSyncedAt ?? 0}`}
+                  fetchRoster={() => boletinService.getCursoNomina(cur.cursoId, periodoId)}
+                />
+              ),
+            }}
           />
         </Card>
       )}
@@ -530,19 +550,6 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
         activeCursoId={selectedCursoForModal}
         activePeriodoId={periodoId}
       />
-      <Modal open={Boolean(pendingCourse) && !scopeId} title="Cursadas por confirmar" onCancel={() => setPendingCourse(null)} footer={null}>
-        <Alert type="warning" showIcon title="Confirmá los bimestres evaluables antes de nuevas entregas." />
-        <Table
-          rowKey="inscripcionId"
-          size="small"
-          dataSource={dataCursos.find((course) => course.cursoId === pendingCourse)?.cursadasPendientes || []}
-          columns={[
-            { title: 'Alumno', dataIndex: 'nombreCompleto' },
-            { title: 'Cursada', render: (_, row) => <Button onClick={() => setScopeId(row.inscripcionId)}>Confirmar</Button> },
-          ]}
-        />
-      </Modal>
-      {scopeId && <CursadaModal key={scopeId} inscripcionId={scopeId} onClose={() => setScopeId(null)} onSuccess={() => refreshMonitoreo.current(true)} />}
     </SectionLayout>
   );
 };

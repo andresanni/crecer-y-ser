@@ -6,7 +6,6 @@ import {
   Button,
   Card,
   Empty,
-  Modal,
   Progress,
   Space,
   Spin,
@@ -20,6 +19,7 @@ import {
   BookOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  DownOutlined,
   EditOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
@@ -27,13 +27,14 @@ import {
   LinkOutlined,
   PauseCircleOutlined,
   ReloadOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { CourseRosterExpandPanel } from '../../../shared/components/CourseRosterExpandPanel';
 import { SectionLayout } from '../../../shared/components/SectionLayout';
 import ui from '../../../shared/styles/ui.module.css';
 import { useAppStore } from '../../../store/appStore';
 import { getGradeColorConfig } from '../../alumnos/utils/gradeColors';
-import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 import {
   formatMateriaNombreUI,
   isInicialCursoInforme,
@@ -110,8 +111,13 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
   const [modalMateriaId, setModalMateriaId] = useState<string | null>(null);
 
   const [editingTeacherCell, setEditingTeacherCell] = useState<CeldaEtapaInforme | null>(null);
-  const [pendingCourseId, setPendingCourseId] = useState<string | null>(null);
-  const [scopeInscripcionId, setScopeInscripcionId] = useState<string | null>(null);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const toggleExpandedRow = useCallback((rowKey: string) => {
+    setExpandedRowKeys((prev) => (
+      prev.includes(rowKey) ? prev.filter((k) => k !== rowKey) : [...prev, rowKey]
+    ));
+  }, []);
 
   const refreshDashboard = useRef<(immediate?: boolean) => void>(() => undefined);
 
@@ -242,12 +248,6 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
     });
   }, [cursosById, data, materiasById, selectedMateriaId]);
 
-  const pendingCourseScopes = useMemo(() => {
-    if (!pendingCourseId || !data) return [];
-    const cell = data.celdas.find((c) => c.cursoId === pendingCourseId);
-    return cell?.cursadasPendientes || [];
-  }, [data, pendingCourseId]);
-
   const hasInicialRows = useMemo(
     () =>
       filteredRows.some((row) => {
@@ -262,26 +262,40 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
       title: hasInicialRows ? 'SALA / GRADO' : 'GRADO',
       dataIndex: 'cursoNombre',
       key: 'grado',
-      width: '13%',
+      width: '15%',
       className: styles.gradeColumn,
-      render: (cursoNombre: string) => {
+      render: (cursoNombre: string, row) => {
         const gradeConfig = getGradeColorConfig(cursoNombre);
         const isKindergarten = Boolean(gradeConfig.roomKey);
+        const isExpanded = expandedRowKeys.includes(row.rowKey);
         return (
-          <Tag
-            style={{
-              backgroundColor: isKindergarten ? gradeConfig.bgColor : 'var(--cys-color-primary-bg)',
-              color: isKindergarten ? gradeConfig.textColor : 'var(--cys-color-primary-text)',
-              border: `1px solid ${isKindergarten ? gradeConfig.borderColor : 'var(--cys-color-primary-border)'}`,
-              fontWeight: 800,
-              fontSize: isKindergarten ? 13 : 14,
-              padding: '3px 10px',
-              borderRadius: 7,
-              margin: 0,
-            }}
-          >
-            {isKindergarten ? gradeConfig.label : gradeConfig.shortLabel}
-          </Tag>
+          <Tooltip title={isExpanded ? 'Ocultar nómina de alumnos' : 'Ver nómina de alumnos del curso'}>
+            <button
+              type="button"
+              className={styles.courseExpandTrigger}
+              onClick={() => toggleExpandedRow(row.rowKey)}
+              aria-expanded={isExpanded}
+              aria-label={`Ver nómina de ${cursoNombre}`}
+            >
+              <span className={styles.courseExpandChevron} aria-hidden="true">
+                {isExpanded ? <DownOutlined /> : <RightOutlined />}
+              </span>
+              <Tag
+                style={{
+                  backgroundColor: isKindergarten ? gradeConfig.bgColor : 'var(--cys-color-primary-bg)',
+                  color: isKindergarten ? gradeConfig.textColor : 'var(--cys-color-primary-text)',
+                  border: `1px solid ${isKindergarten ? gradeConfig.borderColor : 'var(--cys-color-primary-border)'}`,
+                  fontWeight: 800,
+                  fontSize: isKindergarten ? 13 : 14,
+                  padding: '3px 10px',
+                  borderRadius: 7,
+                  margin: 0,
+                }}
+              >
+                {isKindergarten ? gradeConfig.label : gradeConfig.shortLabel}
+              </Tag>
+            </button>
+          </Tooltip>
         );
       },
     },
@@ -296,15 +310,6 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
         const isInProgress = row.alumnosCompletos > 0 && !isComplete;
         return (
           <div className={styles.progressCell}>
-            {!!row.cursadasPendientes?.length && (
-              <Button
-                size="small"
-                style={{ marginBottom: 4 }}
-                onClick={() => setPendingCourseId(row.cursoId)}
-              >
-                {row.cursadasPendientes.length} cursada(s) por confirmar
-              </Button>
-            )}
             <div className={styles.progressMeta}>
               <Text strong style={{ fontSize: 12.5 }}>
                 {row.alumnosCompletos} de {totalAlumnos} alumnos
@@ -559,6 +564,20 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
             pagination={false}
             tableLayout="fixed"
             scroll={{ x: 980 }}
+            expandable={{
+              expandedRowKeys,
+              showExpandColumn: false,
+              expandedRowRender: (row) => (
+                cicloId ? (
+                  <CourseRosterExpandPanel
+                    cacheKey={`${row.rowKey}:${snapshot?.lastSyncedAt ?? 0}`}
+                    fetchRoster={() =>
+                      informesService.getCursoNomina(cicloId, tipoInforme, row.cursoId, row.materiaId)
+                    }
+                  />
+                ) : null
+              ),
+            }}
           />
         </Card>
       )}
@@ -587,46 +606,6 @@ export const TableroInformesPage: React.FC<TableroInformesPageProps> = ({
         onClose={() => setEditingTeacherCell(null)}
         onSaved={() => refreshDashboard.current(true)}
       />
-
-      <Modal
-        open={Boolean(pendingCourseId) && !scopeInscripcionId}
-        title="Cursadas por confirmar"
-        onCancel={() => setPendingCourseId(null)}
-        footer={null}
-      >
-        <Alert
-          type="warning"
-          showIcon
-          title="Confirmá los bimestres evaluables antes de las entregas definitivas."
-          style={{ marginBottom: 12 }}
-        />
-        <Table
-          rowKey="inscripcionId"
-          size="small"
-          dataSource={pendingCourseScopes}
-          pagination={false}
-          columns={[
-            { title: 'Alumno', dataIndex: 'nombreCompleto' },
-            {
-              title: 'Cursada',
-              render: (_, row) => (
-                <Button onClick={() => setScopeInscripcionId(row.inscripcionId)}>
-                  Confirmar
-                </Button>
-              ),
-            },
-          ]}
-        />
-      </Modal>
-
-      {scopeInscripcionId && (
-        <CursadaModal
-          key={scopeInscripcionId}
-          inscripcionId={scopeInscripcionId}
-          onClose={() => setScopeInscripcionId(null)}
-          onSuccess={() => refreshDashboard.current(true)}
-        />
-      )}
     </SectionLayout>
   );
 };

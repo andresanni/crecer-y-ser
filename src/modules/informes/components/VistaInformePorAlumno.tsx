@@ -48,6 +48,7 @@ import type { InformeStudentSaveResult } from '../models/informeDataSource.model
 import {
   InformeAccessDeniedError,
   InformeRevisionConflictError,
+  InformeRosterChangedError,
   InformeSubmissionIncompleteError,
 } from '../services/informes.service';
 import {
@@ -232,6 +233,10 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
         }));
       } catch (error: unknown) {
         if (!active) return;
+        if (error instanceof InformeRosterChangedError) {
+          access.onRosterChanged?.('Dirección actualizó la nómina de alumnos del curso. Se recargó la lista actualizada.');
+          return;
+        }
         if (error instanceof InformeAccessDeniedError) {
           access.onAccessDenied?.();
           return;
@@ -493,6 +498,10 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
             : 'Avance del alumno guardado',
       );
     } catch (error) {
+      if (error instanceof InformeRosterChangedError) {
+        access.onRosterChanged?.('Dirección actualizó la nómina de alumnos del curso. Se recargó la lista actualizada.');
+        return;
+      }
       if (error instanceof InformeAccessDeniedError) {
         access.onAccessDenied?.();
         return;
@@ -537,17 +546,16 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
           }
           if (error instanceof InformeSubmissionIncompleteError) {
             const detail = error.detail;
-            if (detail.cursadasPendientes?.length > 0) {
-              modal.warning({
-                title: 'Cursadas pendientes de confirmación',
-                content: `Dirección debe confirmar la cursada de ${detail.cursadasPendientes.length} alumno(s) antes de enviar la entrega definitiva.`,
-              });
-            } else {
-              modal.warning({
-                title: 'Faltan alumnos por completar',
-                content: `Completá todos los ítems y el desempeño general de los ${detail.pendientes.length} alumno(s) pendientes antes de enviar.`,
-              });
+            const localIds = new Set(alumnos.map((a) => a.inscripcionId));
+            const hasNewStudents = detail.pendientes.some((p) => !localIds.has(p.inscripcionId));
+            if (hasNewStudents && access.onRosterChanged) {
+              access.onRosterChanged('Dirección incorporó nuevos alumnos al curso. Se actualizó la lista para que puedas completarlos.');
+              return;
             }
+            modal.warning({
+              title: 'Faltan alumnos por completar',
+              content: `Completá todos los ítems y el desempeño general de los ${detail.pendientes.length} alumno(s) pendientes antes de enviar.`,
+            });
             return;
           }
           console.error(error);

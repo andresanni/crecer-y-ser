@@ -136,6 +136,11 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
       nombres: 'Lucia',
       estado: 'Regular',
     });
+    const studentBaja = await admin.collection('alumnos').create({
+      apellidos: 'Diaz',
+      nombres: 'Sofia',
+      estado: 'Baja',
+    });
     const studentB = await admin.collection('alumnos').create({
       apellidos: 'Perez',
       nombres: 'Mateo',
@@ -148,9 +153,18 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
       ciclo_id: cycle.id,
       numero_orden: 1,
       estado: 'Regular',
-      cursada_estado: 'CONFIRMADA',
-      bimestre_desde: 1,
-      bimestre_hasta: 4,
+      cursada_estado: 'PENDIENTE',
+      modalidad_jornada: 'Mañana',
+    });
+
+    const enrollmentSala23Baja = await admin.collection('inscripciones').create({
+      alumno_id: studentBaja.id,
+      curso_id: sala23.id,
+      ciclo_id: cycle.id,
+      numero_orden: 2,
+      estado: 'Baja',
+      cursada_estado: 'PENDIENTE',
+      fecha_egreso: '2026-08-15 00:00:00.000Z',
       modalidad_jornada: 'Mañana',
     });
 
@@ -160,9 +174,7 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
       ciclo_id: cycle.id,
       numero_orden: 1,
       estado: 'Regular',
-      cursada_estado: 'CONFIRMADA',
-      bimestre_desde: 1,
-      bimestre_hasta: 4,
+      cursada_estado: 'PENDIENTE',
       modalidad_jornada: 'Tarde',
     });
 
@@ -196,10 +208,136 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
     const sala23MusicaCell = stagesFinal.body.celdas.find((c) => c.cursoId === sala23.id && c.materiaId === musica.id);
     assert.equal(sala23EdCell.plantillaCodigo, 'FINAL_ED_FISICA_INICIAL');
     assert.equal(sala23EdCell.totalItems, 24);
+    assert.equal(sala23EdCell.cursadasPendientes.length, 0);
+    assert.equal(sala23EdCell.inscripcionesEvaluables.length, 1);
+    assert.equal(sala23EdCell.totalInscripcionesCurso, 2);
+
+    const rosterPreview = await jsonRequest(
+      origin,
+      `/api/cys/directivo/informes/curso-nomina/${cycle.id}/CICLO_FINAL/${sala23.id}?materiaId=${edFisica.id}`,
+      { headers: staffHeaders },
+    );
+    assert.equal(rosterPreview.status, 200);
+    assert.equal(rosterPreview.body.totalEvaluables, 1);
+    assert.equal(rosterPreview.body.totalExcluidos, 1);
+    assert.equal(rosterPreview.body.evaluables[0].inscripcionId, enrollmentSala23.id);
+    assert.equal(rosterPreview.body.excluidos[0].inscripcionId, enrollmentSala23Baja.id);
     assert.equal(sala23InglesCell.plantillaCodigo, 'FINAL_INGLES_INICIAL');
     assert.equal(sala23InglesCell.totalItems, 18);
+    assert.equal(sala23InglesCell.inscripcionesEvaluables.length, 1);
     assert.equal(sala23MusicaCell.plantillaCodigo, 'FINAL_MUSICA_INICIAL');
     assert.equal(sala23MusicaCell.totalItems, 16);
+    assert.equal(sala23MusicaCell.inscripcionesEvaluables.length, 1);
+
+    const evalInitial = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
+      { headers: staffHeaders },
+    );
+    assert.equal(evalInitial.status, 200);
+    assert.equal(evalInitial.body.esInicial, true);
+    assert.equal(evalInitial.body.boletines, null);
+    assert.equal(evalInitial.body.informes.length, 1);
+    assert.equal(evalInitial.body.informes[0].tipoInforme, 'CICLO_FINAL');
+    assert.equal(evalInitial.body.informes[0].evaluable, true);
+
+    const evalBajaInitial = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23Baja.id}/evaluaciones`,
+      { headers: staffHeaders },
+    );
+    assert.equal(evalBajaInitial.status, 200);
+    assert.equal(evalBajaInitial.body.informes[0].evaluable, false);
+
+    const forbiddenEvalB1 = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
+      {
+        method: 'PUT',
+        headers: staffHeaders,
+        body: {
+          expectedRevision: evalInitial.body.cursada.revision,
+          expectedUpdated: evalInitial.body.updated,
+          informes: [{ tipoInforme: 'PRIMER_BIMESTRE', evaluable: false }],
+        },
+      },
+    );
+    assert.equal(forbiddenEvalB1.status, 400);
+
+    const excludeActive = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
+      {
+        method: 'PUT',
+        headers: staffHeaders,
+        body: {
+          expectedRevision: evalInitial.body.cursada.revision,
+          expectedUpdated: evalInitial.body.updated,
+          informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: false }],
+        },
+      },
+    );
+    assert.equal(excludeActive.status, 200);
+    assert.equal(excludeActive.body.informes[0].evaluable, false);
+
+    const includeBaja = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23Baja.id}/evaluaciones`,
+      {
+        method: 'PUT',
+        headers: staffHeaders,
+        body: {
+          expectedRevision: evalBajaInitial.body.cursada.revision,
+          expectedUpdated: evalBajaInitial.body.updated,
+          informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: true }],
+        },
+      },
+    );
+    assert.equal(includeBaja.status, 200);
+    assert.equal(includeBaja.body.informes[0].evaluable, true);
+
+    const stagesAfterCascade = await jsonRequest(
+      origin,
+      `/api/cys/directivo/informes/etapas/${cycle.id}/CICLO_FINAL`,
+      { headers: staffHeaders },
+    );
+    for (const subj of [edFisica, ingles, musica]) {
+      const cell = stagesAfterCascade.body.celdas.find((c) => c.cursoId === sala23.id && c.materiaId === subj.id);
+      assert.deepEqual(cell.inscripcionesEvaluables, [enrollmentSala23Baja.id]);
+      assert.equal(cell.ajustesNominaManuales, 2);
+    }
+
+    const restoreActive = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
+      {
+        method: 'PUT',
+        headers: staffHeaders,
+        body: {
+          expectedRevision: excludeActive.body.cursada.revision,
+          expectedUpdated: excludeActive.body.updated,
+          informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: true }],
+        },
+      },
+    );
+    assert.equal(restoreActive.status, 200);
+    assert.equal(restoreActive.body.informes[0].esAjusteManual, false);
+
+    const restoreBaja = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23Baja.id}/evaluaciones`,
+      {
+        method: 'PUT',
+        headers: staffHeaders,
+        body: {
+          expectedRevision: includeBaja.body.cursada.revision,
+          expectedUpdated: includeBaja.body.updated,
+          informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: false }],
+        },
+      },
+    );
+    assert.equal(restoreBaja.status, 200);
+    assert.equal(restoreBaja.body.informes[0].esAjusteManual, false);
 
     assert.equal(
       stagesFinal.body.celdas.some((c) => (c.cursoId === sala23.id || c.cursoId === sala45.id) && (c.materiaId === artes.id || c.materiaId === tecnologia.id)),
@@ -355,6 +493,9 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
     assert.equal(reviewRes.body.curso.nivel, 'INICIAL');
     assert.equal(reviewRes.body.curso.grado, '2 y 3 años');
     assert.equal(reviewRes.body.curso.turno, 'J.C');
+    assert.equal(reviewRes.body.totalInformes, 1);
+    assert.equal(reviewRes.body.alumnosExcluidos.length, 1);
+    assert.equal(reviewRes.body.alumnosExcluidos[0].inscripcionId, enrollmentSala23Baja.id);
     const reviewedStudent = reviewRes.body.informes[0];
     assert.equal(reviewedStudent.semaforo.verde, 22);
     assert.equal(reviewedStudent.semaforo.amarillo, 2);
@@ -392,6 +533,69 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
     assert.equal(snapshotRes.body.datos.items.length, 24);
     assert.equal(snapshotRes.body.datos.evaluacion.desempenoGeneralEtiqueta, 'Avanzado');
     assert.match(snapshotRes.body.huella, /^[a-f0-9]{64}$/);
+
+    const evalDelivered = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
+      { headers: staffHeaders },
+    );
+    assert.equal(evalDelivered.status, 200);
+    assert.equal(evalDelivered.body.informes[0].bloqueadoPorEntrega, true);
+
+    const blockDeliveredExclusion = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
+      {
+        method: 'PUT',
+        headers: staffHeaders,
+        body: {
+          expectedRevision: evalDelivered.body.cursada.revision,
+          expectedUpdated: evalDelivered.body.updated,
+          informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: false }],
+        },
+      },
+    );
+    assert.equal(blockDeliveredExclusion.status, 409);
+
+    const evalBajaNow = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23Baja.id}/evaluaciones`,
+      { headers: staffHeaders },
+    );
+    const enableBajaAfterDelivery = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23Baja.id}/evaluaciones`,
+      {
+        method: 'PUT',
+        headers: staffHeaders,
+        body: {
+          expectedRevision: evalBajaNow.body.cursada.revision,
+          expectedUpdated: evalBajaNow.body.updated,
+          informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: true }],
+        },
+      },
+    );
+    assert.equal(enableBajaAfterDelivery.status, 200);
+
+    const reviewWithMissing = await jsonRequest(
+      origin,
+      `/api/cys/directivo/informes/revision/${ctxRes.body.instancia.id}`,
+      { headers: staffHeaders },
+    );
+    assert.equal(reviewWithMissing.status, 200);
+    assert.equal(reviewWithMissing.body.alumnosSinIncorporar, 1);
+
+    const syncAfterEnable = await jsonRequest(
+      origin,
+      `/api/cys/directivo/informes/${ctxRes.body.instancia.id}/sincronizar-matricula`,
+      {
+        method: 'POST',
+        headers: staffHeaders,
+        body: { expectedRevision: reviewWithMissing.body.instancia.revision },
+      },
+    );
+    assert.equal(syncAfterEnable.status, 200);
+    assert.equal(syncAfterEnable.body.incorporados, 1);
   } finally {
     if (server) {
       await new Promise((resolve) => {

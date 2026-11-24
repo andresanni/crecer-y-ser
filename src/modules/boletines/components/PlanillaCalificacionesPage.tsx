@@ -597,6 +597,7 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
             <RevisionCursoOverview
               alumnos={reviewStudents}
               boletines={review.boletines}
+              alumnosExcluidos={review.alumnosExcluidos}
               visados={review.visados}
               totalBoletines={review.totalBoletines}
               actions={<Button disabled={reviewLoading || approvalBusy} onClick={() => setBatchScope(currentBatchScope)}>Generar PDFs del curso</Button>}

@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  App,
   Button,
   Card,
-  Alert,
   Col,
   Result,
   Row,
@@ -29,6 +29,7 @@ import styles from './CargaDocentePublicaPage.module.css';
 const { Title, Text } = Typography;
 
 export const CargaDocentePublicaPage: React.FC = () => {
+  const { message } = App.useApp();
   const [token] = useState(() => accesoDocenteService.readTokenFromLocation());
   const [context, setContext] = useState<TeacherGradebookContext | null>(null);
   const [loading, setLoading] = useState(Boolean(token));
@@ -37,11 +38,26 @@ export const CargaDocentePublicaPage: React.FC = () => {
   );
   const [revision, setRevision] = useState(0);
   const [submission, setSubmission] = useState<GradebookSubmissionResult | null>(null);
+  const [hasPendingStudentChanges, setHasPendingStudentChanges] = useState(false);
+  const lastSilentCheckRef = useRef(0);
 
   const handleAccessDenied = useCallback(() => {
     setContext(null);
     setError('El enlace ya no está disponible.');
   }, []);
+
+  const handleRosterChanged = useCallback(
+    (reason?: string) => {
+      if (reason) {
+        message.info(reason, 6);
+      }
+      setHasPendingStudentChanges(false);
+      setLoading(true);
+      setError(null);
+      setRevision((current) => current + 1);
+    },
+    [message],
+  );
 
   const handlePeriodSubmitted = useCallback((result: GradebookSubmissionResult) => {
     setSubmission(result);
@@ -78,15 +94,45 @@ export const CargaDocentePublicaPage: React.FC = () => {
     setRevision((current) => current + 1);
   };
 
+  useEffect(() => {
+    if (!token || !context || submission || hasPendingStudentChanges) return;
+    let active = true;
+    const syncRosterIfNeeded = () => {
+      if (!active || document.visibilityState !== 'visible' || hasPendingStudentChanges) return;
+      const now = Date.now();
+      if (now - lastSilentCheckRef.current < 12000) return;
+      lastSilentCheckRef.current = now;
+      void accesoDocenteService
+        .getContext(token)
+        .then((next) => {
+          if (!active) return;
+          const prevIds = context.alumnos.map((a) => a.inscripcionId).join(',');
+          const nextIds = next.alumnos.map((a) => a.inscripcionId).join(',');
+          if (prevIds !== nextIds) {
+            setContext(next);
+            message.info('Dirección actualizó la nómina de alumnos del curso.', 5);
+          }
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener('focus', syncRosterIfNeeded);
+    document.addEventListener('visibilitychange', syncRosterIfNeeded);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', syncRosterIfNeeded);
+      document.removeEventListener('visibilitychange', syncRosterIfNeeded);
+    };
+  }, [context, hasPendingStudentChanges, message, submission, token]);
+
   const dataSource = useMemo(() => (
     token && context ? accesoDocenteService.createDataSource(token, context) : null
   ), [context, token]);
 
   const access = useMemo(() => (
     context && dataSource
-      ? createMagicLinkGradebookAccess(dataSource, handleAccessDenied, handlePeriodSubmitted)
+      ? createMagicLinkGradebookAccess(dataSource, handleAccessDenied, handlePeriodSubmitted, handleRosterChanged)
       : null
-  ), [context, dataSource, handleAccessDenied, handlePeriodSubmitted]);
+  ), [context, dataSource, handleAccessDenied, handlePeriodSubmitted, handleRosterChanged]);
 
   if (loading) {
     return (
@@ -188,8 +234,6 @@ export const CargaDocentePublicaPage: React.FC = () => {
         </Row>
       </Card>
 
-      {!!context.cursadasPendientes.length && <Alert type="warning" showIcon title="Cursadas por confirmar"
-        description="Dirección debe confirmar los bimestres evaluables antes de la entrega. Podés continuar guardando el borrador. Una vez confirmados, guardá tus cambios y volvé a abrir el enlace para actualizar la lista." />}
       {alumnos.length === 0 ? (
         <Card className={ui.emptyPanel}>
           <Text type="secondary">No hay estudiantes para evaluar en este bimestre.</Text>
@@ -202,6 +246,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
           valoresEscala={valoresEscala}
           periodo={periodo}
           access={access}
+          onPendingChangesChange={setHasPendingStudentChanges}
         />
       )}
     </div>

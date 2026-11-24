@@ -7,6 +7,7 @@ export interface GradebookAccessPolicy {
   canSubmitPeriod: boolean;
   dataSource?: GradebookDataSource;
   onAccessDenied?: () => void;
+  onRosterChanged?: (reason?: string) => void;
   onPeriodSubmitted?: (result: GradebookSubmissionResult) => void;
 }
 
@@ -21,6 +22,7 @@ export const createMagicLinkGradebookAccess = (
   dataSource: GradebookDataSource,
   onAccessDenied: () => void,
   onPeriodSubmitted: (result: GradebookSubmissionResult) => void,
+  onRosterChanged?: (reason?: string) => void,
 ): GradebookAccessPolicy => ({
   mode: 'magic-link',
   canEditStudentSupport: true,
@@ -28,5 +30,6 @@ export const createMagicLinkGradebookAccess = (
   canSubmitPeriod: true,
   dataSource,
   onAccessDenied,
+  onRosterChanged,
   onPeriodSubmitted,
 });

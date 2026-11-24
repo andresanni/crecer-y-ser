@@ -576,7 +576,7 @@ h1, h2, h3, h4, h5, h6, .ant-typography-title {
 
 .detail-tabs .ant-tabs-tab {
   font-size: 14px !important;
-  padding: 6px 14px !important;
+  padding: 6px 10px !important;
 }
 
 .detail-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {

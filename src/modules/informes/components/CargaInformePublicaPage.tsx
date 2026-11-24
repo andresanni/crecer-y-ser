@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   App,
@@ -57,6 +57,20 @@ export const CargaInformePublicaPage: React.FC = () => {
     setError('El enlace ya no está disponible.');
   }, []);
 
+  const handleRosterChanged = useCallback(
+    (reason?: string) => {
+      if (reason) {
+        message.info(reason, 6);
+      }
+      setHasPendingStudentChanges(false);
+      setActiveCompletedOverride(null);
+      setLoading(true);
+      setError(null);
+      setReloadCount((current) => current + 1);
+    },
+    [message],
+  );
+
   const handleReportSubmitted = useCallback(
     (result: InformeSubmissionResult) => {
       if ((result.cursosRestantes ?? 0) > 0 && result.siguienteInstanciaId) {
@@ -112,6 +126,38 @@ export const CargaInformePublicaPage: React.FC = () => {
   };
 
   const activeInstanciaId = context?.instancia.id;
+  const lastSilentCheckRef = useRef(0);
+
+  useEffect(() => {
+    if (!token || !context || submission || hasPendingStudentChanges) return;
+    let active = true;
+    const syncRosterIfNeeded = () => {
+      if (!active || document.visibilityState !== 'visible' || hasPendingStudentChanges) return;
+      const now = Date.now();
+      if (now - lastSilentCheckRef.current < 12000) return;
+      lastSilentCheckRef.current = now;
+      void informesService
+        .getTeacherContext(token, activeInstanciaId)
+        .then((next) => {
+          if (!active) return;
+          const prevIds = context.alumnos.map((a) => a.inscripcionId).join(',');
+          const nextIds = next.alumnos.map((a) => a.inscripcionId).join(',');
+          if (prevIds !== nextIds) {
+            setContext(next);
+            setActiveCompletedOverride(null);
+            message.info('Dirección actualizó la nómina de alumnos del curso.', 5);
+          }
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener('focus', syncRosterIfNeeded);
+    document.addEventListener('visibilitychange', syncRosterIfNeeded);
+    return () => {
+      active = false;
+      window.removeEventListener('focus', syncRosterIfNeeded);
+      document.removeEventListener('visibilitychange', syncRosterIfNeeded);
+    };
+  }, [activeInstanciaId, context, hasPendingStudentChanges, message, submission, token]);
 
   const dataSource = useMemo(
     () => (token ? informesService.createTeacherDataSource(token, activeInstanciaId) : null),
@@ -121,10 +167,10 @@ export const CargaInformePublicaPage: React.FC = () => {
   const access = useMemo(
     () => (
       context && dataSource
-        ? createMagicLinkInformeAccess(dataSource, handleAccessDenied, handleReportSubmitted)
+        ? createMagicLinkInformeAccess(dataSource, handleAccessDenied, handleReportSubmitted, handleRosterChanged)
         : null
     ),
-    [context, dataSource, handleAccessDenied, handleReportSubmitted],
+    [context, dataSource, handleAccessDenied, handleReportSubmitted, handleRosterChanged],
   );
 
   const handleSelectCourse = (nextInstanciaId: string) => {
@@ -417,16 +463,6 @@ export const CargaInformePublicaPage: React.FC = () => {
             })}
           </div>
         </Modal>
-      )}
-
-      {!!context.cursadasPendientes.length && (
-        <Alert
-          className={ui.operationalContent}
-          type="warning"
-          showIcon
-          title="Cursadas por confirmar"
-          description="Dirección debe confirmar los bimestres evaluables antes de la entrega. Podés continuar guardando el borrador. Una vez confirmados, guardá tus cambios y volvé a abrir el enlace para actualizar la lista."
-        />
       )}
 
       {alumnos.length === 0 ? (

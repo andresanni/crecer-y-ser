@@ -53,6 +53,7 @@ import {
 } from '../services/gradebookDataSource.service';
 import {
   TeacherAccessDeniedError,
+  TeacherRosterChangedError,
   TeacherSubmissionIncompleteError,
 } from '../services/accesoDocente.service';
 import {
@@ -394,6 +395,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       } catch (err) {
         if (!active) return;
         console.error(err);
+        if (err instanceof TeacherRosterChangedError) {
+          access.onRosterChanged?.('Dirección actualizó la nómina de alumnos del curso. Se recargó la lista actualizada.');
+          return;
+        }
         if (err instanceof TeacherAccessDeniedError) access.onAccessDenied?.();
         setAlumnoResult({ key: alumnoRequestKey, failed: true });
         message.error('Error al cargar la libreta del alumno');
@@ -704,7 +709,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       onSaveSuccess?.(result.revision);
     } catch (err) {
       console.error(err);
-      if (err instanceof TeacherAccessDeniedError) {
+      if (err instanceof TeacherRosterChangedError) {
+        access.onRosterChanged?.('Dirección actualizó la nómina de alumnos del curso. Se recargó la lista actualizada.');
+      } else if (err instanceof TeacherAccessDeniedError) {
         message.error('El acceso ya no está vigente. No se guardaron cambios.');
         access.onAccessDenied?.();
       } else if (err instanceof GradebookRevisionConflictError) {
@@ -751,9 +758,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
           access.onPeriodSubmitted?.(result);
         } catch (error) {
           if (error instanceof TeacherSubmissionIncompleteError) {
-            const pendingScopes = error.detail.cursadasPendientes || [];
-            if (pendingScopes.length) {
-              message.warning(`Dirección debe confirmar los bimestres evaluables de ${pendingScopes.length} alumno(s) antes de entregar: ${pendingScopes.map(item => item.nombreCompleto).join(', ')}.`, 10);
+            const localIds = new Set(alumnos.map((a) => a.inscripcionId));
+            const hasNewStudents = error.detail.pendientes.some((p) => !localIds.has(p.inscripcionId));
+            if (hasNewStudents && access.onRosterChanged) {
+              access.onRosterChanged('Dirección incorporó nuevos alumnos al curso. Se actualizó la lista para que puedas completarlos.');
               return;
             }
             const count = error.detail.pendientes.length;

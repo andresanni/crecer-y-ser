@@ -5,6 +5,7 @@ export interface InformeAccessPolicy {
   canSubmitReport: boolean;
   dataSource: InformeDataSource;
   onAccessDenied?: () => void;
+  onRosterChanged?: (reason?: string) => void;
   onReportSubmitted?: (result: InformeSubmissionResult) => void;
 }
 
@@ -18,10 +19,12 @@ export const createMagicLinkInformeAccess = (
   dataSource: InformeDataSource,
   onAccessDenied: () => void,
   onReportSubmitted: (result: InformeSubmissionResult) => void,
+  onRosterChanged?: (reason?: string) => void,
 ): InformeAccessPolicy => ({
   mode: 'magic-link',
   canSubmitReport: true,
   dataSource,
   onAccessDenied,
+  onRosterChanged,
   onReportSubmitted,
 });

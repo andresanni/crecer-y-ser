@@ -30,6 +30,7 @@ import {
   EyeOutlined,
   TeamOutlined,
   UserDeleteOutlined,
+  FileDoneOutlined,
 } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
@@ -85,6 +86,8 @@ export const AlumnoList: React.FC = () => {
   const [editingAlumno, setEditingAlumno] = useState<Alumno | null>(null);
 
   const [selectedDetailAlumno, setSelectedDetailAlumno] = useState<Alumno | null>(null);
+  const [detailInitialTab, setDetailInitialTab] = useState<string>('alumno');
+  const [detailInitialInscripcionId, setDetailInitialInscripcionId] = useState<string | null>(null);
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
 
   const [bajaModalAlumno, setBajaModalAlumno] = useState<Alumno | null>(null);
@@ -183,8 +186,16 @@ export const AlumnoList: React.FC = () => {
     let active = true;
     void alumnoService.getForEnrollment(linkedStudent, linkedEnrollment).then(alumno => {
       if (!active) return;
-      if (linkedSection === 'vinculos' || linkedSection === 'cursada') {
+      if (linkedSection === 'vinculos' || linkedSection === 'cursada' || linkedSection === 'evaluaciones') {
         setSelectedDetailAlumno(alumno);
+        setDetailInitialInscripcionId(linkedEnrollment);
+        setDetailInitialTab(
+          linkedSection === 'evaluaciones'
+            ? 'evaluaciones'
+            : linkedSection === 'cursada'
+            ? 'inscripcion'
+            : 'alumno',
+        );
         setIsDetailModalVisible(true);
       } else {
         setEditingAlumno(alumno);
@@ -207,14 +218,21 @@ export const AlumnoList: React.FC = () => {
     if (returnToBulletin) navigate(returnToBulletin);
   };
 
-  const handleOpenDetail = (alumno: Alumno) => {
+  const handleOpenDetail = (alumno: Alumno, initialTab: string = 'alumno') => {
     setSelectedDetailAlumno(alumno);
+    setDetailInitialTab(initialTab);
+    setDetailInitialInscripcionId(alumno.inscripcionId || null);
     setIsDetailModalVisible(true);
   };
 
   const handleCloseDetail = () => {
     setIsDetailModalVisible(false);
     setSelectedDetailAlumno(null);
+    setDetailInitialTab('alumno');
+    setDetailInitialInscripcionId(null);
+    if (linkedStudent || linkedEnrollment || linkedSection) {
+      navigate('/app/alumnos', { replace: true });
+    }
   };
 
   const handleSubmit = async (values: AlumnoFormValues, originalUpdatedDate?: string) => {
@@ -411,19 +429,18 @@ export const AlumnoList: React.FC = () => {
                     </Tag>
                   </Tooltip>
                 )}
-                {record.cursadaEstado === 'PENDIENTE' && (
-                  <Tag color="warning" className={ui.statusTag}>
-                    Cursada por confirmar
-                  </Tag>
-                )}
-                {record.cursadaEstado === 'CONFIRMADA' && ((record.bimestreDesde !== undefined && record.bimestreDesde > 1) || (record.bimestreHasta !== undefined && record.bimestreHasta < 4)) && (
+                {!(/inic|jard[ií]n/i.test(record.nivelNombre || '') || /sala/i.test(record.cursoNombre || '')) &&
+                  record.cursadaEstado === 'CONFIRMADA' &&
+                  ((record.bimestreDesde !== undefined && record.bimestreDesde > 1) ||
+                    (record.bimestreHasta !== undefined && record.bimestreHasta < 4)) && (
                   <Tag color="cyan" className={ui.statusTag}>
                     B{record.bimestreDesde}–B{record.bimestreHasta}
                   </Tag>
                 )}
-                {record.cursadaEstado === 'SIN_CURSADA' && (
+                {!(/inic|jard[ií]n/i.test(record.nivelNombre || '') || /sala/i.test(record.cursoNombre || '')) &&
+                  record.cursadaEstado === 'SIN_CURSADA' && (
                   <Tag color="default" className={ui.statusTag}>
-                    Sin cursada
+                    Sin boletines
                   </Tag>
                 )}
               </div>
@@ -556,6 +573,16 @@ export const AlumnoList: React.FC = () => {
               aria-label="Ver ficha del alumno"
             />
           </Tooltip>
+          {record.inscripcionId && (
+            <Tooltip title="Participación en boletines e informes">
+              <Button
+                type="text"
+                icon={<FileDoneOutlined className={ui.primary} />}
+                onClick={() => handleOpenDetail(record, 'evaluaciones')}
+                aria-label="Evaluaciones del alumno"
+              />
+            </Tooltip>
+          )}
           <Tooltip title="Editar ficha">
             <Button
               type="text"
@@ -749,19 +776,18 @@ export const AlumnoList: React.FC = () => {
                               Baja {alumno.fechaEgreso ? `• ${dayjs(alumno.fechaEgreso).format('DD/MM/YY')}` : ''}
                             </Tag>
                           )}
-                          {alumno.cursadaEstado === 'PENDIENTE' && (
-                            <Tag color="warning" className={ui.statusTag}>
-                              Cursada por confirmar
-                            </Tag>
-                          )}
-                          {alumno.cursadaEstado === 'CONFIRMADA' && ((alumno.bimestreDesde !== undefined && alumno.bimestreDesde > 1) || (alumno.bimestreHasta !== undefined && alumno.bimestreHasta < 4)) && (
+                          {!(/inic|jard[ií]n/i.test(alumno.nivelNombre || '') || /sala/i.test(alumno.cursoNombre || '')) &&
+                            alumno.cursadaEstado === 'CONFIRMADA' &&
+                            ((alumno.bimestreDesde !== undefined && alumno.bimestreDesde > 1) ||
+                              (alumno.bimestreHasta !== undefined && alumno.bimestreHasta < 4)) && (
                             <Tag color="cyan" className={ui.statusTag}>
                               B{alumno.bimestreDesde}–B{alumno.bimestreHasta}
                             </Tag>
                           )}
-                          {alumno.cursadaEstado === 'SIN_CURSADA' && (
+                          {!(/inic|jard[ií]n/i.test(alumno.nivelNombre || '') || /sala/i.test(alumno.cursoNombre || '')) &&
+                            alumno.cursadaEstado === 'SIN_CURSADA' && (
                             <Tag color="default" className={ui.statusTag}>
-                              Sin cursada
+                              Sin boletines
                             </Tag>
                           )}
                           <Space size={4} wrap style={{ justifyContent: 'flex-end' }}>
@@ -895,13 +921,17 @@ export const AlumnoList: React.FC = () => {
       <AlumnoDetailModal
         visible={isDetailModalVisible}
         alumno={selectedDetailAlumno}
-        initialTab={linkedSection === 'cursada' ? 'inscripcion' : 'alumno'}
+        initialTab={detailInitialTab}
+        initialInscripcionId={detailInitialInscripcionId}
         onClose={handleCloseDetail}
         onEdit={(alumnoToEdit, targetTab) => handleOpenModal(alumnoToEdit, targetTab)}
         onDelete={handleDelete}
         onBaja={(alumnoToBaja) => {
           setBajaModalAlumno(alumnoToBaja);
           setIsBajaModalVisible(true);
+        }}
+        onEvaluationsUpdated={() => {
+          void fetchAlumnos();
         }}
       />
 

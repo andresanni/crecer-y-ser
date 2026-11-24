@@ -841,19 +841,17 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             >
               Cursada: {initialValues?.estadoInscripcion || 'Regular'}
             </Tag>
-            {initialValues?.cursadaEstado === 'PENDIENTE' ? (
-              <Tag color="warning" className={ui.compactTag}>
-                Cursada por confirmar
-              </Tag>
-            ) : initialValues?.cursadaEstado === 'SIN_CURSADA' ? (
-              <Tag color="default" className={ui.compactTag}>
-                Sin cursada
-              </Tag>
-            ) : initialValues?.cursadaEstado === 'CONFIRMADA' ? (
-              <Tag color={(initialValues.bimestreDesde && initialValues.bimestreDesde > 1) || (initialValues.bimestreHasta && initialValues.bimestreHasta < 4) ? 'cyan' : 'default'} className={ui.compactTag}>
-                Bimestres {initialValues.bimestreDesde} a {initialValues.bimestreHasta}
-              </Tag>
-            ) : null}
+            {!(/inic|jard[ií]n/i.test(initialValues?.nivelNombre || '') || /sala/i.test(initialValues?.cursoNombre || '')) && (
+              initialValues?.cursadaEstado === 'SIN_CURSADA' ? (
+                <Tag color="default" className={ui.compactTag}>
+                  Sin boletines
+                </Tag>
+              ) : initialValues?.cursadaEstado === 'CONFIRMADA' && ((initialValues.bimestreDesde && initialValues.bimestreDesde > 1) || (initialValues.bimestreHasta && initialValues.bimestreHasta < 4)) ? (
+                <Tag color="cyan" className={ui.compactTag}>
+                  Boletines B{initialValues.bimestreDesde}–B{initialValues.bimestreHasta}
+                </Tag>
+              ) : null
+            )}
             {initialValues?.numeroOrden ? (
               <Tag color="purple" className={ui.compactTag}>
                 Nº de Orden: #{initialValues.numeroOrden}
