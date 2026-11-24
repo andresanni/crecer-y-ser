@@ -17,6 +17,7 @@ import {
   Tooltip,
   Popconfirm,
   Alert,
+  Select,
 } from 'antd';
 import {
   UserOutlined,
@@ -39,10 +40,12 @@ import {
   DeleteOutlined,
   UserDeleteOutlined,
   PlusOutlined,
+  FileDoneOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
 import { CursadaModal } from '../../inscripciones/components/CursadaModal';
+import { ParticipacionEvaluativaPanel } from '../../inscripciones/components/ParticipacionEvaluativaPanel';
 import { inscripcionService } from '../../inscripciones/services/inscripcion.service';
 import {
   formatModalidadJornada,
@@ -58,16 +61,21 @@ interface AlumnoDetailModalProps {
   alumno: Alumno | null;
   visible: boolean;
   initialTab?: string;
+  initialInscripcionId?: string | null;
   onClose: () => void;
   onEdit: (alumno: Alumno, initialTab?: string) => void;
   onDelete: (id: string) => void;
   onBaja?: (alumno: Alumno) => void;
+  onEvaluationsUpdated?: () => void;
 }
 
 export const AlumnoDetailModal: React.FC<AlumnoDetailModalProps> = (props) => {
   const sessionKey = useModalSessionKey(props.visible);
   return (
-    <AlumnoDetailModalSession key={`${sessionKey}:${props.alumno?.id ?? 'none'}`} {...props} />
+    <AlumnoDetailModalSession
+      key={`${sessionKey}:${props.alumno?.id ?? 'none'}:${props.initialTab ?? 'alumno'}:${props.initialInscripcionId ?? ''}`}
+      {...props}
+    />
   );
 };
 
@@ -75,12 +83,15 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
   alumno,
   visible,
   initialTab = 'alumno',
+  initialInscripcionId = null,
   onClose,
   onEdit,
   onDelete,
   onBaja,
+  onEvaluationsUpdated,
 }) => {
   const [scopeId, setScopeId] = useState<string | null>(null);
+  const [selectedEvalInscripcionId, setSelectedEvalInscripcionId] = useState<string | null>(initialInscripcionId);
   const [detailsRevision, setDetailsRevision] = useState(0);
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
   const [responsables, setResponsables] = useState<
@@ -463,7 +474,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
             <BookOutlined style={{ fontSize: 13.5 }} />
-            <span>2. Inscripción y Cursada</span>
+            <span>2. Inscripción</span>
           </span>
           <span
             style={{
@@ -688,8 +699,27 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                       </div>
                     )}
                     <Space wrap style={{ marginTop: 8 }}>
-                      <Tag color={insc.cursadaEstado === 'PENDIENTE' ? 'warning' : 'default'}>{insc.cursadaEstado === 'PENDIENTE' ? 'Cursada por confirmar' : insc.cursadaEstado === 'SIN_CURSADA' ? 'Sin cursada' : 'Bimestres ' + insc.bimestreDesde + ' a ' + insc.bimestreHasta}</Tag>
-                      <Button onClick={() => setScopeId(insc.id)}>Cursada y pases</Button>
+                      {!(/inic|jard[ií]n/i.test(insc.nivelNombre || '') || /sala/i.test(insc.cursoNombre || '')) && (
+                        <>
+                          {insc.cursadaEstado === 'SIN_CURSADA' ? (
+                            <Tag color="default">Sin boletines este ciclo</Tag>
+                          ) : insc.cursadaEstado === 'CONFIRMADA' && (insc.bimestreDesde > 1 || insc.bimestreHasta < 4) ? (
+                            <Tag color="cyan">Boletines B{insc.bimestreDesde}–B{insc.bimestreHasta}</Tag>
+                          ) : null}
+                          <Button onClick={() => setScopeId(insc.id)}>Pases y datos administrativos</Button>
+                        </>
+                      )}
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<FileDoneOutlined />}
+                        onClick={() => {
+                          setSelectedEvalInscripcionId(insc.id);
+                          setActiveTab('evaluaciones');
+                        }}
+                      >
+                        Configurar evaluaciones
+                      </Button>
                     </Space>
                   </Card>
                 );
@@ -705,7 +735,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
             <TeamOutlined style={{ fontSize: 13.5 }} />
-            <span>3. Responsable y Vínculo</span>
+            <span>3. Responsables</span>
           </span>
           <span
             style={{
@@ -923,13 +953,88 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         </div>
       ),
     },
+    {
+      key: 'evaluaciones',
+      label: (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2, padding: '2px 0' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13 }}>
+            <FileDoneOutlined style={{ fontSize: 13.5 }} />
+            <span>4. Evaluaciones</span>
+          </span>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              marginTop: 2,
+              paddingLeft: 19,
+              color: inscripciones.length > 0 ? 'var(--cys-color-primary-text)' : 'var(--cys-color-text-tertiary)',
+            }}
+          >
+            {inscripciones.length > 0
+              ? (/inic|jard[ií]n/i.test(alumno.nivelNombre || '') || /sala/i.test(alumno.cursoNombre || '')
+                ? 'Informes de sala'
+                : 'Boletines e Informes')
+              : 'Sin inscripción'}
+          </span>
+        </div>
+      ),
+      children: (() => {
+        if (loading) {
+          return (
+            <div style={{ textAlign: 'center', padding: '30px 0' }}>
+              <Spin description="Cargando inscripciones del alumno..." />
+            </div>
+          );
+        }
+        if (inscripciones.length === 0) {
+          return (
+            <Card className="detail-section-card" size="small" style={{ textAlign: 'center', padding: '24px 0' }}>
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="Inscribí al alumno en un curso para configurar su participación en boletines e informes."
+              />
+            </Card>
+          );
+        }
+        const activeEvalInscripcion =
+          inscripciones.find((item) => item.id === selectedEvalInscripcionId) ||
+          inscripciones.find((item) => item.id === alumno.inscripcionId) ||
+          inscripciones[0];
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
+            {inscripciones.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Text strong style={{ fontSize: 12.5 }}>Inscripción:</Text>
+                <Select
+                  size="small"
+                  style={{ minWidth: 260 }}
+                  value={activeEvalInscripcion.id}
+                  onChange={(value) => setSelectedEvalInscripcionId(value)}
+                  options={inscripciones.map((item) => ({
+                    value: item.id,
+                    label: `${item.cursoNombre || 'Sin curso'} — Ciclo ${item.cicloAno || '-'} (${item.estado})`,
+                  }))}
+                />
+              </div>
+            )}
+            <ParticipacionEvaluativaPanel
+              inscripcionId={activeEvalInscripcion.id}
+              onSaved={() => {
+                setDetailsRevision((value) => value + 1);
+                onEvaluationsUpdated?.();
+              }}
+            />
+          </div>
+        );
+      })(),
+    },
   ];
 
   return (
     <Modal
       open={visible}
       onCancel={handleModalClose}
-      width={880}
+      width={940}
       style={{ top: 8, maxWidth: '96vw', paddingBottom: 8 }}
       className="student-detail-modal"
       closable={true}
@@ -972,7 +1077,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
               type="primary"
               icon={<EditOutlined />}
               className="btn-primary-gradient"
-              onClick={() => handleEdit(activeTab)}
+              onClick={() => handleEdit(activeTab === 'evaluaciones' ? 'inscripcion' : activeTab)}
             >
               Editar Ficha del Alumno
             </Button>
@@ -1101,6 +1206,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         activeKey={activeTab}
         onChange={(key) => setActiveTab(key)}
         items={tabItems}
+        tabBarGutter={12}
         className="detail-tabs"
       />
       {scopeId && <CursadaModal inscripcionId={scopeId} onClose={() => setScopeId(null)} onSuccess={() => setDetailsRevision(value => value + 1)} />}

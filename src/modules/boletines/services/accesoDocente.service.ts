@@ -149,6 +149,8 @@ export interface TeacherGradebookContext {
 
 export class TeacherAccessDeniedError extends Error {}
 
+export class TeacherRosterChangedError extends Error {}
+
 export class TeacherSubmissionIncompleteError extends Error {
   readonly detail: GradebookSubmissionIncomplete;
 
@@ -175,6 +177,15 @@ const getErrorResponse = (error: unknown) => {
   return response && typeof response === 'object' ? response : null;
 };
 
+const isStudentRosterForbidden = (error: unknown) => {
+  if (getErrorStatus(error) !== 403) return false;
+  const response = getErrorResponse(error);
+  const msg = response && typeof (response as { message?: unknown }).message === 'string'
+    ? (response as { message: string }).message
+    : '';
+  return /el alumno no pertenece/i.test(msg);
+};
+
 const teacherRequest = async <T>(
   token: string,
   path: string,
@@ -187,6 +198,9 @@ const teacherRequest = async <T>(
       requestKey: null,
     });
   } catch (error) {
+    if (isStudentRosterForbidden(error)) {
+      throw new TeacherRosterChangedError('Dirección actualizó la nómina de alumnos del curso.');
+    }
     if (isAccessDeniedResponse(error)) {
       throw new TeacherAccessDeniedError('El enlace ya no está vigente.');
     }

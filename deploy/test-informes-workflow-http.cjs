@@ -189,7 +189,8 @@ test('Flujo HTTP completo de Informes de Maestras: enlaces, carga progresiva, en
     assert.equal(cellG2EdFisica.etapa, 'PENDIENTE_EMISION');
     assert.equal(cellG2EdFisica.plantillaCodigo, 'FINAL_ED_FISICA_G2');
     assert.equal(cellG2EdFisica.totalItems, 24);
-    assert.equal(cellG2EdFisica.cursadasPendientes.length, 1);
+    assert.equal(cellG2EdFisica.cursadasPendientes.length, 0);
+    assert.equal(cellG2EdFisica.totalInscripcionesCurso, 2);
 
     const cellG1EdFisica = stagesRes.body.celdas.find(
       (c) => c.cursoId === course1.id && c.materiaId === edFisica.id
@@ -310,7 +311,7 @@ test('Flujo HTTP completo de Informes de Maestras: enlaces, carga progresiva, en
     assert.equal(ctxRes.body.items.length, 24);
     assert.equal(ctxRes.body.alumnos.length, 2);
     assert.equal(ctxRes.body.progreso.alumnosCompletos, 0);
-    assert.equal(ctxRes.body.cursadasPendientes.length, 1);
+    assert.equal(ctxRes.body.cursadasPendientes.length, 0);
 
     const items = ctxRes.body.items;
 
@@ -377,40 +378,6 @@ test('Flujo HTTP completo de Informes de Maestras: enlaces, carga progresiva, en
     );
     assert.equal(fullSaveB.status, 200);
     assert.equal(fullSaveB.body.completo, true);
-
-    const pendingScopeSubmit = await jsonRequest(origin, '/api/cys/docente-informes/enviar', {
-      method: 'POST',
-      headers: teacherHeaders,
-      body: {},
-    });
-    assert.equal(pendingScopeSubmit.status, 422);
-    assert.equal(pendingScopeSubmit.body.pendientes.length, 0);
-    assert.equal(pendingScopeSubmit.body.cursadasPendientes.length, 1);
-
-    const scopeReadB = await jsonRequest(
-      origin,
-      `/api/cys/directivo/inscripciones/${enrollmentB.id}/cursada`,
-      { headers: staffHeaders }
-    );
-    assert.equal(scopeReadB.status, 200);
-
-    const confirmScopeB = await jsonRequest(
-      origin,
-      `/api/cys/directivo/inscripciones/${enrollmentB.id}/cursada`,
-      {
-        method: 'PUT',
-        headers: staffHeaders,
-        body: {
-          expectedRevision: scopeReadB.body.cursada.revision,
-          expectedUpdated: scopeReadB.body.updated,
-          desde: 1,
-          hasta: 4,
-          sinCursada: false,
-          registrarBaja: false,
-        },
-      }
-    );
-    assert.equal(confirmScopeB.status, 200);
 
     const submitOk = await jsonRequest(origin, '/api/cys/docente-informes/enviar', {
       method: 'POST',

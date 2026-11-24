@@ -1,4 +1,5 @@
 import pb from '../../../core/pocketbase';
+import type { CourseRosterPreview } from '../../../shared/components/CourseRosterExpandPanel';
 import type {
   AlumnoInformeRow,
   CursadaPendienteInforme,
@@ -83,6 +84,8 @@ export interface TeacherInformeContext {
 
 export class InformeAccessDeniedError extends Error {}
 
+export class InformeRosterChangedError extends Error {}
+
 export class InformeSubmissionIncompleteError extends Error {
   readonly detail: InformeSubmissionIncomplete;
 
@@ -117,6 +120,15 @@ const isAccessDeniedResponse = (error: unknown) => {
   return status === 401 || status === 403;
 };
 
+const isStudentRosterForbidden = (error: unknown) => {
+  if (getErrorStatus(error) !== 403) return false;
+  const response = getErrorResponse(error);
+  const msg = response && typeof (response as { message?: unknown }).message === 'string'
+    ? (response as { message: string }).message
+    : '';
+  return /el alumno no pertenece/i.test(msg);
+};
+
 const teacherRequest = async <T>(
   token: string,
   path: string,
@@ -129,6 +141,9 @@ const teacherRequest = async <T>(
       requestKey: null,
     });
   } catch (error) {
+    if (isStudentRosterForbidden(error)) {
+      throw new InformeRosterChangedError('Dirección actualizó la nómina de alumnos del curso.');
+    }
     if (isAccessDeniedResponse(error)) {
       throw new InformeAccessDeniedError('El enlace ya no está disponible.');
     }
@@ -143,6 +158,19 @@ export const informesService = {
       { method: 'GET', requestKey: null },
     )
   ),
+
+  getCursoNomina: async (
+    cicloId: string,
+    tipoInforme: TipoInforme,
+    cursoId: string,
+    materiaId?: string | null,
+  ): Promise<CourseRosterPreview> => {
+    const query = materiaId ? `?materiaId=${encodeURIComponent(materiaId)}` : '';
+    return pb.send<CourseRosterPreview>(
+      `/api/cys/directivo/informes/curso-nomina/${encodeURIComponent(cicloId)}/${encodeURIComponent(tipoInforme)}/${encodeURIComponent(cursoId)}${query}`,
+      { method: 'GET', requestKey: null },
+    );
+  },
 
   createEnlace: async (input: CreateEnlaceInformeInput): Promise<IssuedEnlaceInformeDto> => (
     pb.send<IssuedEnlaceInformeDto>('/api/cys/enlaces-informes', {

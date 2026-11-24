@@ -2,6 +2,35 @@
   white-space: nowrap;
 }
 
+.courseExpandTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.courseExpandTrigger:hover {
+  opacity: 0.88;
+  transform: translateX(1px);
+}
+
+.courseExpandTrigger:focus-visible {
+  outline: 2px solid var(--cys-color-primary-border);
+  outline-offset: 2px;
+}
+
+.courseExpandChevron {
+  display: inline-flex;
+  align-items: center;
+  color: var(--cys-color-text-tertiary);
+  font-size: 11px;
+}
+
 .progressCell {
   width: 100%;
 }

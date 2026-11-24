@@ -1,4 +1,5 @@
 import pb from '../../../core/pocketbase';
+import type { CourseRosterPreview } from '../../../shared/components/CourseRosterExpandPanel';
 import { ClientResponseError } from 'pocketbase';
 import {
   cursoAdapter,
@@ -704,4 +705,11 @@ export const boletinService = {
       return {};
     }
   },
+
+  getCursoNomina: async (cursoId: string, periodoId: string): Promise<CourseRosterPreview> => (
+    pb.send<CourseRosterPreview>(
+      `/api/cys/directivo/boletines/curso-nomina/${encodeURIComponent(cursoId)}/${encodeURIComponent(periodoId)}`,
+      { method: 'GET', requestKey: null },
+    )
+  ),
 };

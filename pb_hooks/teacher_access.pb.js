@@ -11,6 +11,14 @@ routerAdd("PUT", "/api/cys/directivo/inscripciones/:inscripcionId/cursada", (c) 
   return require(`${__hooks}/lib/teacherAccess.js`).saveEnrollmentScope(c)
 }, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
 
+routerAdd("GET", "/api/cys/directivo/inscripciones/:inscripcionId/evaluaciones", (c) => {
+  return require(`${__hooks}/lib/teacherAccess.js`).staffStudentEvaluations(c)
+}, $apis.requireRecordAuth("users"))
+
+routerAdd("PUT", "/api/cys/directivo/inscripciones/:inscripcionId/evaluaciones", (c) => {
+  return require(`${__hooks}/lib/teacherAccess.js`).saveStudentEvaluations(c)
+}, $apis.requireRecordAuth("users"), $apis.bodyLimit(65536))
+
 routerAdd("GET", "/api/cys/docente/alumnos/:inscripcionId", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.student(c)
@@ -59,6 +67,11 @@ routerAdd("GET", "/api/cys/directivo/etapas/:periodoId", (c) => {
 routerAdd("GET", "/api/cys/directivo/progreso/:periodoId", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.staffProgress(c)
+}, $apis.requireRecordAuth("users"))
+
+routerAdd("GET", "/api/cys/directivo/boletines/curso-nomina/:cursoId/:periodoId", (c) => {
+  const access = require(`${__hooks}/lib/teacherAccess.js`)
+  return access.staffCourseRosterPreview(c)
 }, $apis.requireRecordAuth("users"))
 
 routerAdd("POST", "/api/cys/directivo/boletines/:inscripcionId/visar", (c) => {

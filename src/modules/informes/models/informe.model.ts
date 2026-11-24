@@ -262,10 +262,22 @@ export interface CeldaEtapaInforme {
   docenteApellido: string | null;
   enlace: TokenAccesoInforme | null;
   inscripcionesEvaluables: string[];
+  totalInscripcionesCurso?: number;
+  ajustesNominaManuales?: number;
   alumnosCompletos: number;
   totalInformes: number;
   visados: number;
   cursadasPendientes: CursadaPendienteInforme[];
+}
+
+export interface AlumnoExcluidoInforme {
+  inscripcionId: string;
+  alumnoId: string;
+  numeroOrden: number | null;
+  apellidos: string;
+  nombres: string;
+  nombreCompleto: string;
+  estadoAdministrativo: string;
 }
 
 export interface EtapasInformeData {
@@ -402,6 +414,7 @@ export interface RevisionInformeData {
   inscripcionesEvaluables: string[];
   resumenCurso?: ResumenRevisionCursoInforme;
   informes: InformeRevisionAlumno[];
+  alumnosExcluidos?: AlumnoExcluidoInforme[];
 }
 
 const normalizeInsightText = (text: string): string => (

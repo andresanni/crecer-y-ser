@@ -53,6 +53,7 @@
     *   `sala_4_5` (*Sala de 4 y 5 años*): Texto `#0f766e`, fondo `rgba(15, 118, 110, 0.12)`, borde `rgba(15, 118, 110, 0.38)`, preset `cyan`. Etiqueta compacta: *4 y 5*.
 *   **Ordenamiento visual (`compareGrados`)**: Salas de jardín tienen pesos 0 (`sala_2_3`) y 1 (`sala_4_5`), seguidas de los grados primarios (peso `grado + 1`), garantizando consistencia en tablas, tarjetas y selectores.
 *   **Doble tutor familiar**: Tanto el modal de formulario (`AlumnoFormModal`) como el de detalle (`AlumnoDetailModal`) soportan dos responsables por estudiante con validación de identidad no coincidente.
+*   **Participación evaluativa por alumno (`4. Evaluaciones`)**: `AlumnoDetailModal` incluye la pestaña `4. Evaluaciones` (`ParticipacionEvaluativaPanel.tsx`), accesible también vía deep-link `/app/alumnos?alumno=<id>&inscripcion=<enrId>&seccion=evaluaciones`, donde Dirección configura manualmente con switches `SÍ / NO` en qué bimestres de Boletines (solo Primaria, rango consecutivo) e instancias de Informes (en cascada para todas las áreas especiales; solo `CICLO_FINAL` en Nivel Inicial) participa el alumno. Los tableros de progreso permanecen libres de controles de nómina y las vistas de revisión directiva muestran a los alumnos excluidos griseados al final del listado.
 
 ## 4. Mapa de Colecciones (PocketBase) - Fuente de Verdad: `pb_schema.json`
 
@@ -79,6 +80,7 @@
 *   **`responsables`**: Padres/tutores (`dni_tipo`, `dni_numero`, `apellidos`, `nombres`, `nacionalidad`, `profesion`, `telefono`, `email`).
 *   **`alumno_responable`**: Vínculo M:N entre estudiante y tutor (`alumno_id`, `responsable_id`, `vinculo`). Admite asociar hasta dos tutores activos por estudiante ('Padre', 'Madre', 'Tutor', etc.).
 *   **`inscripciones`**: Matrícula anual (`alumno_id`, `curso_id`, `ciclo_id`, `numero_orden`, `numero_inscripcion`, `fecha_inscripcion`, `fecha_ingreso`, `fecha_egreso`, `estado`: *Regular* | *Libre* | *Baja*, `modalidad_jornada`: *Mañana* | *Tarde* | *Jornada Completa*, `promociono_con_acompanamiento`: *SI* | *NO* | *-*, `posee_apoyos`: *SI* | *NO* | *-*, `cuales_apoyos`: *text*).
+*   **`nomina_informe_alumno`**: Sobrescrituras manuales `SÍ / NO` de participación por alumno e instancia de informe (`inscripcion_id`, `tipo_informe`, `evaluable`; protegida contra escrituras directas desde cliente, gestionada vía `/api/cys/directivo/inscripciones/:inscripcionId/evaluaciones`).
 
 ### 📝 Evaluaciones y Cierres Bimestrales (Boletines de Primaria)
 *   **`evaluaciones_materia`**: Cierre de materia por bimestre para un alumno:

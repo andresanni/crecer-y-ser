@@ -3141,5 +3141,65 @@
     "updateRule": null,
     "deleteRule": null,
     "options": {}
+  },
+  {
+    "id": "cysrptnom000001",
+    "name": "nomina_informe_alumno",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "system": false,
+        "id": "rptnom_insc0001",
+        "name": "inscripcion_id",
+        "type": "relation",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "collectionId": "wnp87hpjzmztwyk",
+          "cascadeDelete": true,
+          "minSelect": 1,
+          "maxSelect": 1,
+          "displayFields": null
+        }
+      },
+      {
+        "system": false,
+        "id": "rptnom_tipo0001",
+        "name": "tipo_informe",
+        "type": "select",
+        "required": true,
+        "presentable": false,
+        "unique": false,
+        "options": {
+          "maxSelect": 1,
+          "values": [
+            "PRIMER_BIMESTRE",
+            "PRIMER_CUATRIMESTRE",
+            "CICLO_FINAL"
+          ]
+        }
+      },
+      {
+        "system": false,
+        "id": "rptnom_eval0001",
+        "name": "evaluable",
+        "type": "bool",
+        "required": false,
+        "presentable": false,
+        "unique": false,
+        "options": {}
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_nomina_informe_alumno_scope` ON `nomina_informe_alumno` (`inscripcion_id`, `tipo_informe`)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
   }
 ]

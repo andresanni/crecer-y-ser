@@ -1,0 +1,156 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.contextBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--cys-color-fill-quaternary);
+  border: 1px solid var(--cys-color-border-secondary);
+}
+
+.contextMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cardDescription {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+}
+
+.termGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.termTile {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--cys-color-border-secondary);
+  background: var(--cys-color-bg-container);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.termTileActive {
+  border-color: var(--cys-color-primary-border);
+  background: var(--cys-color-primary-bg);
+}
+
+.termTileHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.termLabel {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.termFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.reportList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reportRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--cys-color-border-secondary);
+  background: var(--cys-color-bg-container);
+}
+
+.reportRowActive {
+  border-color: var(--cys-color-primary-border);
+  background: var(--cys-color-primary-bg);
+}
+
+.reportInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.reportTitleRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.reportControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lockIcon {
+  color: var(--cys-color-text-tertiary);
+  font-size: 13px;
+}
+
+.summaryText {
+  display: block;
+  margin-top: 10px;
+  font-size: 12.5px;
+}
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.centeredState {
+  text-align: center;
+  padding: 28px 0;
+}
+
+@media (max-width: 640px) {
+  .termGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -22,14 +22,8 @@ function courseEnrollments(dao, courseId, cycleId) {
   return findByFilter(dao, "inscripciones", "curso_id = {:courseId} && ciclo_id = {:cycleId}", "numero_orden", { courseId: courseId, cycleId: cycleId })
 }
 
-function pendingEnrollmentScopes(dao, access) {
-  var period = requireRecord(dao, "periodos", access.getString("periodo_id"))
-  return courseEnrollments(dao, access.getString("curso_id"), period.getString("ciclo_id"))
-    .filter((enrollment) => enrollmentScope(enrollment).estado === "PENDIENTE")
-    .map((enrollment) => {
-      var student = requireRecord(dao, "alumnos", enrollment.getString("alumno_id"))
-      return { inscripcionId: enrollment.getId(), alumnoId: student.getId(), nombreCompleto: student.getString("apellidos") + ", " + student.getString("nombres") }
-    })
+function pendingEnrollmentScopes() {
+  return []
 }
 
 function transferRecords(enrollment) {
@@ -59,15 +53,6 @@ function scopeSnapshot(dao, enrollment) {
     var period = requireRecord(dao, "periodos", workflow.getString("periodo_id"))
     evidence[period.getInt("numero_periodo")] = true
   })
-  try {
-    var reportsModule = require("./teacherReports.js")
-    ;["evaluaciones_informe", "visados_informe"].forEach((collection) => {
-      findByFilter(dao, collection, "inscripcion_id = {:id}", "", { id: enrollment.getId() }).forEach((record) => {
-        var reportWorkflow = requireRecord(dao, "instancias_informe", record.getString("instancia_id"))
-        evidence[reportsModule.cutoffTermForReportType(reportWorkflow.getString("tipo_informe"))] = true
-      })
-    })
-  } catch (_) {}
   return {
     inscripcionId: enrollment.getId(),
     nombreCompleto: student.getString("apellidos") + ", " + student.getString("nombres"),
@@ -88,6 +73,151 @@ function staffEnrollmentScope(c) {
   var result
   $app.dao().runInTransaction((dao) => { result = scopeSnapshot(dao, requireRecord(dao, "inscripciones", c.pathParam("inscripcionId"))) })
   return c.json(200, result)
+}
+
+function studentEvaluationsSnapshot(dao, enrollment) {
+  var base = scopeSnapshot(dao, enrollment)
+  var course = requireRecord(dao, "cursos", enrollment.getString("curso_id"))
+  var esInicial = !isGradebookCourse(dao, course)
+  var reportsModule = require("./teacherReports.js")
+  var boletines = esInicial
+    ? null
+    : {
+        b1: enrollmentParticipates(enrollment, 1),
+        b2: enrollmentParticipates(enrollment, 2),
+        b3: enrollmentParticipates(enrollment, 3),
+        b4: enrollmentParticipates(enrollment, 4),
+        bimestresBloqueados: base.bimestresConDatos
+      }
+  return {
+    inscripcionId: base.inscripcionId,
+    alumnoId: enrollment.getString("alumno_id"),
+    nombreCompleto: base.nombreCompleto,
+    curso: base.curso,
+    ciclo: base.ciclo,
+    esInicial: esInicial,
+    estadoAdministrativo: base.estadoAdministrativo,
+    fechaIngreso: enrollment.getString("fecha_ingreso") || "",
+    fechaEgreso: base.fechaEgreso || "",
+    cursada: base.cursada,
+    updated: base.updated,
+    boletines: boletines,
+    informes: reportsModule.getStudentReportParticipation(dao, enrollment, esInicial)
+  }
+}
+
+function staffStudentEvaluations(c) {
+  noStore(c)
+  var result
+  $app.dao().runInTransaction((dao) => {
+    var enrollment = requireRecord(dao, "inscripciones", c.pathParam("inscripcionId"))
+    result = studentEvaluationsSnapshot(dao, enrollment)
+  })
+  return c.json(200, result)
+}
+
+function saveStudentEvaluations(c) {
+  noStore(c)
+  var body = new DynamicModel({
+    expectedRevision: -1,
+    expectedUpdated: "",
+    boletines: {},
+    informes: []
+  })
+  c.bind(body)
+  var data = JSON.parse(JSON.stringify(body))
+  if (!Number.isInteger(data.expectedRevision) || data.expectedRevision < 0 || !data.expectedUpdated) {
+    throw new BadRequestError("Volvé a leer la participación evaluativa antes de guardar.")
+  }
+
+  var status = 200
+  var result
+  $app.dao().runInTransaction((dao) => {
+    var enrollment = requireRecord(dao, "inscripciones", c.pathParam("inscripcionId"))
+    var before = scopeSnapshot(dao, enrollment)
+    if (before.cursada.revision !== data.expectedRevision || before.updated !== data.expectedUpdated) {
+      status = 409
+      result = { message: "La matrícula cambió en otra sesión. Volvé a cargar antes de guardar." }
+      return
+    }
+
+    var course = requireRecord(dao, "cursos", enrollment.getString("curso_id"))
+    var esInicial = !isGradebookCourse(dao, course)
+    var reportsModule = require("./teacherReports.js")
+    var boletinesChanged = false
+
+    if (!esInicial && data.boletines && typeof data.boletines === "object" && Object.keys(data.boletines).length > 0) {
+      var activeTerms = []
+      if (data.boletines.b1) activeTerms.push(1)
+      if (data.boletines.b2) activeTerms.push(2)
+      if (data.boletines.b3) activeTerms.push(3)
+      if (data.boletines.b4) activeTerms.push(4)
+
+      if (activeTerms.length > 0) {
+        var minTerm = activeTerms[0]
+        var maxTerm = activeTerms[activeTerms.length - 1]
+        if (maxTerm - minTerm + 1 !== activeTerms.length) {
+          throw new BadRequestError("En boletines los bimestres activos deben ser consecutivos.")
+        }
+      }
+
+      var nextSinCursada = activeTerms.length === 0
+      var nextDesde = nextSinCursada ? 0 : activeTerms[0]
+      var nextHasta = nextSinCursada ? 0 : activeTerms[activeTerms.length - 1]
+      var conflicts = before.bimestresConDatos.filter((number) => nextSinCursada || number < nextDesde || number > nextHasta)
+      if (conflicts.length > 0) {
+        status = 409
+        result = {
+          message: "No se pueden desactivar los bimestres " + conflicts.join(", ") + " porque ya registran notas, cierres o entregas en boletines.",
+          bimestres: conflicts
+        }
+        return
+      }
+
+      var nextEstado = nextSinCursada ? "SIN_CURSADA" : "CONFIRMADA"
+      if (
+        before.cursada.estado !== nextEstado ||
+        before.cursada.desde !== nextDesde ||
+        before.cursada.hasta !== nextHasta
+      ) {
+        enrollment.set("cursada_estado", nextEstado)
+        enrollment.set("bimestre_desde", nextDesde)
+        enrollment.set("bimestre_hasta", nextHasta)
+        enrollment.set("revision_cursada", before.cursada.revision + 1)
+        dao.saveRecord(enrollment)
+        boletinesChanged = true
+      }
+    }
+
+    var reportRes = reportsModule.applyStudentReportParticipation(
+      dao,
+      enrollment,
+      esInicial,
+      Array.isArray(data.informes) ? data.informes : []
+    )
+    if (reportRes.conflictMessage) {
+      status = 409
+      result = { message: reportRes.conflictMessage }
+      return
+    }
+
+    if (boletinesChanged) {
+      findByFilter(
+        dao,
+        "instancias_carga_boletin",
+        "curso_id = {:course} && periodo_id.ciclo_id = {:cycle}",
+        "",
+        { course: enrollment.getString("curso_id"), cycle: enrollment.getString("ciclo_id") }
+      ).forEach((workflow) => {
+        workflow.set("revision", workflow.getInt("revision") + 1)
+        dao.saveRecord(workflow)
+      })
+    }
+
+    result = studentEvaluationsSnapshot(dao, requireRecord(dao, "inscripciones", enrollment.getId()))
+  })
+
+  return c.json(status, result)
 }
 
 function saveEnrollmentScope(c) {
@@ -425,6 +555,61 @@ function evaluateSubjectAverageCoherence(courseMaterialId, subjectName, generalV
   }
 }
 
+function staffCourseRosterPreview(c) {
+  noStore(c)
+  var response
+  $app.dao().runInTransaction((txDao) => {
+    var course = requireGradebookCourse(txDao, c.pathParam("cursoId"))
+    var period = requireRecord(txDao, "periodos", c.pathParam("periodoId"))
+    var termNumber = period.getInt("numero_periodo")
+    var enrollments = courseEnrollments(txDao, course.getId(), period.getString("ciclo_id"))
+    var workflow = findWorkflow(txDao, course.getId(), period.getId())
+
+    var evaluables = []
+    var excluidos = []
+    enrollments.forEach((enrollment) => {
+      var student = requireRecord(txDao, "alumnos", enrollment.getString("alumno_id"))
+      var baseItem = {
+        inscripcionId: enrollment.getId(),
+        alumnoId: student.getId(),
+        numeroOrden: enrollment.getInt("numero_orden") || null,
+        nombreCompleto: (student.getString("apellidos") + ", " + student.getString("nombres")).trim(),
+        estadoAdministrativo: enrollment.getString("estado") || "Regular"
+      }
+      if (enrollmentParticipates(enrollment, termNumber)) {
+        evaluables.push({
+          inscripcionId: baseItem.inscripcionId,
+          alumnoId: baseItem.alumnoId,
+          numeroOrden: baseItem.numeroOrden,
+          nombreCompleto: baseItem.nombreCompleto,
+          estadoAdministrativo: baseItem.estadoAdministrativo,
+          completo: workflow ? studentReadyForApproval(txDao, workflow, enrollment) : null
+        })
+      } else {
+        excluidos.push(baseItem)
+      }
+    })
+
+    var byOrderAndName = (a, b) => {
+      if (a.numeroOrden !== null && b.numeroOrden !== null && a.numeroOrden !== b.numeroOrden) {
+        return a.numeroOrden - b.numeroOrden
+      }
+      return a.nombreCompleto.localeCompare(b.nombreCompleto)
+    }
+    evaluables.sort(byOrderAndName)
+    excluidos.sort(byOrderAndName)
+
+    response = {
+      cursoNombre: course.getString("nombre"),
+      totalEvaluables: evaluables.length,
+      totalExcluidos: excluidos.length,
+      evaluables: evaluables,
+      excluidos: excluidos
+    }
+  })
+  return c.json(200, response)
+}
+
 function staffReview(c) {
   noStore(c)
   var response
@@ -575,6 +760,35 @@ function staffReview(c) {
         sugerenciasPpi: sugerenciasPpi
       })
     })
+    var approvedEnrollmentIds = {}
+    approvals.forEach((approval) => {
+      approvedEnrollmentIds[approval.getString("inscripcion_id")] = true
+    })
+    var missingEnrollmentIds = {}
+    missingEnrollments.forEach((enrollment) => {
+      missingEnrollmentIds[enrollment.getId()] = true
+    })
+    var excludedStudents = courseEnrollments(txDao, course.getId(), period.getString("ciclo_id"))
+      .filter((enrollment) => !approvedEnrollmentIds[enrollment.getId()] && !missingEnrollmentIds[enrollment.getId()])
+      .map((enrollment) => {
+        var student = requireRecord(txDao, "alumnos", enrollment.getString("alumno_id"))
+        return {
+          inscripcionId: enrollment.getId(),
+          alumnoId: student.getId(),
+          numeroOrden: enrollment.getInt("numero_orden") || null,
+          apellidos: student.getString("apellidos"),
+          nombres: student.getString("nombres"),
+          nombreCompleto: (student.getString("apellidos") + ", " + student.getString("nombres")).trim(),
+          estadoAdministrativo: enrollment.getString("estado") || "Regular"
+        }
+      })
+    excludedStudents.sort((a, b) => {
+      if (a.numeroOrden !== null && b.numeroOrden !== null && a.numeroOrden !== b.numeroOrden) {
+        return a.numeroOrden - b.numeroOrden
+      }
+      return a.nombreCompleto.localeCompare(b.nombreCompleto)
+    })
+
     response = {
       instancia: workflowDto(workflow),
       etapa: approvals.length > 0 && approvedCount === approvals.length && missingEnrollments.length === 0 ? "LISTO_PARA_PDF" : "REVISION_DIRECTIVA",
@@ -582,7 +796,8 @@ function staffReview(c) {
       visados: approvedCount,
       alumnosSinIncorporar: missingEnrollments.length,
       inscripcionesEvaluables: currentEnrollments(txDao, workflow).map((enrollment) => enrollment.getId()),
-      boletines: students
+      boletines: students,
+      alumnosExcluidos: excludedStudents
     }
   })
   return c.json(200, response)
@@ -614,7 +829,6 @@ function synchronizeReviewEnrollments(c) {
       { workflowId: workflow.getId() }
     )
     var missing = missingReviewEnrollments(txDao, workflow, approvals)
-    if (missing.some((enrollment) => enrollmentScope(enrollment).estado === "PENDIENTE")) throw new BadRequestError("Dirección debe confirmar las cursadas antes de incorporarlas a la entrega.")
     var collection = txDao.findCollectionByNameOrId("visados_boletin")
     missing.forEach((enrollment) => {
       var approval = new Record(collection)
@@ -969,12 +1183,12 @@ function gradebookCompleteness(dao, access) {
   })
 
   return {
-    completa: enrollments.length > 0 && materials.length > 0 && pending.length === 0 && pendingScopes.length === 0,
+    completa: enrollments.length > 0 && materials.length > 0 && pending.length === 0,
     totalAlumnos: enrollments.length,
     totalMaterias: materials.length,
     alumnosCompletos: enrollments.length - pending.length,
     pendientes: pending,
-    cursadasPendientes: pendingScopes
+    cursadasPendientes: []
   }
 }
 
@@ -1978,6 +2192,8 @@ function rotate(c) {
 module.exports = {
   staffEnrollmentScope: staffEnrollmentScope,
   saveEnrollmentScope: saveEnrollmentScope,
+  staffStudentEvaluations: staffStudentEvaluations,
+  saveStudentEvaluations: saveStudentEvaluations,
   context: context,
   student: student,
   saveStudent: saveStudent,
@@ -1987,6 +2203,7 @@ module.exports = {
   buildDocumentSnapshot: buildDocumentSnapshot,
   saveStaffStudent: saveStaffStudent,
   staffReview: staffReview,
+  staffCourseRosterPreview: staffCourseRosterPreview,
   synchronizeReviewEnrollments: synchronizeReviewEnrollments,
   staffStages: staffStages,
   staffProgress: staffProgress,

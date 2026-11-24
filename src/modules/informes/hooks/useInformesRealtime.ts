@@ -6,6 +6,7 @@ const REALTIME_COLLECTIONS = [
   'tokens_acceso_informe',
   'evaluaciones_informe',
   'visados_informe',
+  'nomina_informe_alumno',
   'inscripciones',
   'alumnos',
 ];

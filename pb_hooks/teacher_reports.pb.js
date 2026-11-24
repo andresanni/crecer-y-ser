@@ -43,6 +43,11 @@ routerAdd("GET", "/api/cys/directivo/informes/etapas/:cicloId/:tipoInforme", (c)
   return reports.staffStages(c)
 }, $apis.requireRecordAuth("users"))
 
+routerAdd("GET", "/api/cys/directivo/informes/curso-nomina/:cicloId/:tipoInforme/:cursoId", (c) => {
+  const reports = require(`${__hooks}/lib/teacherReports.js`)
+  return reports.staffCourseRosterPreview(c)
+}, $apis.requireRecordAuth("users"))
+
 routerAdd("GET", "/api/cys/directivo/informes/revision/:instanciaId", (c) => {
   const reports = require(`${__hooks}/lib/teacherReports.js`)
   return reports.staffReview(c)

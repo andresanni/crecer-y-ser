@@ -69,6 +69,16 @@ export interface StaffReviewBulletin {
   sugerenciasPpi?: BoletinPpiSugerencia[];
 }
 
+export interface AlumnoExcluidoBoletin {
+  inscripcionId: string;
+  alumnoId: string;
+  numeroOrden: number | null;
+  apellidos: string;
+  nombres: string;
+  nombreCompleto: string;
+  estadoAdministrativo: string;
+}
+
 export interface StaffReviewDto {
   instancia: StaffWorkflowStateDto;
   etapa: 'REVISION_DIRECTIVA' | 'LISTO_PARA_PDF';
@@ -77,6 +87,7 @@ export interface StaffReviewDto {
   alumnosSinIncorporar: number;
   inscripcionesEvaluables?: string[];
   boletines: StaffReviewBulletin[];
+  alumnosExcluidos?: AlumnoExcluidoBoletin[];
 }
 
 interface StaffStudentDto {

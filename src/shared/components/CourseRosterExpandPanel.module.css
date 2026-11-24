@@ -1,0 +1,135 @@
+.panel {
+  padding: 12px 14px;
+  background: var(--cys-color-fill-quaternary);
+  border-radius: 10px;
+  border: 1px solid var(--cys-color-border-secondary);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 10px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hint {
+  font-size: 12px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 8px;
+}
+
+.studentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--cys-color-bg-container);
+  border: 1px solid var(--cys-color-border-secondary);
+  min-width: 0;
+}
+
+.studentRowExcluded {
+  background: var(--cys-color-fill-tertiary);
+  border-style: dashed;
+  opacity: 0.78;
+}
+
+.studentLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.orderChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--cys-color-primary-bg);
+  color: var(--cys-color-primary-text);
+}
+
+.orderChipExcluded {
+  background: var(--cys-color-fill-secondary);
+  color: var(--cys-color-text-tertiary);
+}
+
+.nameBlock {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.nameText {
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nameTextExcluded {
+  color: var(--cys-color-text-secondary);
+}
+
+.metaTags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.compactTag:global(.ant-tag) {
+  margin: 0;
+  font-size: 11px;
+  line-height: 16px;
+  padding: 0 6px;
+}
+
+.profileLink {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  height: auto;
+  font-size: 12px;
+}
+
+.excludedSection {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--cys-color-border-secondary);
+}
+
+.excludedTitle {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--cys-color-text-secondary);
+}
+
+.centered {
+  padding: 18px 0;
+  text-align: center;
+}

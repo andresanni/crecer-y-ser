@@ -98,10 +98,31 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     await fill(enrollment.id, 1);
     await fill(enrollment.id, 2);
     const oldBaja = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Baja' });
-    const blocked = await teacher(1, 'enviar', 'POST', {});
-    assert.equal(blocked.status, 422);
-    assert.equal(blocked.body.cursadasPendientes.length, 2);
+    assert.equal((await teacher(1, 'contexto')).body.cursadasPendientes.length, 0);
     assert.equal((await teacher(1, 'contexto')).body.alumnos.length, 1);
+    const evalUrl = id => '/api/cys/directivo/inscripciones/' + id + '/evaluaciones';
+    const evalSnapshot = (await request(evalUrl(enrollment.id), 'GET', null, token)).body;
+    assert.equal(evalSnapshot.esInicial, false);
+    assert.deepEqual(evalSnapshot.boletines.bimestresBloqueados, [1, 2]);
+    assert.equal(evalSnapshot.informes.length, 3);
+    assert.equal(
+      (await request(evalUrl(enrollment.id), 'PUT', {
+        expectedRevision: evalSnapshot.cursada.revision,
+        expectedUpdated: evalSnapshot.updated,
+        boletines: { b1: true, b2: false, b3: true, b4: false },
+        informes: [],
+      }, token)).status,
+      400,
+    );
+    assert.equal(
+      (await request(evalUrl(enrollment.id), 'PUT', {
+        expectedRevision: evalSnapshot.cursada.revision,
+        expectedUpdated: evalSnapshot.updated,
+        boletines: { b1: true, b2: false, b3: false, b4: false },
+        informes: [],
+      }, token)).status,
+      409,
+    );
     const old = await readScope(enrollment.id);
     assert.equal((await saveScope(enrollment.id, { desde: 3, hasta: 2 })).status, 400);
     assert.equal((await saveScope(enrollment.id, { sinCursada: true })).status, 409);
@@ -110,7 +131,6 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.equal(withdrawal.status, 200, JSON.stringify(withdrawal.body));
     assert.equal(withdrawal.body.estadoAdministrativo, 'Baja');
     assert.equal((await saveScope(enrollment.id, { hasta: 2 }, old)).status, 409);
-    assert.equal((await teacher(1, 'enviar', 'POST', {})).body.cursadasPendientes.length, 1);
     assert.equal((await saveScope(oldBaja.id, { sinCursada: true })).status, 200);
     const late = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular' });
     assert.equal((await saveScope(late.id, { desde: 2, hasta: 4, escuelaInicial: 'Escuela N° 18 D.E 13', cambiosEscuela: [{ fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }] })).status, 200);
@@ -157,6 +177,10 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.notEqual((await snapshot(2)).body.huella, beforePdf.body.huella);
     const stages = (await request('/api/cys/directivo/etapas/' + periods[2].id, 'GET', null, token)).body;
     assert.deepEqual(stages.cursos.find(row => row.cursoId === course.id).inscripcionesEvaluables, [late.id]);
+    const rosterPreview = (await request('/api/cys/directivo/boletines/curso-nomina/' + course.id + '/' + periods[2].id, 'GET', null, token)).body;
+    assert.equal(rosterPreview.totalEvaluables, 1);
+    assert.equal(rosterPreview.evaluables[0].inscripcionId, late.id);
+    assert.equal(rosterPreview.excluidos.some(row => row.inscripcionId === enrollment.id), true);
     const restored = await create('inscripciones', { id: 'restoredlate001', alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular' });
     assert.equal((await saveScope(restored.id, { desde: 2, hasta: 4 })).status, 200);
     const reviewAt = async n => (await request('/api/cys/directivo/revision/' + course.id + '/' + periods[n - 1].id, 'GET', null, token)).body;
@@ -176,6 +200,7 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     const firstReview = await reviewAt(1);
     assert.equal(firstReview.alumnosSinIncorporar, 1);
     assert.equal(firstReview.boletines.find(row => row.inscripcionId === enrollment.id).estado, 'VISADO');
+    assert.equal(firstReview.alumnosExcluidos.some(row => row.inscripcionId === late.id), true);
     const sameTerm = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular' });
     assert.equal((await saveScope(sameTerm.id, { desde: 3, hasta: 3, registrarBaja: true, fechaEgreso: '2026-09-01' })).status, 200);
     assert.equal((await teacher(3, 'contexto')).body.alumnos.length, 3);
@@ -221,20 +246,14 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
 
     const url = 'http://127.0.0.1:' + vite.httpServer.address().port + '/app/boletines/calificaciones?periodo=' + periods[2].id;
     await page.goto(url);
-    await page.getByRole('button', { name: '1 cursadas por confirmar', exact: true }).click();
-    await page.getByRole('button', { name: 'Confirmar', exact: true }).click();
-    await page.getByLabel('Primer bimestre evaluable').click();
-    await page.getByText('3.º bimestre', { exact: true }).click();
-    await page.locator('.ant-select-dropdown:visible').waitFor({ state: 'hidden' });
-    await page.getByLabel('Último bimestre evaluable').click();
-    await page.locator('.ant-select-dropdown:visible').getByText('4.º bimestre', { exact: true }).click();
-    await page.getByRole('heading', { name: 'Bimestres evaluables', exact: true }).click();
-    await page.locator('.ant-select-dropdown:visible').waitFor({ state: 'hidden' });
-    await page.screenshot({ path: path.join(base, 'evaluable-scope-desktop.png') });
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.screenshot({ path: path.join(base, 'evaluable-scope-mobile.png') });
-    await page.getByRole('button', { name: 'Confirmar cursada', exact: true }).click();
-    await page.waitForFunction(() => !document.body.textContent.includes('Primer bimestre evaluable'));
+    await page.getByText('3° Bimestre', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: /cursadas por confirmar/i }).count(), 0);
+    await page.goto('http://127.0.0.1:' + vite.httpServer.address().port + '/app/alumnos?alumno=' + student.id + '&inscripcion=' + pendingUi.id + '&seccion=evaluaciones');
+    await page.getByText('Boletines de Primaria', { exact: true }).waitFor();
+    await page.getByRole('switch', { name: 'Boletín 1.º Bimestre' }).click();
+    await page.getByRole('switch', { name: 'Boletín 2.º Bimestre' }).click();
+    await page.getByRole('button', { name: 'Guardar cambios' }).click();
+    await page.getByText('Participación evaluativa guardada.', { exact: true }).waitFor();
     const confirmed = await readScope(pendingUi.id);
     assert.equal(confirmed.cursada.desde, 3);
     assert.equal(confirmed.cursada.hasta, 4);

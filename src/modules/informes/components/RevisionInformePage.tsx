@@ -569,6 +569,61 @@ export const RevisionInformePage: React.FC<RevisionInformePageProps> = ({
                     ))}
                   </Row>
                 )}
+
+                {review.alumnosExcluidos && review.alumnosExcluidos.length > 0 && (
+                  <div className={styles.excludedSection}>
+                    <div className={styles.excludedHeader}>
+                      <Text strong className={styles.excludedTitle}>
+                        No incluidos en la nómina de este informe ({review.alumnosExcluidos.length})
+                      </Text>
+                      <Text type="secondary" className={styles.excludedCaption}>
+                        No cuentan en los totales ni figuran en el enlace docente.
+                      </Text>
+                    </div>
+                    <Row gutter={[12, 12]}>
+                      {review.alumnosExcluidos.map((alumno) => (
+                        <Col xs={24} md={12} key={alumno.inscripcionId} className={styles.studentCol}>
+                          <div className={styles.excludedCard}>
+                            <div className={styles.studentIdentity}>
+                              <span className={styles.excludedOrderNumber}>
+                                {alumno.numeroOrden ?? '•'}
+                              </span>
+                              <div className={styles.studentName}>
+                                <Text className={styles.excludedNameText}>
+                                  {alumno.nombreCompleto}
+                                </Text>
+                                <div className={styles.studentTags}>
+                                  <Tag className={styles.secondaryTag}>No evaluable</Tag>
+                                  {alumno.estadoAdministrativo === 'Baja' && (
+                                    <Tag color="error" className={styles.secondaryTag}>
+                                      Baja
+                                    </Tag>
+                                  )}
+                                  {alumno.estadoAdministrativo === 'Libre' && (
+                                    <Tag color="warning" className={styles.secondaryTag}>
+                                      Libre
+                                    </Tag>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <Button
+                              size="small"
+                              type="link"
+                              onClick={() =>
+                                navigate(
+                                  `/app/alumnos?alumno=${encodeURIComponent(alumno.alumnoId)}&inscripcion=${encodeURIComponent(alumno.inscripcionId)}&seccion=evaluaciones`,
+                                )
+                              }
+                            >
+                              Ver en ficha
+                            </Button>
+                          </div>
+                        </Col>
+                      ))}
+                    </Row>
+                  </div>
+                )}
               </div>
             </Card>
           )}

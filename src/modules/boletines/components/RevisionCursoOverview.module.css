@@ -219,6 +219,65 @@
   flex: 0 0 auto;
 }
 
+.excludedSection {
+  border-top: 1px dashed var(--cys-color-border-secondary);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.excludedHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 12px;
+}
+
+.excludedTitle {
+  color: var(--cys-color-text-secondary);
+  font-size: 13px;
+}
+
+.excludedCaption {
+  font-size: 12px;
+}
+
+.excludedCard {
+  align-items: center;
+  background: var(--cys-color-fill-quaternary);
+  border: 1px dashed var(--cys-color-border-secondary);
+  border-radius: 10px;
+  display: flex;
+  height: 100%;
+  justify-content: space-between;
+  min-height: 64px;
+  opacity: 0.78;
+  padding: 10px 14px;
+  width: 100%;
+}
+
+.excludedOrderNumber {
+  align-items: center;
+  background: var(--cys-color-fill-tertiary);
+  border-radius: 8px;
+  color: var(--cys-color-text-tertiary);
+  display: flex;
+  flex: 0 0 auto;
+  font-weight: 700;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.excludedNameText {
+  color: var(--cys-color-text-secondary);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 575px) {
   .headerBanner {
     padding: 12px 14px;
