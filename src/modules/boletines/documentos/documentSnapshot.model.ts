@@ -27,7 +27,13 @@ export interface DocumentSnapshot {
         calificacionGeneralId: string | null;
         criterios: Array<{ criterioId: string; valorEscalaId: string }>;
       }>;
-      cierre: { asistencias: number; inasistencias: number; llegadasTarde: number; observaciones: string } | null;
+      cierre: {
+        asistencias: number;
+        inasistencias: number;
+        llegadasTarde: number;
+        observaciones: string;
+        sintesisConceptualId?: string;
+      } | null;
     }>;
     apoyos: { poseeApoyos: string; cualesApoyos: string; promocionoConAcompanamiento: string | null };
     administrativo: {

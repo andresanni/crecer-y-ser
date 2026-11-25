@@ -1,0 +1,128 @@
+.pageContainer {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px 16px 88px;
+}
+
+.publicHeaderCard {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  border: none;
+  border-radius: 16px;
+  margin-bottom: 18px;
+  color: #ffffff;
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.schoolLogo {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #ffffff;
+  padding: 3px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  margin: 0;
+  color: #ffffff !important;
+  font-size: 20px !important;
+}
+
+.headerSubtitle {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 13.5px;
+}
+
+.summaryBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.mobileCards {
+  display: none;
+}
+
+.desktopTable {
+  display: block;
+}
+
+.studentCard {
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.studentCardInputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.fieldLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cys-color-text-secondary);
+  margin-bottom: 4px;
+}
+
+.floatingDock {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(940px, calc(100vw - 24px));
+  background: var(--cys-color-bg-container);
+  border: 1px solid var(--cys-color-border);
+  border-radius: 14px;
+  padding: 12px 18px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: 90;
+}
+
+@media (max-width: 767px) {
+  .pageContainer {
+    padding: 12px 10px 96px;
+  }
+
+  .headerTitle {
+    font-size: 17px !important;
+  }
+
+  .desktopTable {
+    display: none;
+  }
+
+  .mobileCards {
+    display: block;
+  }
+
+  .floatingDock {
+    bottom: 10px;
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

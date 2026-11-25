@@ -75,7 +75,7 @@ function scopeSnapshot(dao, enrollment) {
   var course = requireRecord(dao, "cursos", enrollment.getString("curso_id"))
   var cycle = requireRecord(dao, "ciclos_lectivos", enrollment.getString("ciclo_id"))
   var evidence = {}
-  ;["evaluaciones_materia", "cierres_periodo_alumno"].forEach((collection) => {
+  ;["evaluaciones_materia", "cierres_periodo_alumno", "asistencias_cierre_b4"].forEach((collection) => {
     findByFilter(dao, collection, "inscripcion_id = {:id}", "", { id: enrollment.getId() }).forEach((record) => {
       var period = requireRecord(dao, "periodos", record.getString("periodo_id"))
       evidence[period.getInt("numero_periodo")] = true
@@ -1330,13 +1330,15 @@ function studentReadyForApproval(dao, workflow, enrollment) {
     })
     return Object.keys(criteria).every((criterionId) => Boolean(selected[criterionId]))
   })
+  var period = requireRecord(dao, "periodos", periodId)
   var closure = findFirstByFilter(
     dao,
     "cierres_periodo_alumno",
     "inscripcion_id = {:enrollmentId} && periodo_id = {:periodId}",
     { enrollmentId: enrollment.getId(), periodId: periodId }
   )
-  return allMaterialsComplete && Boolean(closure)
+  var closureComplete = Boolean(closure) && (period.getInt("numero_periodo") !== 4 || Boolean(closure.getString("sintesis_conceptual_id")))
+  return allMaterialsComplete && closureComplete
 }
 
 function gradebookCompleteness(dao, access) {
@@ -1387,19 +1389,21 @@ function gradebookCompleteness(dao, access) {
       }
     })
 
+    var period = requireRecord(dao, "periodos", periodId)
     var closure = findFirstByFilter(
       dao,
       "cierres_periodo_alumno",
       "inscripcion_id = {:enrollmentId} && periodo_id = {:periodId}",
       { enrollmentId: enrollment.getId(), periodId: periodId }
     )
-    if (missingMaterials.length > 0 || !closure) {
+    var closureComplete = Boolean(closure) && (period.getInt("numero_periodo") !== 4 || Boolean(closure.getString("sintesis_conceptual_id")))
+    if (missingMaterials.length > 0 || !closureComplete) {
       var student = requireRecord(dao, "alumnos", enrollment.getString("alumno_id"))
       pending.push({
         inscripcionId: enrollment.getId(),
         nombreCompleto: (student.getString("apellidos") + ", " + student.getString("nombres")).trim(),
         materiasPendientes: missingMaterials,
-        cierrePendiente: !closure
+        cierrePendiente: !closureComplete
       })
     }
   })
@@ -1589,17 +1593,22 @@ function staffProgress(c) {
     })
 
     var closureRows = arrayOf(new DynamicModel({
-      inscripcion_id: ""
+      inscripcion_id: "",
+      sintesis_conceptual_id: ""
     }))
     txDao.db().newQuery(
-      "SELECT inscripcion_id " +
+      "SELECT inscripcion_id, COALESCE(sintesis_conceptual_id, '') AS sintesis_conceptual_id " +
       "FROM cierres_periodo_alumno " +
       "WHERE periodo_id = {:periodId}"
     ).bind({ periodId: periodId }).all(closureRows)
 
     var closuresByEnrollment = {}
     closureRows.forEach((row) => {
-      closuresByEnrollment[row.inscripcion_id] = true
+      if (periodNumber === 4) {
+        closuresByEnrollment[row.inscripcion_id] = Boolean(row.sintesis_conceptual_id)
+      } else {
+        closuresByEnrollment[row.inscripcion_id] = true
+      }
     })
 
     response = courses.map((course) => {
@@ -1806,7 +1815,8 @@ function studentSnapshot(dao, access, enrollment) {
       asistencias: closureRecord.getInt("asistencias"),
       inasistencias: closureRecord.getInt("inasistencias"),
       llegadasTarde: closureRecord.getInt("llegadas_tarde"),
-      observaciones: closureRecord.getString("observaciones")
+      observaciones: closureRecord.getString("observaciones"),
+      sintesisConceptualId: closureRecord.getString("sintesis_conceptual_id") || ""
     }
   }
 
@@ -1933,38 +1943,59 @@ function saveEvaluation(txDao, access, enrollment, input, materials, values) {
 
 function saveClosure(txDao, access, enrollment, input) {
   var periodId = access.getString("periodo_id")
+  var period = requireRecord(txDao, "periodos", periodId)
+  var periodNumber = period.getInt("numero_periodo")
   var record = findFirstByFilter(
     txDao,
     "cierres_periodo_alumno",
     "inscripcion_id = {:enrollmentId} && periodo_id = {:periodId}",
     { enrollmentId: enrollment.getId(), periodId: periodId }
   )
+  var isNew = !record
   if (!record) {
     record = new Record(txDao.findCollectionByNameOrId("cierres_periodo_alumno"))
     record.set("inscripcion_id", enrollment.getId())
     record.set("periodo_id", periodId)
   }
-  record.set("asistencias", boundedInteger(input.asistencias, 180))
-  record.set("inasistencias", boundedInteger(input.inasistencias, 180))
-  record.set("llegadas_tarde", boundedInteger(input.llegadasTarde, 180))
+  if (periodNumber === 4) {
+    var sintesisId = stringValue(input.sintesisConceptualId, 15)
+    if (!sintesisId) {
+      throw new BadRequestError("La Síntesis Conceptual es obligatoria en el 4.° bimestre.")
+    }
+    var values = scaleValueMap(txDao, access)
+    var scaleRecord = values[sintesisId]
+    if (!scaleRecord) {
+      throw new BadRequestError("La Síntesis Conceptual seleccionada no pertenece a la escala del curso.")
+    }
+    if (isNoCorrespondeScaleLabel(scaleRecord.getString("etiqueta"))) {
+      throw new BadRequestError("La Síntesis Conceptual no admite la calificación No corresponde.")
+    }
+    record.set("sintesis_conceptual_id", sintesisId)
+    if (isNew) {
+      record.set("asistencias", 0)
+      record.set("inasistencias", 0)
+      record.set("llegadas_tarde", 0)
+    }
+  } else {
+    record.set("asistencias", boundedInteger(input.asistencias, 180))
+    record.set("inasistencias", boundedInteger(input.inasistencias, 180))
+    record.set("llegadas_tarde", boundedInteger(input.llegadasTarde, 180))
+  }
   record.set("observaciones", stringValue(input.observaciones, 300))
   txDao.saveRecord(record)
 }
 
 function saveSupport(txDao, access, enrollment, input) {
-  var promotion = stringValue(input.promocionoConAcompanamiento, 2) || "-"
   var support = stringValue(input.poseeApoyos, 2) || "-"
-  if (["SI", "NO", "-"].indexOf(promotion) === -1 || ["SI", "NO", "-"].indexOf(support) === -1) {
+  if (["SI", "NO", "-"].indexOf(support) === -1) {
     throw new BadRequestError("El estado de apoyos no es válido.")
   }
   var periodNumber = requireRecord(txDao, "periodos", access.getString("periodo_id")).getInt("numero_periodo")
   if (periodNumber === firstEvaluableTerm(enrollment) && support === "-") support = "NO"
-  if (periodNumber === 4 && promotion === "-") promotion = "NO"
   var supportDetail = support === "SI" ? stringValue(input.cualesApoyos, 1000) : ""
   if (support === "SI" && !supportDetail) {
     throw new BadRequestError("El detalle de los apoyos es obligatorio.")
   }
-  enrollment.set("promociono_con_acompanamiento", promotion)
   enrollment.set("posee_apoyos", support)
   enrollment.set("cuales_apoyos", supportDetail)
   txDao.saveRecord(enrollment)
@@ -1980,10 +2011,6 @@ function applySupportDefaults(txDao, access) {
     if (periodNumber === firstEvaluableTerm(enrollment) && ["SI", "NO"].indexOf(enrollment.getString("posee_apoyos")) === -1) {
       enrollment.set("posee_apoyos", "NO")
       enrollment.set("cuales_apoyos", "")
-      txDao.saveRecord(enrollment)
-    }
-    if (periodNumber === 4 && ["SI", "NO"].indexOf(enrollment.getString("promociono_con_acompanamiento")) === -1) {
-      enrollment.set("promociono_con_acompanamiento", "NO")
       txDao.saveRecord(enrollment)
     }
   })
@@ -2044,7 +2071,19 @@ function documentGuardians(dao, studentId) {
 
 function documentPreparation(dao, enrollment, period, student) {
   var guardians = documentGuardians(dao, student.getId())
-  var issues = documentDataIssues(student, guardians.length === 1 ? guardians[0] : null, enrollment, period.getInt("numero_periodo"))
+  var cutoff = period.getInt("numero_periodo")
+  var issues = documentDataIssues(student, guardians.length === 1 ? guardians[0] : null, enrollment, cutoff)
+  if (cutoff === 4) {
+    var finalAttendance = require("./finalAttendance.js").getStudentFinalAttendance(dao, enrollment, period)
+    if (!finalAttendance) {
+      issues.push({
+        campo: "asistenciasB4",
+        mensaje: "Completar y entregar las asistencias finales de 4.° bimestre en la pestaña Asistencias finales.",
+        origen: "asistencias_b4",
+        bimestre: 4
+      })
+    }
+  }
   return { completa: issues.length === 0, alumnoId: student.getId(), faltantes: issues }
 }
 
@@ -2069,9 +2108,6 @@ function documentDataIssues(student, guardian, enrollment, cutoff) {
     issues.push({ campo: "apoyos.poseeApoyos", mensaje: "Indicar si posee apoyos en Integración Escolar del primer bimestre evaluable.", origen: "apoyos", bimestre: firstTerm })
   } else if (support === "SI") {
     required(enrollment.getString("cuales_apoyos"), "apoyos.cualesApoyos", "Completar cuáles son los apoyos en Integración Escolar del primer bimestre evaluable.", "apoyos", firstTerm)
-  }
-  if (cutoff === 4 && ["SI", "NO"].indexOf(enrollment.getString("promociono_con_acompanamiento")) === -1) {
-    issues.push({ campo: "apoyos.promocionoConAcompanamiento", mensaje: "Indicar la promoción con acompañamiento en Integración Escolar del cuarto bimestre.", origen: "apoyos", bimestre: 4 })
   }
   var desde = (enrollment.getInt ? enrollment.getInt("bimestre_desde") : 1) || 1
   var isLateEntry = Boolean(enrollment.getBool ? enrollment.getBool("es_alta_tardia") : false) || desde > 1
@@ -2139,7 +2175,20 @@ function buildDocumentSnapshot(dao, enrollmentId, periodId) {
       response = { message: "El alumno debe tener exactamente un tutor vinculado.", codigo: "TUTOR_UNICO_REQUERIDO" }
       return { status: 422, body: response }
     }
-    var missingData = documentDataIssues(student, uniqueGuardians[0], enrollment, period.getInt("numero_periodo"))
+    var cutoffNumber = period.getInt("numero_periodo")
+    var missingData = documentDataIssues(student, uniqueGuardians[0], enrollment, cutoffNumber)
+    var finalAttendanceB4 = null
+    if (cutoffNumber === 4) {
+      finalAttendanceB4 = require("./finalAttendance.js").getStudentFinalAttendance(dao, enrollment, period)
+      if (!finalAttendanceB4) {
+        missingData.push({
+          campo: "asistenciasB4",
+          mensaje: "Completar y entregar las asistencias finales de 4.° bimestre en la pestaña Asistencias finales.",
+          origen: "asistencias_b4",
+          bimestre: 4
+        })
+      }
+    }
     if (missingData.length) {
       return { status: 422, body: {
         codigo: "DATOS_DOCUMENTALES_INCOMPLETOS",
@@ -2152,7 +2201,18 @@ function buildDocumentSnapshot(dao, enrollmentId, periodId) {
       var snapshot = studentSnapshot(dao, sourceWorkflow, enrollment)
       snapshot.evaluaciones.sort((a, b) => a.cursoMateriaId.localeCompare(b.cursoMateriaId))
       snapshot.evaluaciones.forEach((evaluation) => evaluation.criterios.sort((a, b) => a.criterioId.localeCompare(b.criterioId)))
-      return { bimestre: dependency.bimestre, periodoId: dependency.periodoId, evaluaciones: snapshot.evaluaciones, cierre: snapshot.cierre }
+      var closurePayload = snapshot.cierre
+      if (dependency.bimestre === 4 && closurePayload && finalAttendanceB4) {
+        closurePayload = {
+          id: closurePayload.id,
+          asistencias: finalAttendanceB4.asistencias,
+          inasistencias: finalAttendanceB4.inasistencias,
+          llegadasTarde: finalAttendanceB4.llegadasTarde,
+          observaciones: closurePayload.observaciones,
+          sintesisConceptualId: closurePayload.sintesisConceptualId || ""
+        }
+      }
+      return { bimestre: dependency.bimestre, periodoId: dependency.periodoId, evaluaciones: snapshot.evaluaciones, cierre: closurePayload }
     })
     var data = {
       versionContrato: 1,
@@ -2160,7 +2220,7 @@ function buildDocumentSnapshot(dao, enrollmentId, periodId) {
       inscripcionId: enrollment.getId(),
       ciclo: { id: cycle.getId(), ano: cycle.getInt("ano") },
       curso: { id: course.getId(), nombre: course.getString("nombre") },
-      bimestreCorte: period.getInt("numero_periodo"),
+      bimestreCorte: cutoffNumber,
       alumno: { apellidos: student.getString("apellidos"), nombres: student.getString("nombres"), dni: student.getString("dni") },
       responsable: uniqueGuardians[0],
       materias: materials,
@@ -2169,7 +2229,7 @@ function buildDocumentSnapshot(dao, enrollmentId, periodId) {
       apoyos: {
         poseeApoyos: enrollment.getString("posee_apoyos"),
         cualesApoyos: enrollment.getString("cuales_apoyos"),
-        promocionoConAcompanamiento: period.getInt("numero_periodo") === 4 ? enrollment.getString("promociono_con_acompanamiento") : null
+        promocionoConAcompanamiento: cutoffNumber === 4 ? "NO" : null
       },
       administrativo: {
         domicilio: "",
@@ -2183,7 +2243,7 @@ function buildDocumentSnapshot(dao, enrollmentId, periodId) {
         fechaEgreso: enrollment.getString("fecha_egreso")
       },
       dependencias: eligibility.dependencias,
-      pendientesDeIntegracion: ["MAPEO_ESCALA", "CIERRE_ANUAL", "HISTORIAL_ADMINISTRATIVO"]
+      pendientesDeIntegracion: []
     }
     response = { datos: data, huella: $security.sha256(JSON.stringify(data)) }
   return { status: eligible ? 200 : 422, body: response }

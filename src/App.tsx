@@ -8,6 +8,7 @@ import { AlumnoList } from './modules/alumnos/components/AlumnoList';
 import { CargaNotasPage } from './modules/boletines/components/CargaNotasPage';
 import { BoletinConfigPage } from './modules/boletines/components/BoletinConfigPage';
 import { CargaDocentePublicaPage } from './modules/boletines/components/CargaDocentePublicaPage';
+import { CargaAsistenciasB4PublicaPage } from './modules/boletines/components/CargaAsistenciasB4PublicaPage';
 import { AsistenciasPage } from './modules/asistencias';
 import { InformesPage, CargaInformePublicaPage } from './modules/informes';
 import { Login } from './modules/auth/components/Login';
@@ -27,6 +28,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/carga" element={<CargaDocentePublicaPage />} />
+            <Route path="/carga-asistencias" element={<CargaAsistenciasB4PublicaPage />} />
             <Route path="/carga-informe" element={<CargaInformePublicaPage />} />
             <Route path="/app" element={<ProtectedRoute />}>
               <Route element={<MainLayout />}>

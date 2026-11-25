@@ -35,7 +35,6 @@ import {
   UserOutlined,
   SafetyCertificateOutlined,
   LockOutlined,
-  FlagOutlined,
   TrophyOutlined,
   DashboardOutlined,
   ArrowRightOutlined,
@@ -61,6 +60,7 @@ import {
   evaluateMateriaAverageCoherence,
   evaluateMateriaPpiChange,
   formatCalificacionBoletinShortLabel,
+  isNoCorrespondeEscalaEtiqueta,
   type CursoMateria,
   type Periodo,
   type ValorEscala,
@@ -73,6 +73,8 @@ import {
 import type { GradebookAccessPolicy } from '../models/gradebookAccess.model';
 import type { GradebookHistoricalTerm } from '../models/gradebookDataSource.model';
 import styles from './VistaPorAlumno.module.css';
+import { ObservacionPpiSelector } from './ObservacionPpiSelector';
+import { parsePpiObservationGrades } from '../utils/observacionPpi';
 
 const criterioFieldKey = (cursoMateriaId: string, criterioId: string) => (
   `criterio:${cursoMateriaId}:${criterioId}`
@@ -84,6 +86,7 @@ const calificacionGeneralFieldKey = (cursoMateriaId: string) => (
 
 interface VistaPorAlumnoProps {
   periodoId: string;
+  cursoNombre?: string;
   alumnos: AlumnoInscriptoRow[];
   cursoMaterias: CursoMateria[];
   valoresEscala: ValorEscala[];
@@ -114,6 +117,7 @@ interface AsistenciaAlumnoState {
   inasistencias: number;
   llegadasTarde: number;
   observaciones: string;
+  sintesisConceptualId: string;
   isModified?: boolean;
 }
 
@@ -126,6 +130,7 @@ interface ApoyoInclusionState {
 
 export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   periodoId,
+  cursoNombre,
   alumnos,
   cursoMaterias,
   valoresEscala,
@@ -160,6 +165,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     () => [...valoresEscala].sort((a, b) => b.pesoNumerico - a.pesoNumerico || b.ordenVisual - a.ordenVisual),
     [valoresEscala],
   );
+  const valoresEscalaSintesis = useMemo(
+    () => valoresEscalaDesc.filter((v) => !isNoCorrespondeEscalaEtiqueta(v.etiqueta)),
+    [valoresEscalaDesc],
+  );
+  const resolvedCursoNombre = cursoNombre || cursoMaterias[0]?.cursoNombre || '';
   const valoresEscalaById = useMemo(
     () => new Map(valoresEscala.map((v) => [v.id, v])),
     [valoresEscala],
@@ -197,8 +207,11 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     inasistencias: 0,
     llegadasTarde: 0,
     observaciones: '',
+    sintesisConceptualId: '',
     isModified: false,
   });
+  const [ppiObsEnabled, setPpiObsEnabled] = useState(false);
+  const [ppiObsGrades, setPpiObsGrades] = useState<number[]>([]);
 
   const [bimestreApoyos, setBimestreApoyos] = useState(1);
   const [supportNeedsConfirmation, setSupportNeedsConfirmation] = useState(false);
@@ -356,12 +369,17 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         setMateriasState(newMateriasState);
         setHistorialBimestres(snapshot.historialBimestres || []);
         setEditingGradeField(null);
+        const obsTexto = cierre?.observaciones || '';
+        const parsedPpiGrades = parsePpiObservationGrades(obsTexto);
+        setPpiObsEnabled(Boolean(parsedPpiGrades));
+        setPpiObsGrades(parsedPpiGrades || []);
         setAsistenciaState({
           cierreId: cierre?.id,
           asistencias: cierre?.asistencias ?? 0,
           inasistencias: cierre?.inasistencias ?? 0,
           llegadasTarde: cierre?.llegadasTarde ?? 0,
-          observaciones: cierre?.observaciones || '',
+          observaciones: obsTexto,
+          sintesisConceptualId: cierre?.sintesisConceptualId || '',
           isModified: false,
         });
 
@@ -370,16 +388,10 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         const apoyos = snapshot.apoyos;
         const primerBimestreEvaluable = snapshot.bimestreApoyos ?? 1;
         setBimestreApoyos(primerBimestreEvaluable);
-        const promocionoConAcompanamiento = apoyos?.promocionoConAcompanamiento
-          || curAlu?.promocionoConAcompanamiento
-          || '-';
         const poseeApoyos = apoyos?.poseeApoyos || curAlu?.poseeApoyos || '-';
-        setSupportNeedsConfirmation((periodo?.numeroPeriodo === primerBimestreEvaluable && poseeApoyos === '-') || (periodo?.numeroPeriodo === 4 && promocionoConAcompanamiento === '-'));
+        setSupportNeedsConfirmation(periodo?.numeroPeriodo === primerBimestreEvaluable && poseeApoyos === '-');
         setApoyoState({
-          promocionoConAcompanamiento: periodo?.numeroPeriodo === 4
-            && promocionoConAcompanamiento === '-'
-            ? 'NO'
-            : promocionoConAcompanamiento,
+          promocionoConAcompanamiento: 'NO',
           poseeApoyos: periodo?.numeroPeriodo === primerBimestreEvaluable && poseeApoyos === '-'
             ? 'NO'
             : poseeApoyos,
@@ -479,7 +491,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
   };
 
   const handleAsistenciaChange = (
-    field: 'asistencias' | 'inasistencias' | 'llegadasTarde' | 'observaciones',
+    field: 'asistencias' | 'inasistencias' | 'llegadasTarde' | 'observaciones' | 'sintesisConceptualId',
     val: number | string
   ) => {
     setAsistenciaState((prev) => ({
@@ -489,16 +501,24 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
     }));
   };
 
+  const handlePpiObservationChange = (next: { enabled: boolean; grades: number[]; text: string }) => {
+    setPpiObsEnabled(next.enabled);
+    setPpiObsGrades(next.grades);
+    setAsistenciaState((prev) => ({
+      ...prev,
+      observaciones: next.text,
+      isModified: true,
+    }));
+  };
+
   const isBimestreApoyos = periodo?.numeroPeriodo === bimestreApoyos;
   const isCuartoBimestre = periodo?.numeroPeriodo === 4;
 
   const handleApoyoChange = (
-    field: 'promocionoConAcompanamiento' | 'poseeApoyos' | 'cualesApoyos',
+    field: 'poseeApoyos' | 'cualesApoyos',
     val: string
   ) => {
-
-    if (field === 'promocionoConAcompanamiento' && !isCuartoBimestre) return;
-    if ((field === 'poseeApoyos' || field === 'cualesApoyos') && !isBimestreApoyos) return;
+    if (!isBimestreApoyos) return;
 
     setApoyoState((prev) => {
       const next = { ...prev, [field]: val, isModified: true };
@@ -536,6 +556,20 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       return;
     }
 
+    if (access.mode === 'magic-link' && ppiObsEnabled && ppiObsGrades.length === 0) {
+      message.warning('Seleccioná al menos un grado en la observación PPI o desactivá la opción.');
+      return;
+    }
+
+    if (
+      isCuartoBimestre
+      && asistenciaState.isModified
+      && !asistenciaState.sintesisConceptualId
+    ) {
+      message.warning('Seleccioná la Síntesis Conceptual antes de guardar el cierre.');
+      return;
+    }
+
     const incompleteMateria = cursoMaterias.find((cm) => {
       const mat = materiasState[cm.id];
       if (!mat?.isModified) return false;
@@ -568,20 +602,27 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         }];
       });
       const cierre = access.canEditPeriodClosure
-        && (access.mode === 'magic-link' || asistenciaState.isModified)
-        ? {
-          asistencias: asistenciaState.asistencias,
-          inasistencias: asistenciaState.inasistencias,
-          llegadasTarde: asistenciaState.llegadasTarde,
-          observaciones: asistenciaState.observaciones,
-        }
+        && (isCuartoBimestre
+          ? Boolean(asistenciaState.sintesisConceptualId)
+            && (access.mode === 'magic-link' || asistenciaState.isModified)
+          : (access.mode === 'magic-link' || asistenciaState.isModified))
+        ? (isCuartoBimestre
+          ? {
+            observaciones: asistenciaState.observaciones,
+            sintesisConceptualId: asistenciaState.sintesisConceptualId,
+          }
+          : {
+            asistencias: asistenciaState.asistencias,
+            inasistencias: asistenciaState.inasistencias,
+            llegadasTarde: asistenciaState.llegadasTarde,
+            observaciones: asistenciaState.observaciones,
+          })
         : undefined;
-      const shouldPersistSupportDefaults = access.mode === 'magic-link'
-        && (isBimestreApoyos || isCuartoBimestre);
+      const shouldPersistSupportDefaults = access.mode === 'magic-link' && isBimestreApoyos;
       const apoyos = access.canEditStudentSupport
         && (apoyoState.isModified || shouldPersistSupportDefaults)
         ? {
-          promocionoConAcompanamiento: apoyoState.promocionoConAcompanamiento,
+          promocionoConAcompanamiento: 'NO',
           poseeApoyos: apoyoState.poseeApoyos,
           cualesApoyos: apoyoState.cualesApoyos,
         }
@@ -640,7 +681,9 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
       });
 
       const totalMats = cursoMaterias.length;
-      const tieneAsist = Boolean(asistenciaState.cierreId || cierre);
+      const tieneAsist = isCuartoBimestre
+        ? Boolean(asistenciaState.sintesisConceptualId)
+        : Boolean(asistenciaState.cierreId || cierre);
       const porc = totalMats > 0 ? Math.round((matCompletadas / totalMats) * 100) : 0;
       const nuevoEstado: EstadoProgresoAlumno =
         matCompletadas === totalMats && tieneAsist
@@ -1315,7 +1358,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
             </Typography.Text>
             <Tag className={styles.evaluationMetaTag}>Trayectoria anual</Tag>
           </div>
-          {readOnly && (isBimestreApoyos || isCuartoBimestre) && (
+          {readOnly && isBimestreApoyos && (
             editingSection === 'support' ? (
               <Space size={6} className={styles.evaluationActions}>
                 <Button
@@ -1357,8 +1400,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
         <Divider className={styles.evaluationDivider} />
 
         <Row gutter={[16, 14]}>
-          { }
-          <Col xs={24} lg={14}>
+          <Col xs={24}>
             <div
               style={{
                 background: isBimestreApoyos ? 'var(--cys-color-success-bg)' : "var(--cys-color-fill-quaternary)",
@@ -1373,7 +1415,7 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                 <Space size={4}>
                   {!isBimestreApoyos && <LockOutlined style={{ color: 'var(--cys-color-text-secondary)', fontSize: 12 }} />}
                   <Typography.Text strong style={{ fontSize: 12.5, color: isBimestreApoyos ? "var(--cys-color-success-text)" : "var(--cys-color-text-description)" }}>
-                    1. Dispositivos de Apoyo / Acompañamiento
+                    Dispositivos de Apoyo / Acompañamiento
                   </Typography.Text>
                 </Space>
                 <Tag
@@ -1459,79 +1501,6 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   </div>
                 </Col>
               </Row>
-            </div>
-          </Col>
-
-          { }
-          <Col xs={24} lg={10}>
-            <div
-              style={{
-                background: isCuartoBimestre ? 'var(--cys-color-primary-bg)' : "var(--cys-color-fill-quaternary)",
-                border: isCuartoBimestre ? '1px solid #93c5fd' : "1px solid var(--cys-color-border-secondary)",
-                borderRadius: 10,
-                padding: '10px 14px',
-                height: '100%',
-                opacity: isCuartoBimestre ? 1 : 0.75,
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
-                <Space size={4}>
-                  {isCuartoBimestre ? <FlagOutlined style={{ color: 'var(--cys-color-primary-text)', fontSize: 12 }} /> : <LockOutlined style={{ color: 'var(--cys-color-text-secondary)', fontSize: 12 }} />}
-                  <Typography.Text strong style={{ fontSize: 12.5, color: isCuartoBimestre ? "var(--cys-color-primary-text)" : "var(--cys-color-text-description)" }}>
-                    2. Promoción con Acompañamiento
-                  </Typography.Text>
-                </Space>
-                <Tag
-                  style={{
-                    fontSize: 10.5,
-                    borderRadius: 6,
-                    margin: 0,
-                    fontWeight: 700,
-                    padding: '1px 8px',
-                    background: isCuartoBimestre ? 'rgba(37, 99, 235, 0.12)' : "var(--cys-color-fill-tertiary)",
-                    color: isCuartoBimestre ? "var(--cys-color-primary-text)" : "var(--cys-color-text-secondary)",
-                    border: isCuartoBimestre ? '1px solid rgba(37, 99, 235, 0.3)' : "1px solid var(--cys-color-border)",
-                  }}
-                >
-                  4TO BIMESTRE
-                </Tag>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <Typography.Text style={{ fontSize: 11.5, color: isCuartoBimestre ? "var(--cys-color-text-description)" : "var(--cys-color-text-secondary)", fontWeight: 600 }}>
-                  ¿Promocionó con acompañamiento?
-                </Typography.Text>
-                <Tooltip
-                  title={
-                    !isCuartoBimestre
-                      ? 'La condición de promoción con acompañamiento se define exclusivamente durante el cierre del 4° Bimestre.'
-                      : undefined
-                  }
-                >
-                  <div>
-                    {readOnly && (editingSection !== 'support' || !isCuartoBimestre) ? (
-                      <Typography.Text strong>
-                        {apoyoState.promocionoConAcompanamiento === 'SI' ? 'Sí' : apoyoState.promocionoConAcompanamiento === 'NO' ? 'No' : 'Sin especificar'}
-                      </Typography.Text>
-                    ) : (
-                      <Select
-                        value={apoyoState.promocionoConAcompanamiento}
-                        onChange={(val) => handleApoyoChange('promocionoConAcompanamiento', val)}
-                        size="middle"
-                        disabled={!isCuartoBimestre}
-                        className={ui.fullWidth}
-                        options={[
-                          { value: 'SI', label: 'Sí' },
-                          { value: 'NO', label: 'No' },
-                          ...(!isCuartoBimestre
-                            ? [{ value: '-', label: 'Sin especificar (—)' }]
-                            : []),
-                        ]}
-                      />
-                    )}
-                  </div>
-                </Tooltip>
-              </div>
             </div>
           </Col>
         </Row>
@@ -2068,75 +2037,76 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   )}
                 </div>
               )}
-              <Card
-                style={{
-                  borderRadius: 14,
-                  border: asistenciaState.isModified ? '1.5px solid #7c3aed' : "1px solid var(--cys-color-border-secondary)",
-                  background: 'var(--cys-color-bg-container)',
-                  boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
-                }}
-                styles={{ body: { padding: '16px 20px' } }}
-              >
-                <Typography.Title level={5} style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: '#7c3aed' }}>
-                  Asistencias
-                </Typography.Title>
-                <Row gutter={[16, 16]}>
-              <Col xs={24} sm={8}>
-                <Space orientation="vertical" size={4} className={ui.fullWidth}>
-                  <Typography.Text strong className={ui.secondaryCaption}>
-                    ASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
-                  </Typography.Text>
-                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.asistencias}</Typography.Text> : (
-                    <InputNumber
-                      aria-required="true"
-                      min={0}
-                      max={180}
-                      className={ui.fullWidth}
-                      value={asistenciaState.asistencias}
-                      onChange={(val) => handleAsistenciaChange('asistencias', val ?? 0)}
-                    />
-                  )}
-                </Space>
-              </Col>
+              {!isCuartoBimestre && (
+                <Card
+                  style={{
+                    borderRadius: 14,
+                    border: asistenciaState.isModified ? '1.5px solid #7c3aed' : "1px solid var(--cys-color-border-secondary)",
+                    background: 'var(--cys-color-bg-container)',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+                  }}
+                  styles={{ body: { padding: '16px 20px' } }}
+                >
+                  <Typography.Title level={5} style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 700, color: '#7c3aed' }}>
+                    Asistencias
+                  </Typography.Title>
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={8}>
+                      <Space orientation="vertical" size={4} className={ui.fullWidth}>
+                        <Typography.Text strong className={ui.secondaryCaption}>
+                          ASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
+                        </Typography.Text>
+                        {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.asistencias}</Typography.Text> : (
+                          <InputNumber
+                            aria-required="true"
+                            min={0}
+                            max={180}
+                            className={ui.fullWidth}
+                            value={asistenciaState.asistencias}
+                            onChange={(val) => handleAsistenciaChange('asistencias', val ?? 0)}
+                          />
+                        )}
+                      </Space>
+                    </Col>
 
-              <Col xs={12} sm={8}>
-                <Space orientation="vertical" size={4} className={ui.fullWidth}>
-                  <Typography.Text strong className={ui.secondaryCaption}>
-                    INASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
-                  </Typography.Text>
-                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.inasistencias}</Typography.Text> : (
-                    <InputNumber
-                      aria-required="true"
-                      min={0}
-                      max={180}
-                      className={ui.fullWidth}
-                      value={asistenciaState.inasistencias}
-                      onChange={(val) => handleAsistenciaChange('inasistencias', val ?? 0)}
-                    />
-                  )}
-                </Space>
-              </Col>
+                    <Col xs={12} sm={8}>
+                      <Space orientation="vertical" size={4} className={ui.fullWidth}>
+                        <Typography.Text strong className={ui.secondaryCaption}>
+                          INASISTENCIAS <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
+                        </Typography.Text>
+                        {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.inasistencias}</Typography.Text> : (
+                          <InputNumber
+                            aria-required="true"
+                            min={0}
+                            max={180}
+                            className={ui.fullWidth}
+                            value={asistenciaState.inasistencias}
+                            onChange={(val) => handleAsistenciaChange('inasistencias', val ?? 0)}
+                          />
+                        )}
+                      </Space>
+                    </Col>
 
-              <Col xs={12} sm={8}>
-                <Space orientation="vertical" size={4} className={ui.fullWidth}>
-                  <Typography.Text strong className={ui.secondaryCaption}>
-                    LLEGADAS TARDE <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
-                  </Typography.Text>
-                  {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.llegadasTarde}</Typography.Text> : (
-                    <InputNumber
-                      aria-required="true"
-                      min={0}
-                      max={180}
-                      className={ui.fullWidth}
-                      value={asistenciaState.llegadasTarde}
-                      onChange={(val) => handleAsistenciaChange('llegadasTarde', val ?? 0)}
-                    />
-                  )}
-                </Space>
-              </Col>
-
-                </Row>
-              </Card>
+                    <Col xs={12} sm={8}>
+                      <Space orientation="vertical" size={4} className={ui.fullWidth}>
+                        <Typography.Text strong className={ui.secondaryCaption}>
+                          LLEGADAS TARDE <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
+                        </Typography.Text>
+                        {readOnly && editingSection !== 'closure' ? <Typography.Text strong>{asistenciaState.llegadasTarde}</Typography.Text> : (
+                          <InputNumber
+                            aria-required="true"
+                            min={0}
+                            max={180}
+                            className={ui.fullWidth}
+                            value={asistenciaState.llegadasTarde}
+                            onChange={(val) => handleAsistenciaChange('llegadasTarde', val ?? 0)}
+                          />
+                        )}
+                      </Space>
+                    </Col>
+                  </Row>
+                </Card>
+              )}
               <Card
                 style={{
                   borderRadius: 14,
@@ -2150,24 +2120,76 @@ export const VistaPorAlumno: React.FC<VistaPorAlumnoProps> = ({
                   Observaciones
                 </Typography.Title>
                 <Space orientation="vertical" size={4} className={ui.fullWidth}>
-                  <Typography.Text strong className={ui.secondaryCaption}>
-                    OBSERVACIONES
-                  </Typography.Text>
                   {readOnly && editingSection !== 'closure' ? (
-                    <Typography.Paragraph style={{ margin: 0 }}>
-                      {asistenciaState.observaciones || 'Sin observaciones'}
-                    </Typography.Paragraph>
-                  ) : (
-                    <Input.TextArea
-                      rows={2}
+                    <>
+                      <Typography.Text strong className={ui.secondaryCaption}>
+                        OBSERVACIONES
+                      </Typography.Text>
+                      <Typography.Paragraph style={{ margin: 0 }}>
+                        {asistenciaState.observaciones || 'Sin observaciones'}
+                      </Typography.Paragraph>
+                    </>
+                  ) : access.mode === 'magic-link' ? (
+                    <ObservacionPpiSelector
                       value={asistenciaState.observaciones}
-                      onChange={(e) => handleAsistenciaChange('observaciones', e.target.value)}
-                      maxLength={300}
-                      showCount
+                      cursoNombre={resolvedCursoNombre}
+                      enabled={ppiObsEnabled}
+                      selectedGrades={ppiObsGrades}
+                      onChange={handlePpiObservationChange}
                     />
+                  ) : (
+                    <>
+                      <Typography.Text strong className={ui.secondaryCaption}>
+                        OBSERVACIONES
+                      </Typography.Text>
+                      <Input.TextArea
+                        rows={2}
+                        value={asistenciaState.observaciones}
+                        onChange={(e) => handleAsistenciaChange('observaciones', e.target.value)}
+                        maxLength={300}
+                        showCount
+                      />
+                    </>
                   )}
                 </Space>
               </Card>
+              {isCuartoBimestre && (
+                <Card
+                  style={{
+                    borderRadius: 14,
+                    border: asistenciaState.isModified ? '1.5px solid #7c3aed' : "1px solid var(--cys-color-border-secondary)",
+                    background: 'var(--cys-color-bg-container)',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.02)',
+                  }}
+                  styles={{ body: { padding: '16px 20px' } }}
+                >
+                  <Typography.Title level={5} style={{ margin: '0 0 12px', fontSize: 15, fontWeight: 700, color: '#7c3aed' }}>
+                    Síntesis Conceptual Anual
+                  </Typography.Title>
+                  <Space orientation="vertical" size={4} className={ui.fullWidth}>
+                    <Typography.Text strong className={ui.secondaryCaption}>
+                      SÍNTESIS CONCEPTUAL <Typography.Text type="danger" aria-hidden="true">*</Typography.Text>
+                    </Typography.Text>
+                    {readOnly && editingSection !== 'closure' ? (
+                      <Typography.Text strong>
+                        {valoresEscalaById.get(asistenciaState.sintesisConceptualId)?.etiqueta || 'Sin definir'}
+                      </Typography.Text>
+                    ) : (
+                      <Select
+                        placeholder="Seleccioná la Síntesis Conceptual..."
+                        value={asistenciaState.sintesisConceptualId || undefined}
+                        onChange={(val) => handleAsistenciaChange('sintesisConceptualId', val ?? '')}
+                        className={getClassNameForValor(asistenciaState.sintesisConceptualId)}
+                        style={{ width: '100%', maxWidth: 360 }}
+                        options={valoresEscalaSintesis.map((val) => ({
+                          value: val.id,
+                          label: val.etiqueta,
+                        }))}
+                      />
+                    )}
+                  </Space>
+                </Card>
+              )}
             </>
           )}
         </div>

@@ -10,6 +10,16 @@ const conceptos: Record<string, ConceptoCalificacion> = {
   'no corresponde': 'noCorresponde',
 };
 
+const PROMOVIDO_POR_GRADO: Record<GradoPrimario, string> = {
+  1: 'SEGUNDO GRADO',
+  2: 'TERCER GRADO',
+  3: 'CUARTO GRADO',
+  4: 'QUINTO GRADO',
+  5: 'SEXTO GRADO',
+  6: 'SÉPTIMO GRADO',
+  7: 'NIVEL SECUNDARIO',
+};
+
 export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institucion: BoletinDocumentData['institucion']): {
   documento: BoletinDocumentData | null;
   bloqueos: string[];
@@ -17,7 +27,7 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
 } {
   const data = snapshot.datos;
   const bloqueos: string[] = [];
-  const pendientes = data.bimestreCorte === 4 ? ['Definir síntesis, promoción y registro administrativo anual antes de emitir.'] : [];
+  const pendientes: string[] = [];
   const match = /^([1-7])\s*[°º]?$/.exec(data.curso.nombre.trim());
   if (!match || data.versionContrato !== 1 || !Number.isInteger(data.bimestreCorte) || data.bimestreCorte < 1 || data.bimestreCorte > 4) {
     return { documento: null, bloqueos: ['El grado, corte o versión del contrato no está admitido.'], pendientes };
@@ -98,7 +108,6 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     };
     return { bimestre, asistencias: cantidad(source?.asistencias), inasistencias: cantidad(source?.inasistencias), llegadasTarde: cantidad(source?.llegadasTarde), observaciones: bimestre < desde ? { estado: 'anteriorIngreso', texto: `(*) ${['Primer', 'Segundo', 'Tercer', 'Cuarto'][bimestre - 1]} bimestre, información perteneciente a colegio anterior, consta en legajo de alumno.` } as const : bimestre > data.bimestreCorte ? futuro : source ? { estado: 'confirmado', texto: source.observaciones } as const : sinDato };
   };
-  const anual = data.bimestreCorte < 4 ? futuro : sinDato;
   const respuestaBinaria = (value: string | null): ValorDocumental => value === 'SI'
     ? { estado: 'confirmado', texto: 'SÍ' }
     : value === 'NO' ? { estado: 'confirmado', texto: 'NO' } : sinDato;
@@ -107,7 +116,31 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     cualesApoyos: data.apoyos.poseeApoyos === 'NO'
       ? { estado: 'confirmado', texto: '---' }
       : data.apoyos.poseeApoyos === 'SI' ? texto(data.apoyos.cualesApoyos) : sinDato,
-    promocionoConAcompanamiento: data.bimestreCorte < 4 ? futuro : respuestaBinaria(data.apoyos.promocionoConAcompanamiento),
+    promocionoConAcompanamiento: data.bimestreCorte < 4 ? futuro : { estado: 'confirmado', texto: 'NO' },
+  };
+  const resolverSintesisAnual = (): ValorDocumental => {
+    if (data.bimestreCorte < 4) return futuro;
+    const sintesisId = periodos.get(4)?.cierre?.sintesisConceptualId;
+    const rawScale = sintesisId ? data.escala.find((item) => item.id === sintesisId) : undefined;
+    const parsedScale = sintesisId ? escala.get(sintesisId) : undefined;
+    if (!rawScale || !parsedScale || parsedScale.concepto === 'noCorresponde') {
+      bloqueos.push('Falta una Síntesis Conceptual válida en el 4.° bimestre.');
+      return sinDato;
+    }
+    return { estado: 'confirmado', texto: rawScale.etiqueta };
+  };
+  const resolverPromovidoA = (): ValorDocumental => {
+    if (data.bimestreCorte < 4) return futuro;
+    const destinoBase = PROMOVIDO_POR_GRADO[grado];
+    const textoDestino = data.apoyos.poseeApoyos === 'SI'
+      ? `${destinoBase}, SEGÚN PPI QUE SE ADJUNTA`
+      : destinoBase;
+    return { estado: 'confirmado', texto: textoDestino };
+  };
+  const cierreAnual = {
+    sintesis: resolverSintesisAnual(),
+    permaneceEn: data.bimestreCorte < 4 ? futuro : { estado: 'confirmado' as const, texto: '---' },
+    promovidoA: resolverPromovidoA(),
   };
   const formatearFecha = (raw?: string | null): ValorDocumental => {
     if (!raw?.trim()) return { estado: 'confirmado', texto: '---' };
@@ -140,7 +173,7 @@ export function adaptarInstantaneaDocumental(snapshot: DocumentSnapshot, institu
     materiasAcademicas: academic.filter((_, index) => !materias[index].formativa),
     cierres: [cierre(1), cierre(2), cierre(3), cierre(4)],
     integracion,
-    cierreAnual: { sintesis: anual, permaneceEn: anual, promovidoA: anual },
+    cierreAnual,
     registroAdministrativo: {
       escuelaInicial: celdaLimpia(escuelaInicialTexto),
       fechaIngreso: formatearFecha(fechaIngresoTexto),

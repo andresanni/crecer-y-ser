@@ -106,6 +106,7 @@ interface TeacherStudentDto {
     inasistencias: number;
     llegadasTarde: number;
     observaciones: string;
+    sintesisConceptualId?: string;
   };
   apoyos: null | {
     promocionoConAcompanamiento: string;
@@ -261,6 +262,7 @@ const buildProgress = (
   cursoMaterias: CursoMateria[],
   criteriosMap: Record<string, CriterioEvaluacion[]>,
   snapshots: Map<string, GradebookStudentSnapshot>,
+  isCuartoBimestre: boolean,
 ) => {
   const alumnosProgreso: Record<string, ProgresoAlumnoDetalle> = {};
   let completadosCount = 0;
@@ -289,7 +291,9 @@ const buildProgress = (
         criteriosTotal,
       };
     });
-    const tieneAsistencia = Boolean(snapshot?.cierre);
+    const tieneAsistencia = isCuartoBimestre
+      ? Boolean(snapshot?.cierre?.sintesisConceptualId)
+      : Boolean(snapshot?.cierre);
     const porcentaje = cursoMaterias.length > 0
       ? Math.round((materiasCompletadas / cursoMaterias.length) * 100)
       : 0;
@@ -458,7 +462,13 @@ export const accesoDocenteService = {
       ),
       getProgreso: async (alumnos, cursoMaterias, criteriosMap, periodoId) => {
         await Promise.all(alumnos.map((alumno) => getSnapshot(alumno.inscripcionId, periodoId)));
-        return buildProgress(alumnos, cursoMaterias, criteriosMap, snapshots);
+        return buildProgress(
+          alumnos,
+          cursoMaterias,
+          criteriosMap,
+          snapshots,
+          initialContext.periodo.numeroPeriodo === 4,
+        );
       },
       getAlumno: (alumno, periodoId) => getSnapshot(alumno.inscripcionId, periodoId),
       saveAlumno: async (data: GradebookStudentWrite) => {

@@ -17,6 +17,7 @@ import {
   App,
   Alert,
   Badge,
+  Segmented,
 } from 'antd';
 import {
   TableOutlined,
@@ -38,6 +39,7 @@ import { boletinService } from '../services/boletin.service';
 import { useAppStore } from '../../../store/appStore';
 import { getGradeColorConfig } from '../../alumnos/utils/gradeColors';
 import { GestorEnlacesModal } from './GestorEnlacesModal';
+import { AsistenciasB4Dashboard } from './AsistenciasB4Dashboard';
 import type { CursoMonitoreoResumen } from '../models/boletin.model';
 import { useGradebookRealtime } from '../hooks/useGradebookRealtime';
 import { useGradebookConcurrencyStore } from '../store/gradebookConcurrencyStore';
@@ -54,11 +56,13 @@ const EMPTY_PERIODOS: never[] = [];
 
 interface CargaNotasDashboardPageProps {
   periodoId: string;
+  initialTab?: 'calificaciones' | 'asistencias';
   onBackToPeriodSelection: () => void;
 }
 
 export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = ({
   periodoId,
+  initialTab = 'calificaciones',
   onBackToPeriodSelection,
 }) => {
   const { message } = App.useApp();
@@ -96,6 +100,10 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
   const [gestorModalOpen, setGestorModalOpen] = useState<boolean>(false);
   const [selectedCursoForModal, setSelectedCursoForModal] = useState<string | null>(null);
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<'calificaciones' | 'asistencias'>(initialTab);
+  const [asistenciasRefreshSignal, setAsistenciasRefreshSignal] = useState(0);
+  const [asistenciasModalSignal, setAsistenciasModalSignal] = useState(0);
+  const [asistenciasLoading, setAsistenciasLoading] = useState(false);
 
   const toggleExpandedRow = useCallback((cursoId: string) => {
     setExpandedRowKeys((prev) => (
@@ -450,6 +458,8 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
     },
   ];
 
+  const isAsistenciasTab = selectedPeriodo?.numeroPeriodo === 4 && activeTab === 'asistencias';
+
   return (
     <SectionLayout
       title="Bimestres"
@@ -463,21 +473,31 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
           <Button
             icon={<LinkOutlined className={ui.primary} />}
             onClick={() => {
-              setSelectedCursoForModal(null);
-              setGestorModalOpen(true);
+              if (isAsistenciasTab) {
+                setAsistenciasModalSignal((n) => n + 1);
+              } else {
+                setSelectedCursoForModal(null);
+                setGestorModalOpen(true);
+              }
             }}
             style={{ borderRadius: 8, fontWeight: 600 }}
           >
-            Gestor de Enlaces Mágicos
+            {isAsistenciasTab ? 'Enlaces de asistencias' : 'Gestor de Enlaces Mágicos'}
           </Button>
 
-          <Tooltip title={syncStatus === 'pending' ? 'Hay cambios pendientes · actualizar ahora' : 'Actualizar estado de los cursos'}>
-            <Badge dot={syncStatus === 'pending'}>
+          <Tooltip title={!isAsistenciasTab && syncStatus === 'pending' ? 'Hay cambios pendientes · actualizar ahora' : 'Actualizar estado de los cursos'}>
+            <Badge dot={!isAsistenciasTab && syncStatus === 'pending'}>
               <Button
                 icon={<ReloadOutlined />}
-                onClick={() => refreshMonitoreo.current(true)}
-                loading={syncStatus === 'refreshing'}
-                aria-label={syncStatus === 'pending' ? 'Actualizar ahora: hay cambios pendientes' : 'Actualizar estado de los cursos'}
+                onClick={() => {
+                  if (isAsistenciasTab) {
+                    setAsistenciasRefreshSignal((n) => n + 1);
+                  } else {
+                    refreshMonitoreo.current(true);
+                  }
+                }}
+                loading={isAsistenciasTab ? asistenciasLoading : syncStatus === 'refreshing'}
+                aria-label={!isAsistenciasTab && syncStatus === 'pending' ? 'Actualizar ahora: hay cambios pendientes' : 'Actualizar estado de los cursos'}
               />
             </Badge>
           </Tooltip>
@@ -494,13 +514,44 @@ export const CargaNotasDashboardPage: React.FC<CargaNotasDashboardPageProps> = (
               {selectedPeriodo?.nombre || 'Bimestre seleccionado'}
             </Typography.Title>
             <Typography.Text type="secondary" className={styles.periodSubtitle}>
-              Cursos y estado de calificaciones
+              {selectedPeriodo?.numeroPeriodo === 4 && activeTab === 'asistencias'
+                ? 'Asistencias finales del ciclo lectivo'
+                : 'Cursos y estado de calificaciones'}
             </Typography.Text>
           </div>
         </div>
+        {selectedPeriodo?.numeroPeriodo === 4 && (
+          <Segmented
+            value={activeTab}
+            onChange={(val) => {
+              const nextTab = val as 'calificaciones' | 'asistencias';
+              setActiveTab(nextTab);
+              navigate(
+                nextTab === 'asistencias'
+                  ? `/app/boletines/calificaciones?periodo=${encodeURIComponent(periodoId)}&tab=asistencias`
+                  : `/app/boletines/calificaciones?periodo=${encodeURIComponent(periodoId)}`,
+                { replace: true },
+              );
+            }}
+            options={[
+              { label: 'Calificaciones', value: 'calificaciones' },
+              { label: 'Asistencias finales', value: 'asistencias' },
+            ]}
+          />
+        )}
       </div>
 
-      {!hasLoadedEtapas && syncStatus === 'refreshing' ? (
+      {isAsistenciasTab ? (
+        <AsistenciasB4Dashboard
+          periodoId={periodoId}
+          refreshSignal={asistenciasRefreshSignal}
+          openModalSignal={asistenciasModalSignal}
+          onLoadingChange={setAsistenciasLoading}
+          onOpenCourse={(cursoId) => (
+            navigate(`/app/boletines/calificaciones?periodo=${encodeURIComponent(periodoId)}&tab=asistencias&asistenciaCurso=${encodeURIComponent(cursoId)}`)
+          )}
+        />
+      ) : !hasLoadedEtapas && syncStatus === 'refreshing' ? (
         <Card style={{ textAlign: 'center', padding: 80, borderRadius: 16 }}>
           <Spin size="large" description="Cargando estado de los cursos..." />
         </Card>

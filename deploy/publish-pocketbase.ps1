@@ -38,6 +38,8 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_hooks\contacto.pb.js"; Target = "contacto.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\teacherReports.js"; Target = "teacherReports.js" },
   @{ Source = Join-Path $repositoryRoot "pb_hooks\teacher_reports.pb.js"; Target = "teacher_reports.pb.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\lib\finalAttendance.js"; Target = "finalAttendance.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_hooks\final_attendance.pb.js"; Target = "final_attendance.pb.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789330000_created_initial_collections.js"; Target = "1789330000_created_initial_collections.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789334557_hardened_teacher_access_tokens.js"; Target = "1789334557_hardened_teacher_access_tokens.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1789338120_close_public_gradebook_rules.js"; Target = "1789338120_close_public_gradebook_rules.js" },
@@ -70,6 +72,7 @@ $artifacts = @(
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1792900000_added_kindergarten_final_report_templates.js"; Target = "1792900000_added_kindergarten_final_report_templates.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1793000000_added_report_evaluable_roster.js"; Target = "1793000000_added_report_evaluable_roster.js" },
   @{ Source = Join-Path $repositoryRoot "pb_migrations\1793100000_added_enrollment_late_entry_flag.js"; Target = "1793100000_added_enrollment_late_entry_flag.js" },
+  @{ Source = Join-Path $repositoryRoot "pb_migrations\1793200000_added_fourth_term_closure_and_synthesis.js"; Target = "1793200000_added_fourth_term_closure_and_synthesis.js" },
   @{ Source = Join-Path $PSScriptRoot "pocketbase.service"; Target = "pocketbase.service" },
   @{ Source = Join-Path $PSScriptRoot "apply-pocketbase-workflow.sh"; Target = "apply-pocketbase-workflow.sh" }
 )

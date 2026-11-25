@@ -35,7 +35,7 @@ export interface DocumentPreparation {
   faltantes: Array<{
     campo: string;
     mensaje: string;
-    origen: 'alumno' | 'responsable' | 'apoyos' | 'cursada';
+    origen: 'alumno' | 'responsable' | 'apoyos' | 'cursada' | 'asistencias_b4';
     bimestre: number | null;
   }>;
 }
@@ -117,6 +117,7 @@ interface StaffStudentDto {
     inasistencias: number;
     llegadasTarde: number;
     observaciones: string;
+    sintesisConceptualId?: string;
   } | null;
   apoyos: {
     promocionoConAcompanamiento: string;
@@ -192,6 +193,7 @@ const loadStaffStudent = async (
       inasistencias: dto.cierre.inasistencias,
       llegadasTarde: dto.cierre.llegadasTarde,
       observaciones: dto.cierre.observaciones,
+      sintesisConceptualId: dto.cierre.sintesisConceptualId || '',
       createdAt: '',
       updatedAt: '',
     } : null,

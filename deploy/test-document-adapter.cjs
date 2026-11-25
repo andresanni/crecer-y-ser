@@ -39,12 +39,19 @@ test('Segundo ciclo bloquea sin inventar notas numéricas', () => {
   assert.equal(adapt(f, institution).documento, null);
 });
 
-test('Apoyos de inscripción se conservan desde primero; promoción sólo se muestra en cuarto', () => {
+test('Apoyos de inscripción se conservan desde primero; promoción con acompañamiento es NO estático en cuarto', () => {
   for (const bimestre of [1, 2, 3, 4]) {
     const f = fixture();
     f.datos.bimestreCorte = bimestre;
     const primero = f.datos.periodos[0];
-    f.datos.periodos = Array.from({ length: bimestre }, (_, index) => ({ ...primero, bimestre: index + 1 }));
+    f.datos.periodos = Array.from({ length: bimestre }, (_, index) => ({
+      ...primero,
+      bimestre: index + 1,
+      cierre: {
+        ...primero.cierre,
+        ...(index + 1 === 4 ? { sintesisConceptualId: 'nota' } : {}),
+      },
+    }));
     f.datos.dependencias = Array.from({ length: bimestre }, (_, index) => ({ bimestre: index + 1, vigente: true }));
     f.datos.apoyos = { poseeApoyos: 'SI', cualesApoyos: 'Apoyo de prueba', promocionoConAcompanamiento: 'SI' };
     const result = adapt(f, institution);
@@ -52,7 +59,62 @@ test('Apoyos de inscripción se conservan desde primero; promoción sólo se mue
     assert.equal(result.documento.integracion.poseeApoyos.texto, 'SÍ');
     assert.equal(result.documento.integracion.cualesApoyos.texto, 'Apoyo de prueba');
     assert.equal(result.documento.integracion.promocionoConAcompanamiento.estado, bimestre === 4 ? 'confirmado' : 'futuro');
-    if (bimestre === 4) assert.equal(result.documento.integracion.promocionoConAcompanamiento.texto, 'SÍ');
+    if (bimestre === 4) {
+      assert.equal(result.documento.integracion.promocionoConAcompanamiento.texto, 'NO');
+      assert.equal(result.documento.cierreAnual.sintesis.texto, 'Destacado');
+      assert.equal(result.documento.cierreAnual.permaneceEn.texto, '---');
+      assert.equal(result.documento.cierreAnual.promovidoA.texto, 'SEGUNDO GRADO, SEGÚN PPI QUE SE ADJUNTA');
+      assert.equal(result.pendientes.length, 0);
+    }
+  }
+});
+
+test('Cuarto bimestre calcula Promovido a según grado y apoyos, y rechaza Síntesis ausente o No corresponde', () => {
+  const expectedByGrade = {
+    1: 'SEGUNDO GRADO',
+    2: 'TERCER GRADO',
+    3: 'CUARTO GRADO',
+    4: 'QUINTO GRADO',
+    5: 'SEXTO GRADO',
+    6: 'SÉPTIMO GRADO',
+    7: 'NIVEL SECUNDARIO',
+  };
+  for (const grado of [1, 2, 3, 4, 5, 6, 7]) {
+    const f = fixture();
+    f.datos.curso.nombre = `${grado}°`;
+    if (grado >= 4) {
+      f.datos.materias.push({ ...f.datos.materias[9], id: 'extra' });
+      f.datos.periodos[0].evaluaciones.push({ ...f.datos.periodos[0].evaluaciones[9], cursoMateriaId: 'extra' });
+      f.datos.escala = [
+        { id: 'nota', etiqueta: 'Avanzado 9', pesoNumerico: 9 },
+        { id: 'nc', etiqueta: 'No Corresponde', pesoNumerico: 0 },
+      ];
+    } else {
+      f.datos.escala.push({ id: 'nc', etiqueta: 'No Corresponde', pesoNumerico: 0 });
+    }
+    f.datos.bimestreCorte = 4;
+    const primero = f.datos.periodos[0];
+    f.datos.periodos = [1, 2, 3, 4].map((n) => ({
+      ...primero,
+      bimestre: n,
+      cierre: { ...primero.cierre, ...(n === 4 ? { sintesisConceptualId: 'nota' } : {}) },
+    }));
+    f.datos.dependencias = [1, 2, 3, 4].map((n) => ({ bimestre: n, vigente: true }));
+    f.datos.apoyos = { poseeApoyos: 'NO', cualesApoyos: '', promocionoConAcompanamiento: 'NO' };
+    const sinApoyos = adapt(f, institution);
+    assert.equal(sinApoyos.bloqueos.length, 0, sinApoyos.bloqueos.join(' '));
+    assert.equal(sinApoyos.documento.cierreAnual.promovidoA.texto, expectedByGrade[grado]);
+    assert.equal(sinApoyos.documento.cierreAnual.permaneceEn.texto, '---');
+
+    f.datos.apoyos = { poseeApoyos: 'SI', cualesApoyos: 'DIL', promocionoConAcompanamiento: 'NO' };
+    const conApoyos = adapt(f, institution);
+    assert.equal(conApoyos.bloqueos.length, 0, conApoyos.bloqueos.join(' '));
+    assert.equal(conApoyos.documento.cierreAnual.promovidoA.texto, `${expectedByGrade[grado]}, SEGÚN PPI QUE SE ADJUNTA`);
+
+    f.datos.periodos[3].cierre.sintesisConceptualId = 'nc';
+    assert.equal(adapt(f, institution).documento, null);
+    f.datos.periodos[3].cierre.sintesisConceptualId = '';
+    assert.equal(adapt(f, institution).documento, null);
   }
 });
 
@@ -114,6 +176,7 @@ test('Altas tardías distinguen historia anterior, corte y futuro sin inventar n
     f.datos.cursada = { estado: 'CONFIRMADA', desde, hasta: 4, revision: 1 };
     f.datos.bimestreCorte = desde;
     f.datos.periodos[0].bimestre = desde;
+    if (desde === 4) f.datos.periodos[0].cierre.sintesisConceptualId = 'nota';
     f.datos.dependencias[0].bimestre = desde;
     const result = adapt(f, institution);
     assert.equal(result.bloqueos.length, 0, result.bloqueos.join(' '));

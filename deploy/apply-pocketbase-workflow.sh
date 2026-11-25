@@ -18,6 +18,8 @@ test -f "$stage_dir/contactService.js"
 test -f "$stage_dir/contacto.pb.js"
 test -f "$stage_dir/teacherReports.js"
 test -f "$stage_dir/teacher_reports.pb.js"
+test -f "$stage_dir/finalAttendance.js"
+test -f "$stage_dir/final_attendance.pb.js"
 test -f "$stage_dir/1789330000_created_initial_collections.js"
 test -f "$stage_dir/1789334557_hardened_teacher_access_tokens.js"
 test -f "$stage_dir/1789338120_close_public_gradebook_rules.js"
@@ -50,6 +52,7 @@ test -f "$stage_dir/1792800000_normalized_first_cycle_scale_weights.js"
 test -f "$stage_dir/1792900000_added_kindergarten_final_report_templates.js"
 test -f "$stage_dir/1793000000_added_report_evaluable_roster.js"
 test -f "$stage_dir/1793100000_added_enrollment_late_entry_flag.js"
+test -f "$stage_dir/1793200000_added_fourth_term_closure_and_synthesis.js"
 test -f "$stage_dir/pocketbase.service"
 test -s /root/pb/teacher-link.env
 test "$(stat -c '%a' /root/pb/teacher-link.env)" = "600"
@@ -125,6 +128,8 @@ install -m 0644 "$stage_dir/contactService.js" /root/pb/pb_hooks/lib/contactServ
 install -m 0644 "$stage_dir/contacto.pb.js" /root/pb/pb_hooks/contacto.pb.js
 install -m 0644 "$stage_dir/teacherReports.js" /root/pb/pb_hooks/lib/teacherReports.js
 install -m 0644 "$stage_dir/teacher_reports.pb.js" /root/pb/pb_hooks/teacher_reports.pb.js
+install -m 0644 "$stage_dir/finalAttendance.js" /root/pb/pb_hooks/lib/finalAttendance.js
+install -m 0644 "$stage_dir/final_attendance.pb.js" /root/pb/pb_hooks/final_attendance.pb.js
 install -m 0644 "$stage_dir/1789330000_created_initial_collections.js" /root/pb/pb_migrations/1789330000_created_initial_collections.js
 install -m 0644 "$stage_dir/1789334557_hardened_teacher_access_tokens.js" /root/pb/pb_migrations/1789334557_hardened_teacher_access_tokens.js
 install -m 0644 "$stage_dir/1789338120_close_public_gradebook_rules.js" /root/pb/pb_migrations/1789338120_close_public_gradebook_rules.js
@@ -158,6 +163,7 @@ install -m 0644 "$stage_dir/1792800000_normalized_first_cycle_scale_weights.js" 
 install -m 0644 "$stage_dir/1792900000_added_kindergarten_final_report_templates.js" /root/pb/pb_migrations/1792900000_added_kindergarten_final_report_templates.js
 install -m 0644 "$stage_dir/1793000000_added_report_evaluable_roster.js" /root/pb/pb_migrations/1793000000_added_report_evaluable_roster.js
 install -m 0644 "$stage_dir/1793100000_added_enrollment_late_entry_flag.js" /root/pb/pb_migrations/1793100000_added_enrollment_late_entry_flag.js
+install -m 0644 "$stage_dir/1793200000_added_fourth_term_closure_and_synthesis.js" /root/pb/pb_migrations/1793200000_added_fourth_term_closure_and_synthesis.js
 install -m 0644 "$stage_dir/pocketbase.service" /etc/systemd/system/pocketbase.service
 systemctl daemon-reload
 

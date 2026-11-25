@@ -55,10 +55,11 @@ export interface GradebookStudentWrite {
   expectedRevision?: number;
   materias: GradebookSubjectWrite[];
   cierre?: {
-    asistencias: number;
-    inasistencias: number;
-    llegadasTarde: number;
+    asistencias?: number;
+    inasistencias?: number;
+    llegadasTarde?: number;
     observaciones: string;
+    sintesisConceptualId?: string;
   };
   apoyos?: GradebookSupportState;
 }
