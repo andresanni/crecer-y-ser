@@ -20,6 +20,7 @@ Antes de modificar código, consultar:
 12. `docs/primary-attendance-records.md` antes de modificar la gestión de registros de asistencia mensual de primaria.
 13. `docs/teacher-reports-plan.md` cuando el trabajo afecte informes de maestras (1.er bimestre, 1.er cuatrimestre o ciclo final de áreas especiales), sus enlaces mágicos, visados o generación de PDF.
 14. `docs/ux-patterns-registry.md` cuando el trabajo afecte dinámicas operativas compartidas entre módulos (enlaces mágicos, editores por alumno, tableros de seguimiento, vistas de revisión por curso o decisiones de unificación/ramificación de componentes).
+15. `docs/enrollment-exceptions-policy.md` cuando el trabajo afecte Altas Tardías (A.T.), Bajas Tempranas (B.T.), la pestaña `4. Evaluaciones`, el alta de alumnos con excepciones de cursada o el flujo de Baja (`DarDeBajaModal`).
 
 ## Reglas de trabajo
 

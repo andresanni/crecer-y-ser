@@ -37,6 +37,39 @@ function transferRecords(enrollment) {
   }
 }
 
+function isValidIsoDate(value) {
+  return (
+    typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    !isNaN(Date.parse(value)) &&
+    new Date(value).toISOString().slice(0, 10) === value
+  )
+}
+
+function readJsonRequestData(c) {
+  try {
+    var info = $apis.requestInfo(c)
+    return JSON.parse(JSON.stringify(info.data || {}))
+  } catch (_) {
+    var body = new DynamicModel({})
+    c.bind(body)
+    return JSON.parse(JSON.stringify(body))
+  }
+}
+
+function sanitizeSchoolTransfers(rawList) {
+  if (!Array.isArray(rawList)) return []
+  return rawList
+    .slice(0, 4)
+    .filter((item) => item && typeof item === "object")
+    .map((item) => ({
+      fecha: typeof item.fecha === "string" ? item.fecha.trim().slice(0, 10) : "",
+      causa: typeof item.causa === "string" ? item.causa.trim().slice(0, 200) : "",
+      escuelaDestino: typeof item.escuelaDestino === "string" ? item.escuelaDestino.trim().slice(0, 200) : ""
+    }))
+    .filter((item) => item.fecha || item.causa || item.escuelaDestino)
+}
+
 function scopeSnapshot(dao, enrollment) {
   var student = requireRecord(dao, "alumnos", enrollment.getString("alumno_id"))
   var course = requireRecord(dao, "cursos", enrollment.getString("curso_id"))
@@ -59,6 +92,8 @@ function scopeSnapshot(dao, enrollment) {
     curso: course.getString("nombre"), ciclo: cycle.getInt("ano"),
     cursada: enrollmentScope(enrollment), updated: enrollment.getString("updated"),
     estadoAdministrativo: enrollment.getString("estado"), fechaEgreso: enrollment.getString("fecha_egreso"),
+    esAltaTardia: Boolean(enrollment.getBool("es_alta_tardia")),
+    esBaja: enrollment.getString("estado") === "Baja",
     bimestresConDatos: Object.keys(evidence).map(Number).sort(),
     escuelaInicial: enrollment.getString("escuela_inicial"),
     fechaIngresoInicial: enrollment.getString("fecha_ingreso_inicial"),
@@ -97,12 +132,21 @@ function studentEvaluationsSnapshot(dao, enrollment) {
     ciclo: base.ciclo,
     esInicial: esInicial,
     estadoAdministrativo: base.estadoAdministrativo,
+    esAltaTardia: base.esAltaTardia,
+    esBaja: base.esBaja,
     fechaIngreso: enrollment.getString("fecha_ingreso") || "",
     fechaEgreso: base.fechaEgreso || "",
     cursada: base.cursada,
     updated: base.updated,
     boletines: boletines,
-    informes: reportsModule.getStudentReportParticipation(dao, enrollment, esInicial)
+    informes: reportsModule.getStudentReportParticipation(dao, enrollment, esInicial),
+    datosAdministrativos: {
+      escuelaInicial: base.escuelaInicial,
+      fechaIngresoInicial: base.fechaIngresoInicial,
+      fechaEgresoInicial: base.fechaEgresoInicial,
+      cambiosEscuela: base.cambiosEscuela,
+      cambioDomicilio: base.cambioDomicilio
+    }
   }
 }
 
@@ -118,16 +162,32 @@ function staffStudentEvaluations(c) {
 
 function saveStudentEvaluations(c) {
   noStore(c)
-  var body = new DynamicModel({
-    expectedRevision: -1,
-    expectedUpdated: "",
-    boletines: {},
-    informes: []
-  })
-  c.bind(body)
-  var data = JSON.parse(JSON.stringify(body))
-  if (!Number.isInteger(data.expectedRevision) || data.expectedRevision < 0 || !data.expectedUpdated) {
+  var data = readJsonRequestData(c)
+  var expectedRevision = Number(data.expectedRevision)
+  var expectedUpdated = typeof data.expectedUpdated === "string" ? data.expectedUpdated : ""
+  if (!Number.isInteger(expectedRevision) || expectedRevision < 0 || !expectedUpdated) {
     throw new BadRequestError("Volvé a leer la participación evaluativa antes de guardar.")
+  }
+
+  var registrarBaja = Boolean(data.registrarBaja)
+  var hasFechaEgreso = Object.prototype.hasOwnProperty.call(data, "fechaEgreso") && typeof data.fechaEgreso === "string"
+  var fechaEgreso = hasFechaEgreso ? data.fechaEgreso.trim() : ""
+  if (registrarBaja && !isValidIsoDate(fechaEgreso)) {
+    throw new BadRequestError("Indicá una fecha de baja válida.")
+  }
+  if (!registrarBaja && hasFechaEgreso && fechaEgreso && !isValidIsoDate(fechaEgreso)) {
+    throw new BadRequestError("Indicá una fecha de baja válida.")
+  }
+
+  var hasAdminData = data.datosAdministrativos && typeof data.datosAdministrativos === "object"
+  var adminData = hasAdminData ? data.datosAdministrativos : null
+  if (adminData) {
+    if (adminData.fechaIngresoInicial && !isValidIsoDate(String(adminData.fechaIngresoInicial))) {
+      throw new BadRequestError("Indicá una fecha de ingreso inicial válida.")
+    }
+    if (adminData.fechaEgresoInicial && !isValidIsoDate(String(adminData.fechaEgresoInicial))) {
+      throw new BadRequestError("Indicá una fecha de egreso inicial válida.")
+    }
   }
 
   var status = 200
@@ -135,7 +195,7 @@ function saveStudentEvaluations(c) {
   $app.dao().runInTransaction((dao) => {
     var enrollment = requireRecord(dao, "inscripciones", c.pathParam("inscripcionId"))
     var before = scopeSnapshot(dao, enrollment)
-    if (before.cursada.revision !== data.expectedRevision || before.updated !== data.expectedUpdated) {
+    if (before.cursada.revision !== expectedRevision || before.updated !== expectedUpdated) {
       status = 409
       result = { message: "La matrícula cambió en otra sesión. Volvé a cargar antes de guardar." }
       return
@@ -144,14 +204,31 @@ function saveStudentEvaluations(c) {
     var course = requireRecord(dao, "cursos", enrollment.getString("curso_id"))
     var esInicial = !isGradebookCourse(dao, course)
     var reportsModule = require("./teacherReports.js")
-    var boletinesChanged = false
+    var wasBaja = before.esBaja
+    var nextIsBaja = wasBaja || registrarBaja
+    var wasAltaTardia = before.esAltaTardia
+    var hasAltaTardiaInput = typeof data.esAltaTardia === "boolean"
+    var nextAltaTardia = hasAltaTardiaInput ? data.esAltaTardia : wasAltaTardia
 
-    if (!esInicial && data.boletines && typeof data.boletines === "object" && Object.keys(data.boletines).length > 0) {
+    var boletinesChanged = false
+    var nextEstadoCursada = before.cursada.estado
+    var nextDesde = before.cursada.desde
+    var nextHasta = before.cursada.hasta
+
+    if (!esInicial) {
+      var hasBoletinesInput = data.boletines && typeof data.boletines === "object" && Object.keys(data.boletines).length > 0
       var activeTerms = []
-      if (data.boletines.b1) activeTerms.push(1)
-      if (data.boletines.b2) activeTerms.push(2)
-      if (data.boletines.b3) activeTerms.push(3)
-      if (data.boletines.b4) activeTerms.push(4)
+      if (hasBoletinesInput) {
+        if (data.boletines.b1) activeTerms.push(1)
+        if (data.boletines.b2) activeTerms.push(2)
+        if (data.boletines.b3) activeTerms.push(3)
+        if (data.boletines.b4) activeTerms.push(4)
+      } else {
+        if (enrollmentParticipates(enrollment, 1)) activeTerms.push(1)
+        if (enrollmentParticipates(enrollment, 2)) activeTerms.push(2)
+        if (enrollmentParticipates(enrollment, 3)) activeTerms.push(3)
+        if (enrollmentParticipates(enrollment, 4)) activeTerms.push(4)
+      }
 
       if (activeTerms.length > 0) {
         var minTerm = activeTerms[0]
@@ -162,8 +239,20 @@ function saveStudentEvaluations(c) {
       }
 
       var nextSinCursada = activeTerms.length === 0
-      var nextDesde = nextSinCursada ? 0 : activeTerms[0]
-      var nextHasta = nextSinCursada ? 0 : activeTerms[activeTerms.length - 1]
+      nextDesde = nextSinCursada ? 0 : activeTerms[0]
+      nextHasta = nextSinCursada ? 0 : activeTerms[activeTerms.length - 1]
+      nextEstadoCursada = nextSinCursada ? "SIN_CURSADA" : "CONFIRMADA"
+
+      if (!nextAltaTardia && !nextIsBaja && (nextSinCursada || nextDesde !== 1 || nextHasta !== 4)) {
+        throw new BadRequestError("En un alumno regular sin Alta Tardía ni Baja, todos los bimestres de boletines deben permanecer activos.")
+      }
+      if (!nextAltaTardia && !nextSinCursada && nextDesde > 1) {
+        throw new BadRequestError("Para excluir bimestres iniciales (empezar después del 1.º bimestre), el alumno debe estar marcado como Alta Tardía.")
+      }
+      if (!nextIsBaja && (nextSinCursada || nextHasta < 4)) {
+        throw new BadRequestError("Para excluir bimestres finales o marcar sin cursada, primero debés registrar la Baja del alumno.")
+      }
+
       var conflicts = before.bimestresConDatos.filter((number) => nextSinCursada || number < nextDesde || number > nextHasta)
       if (conflicts.length > 0) {
         status = 409
@@ -174,34 +263,145 @@ function saveStudentEvaluations(c) {
         return
       }
 
-      var nextEstado = nextSinCursada ? "SIN_CURSADA" : "CONFIRMADA"
-      if (
-        before.cursada.estado !== nextEstado ||
+      boletinesChanged =
+        before.cursada.estado !== nextEstadoCursada ||
         before.cursada.desde !== nextDesde ||
         before.cursada.hasta !== nextHasta
-      ) {
-        enrollment.set("cursada_estado", nextEstado)
-        enrollment.set("bimestre_desde", nextDesde)
-        enrollment.set("bimestre_hasta", nextHasta)
-        enrollment.set("revision_cursada", before.cursada.revision + 1)
-        dao.saveRecord(enrollment)
-        boletinesChanged = true
+    }
+
+    var currentReports = reportsModule.getStudentReportParticipation(dao, enrollment, esInicial)
+    var desiredReportsMap = {}
+    var deliveredByType = {}
+    currentReports.forEach((item) => {
+      desiredReportsMap[item.tipoInforme] = Boolean(item.evaluable)
+      deliveredByType[item.tipoInforme] = item.materiasEntregadas || []
+    })
+
+    if (Array.isArray(data.informes)) {
+      data.informes.forEach((entry) => {
+        if (!entry || typeof entry !== "object") return
+        var tipo = typeof entry.tipoInforme === "string" ? entry.tipoInforme.trim() : ""
+        if (!tipo) return
+        if (!Object.prototype.hasOwnProperty.call(desiredReportsMap, tipo)) {
+          throw new BadRequestError("El tipo de informe " + tipo + " no aplica al nivel de este curso.")
+        }
+        if (typeof entry.evaluable !== "boolean") {
+          throw new BadRequestError("La participación evaluable del informe debe ser booleana.")
+        }
+        desiredReportsMap[tipo] = entry.evaluable
+      })
+    }
+
+    var finalInformesEntries = currentReports.map((item) => ({
+      tipoInforme: item.tipoInforme,
+      evaluable: Boolean(desiredReportsMap[item.tipoInforme])
+    }))
+
+    if (!nextAltaTardia && !nextIsBaja && finalInformesEntries.some((item) => !item.evaluable)) {
+      throw new BadRequestError("En un alumno regular sin Alta Tardía ni Baja, todos los informes deben permanecer activos.")
+    }
+
+    for (var ri = 0; ri < finalInformesEntries.length; ri += 1) {
+      var reportItem = finalInformesEntries[ri]
+      var deliveredList = deliveredByType[reportItem.tipoInforme] || []
+      if (!reportItem.evaluable && deliveredList.length > 0) {
+        status = 409
+        result = {
+          message:
+            "No se puede excluir de " +
+            reportItem.tipoInforme +
+            " porque el alumno ya figura en la entrega de " +
+            deliveredList.join(", ") +
+            "."
+        }
+        return
       }
+    }
+
+    var enrollmentDirty = false
+    if (wasAltaTardia !== nextAltaTardia) {
+      enrollment.set("es_alta_tardia", nextAltaTardia)
+      enrollmentDirty = true
+    }
+
+    if (!esInicial && boletinesChanged) {
+      enrollment.set("cursada_estado", nextEstadoCursada)
+      enrollment.set("bimestre_desde", nextDesde)
+      enrollment.set("bimestre_hasta", nextHasta)
+      enrollmentDirty = true
+    }
+
+    var bajaChanged = false
+    if (registrarBaja && !wasBaja) {
+      enrollment.set("estado", "Baja")
+      enrollment.set("fecha_egreso", fechaEgreso + " 00:00:00.000Z")
+      bajaChanged = true
+      enrollmentDirty = true
+    } else if (nextIsBaja && hasFechaEgreso && fechaEgreso) {
+      var formattedExit = fechaEgreso + " 00:00:00.000Z"
+      if (enrollment.getString("fecha_egreso") !== formattedExit) {
+        enrollment.set("fecha_egreso", formattedExit)
+        bajaChanged = true
+        enrollmentDirty = true
+      }
+    }
+
+    var adminChanged = false
+    if (adminData) {
+      if (typeof adminData.escuelaInicial === "string") {
+        var nextEscuelaInicial = adminData.escuelaInicial.trim()
+        if (enrollment.getString("escuela_inicial") !== nextEscuelaInicial) {
+          enrollment.set("escuela_inicial", nextEscuelaInicial)
+          adminChanged = true
+        }
+      }
+      if (typeof adminData.fechaIngresoInicial === "string") {
+        var nextFechaIng = adminData.fechaIngresoInicial ? adminData.fechaIngresoInicial.trim() + " 00:00:00.000Z" : ""
+        if (enrollment.getString("fecha_ingreso_inicial") !== nextFechaIng) {
+          enrollment.set("fecha_ingreso_inicial", nextFechaIng)
+          adminChanged = true
+        }
+      }
+      if (typeof adminData.fechaEgresoInicial === "string") {
+        var nextFechaEgr = adminData.fechaEgresoInicial ? adminData.fechaEgresoInicial.trim() + " 00:00:00.000Z" : ""
+        if (enrollment.getString("fecha_egreso_inicial") !== nextFechaEgr) {
+          enrollment.set("fecha_egreso_inicial", nextFechaEgr)
+          adminChanged = true
+        }
+      }
+      if (Array.isArray(adminData.cambiosEscuela)) {
+        var serializedTransfers = JSON.stringify(sanitizeSchoolTransfers(adminData.cambiosEscuela))
+        if (enrollment.getString("cambios_escuela") !== serializedTransfers) {
+          enrollment.set("cambios_escuela", serializedTransfers)
+          adminChanged = true
+        }
+      }
+      if (typeof adminData.cambioDomicilio === "string") {
+        var nextDomicilio = adminData.cambioDomicilio.trim()
+        if (enrollment.getString("cambio_domicilio") !== nextDomicilio) {
+          enrollment.set("cambio_domicilio", nextDomicilio)
+          adminChanged = true
+        }
+      }
+      if (adminChanged) enrollmentDirty = true
+    }
+
+    if (enrollmentDirty) {
+      enrollment.set("revision_cursada", before.cursada.revision + 1)
+      dao.saveRecord(enrollment)
     }
 
     var reportRes = reportsModule.applyStudentReportParticipation(
       dao,
       enrollment,
       esInicial,
-      Array.isArray(data.informes) ? data.informes : []
+      finalInformesEntries
     )
     if (reportRes.conflictMessage) {
-      status = 409
-      result = { message: reportRes.conflictMessage }
-      return
+      throw new BadRequestError(reportRes.conflictMessage)
     }
 
-    if (boletinesChanged) {
+    if (boletinesChanged || bajaChanged || adminChanged) {
       findByFilter(
         dao,
         "instancias_carga_boletin",
@@ -212,6 +412,21 @@ function saveStudentEvaluations(c) {
         workflow.set("revision", workflow.getInt("revision") + 1)
         dao.saveRecord(workflow)
       })
+    }
+
+    if (bajaChanged) {
+      try {
+        findByFilter(
+          dao,
+          "instancias_informe",
+          "curso_id = {:course} && ciclo_id = {:cycle}",
+          "",
+          { course: enrollment.getString("curso_id"), cycle: enrollment.getString("ciclo_id") }
+        ).forEach((reportWorkflow) => {
+          reportWorkflow.set("revision", reportWorkflow.getInt("revision") + 1)
+          dao.saveRecord(reportWorkflow)
+        })
+      } catch (_) {}
     }
 
     result = studentEvaluationsSnapshot(dao, requireRecord(dao, "inscripciones", enrollment.getId()))
@@ -227,9 +442,9 @@ function saveEnrollmentScope(c) {
   var data = JSON.parse(JSON.stringify(body))
   if (!Number.isInteger(data.expectedRevision) || data.expectedRevision < 0 || !data.expectedUpdated) throw new BadRequestError("Volvé a leer la cursada antes de guardar.")
   if (!data.sinCursada && (!Number.isInteger(data.desde) || !Number.isInteger(data.hasta) || data.desde < 1 || data.hasta > 4 || data.desde > data.hasta)) throw new BadRequestError("Indicá un rango válido entre el primer y el cuarto bimestre.")
-  if (data.registrarBaja && (!/^\d{4}-\d{2}-\d{2}$/.test(data.fechaEgreso) || isNaN(Date.parse(data.fechaEgreso)) || new Date(data.fechaEgreso).toISOString().slice(0, 10) !== data.fechaEgreso)) throw new BadRequestError("Indicá una fecha de baja válida.")
-  if (data.fechaIngresoInicial && (!/^\d{4}-\d{2}-\d{2}$/.test(data.fechaIngresoInicial) || isNaN(Date.parse(data.fechaIngresoInicial)) || new Date(data.fechaIngresoInicial).toISOString().slice(0, 10) !== data.fechaIngresoInicial)) throw new BadRequestError("Indicá una fecha de ingreso inicial válida.")
-  if (data.fechaEgresoInicial && (!/^\d{4}-\d{2}-\d{2}$/.test(data.fechaEgresoInicial) || isNaN(Date.parse(data.fechaEgresoInicial)) || new Date(data.fechaEgresoInicial).toISOString().slice(0, 10) !== data.fechaEgresoInicial)) throw new BadRequestError("Indicá una fecha de egreso inicial válida.")
+  if (data.registrarBaja && !isValidIsoDate(data.fechaEgreso)) throw new BadRequestError("Indicá una fecha de baja válida.")
+  if (data.fechaIngresoInicial && !isValidIsoDate(data.fechaIngresoInicial)) throw new BadRequestError("Indicá una fecha de ingreso inicial válida.")
+  if (data.fechaEgresoInicial && !isValidIsoDate(data.fechaEgresoInicial)) throw new BadRequestError("Indicá una fecha de egreso inicial válida.")
   var status = 200
   var result
   $app.dao().runInTransaction((dao) => {
@@ -240,6 +455,10 @@ function saveEnrollmentScope(c) {
       result = { message: "La matrícula cambió. Volvé a cargar la cursada antes de guardar." }
       return
     }
+    var nextIsBaja = before.esBaja || Boolean(data.registrarBaja)
+    if (!nextIsBaja && (data.sinCursada || data.hasta < 4)) {
+      throw new BadRequestError("Para excluir bimestres finales o marcar sin cursada, primero debés registrar la Baja del alumno.")
+    }
     var conflicts = before.bimestresConDatos.filter((number) => data.sinCursada || number < data.desde || number > data.hasta)
     if (conflicts.length) {
       status = 409
@@ -249,6 +468,9 @@ function saveEnrollmentScope(c) {
     enrollment.set("cursada_estado", data.sinCursada ? "SIN_CURSADA" : "CONFIRMADA")
     enrollment.set("bimestre_desde", data.sinCursada ? 0 : data.desde)
     enrollment.set("bimestre_hasta", data.sinCursada ? 0 : data.hasta)
+    if (!data.sinCursada && data.desde > 1) {
+      enrollment.set("es_alta_tardia", true)
+    }
     enrollment.set("revision_cursada", before.cursada.revision + 1)
     if (data.registrarBaja) {
       enrollment.set("estado", "Baja")
@@ -257,7 +479,7 @@ function saveEnrollmentScope(c) {
     if (typeof data.escuelaInicial === "string") enrollment.set("escuela_inicial", data.escuelaInicial.trim())
     if (typeof data.fechaIngresoInicial === "string") enrollment.set("fecha_ingreso_inicial", data.fechaIngresoInicial ? data.fechaIngresoInicial + " 00:00:00.000Z" : "")
     if (typeof data.fechaEgresoInicial === "string") enrollment.set("fecha_egreso_inicial", data.fechaEgresoInicial ? data.fechaEgresoInicial + " 00:00:00.000Z" : "")
-    if (Array.isArray(data.cambiosEscuela)) enrollment.set("cambios_escuela", JSON.stringify(data.cambiosEscuela))
+    if (Array.isArray(data.cambiosEscuela)) enrollment.set("cambios_escuela", JSON.stringify(sanitizeSchoolTransfers(data.cambiosEscuela)))
     if (typeof data.cambioDomicilio === "string") enrollment.set("cambio_domicilio", data.cambioDomicilio.trim())
     dao.saveRecord(enrollment)
     findByFilter(dao, "instancias_carga_boletin", "curso_id = {:course} && periodo_id.ciclo_id = {:cycle}", "", { course: enrollment.getString("curso_id"), cycle: enrollment.getString("ciclo_id") }).forEach((workflow) => {
@@ -1852,20 +2074,37 @@ function documentDataIssues(student, guardian, enrollment, cutoff) {
     issues.push({ campo: "apoyos.promocionoConAcompanamiento", mensaje: "Indicar la promoción con acompañamiento en Integración Escolar del cuarto bimestre.", origen: "apoyos", bimestre: 4 })
   }
   var desde = (enrollment.getInt ? enrollment.getInt("bimestre_desde") : 1) || 1
-  var hasta = (enrollment.getInt ? enrollment.getInt("bimestre_hasta") : 4) || 4
-  if (desde > 1) {
-    required(enrollment.getString("escuela_inicial"), "administrativo.escuelaInicial", "Completar la escuela de origen en los datos de cursada.", "cursada")
-    var transfers = transferRecords(enrollment)
-    var validTransfer = transfers.length > 0 && hasText(transfers[0].fecha) && hasText(transfers[0].escuelaDestino)
-    if (!validTransfer) {
-      issues.push({ campo: "administrativo.cambiosEscuela", mensaje: "Completar el registro de pase en los datos de cursada.", origen: "cursada", bimestre: null })
-    }
-  }
-  if (hasta < 4 && !issues.some((issue) => issue.campo === "administrativo.cambiosEscuela")) {
-    var transfers = transferRecords(enrollment)
-    var validTransfer = transfers.length > 0 && hasText(transfers[0].fecha) && hasText(transfers[0].escuelaDestino)
-    if (!validTransfer) {
-      issues.push({ campo: "administrativo.cambiosEscuela", mensaje: "Completar el registro de pase o egreso en los datos de cursada.", origen: "cursada", bimestre: null })
+  var isLateEntry = Boolean(enrollment.getBool ? enrollment.getBool("es_alta_tardia") : false) || desde > 1
+  if (isLateEntry) {
+    required(
+      enrollment.getString("escuela_inicial"),
+      "administrativo.escuelaInicial",
+      "Completar la escuela en la que inició el año (Página 14) en 4. Evaluaciones.",
+      "cursada"
+    )
+    required(
+      enrollment.getString("fecha_ingreso_inicial"),
+      "administrativo.fechaIngresoInicial",
+      "Completar la fecha de ingreso en la escuela anterior (Página 14) en 4. Evaluaciones.",
+      "cursada"
+    )
+    required(
+      enrollment.getString("fecha_egreso_inicial"),
+      "administrativo.fechaEgresoInicial",
+      "Completar la fecha de egreso de la escuela anterior (Página 14) en 4. Evaluaciones.",
+      "cursada"
+    )
+    var lateTransfers = transferRecords(enrollment)
+    var validEntryTransfer = lateTransfers.some(
+      (item) => hasText(item.fecha) && hasText(item.causa) && hasText(item.escuelaDestino)
+    )
+    if (!validEntryTransfer) {
+      issues.push({
+        campo: "administrativo.cambiosEscuela",
+        mensaje: "Completar el pase de ingreso (fecha, causa y escuela destino) en 4. Evaluaciones.",
+        origen: "cursada",
+        bimestre: null
+      })
     }
   }
   return issues

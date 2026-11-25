@@ -20,6 +20,7 @@ import {
   InputNumber,
   Spin,
   Card,
+  Switch,
 } from 'antd';
 import {
   IdcardOutlined,
@@ -55,6 +56,7 @@ import {
   type EstadoInscripcion,
   type ModalidadJornada,
 } from '../../inscripciones/models/inscripcion.model';
+import { isKindergartenCourse } from '../utils/gradeColors';
 
 const { Text } = Typography;
 
@@ -80,6 +82,11 @@ export interface AlumnoFormValues {
   fechaEgreso?: dayjs.Dayjs | null;
   estadoInscripcion?: EstadoInscripcion;
   modalidadJornada?: ModalidadJornada;
+  esAltaTardia?: boolean;
+  altaTardiaDesdeBimestre?: number;
+  altaTardiaInformePrimerBimestre?: boolean;
+  altaTardiaInformePrimerCuatrimestre?: boolean;
+  altaTardiaInformeCicloFinal?: boolean;
 
   responsableId?: string;
   responsableDniTipo?: string;
@@ -194,6 +201,19 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
   const [showSecondaryResponsable, setShowSecondaryResponsable] = useState(false);
 
   const isEditing = Boolean(initialValues);
+  const watchedCursoId = Form.useWatch('cursoId', form);
+  const watchedEsAltaTardia = Form.useWatch('esAltaTardia', form);
+  const selectedCursoForCreate = useMemo(
+    () => cursos.find((item) => item.id === watchedCursoId) ?? null,
+    [cursos, watchedCursoId],
+  );
+  const isSelectedCursoInicial = useMemo(
+    () =>
+      selectedCursoForCreate
+        ? isKindergartenCourse(selectedCursoForCreate.nombre, selectedCursoForCreate.nivelNombre)
+        : false,
+    [selectedCursoForCreate],
+  );
 
   const edadCalculada = useMemo(() => {
     if (!fechaNacimientoValue) return null;
@@ -225,6 +245,11 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             fechaInscripcion: dayjs(),
             fechaIngreso: dayjs(),
             estadoInscripcion: 'Regular',
+            esAltaTardia: false,
+            altaTardiaDesdeBimestre: 1,
+            altaTardiaInformePrimerBimestre: true,
+            altaTardiaInformePrimerCuatrimestre: true,
+            altaTardiaInformeCicloFinal: true,
             nacionalidad: 'Argentina',
             responsableNacionalidad: 'Argentina',
             responsableDniTipo: 'DNI',
@@ -841,6 +866,11 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
             >
               Cursada: {initialValues?.estadoInscripcion || 'Regular'}
             </Tag>
+            {initialValues?.esAltaTardia && (
+              <Tag color="gold" className={ui.compactTag}>
+                Alta Tardía
+              </Tag>
+            )}
             {!(/inic|jard[ií]n/i.test(initialValues?.nivelNombre || '') || /sala/i.test(initialValues?.cursoNombre || '')) && (
               initialValues?.cursadaEstado === 'SIN_CURSADA' ? (
                 <Tag color="default" className={ui.compactTag}>
@@ -988,6 +1018,93 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
               </Col>
             )}
           </Row>
+
+          {!isEditing && (
+            <Card
+              size="small"
+              style={{
+                marginTop: 4,
+                borderRadius: 10,
+                border: watchedEsAltaTardia
+                  ? '1px solid var(--cys-color-warning-border, #ffe58f)'
+                  : '1px solid var(--cys-color-border-secondary)',
+                background: watchedEsAltaTardia
+                  ? 'var(--cys-color-warning-bg, #fffbe6)'
+                  : 'var(--cys-color-fill-quaternary)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 240 }}>
+                  <Text strong style={{ display: 'block', fontSize: 13.5 }}>
+                    ¿Es Alta Tardía (ingresó con el ciclo iniciado)?
+                  </Text>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Marcá SÍ únicamente si el alumno requiere trato especial en evaluaciones o pases. Si ingresó unos días después del inicio pero se evalúa como alta común, dejalo en NO.
+                  </Text>
+                </div>
+                <Form.Item name="esAltaTardia" valuePropName="checked" style={{ marginBottom: 0 }}>
+                  <Switch checkedChildren="SÍ" unCheckedChildren="NO" aria-label="Es Alta Tardía" />
+                </Form.Item>
+              </div>
+
+              {watchedEsAltaTardia && (
+                <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--cys-color-border-secondary)' }}>
+                  <Row gutter={14} align="middle">
+                    {!isSelectedCursoInicial && (
+                      <Col xs={24} sm={10}>
+                        <Form.Item
+                          name="altaTardiaDesdeBimestre"
+                          label="Boletines evaluables desde"
+                          style={{ marginBottom: 8 }}
+                        >
+                          <Select
+                            options={[
+                              { value: 1, label: '1.º bimestre (todos los bimestres)' },
+                              { value: 2, label: '2.º bimestre (1.º sin cursar)' },
+                              { value: 3, label: '3.º bimestre (1.º y 2.º sin cursar)' },
+                              { value: 4, label: '4.º bimestre (solo 4.º bimestre)' },
+                            ]}
+                          />
+                        </Form.Item>
+                      </Col>
+                    )}
+                    <Col xs={24} sm={isSelectedCursoInicial ? 24 : 14}>
+                      <Text strong style={{ display: 'block', fontSize: 12.5, marginBottom: 6 }}>
+                        Participación inicial en Informes de Maestras
+                      </Text>
+                      <Space size={16} wrap>
+                        {!isSelectedCursoInicial && (
+                          <>
+                            <Space size={6}>
+                              <Text style={{ fontSize: 12.5 }}>1.er Bimestre</Text>
+                              <Form.Item name="altaTardiaInformePrimerBimestre" valuePropName="checked" style={{ marginBottom: 0 }}>
+                                <Switch size="small" checkedChildren="SÍ" unCheckedChildren="NO" aria-label="Alta Tardía Informe 1.er Bimestre" />
+                              </Form.Item>
+                            </Space>
+                            <Space size={6}>
+                              <Text style={{ fontSize: 12.5 }}>1.er Cuatrimestre</Text>
+                              <Form.Item name="altaTardiaInformePrimerCuatrimestre" valuePropName="checked" style={{ marginBottom: 0 }}>
+                                <Switch size="small" checkedChildren="SÍ" unCheckedChildren="NO" aria-label="Alta Tardía Informe 1.er Cuatrimestre" />
+                              </Form.Item>
+                            </Space>
+                          </>
+                        )}
+                        <Space size={6}>
+                          <Text style={{ fontSize: 12.5 }}>Ciclo Final</Text>
+                          <Form.Item name="altaTardiaInformeCicloFinal" valuePropName="checked" style={{ marginBottom: 0 }}>
+                            <Switch size="small" checkedChildren="SÍ" unCheckedChildren="NO" aria-label="Alta Tardía Informe Ciclo Final" />
+                          </Form.Item>
+                        </Space>
+                      </Space>
+                    </Col>
+                  </Row>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+                    Podrás ajustar estas instancias y cargar los datos de la escuela anterior y pase (Página 14 del boletín) cuando cuentes con la documentación, desde la pestaña 4. Evaluaciones de su ficha.
+                  </Text>
+                </div>
+              )}
+            </Card>
+          )}
         </>
       )}
     </div>

@@ -24,6 +24,28 @@
   gap: 8px;
 }
 
+.regimeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.regimeInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.regimeControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .cardHeader {
   display: flex;
   align-items: center;
@@ -147,6 +169,12 @@
 .centeredState {
   text-align: center;
   padding: 28px 0;
+}
+
+.transferList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 @media (max-width: 640px) {

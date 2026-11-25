@@ -264,7 +264,7 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
     );
     assert.equal(forbiddenEvalB1.status, 400);
 
-    const excludeActive = await jsonRequest(
+    const forbiddenExcludeRegular = await jsonRequest(
       origin,
       `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
       {
@@ -277,7 +277,24 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
         },
       },
     );
+    assert.equal(forbiddenExcludeRegular.status, 400);
+
+    const excludeActive = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
+      {
+        method: 'PUT',
+        headers: staffHeaders,
+        body: {
+          expectedRevision: evalInitial.body.cursada.revision,
+          expectedUpdated: evalInitial.body.updated,
+          esAltaTardia: true,
+          informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: false }],
+        },
+      },
+    );
     assert.equal(excludeActive.status, 200);
+    assert.equal(excludeActive.body.esAltaTardia, true);
     assert.equal(excludeActive.body.informes[0].evaluable, false);
 
     const includeBaja = await jsonRequest(
@@ -316,11 +333,13 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
         body: {
           expectedRevision: excludeActive.body.cursada.revision,
           expectedUpdated: excludeActive.body.updated,
+          esAltaTardia: false,
           informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: true }],
         },
       },
     );
     assert.equal(restoreActive.status, 200);
+    assert.equal(restoreActive.body.esAltaTardia, false);
     assert.equal(restoreActive.body.informes[0].esAjusteManual, false);
 
     const restoreBaja = await jsonRequest(
@@ -551,11 +570,18 @@ test('Flujo HTTP completo de Informes Ciclo Final para Nivel Inicial (Sala 2 y 3
         body: {
           expectedRevision: evalDelivered.body.cursada.revision,
           expectedUpdated: evalDelivered.body.updated,
+          esAltaTardia: true,
           informes: [{ tipoInforme: 'CICLO_FINAL', evaluable: false }],
         },
       },
     );
     assert.equal(blockDeliveredExclusion.status, 409);
+    const afterBlockedExclusion = await jsonRequest(
+      origin,
+      `/api/cys/directivo/inscripciones/${enrollmentSala23.id}/evaluaciones`,
+      { headers: staffHeaders },
+    );
+    assert.equal(afterBlockedExclusion.body.esAltaTardia, false);
 
     const evalBajaNow = await jsonRequest(
       origin,

@@ -94,7 +94,10 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
       await create('cierres_periodo_alumno', { inscripcion_id: id, periodo_id: periods[n - 1].id, asistencias: 2 });
     };
     assert.equal((await request(scopeUrl(enrollment.id))).status, 401);
-    assert.equal((await readScope(enrollment.id)).cursada.estado, 'PENDIENTE');
+    assert.equal((await readScope(enrollment.id)).cursada.estado, 'CONFIRMADA');
+    assert.equal((await readScope(enrollment.id)).cursada.desde, 1);
+    assert.equal((await readScope(enrollment.id)).cursada.hasta, 4);
+    assert.equal((await readScope(enrollment.id)).esAltaTardia, false);
     await fill(enrollment.id, 1);
     await fill(enrollment.id, 2);
     const oldBaja = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Baja' });
@@ -103,6 +106,8 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     const evalUrl = id => '/api/cys/directivo/inscripciones/' + id + '/evaluaciones';
     const evalSnapshot = (await request(evalUrl(enrollment.id), 'GET', null, token)).body;
     assert.equal(evalSnapshot.esInicial, false);
+    assert.equal(evalSnapshot.esAltaTardia, false);
+    assert.equal(evalSnapshot.esBaja, false);
     assert.deepEqual(evalSnapshot.boletines.bimestresBloqueados, [1, 2]);
     assert.equal(evalSnapshot.informes.length, 3);
     assert.equal(
@@ -118,6 +123,35 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
       (await request(evalUrl(enrollment.id), 'PUT', {
         expectedRevision: evalSnapshot.cursada.revision,
         expectedUpdated: evalSnapshot.updated,
+        boletines: { b1: false, b2: true, b3: true, b4: true },
+        informes: [],
+      }, token)).status,
+      400,
+    );
+    assert.equal(
+      (await request(evalUrl(enrollment.id), 'PUT', {
+        expectedRevision: evalSnapshot.cursada.revision,
+        expectedUpdated: evalSnapshot.updated,
+        esAltaTardia: true,
+        boletines: { b1: true, b2: true, b3: true, b4: false },
+        informes: [],
+      }, token)).status,
+      400,
+    );
+    assert.equal(
+      (await request(evalUrl(enrollment.id), 'PUT', {
+        expectedRevision: evalSnapshot.cursada.revision,
+        expectedUpdated: evalSnapshot.updated,
+        informes: [{ tipoInforme: 'PRIMER_BIMESTRE', evaluable: false }],
+      }, token)).status,
+      400,
+    );
+    assert.equal(
+      (await request(evalUrl(enrollment.id), 'PUT', {
+        expectedRevision: evalSnapshot.cursada.revision,
+        expectedUpdated: evalSnapshot.updated,
+        registrarBaja: true,
+        fechaEgreso: '2026-06-01',
         boletines: { b1: true, b2: false, b3: false, b4: false },
         informes: [],
       }, token)).status,
@@ -125,26 +159,45 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     );
     const old = await readScope(enrollment.id);
     assert.equal((await saveScope(enrollment.id, { desde: 3, hasta: 2 })).status, 400);
-    assert.equal((await saveScope(enrollment.id, { sinCursada: true })).status, 409);
-    assert.equal((await saveScope(enrollment.id, { hasta: 1 })).status, 409);
-    const withdrawal = await saveScope(enrollment.id, { hasta: 2, registrarBaja: true, fechaEgreso: '2026-06-01', cambiosEscuela: [{ fecha: '2026-06-01', causa: 'Mudanza', escuelaDestino: 'Colegio San Martín' }] });
+    assert.equal((await saveScope(enrollment.id, { sinCursada: true })).status, 400);
+    assert.equal((await saveScope(enrollment.id, { hasta: 1 })).status, 400);
+    assert.equal((await saveScope(enrollment.id, { hasta: 1, registrarBaja: true, fechaEgreso: '2026-06-01' })).status, 409);
+    const withdrawal = await request(evalUrl(enrollment.id), 'PUT', {
+      expectedRevision: old.cursada.revision,
+      expectedUpdated: old.updated,
+      registrarBaja: true,
+      fechaEgreso: '2026-06-01',
+      boletines: { b1: true, b2: true, b3: false, b4: false },
+      informes: [
+        { tipoInforme: 'PRIMER_BIMESTRE', evaluable: true },
+        { tipoInforme: 'PRIMER_CUATRIMESTRE', evaluable: false },
+        { tipoInforme: 'CICLO_FINAL', evaluable: false },
+      ],
+      datosAdministrativos: {
+        cambiosEscuela: [{ fecha: '2026-06-01', causa: 'Mudanza', escuelaDestino: 'Colegio San Martín' }],
+      },
+    }, token);
     assert.equal(withdrawal.status, 200, JSON.stringify(withdrawal.body));
     assert.equal(withdrawal.body.estadoAdministrativo, 'Baja');
+    assert.equal(withdrawal.body.informes.find(i => i.tipoInforme === 'PRIMER_BIMESTRE').evaluable, true);
+    assert.equal(withdrawal.body.informes.find(i => i.tipoInforme === 'CICLO_FINAL').evaluable, false);
     assert.equal((await saveScope(enrollment.id, { hasta: 2 }, old)).status, 409);
     assert.equal((await saveScope(oldBaja.id, { sinCursada: true })).status, 200);
     const late = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular' });
-    assert.equal((await saveScope(late.id, { desde: 2, hasta: 4, escuelaInicial: 'Escuela N° 18 D.E 13', cambiosEscuela: [{ fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }] })).status, 200);
+    assert.equal((await saveScope(late.id, { desde: 2, hasta: 4, escuelaInicial: 'Escuela N° 18 D.E 13', fechaIngresoInicial: '2026-02-25', fechaEgresoInicial: '2026-05-15', cambiosEscuela: [{ fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }] })).status, 200);
+    assert.equal((await readScope(late.id)).esAltaTardia, true);
     assert.equal((await teacher(1, 'contexto')).body.alumnos.length, 1);
     assert.equal((await teacher(2, 'contexto')).body.alumnos.length, 2);
     assert.equal((await teacher(3, 'contexto')).body.alumnos.length, 1);
     assert.equal((await teacher(1, 'alumnos/' + late.id)).status, 403);
     assert.equal((await teacher(3, 'alumnos/' + enrollment.id, 'PUT', { cierre: { asistencias: 0, inasistencias: 0, llegadasTarde: 0, observaciones: '' } })).status, 403);
     const recordUrl = '/api/collections/inscripciones/records/' + enrollment.id;
-    for (const values of [{ 'bimestre_hasta+': 1 }, { 'revision_cursada+': 1 }, { bimestre_hasta: 4 }, { revision_cursada: 0 }, { cursada_estado: 'PENDIENTE' }, { estado: 'Regular' }, { curso_id: '' }]) {
+    for (const values of [{ 'bimestre_hasta+': 1 }, { 'revision_cursada+': 1 }, { bimestre_hasta: 4 }, { revision_cursada: 0 }, { cursada_estado: 'PENDIENTE' }, { es_alta_tardia: true }, { estado: 'Regular' }, { curso_id: '' }]) {
       assert.equal((await request(recordUrl, 'PATCH', values, token)).status, 404);
     }
     assert.equal((await request('/api/collections/inscripciones/records/' + late.id, 'PATCH', { estado: 'Baja' }, token)).status, 404);
     assert.equal((await request('/api/collections/inscripciones/records', 'POST', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, cursada_estado: 'CONFIRMADA', bimestre_desde: 1, bimestre_hasta: 4 }, token)).status, 400);
+    assert.equal((await request('/api/collections/inscripciones/records', 'POST', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, es_alta_tardia: true }, token)).status, 400);
     assert.equal((await request(recordUrl, 'PATCH', { numero_orden: 3 }, token)).status, 200);
     assert.equal((await teacher(1, 'alumnos/' + enrollment.id)).status, 200);
     assert.equal((await teacher(1, 'enviar', 'POST', {})).status, 200);
@@ -195,7 +248,8 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.deepEqual(afterRestore.boletines.filter(row => row.inscripcionId !== restored.id).map(row => ({ id: row.inscripcionId, estado: row.estado, generacion: row.generacionVisado })), approvalsBeforeRestore);
     assert.equal(afterRestore.boletines.find(row => row.inscripcionId === restored.id).estado, 'PENDIENTE_REVISION');
     assert.equal((await reviewAt(1)).boletines.some(row => row.inscripcionId === restored.id), false);
-    assert.equal((await saveScope(restored.id, { sinCursada: true })).status, 409);
+    assert.equal((await saveScope(restored.id, { sinCursada: true })).status, 400);
+    assert.equal((await saveScope(restored.id, { sinCursada: true, registrarBaja: true, fechaEgreso: '2026-07-01' })).status, 409);
     assert.equal((await saveScope(oldBaja.id, { desde: 1, hasta: 2 })).status, 200);
     const firstReview = await reviewAt(1);
     assert.equal(firstReview.alumnosSinIncorporar, 1);
@@ -219,8 +273,8 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
           import pb from '/src/core/pocketbase.ts'; import { useAppStore } from '/src/store/appStore.ts';
           import { CargaNotasPage } from '/src/modules/boletines/components/CargaNotasPage.tsx';
           import { AlumnoList } from '/src/modules/alumnos/components/AlumnoList.tsx';
-          import { CursadaModal } from '/src/modules/inscripciones/components/CursadaModal.tsx';
-          function BajaTest() { const [open, setOpen] = React.useState(true); return open ? React.createElement(CursadaModal, { inscripcionId: ${JSON.stringify(pendingUi.id)}, registrarBaja: true, onClose: () => setOpen(false), onSuccess: () => {} }) : React.createElement('p', null, 'Baja guardada'); }
+          import { DarDeBajaModal } from '/src/modules/alumnos/components/DarDeBajaModal.tsx';
+          function BajaTest() { const [open, setOpen] = React.useState(true); return open ? React.createElement(DarDeBajaModal, { visible: true, inscripcionId: ${JSON.stringify(pendingUi.id)}, onClose: () => setOpen(false), onSuccess: () => {} }) : React.createElement('p', null, 'Baja guardada'); }
           import '/src/index.css';
           pb.authStore.save(${JSON.stringify(token)}, ${JSON.stringify(staff.body.record)});
           useAppStore.setState({ cicloActual: ${JSON.stringify(cycle)} });
@@ -250,18 +304,22 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.equal(await page.getByRole('button', { name: /cursadas por confirmar/i }).count(), 0);
     await page.goto('http://127.0.0.1:' + vite.httpServer.address().port + '/app/alumnos?alumno=' + student.id + '&inscripcion=' + pendingUi.id + '&seccion=evaluaciones');
     await page.getByText('Boletines de Primaria', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('switch', { name: 'Boletín 1.º Bimestre' }).isDisabled(), true);
+    await page.getByRole('switch', { name: 'Alta Tardía' }).click();
+    assert.equal(await page.getByRole('switch', { name: 'Boletín 4.º Bimestre' }).isDisabled(), true);
     await page.getByRole('switch', { name: 'Boletín 1.º Bimestre' }).click();
     await page.getByRole('switch', { name: 'Boletín 2.º Bimestre' }).click();
     await page.getByRole('button', { name: 'Guardar cambios' }).click();
     await page.getByText('Participación evaluativa guardada.', { exact: true }).waitFor();
     const confirmed = await readScope(pendingUi.id);
+    assert.equal(confirmed.esAltaTardia, true);
     assert.equal(confirmed.cursada.desde, 3);
     assert.equal(confirmed.cursada.hasta, 4);
     await page.goto('http://127.0.0.1:' + vite.httpServer.address().port + '/app/baja');
     await page.getByLabel('Fecha administrativa de baja').waitFor();
     await patch('inscripciones', pendingUi.id, { numero_orden: 9 });
     await page.getByRole('button', { name: /Registrar baja$/ }).click();
-    await page.getByText('La matrícula cambió. Volvé a cargar la cursada antes de guardar.', { exact: true }).waitFor();
+    await page.getByText('La matrícula cambió en otra sesión. Volvé a cargar antes de guardar.', { exact: true }).waitFor();
     assert.equal((await readScope(pendingUi.id)).estadoAdministrativo, 'Regular');
     await page.getByRole('button', { name: 'Volver a cargar', exact: true }).click();
     await page.getByText('Sintético, Alumno · 1° · 2026', { exact: true }).waitFor({ state: 'attached' });
@@ -272,6 +330,7 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     await page.getByText('Baja guardada', { exact: true }).waitFor();
     const uiBaja = await readScope(pendingUi.id);
     assert.equal(uiBaja.estadoAdministrativo, 'Baja');
+    assert.equal(uiBaja.cursada.desde, 3);
     assert.equal(uiBaja.cursada.hasta, 3);
     await patch('inscripciones', late.id, { posee_apoyos: '-' });
     await page.setViewportSize({ width: 1366, height: 900 });

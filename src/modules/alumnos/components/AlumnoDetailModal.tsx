@@ -44,7 +44,6 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { Alumno } from '../models/alumno.model';
-import { CursadaModal } from '../../inscripciones/components/CursadaModal';
 import { ParticipacionEvaluativaPanel } from '../../inscripciones/components/ParticipacionEvaluativaPanel';
 import { inscripcionService } from '../../inscripciones/services/inscripcion.service';
 import {
@@ -90,7 +89,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
   onBaja,
   onEvaluationsUpdated,
 }) => {
-  const [scopeId, setScopeId] = useState<string | null>(null);
   const [selectedEvalInscripcionId, setSelectedEvalInscripcionId] = useState<string | null>(initialInscripcionId);
   const [detailsRevision, setDetailsRevision] = useState(0);
   const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
@@ -699,6 +697,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                       </div>
                     )}
                     <Space wrap style={{ marginTop: 8 }}>
+                      {insc.esAltaTardia && <Tag color="gold">Alta Tardía (A.T.)</Tag>}
                       {!(/inic|jard[ií]n/i.test(insc.nivelNombre || '') || /sala/i.test(insc.cursoNombre || '')) && (
                         <>
                           {insc.cursadaEstado === 'SIN_CURSADA' ? (
@@ -706,7 +705,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                           ) : insc.cursadaEstado === 'CONFIRMADA' && (insc.bimestreDesde > 1 || insc.bimestreHasta < 4) ? (
                             <Tag color="cyan">Boletines B{insc.bimestreDesde}–B{insc.bimestreHasta}</Tag>
                           ) : null}
-                          <Button onClick={() => setScopeId(insc.id)}>Pases y datos administrativos</Button>
                         </>
                       )}
                       <Button
@@ -718,7 +716,7 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                           setActiveTab('evaluaciones');
                         }}
                       >
-                        Configurar evaluaciones
+                        Gestionar evaluaciones y pases
                       </Button>
                     </Space>
                   </Card>
@@ -1186,6 +1184,11 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
                 {alumno.estadoInscripcion || 'Regular'}
               </Tag>
             )}
+            {alumno.esAltaTardia && (
+              <Tag color="gold" style={{ borderRadius: 6, fontWeight: 700, padding: '2px 8px' }}>
+                Alta Tardía (A.T.)
+              </Tag>
+            )}
           </Space>
         </div>
       </div>
@@ -1209,7 +1212,6 @@ const AlumnoDetailModalSession: React.FC<AlumnoDetailModalProps> = ({
         tabBarGutter={12}
         className="detail-tabs"
       />
-      {scopeId && <CursadaModal inscripcionId={scopeId} onClose={() => setScopeId(null)} onSuccess={() => setDetailsRevision(value => value + 1)} />}
     </Modal>
   );
 };

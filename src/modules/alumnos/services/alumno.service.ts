@@ -2,6 +2,7 @@ import pb from '../../../core/pocketbase';
 import { alumnoAdapter, type Alumno, type AlumnoRecord } from '../models/alumno.model';
 import type { EstadoInscripcion, ModalidadJornada } from '../../inscripciones/models/inscripcion.model';
 import type { CourseFilterKey, GradeNumber, SchoolLevelFilter } from '../utils/gradeColors';
+import { cursadaService, type TipoInformeEvaluacion } from '../../inscripciones/services/cursada.service';
 
 const COLLECTION_NAME = 'alumnos';
 const COLLECTION_RESPONSABLES = 'responsables';
@@ -113,6 +114,11 @@ export interface CreateAlumnoIntegralParams {
     estado?: EstadoInscripcion;
     modalidad_jornada?: ModalidadJornada;
   };
+  altaTardiaConfig?: {
+    esAltaTardia: boolean;
+    primerBimestre?: number;
+    informes?: Array<{ tipoInforme: TipoInformeEvaluacion; evaluable: boolean }>;
+  };
   responsable?: ResponsablePayload;
   vinculo?: string;
   responsableSecundario?: ResponsablePayload;
@@ -210,6 +216,10 @@ export const alumnoService = {
               item.turno = cursoExp?.turno;
               item.modalidadJornada = (insc.modalidad_jornada as ModalidadJornada | undefined) || undefined;
               item.estadoInscripcion = insc.estado;
+              item.cursadaEstado = insc.cursada_estado || undefined;
+              item.bimestreDesde = insc.bimestre_desde ?? undefined;
+              item.bimestreHasta = insc.bimestre_hasta ?? undefined;
+              item.esAltaTardia = Boolean(insc.es_alta_tardia);
               item.fechaEgreso = insc.fecha_egreso || undefined;
               item.fechaIngreso = insc.fecha_ingreso || undefined;
               item.numeroOrden = insc.numero_orden ?? null;
@@ -450,6 +460,39 @@ export const alumnoService = {
           }`,
           { cause: error }
         );
+      }
+
+      if (params.altaTardiaConfig?.esAltaTardia && newlyCreatedInscripcionId) {
+        try {
+          const evalSnapshot = await cursadaService.getEvaluations(newlyCreatedInscripcionId);
+          const desde = Math.min(4, Math.max(1, params.altaTardiaConfig.primerBimestre || 1));
+          const allowedTypes = new Set(evalSnapshot.informes.map((item) => item.tipoInforme));
+          const informesPayload = (params.altaTardiaConfig.informes || [])
+            .filter((item) => allowedTypes.has(item.tipoInforme));
+
+          await cursadaService.saveEvaluations(evalSnapshot, {
+            esAltaTardia: true,
+            ...(!evalSnapshot.esInicial
+              ? {
+                  boletines: {
+                    b1: desde <= 1,
+                    b2: desde <= 2,
+                    b3: desde <= 3,
+                    b4: true,
+                  },
+                }
+              : {}),
+            ...(informesPayload.length > 0 ? { informes: informesPayload } : {}),
+          });
+        } catch (error) {
+          await rollback();
+          throw new Error(
+            `Error al configurar la participación de Alta Tardía: ${
+              error instanceof Error ? error.message : 'Fallo en evaluaciones iniciales'
+            }`,
+            { cause: error }
+          );
+        }
       }
     }
 
