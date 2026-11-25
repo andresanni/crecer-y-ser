@@ -123,8 +123,7 @@ test('Cursadas parciales y Altas Tardías exigen datos de procedencia y pases', 
     cambios_escuela: validTransfers,
   }).length, 0);
 
-  const earlyExitIssues = issues({ bimestre_hasta: 2 });
-  assert.ok(earlyExitIssues.some(item => item.campo === 'administrativo.cambiosEscuela' && item.origen === 'cursada'));
+  assert.equal(issues({ bimestre_hasta: 2 }).length, 0);
 
   assert.equal(issues({
     bimestre_hasta: 2,

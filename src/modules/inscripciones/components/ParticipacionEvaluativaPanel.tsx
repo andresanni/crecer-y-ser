@@ -810,10 +810,10 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
                   )}
                   {(esBaja || (activeBoletinTerms.length > 0 && activeBoletinTerms[activeBoletinTerms.length - 1] < 4)) && (
                     <Alert
-                      type="warning"
+                      type="info"
                       showIcon
-                      title="Baja o egreso anticipado"
-                      description="Registrá el pase hacia la escuela de destino para la hoja administrativa del boletín."
+                      title="Baja o egreso anticipado (pase de salida opcional)"
+                      description="Si contás con los datos del pase hacia la escuela de destino, podés registrarlos opcionalmente acá para la Página 14 del boletín. No bloquea la emisión del PDF."
                     />
                   )}
                   <Card size="small" title="Escuela en la que inició el año (colegio anterior)">

@@ -2074,7 +2074,6 @@ function documentDataIssues(student, guardian, enrollment, cutoff) {
     issues.push({ campo: "apoyos.promocionoConAcompanamiento", mensaje: "Indicar la promoción con acompañamiento en Integración Escolar del cuarto bimestre.", origen: "apoyos", bimestre: 4 })
   }
   var desde = (enrollment.getInt ? enrollment.getInt("bimestre_desde") : 1) || 1
-  var hasta = (enrollment.getInt ? enrollment.getInt("bimestre_hasta") : 4) || 4
   var isLateEntry = Boolean(enrollment.getBool ? enrollment.getBool("es_alta_tardia") : false) || desde > 1
   if (isLateEntry) {
     required(
@@ -2106,13 +2105,6 @@ function documentDataIssues(student, guardian, enrollment, cutoff) {
         origen: "cursada",
         bimestre: null
       })
-    }
-  }
-  if (hasta < 4 && !issues.some((issue) => issue.campo === "administrativo.cambiosEscuela")) {
-    var exitTransfers = transferRecords(enrollment)
-    var validExitTransfer = exitTransfers.length > 0 && hasText(exitTransfers[0].fecha) && hasText(exitTransfers[0].escuelaDestino)
-    if (!validExitTransfer) {
-      issues.push({ campo: "administrativo.cambiosEscuela", mensaje: "Completar el registro de pase o egreso en 4. Evaluaciones.", origen: "cursada", bimestre: null })
     }
   }
   return issues

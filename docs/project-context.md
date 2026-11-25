@@ -9,6 +9,7 @@ Sobre la base de `4. Evaluaciones`, se reemplazó la edición libre sin restricc
   - `AlumnoFormModal` (Paso 2 en alta) expone el toggle explícito `¿Es Alta Tardía?` con configuración inicial opcional de bimestre de inicio e informes, manteniendo el desacoplamiento total respecto de `fecha_ingreso`.
   - `ParticipacionEvaluativaPanel` (`4. Evaluaciones`) incorpora el toggle de `Alta Tardía`, el bloqueo protector de switches para alumnos regulares de ciclo completo, la corrección de fecha de baja y el bloque colapsable de pases/datos administrativos (Hoja 14).
   - `DarDeBajaModal` fue reescrito como flujo dedicado (fecha de baja + corte de boletines + corte de informes + pase opcional) y se eliminó por completo el antiguo `CursadaModal` (`AlumnoDetailModal` y `DocumentReadinessAlert` ahora redirigen directamente a `4. Evaluaciones`).
+- **Reglas documentales de Boletines PDF (`documentDataIssues`)**: para **A.T.** (`es_alta_tardia || bimestre_desde > 1`) se exigen los 6 campos de Página 14 (`escuela_inicial`, `fecha_ingreso_inicial`, `fecha_egreso_inicial` y pase completo `fecha`, `causa`, `escuelaDestino`) desde `4. Evaluaciones`, manteniendo `---` en celdas vacías. El tratamiento documental obligatorio de **B.T.** en PDF queda registrado como pendiente hasta contar con ejemplos reales, sin bloquear hoy la emisión de PDFs de alumnos dados de baja (el pase de salida permanece opcional).
 
 ## Participación evaluativa unificada en la ficha del alumno (`4. Evaluaciones`) y paridad de excluidos — 24 de noviembre de 2026
 

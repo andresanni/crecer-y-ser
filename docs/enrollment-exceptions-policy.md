@@ -101,6 +101,12 @@ Estos faltantes **no bloquean** la carga docente ni el visado académico; bloque
 
 ---
 
-## 6. Hoja de ruta — Bajas Tempranas (B.T.) en Boletines PDF (pendiente)
+## 6. Pendiente por definir — Bajas Tempranas (B.T.) en Boletines PDF
 
-Completada la alineación de **A.T.** en Boletines PDF, el siguiente paso es revisar con el mismo detalle los ejemplos de **Baja Temprana (B.T.)** en boletines (qué campos de Página 14 se exigen, cómo se visualiza el cierre tras el último bimestre cursado y si corresponde alguna leyenda o ajuste en `DarDeBajaModal` / `4. Evaluaciones`).
+Queda **explícitamente pendiente de definición** el tratamiento documental específico del boletín PDF cuando un alumno se retira en medio del ciclo (emisión del boletín para entregar a la escuela de destino), hasta contar con ejemplos institucionales reales de casos anteriores:
+- **Qué falta definir a futuro**: qué campos de Página 14 deberían ser obligatorios para una B.T. (si corresponde exigir fecha/causa/escuela destino del pase de salida, escuela inicial o alguna leyenda específica en observaciones/cierre).
+- **Estado operativo seguro mientras tanto (sin bloqueos)**:
+  - Registrar la baja (`DarDeBajaModal`), cortar bimestres/informes y emitir los boletines PDF de los bimestres evaluables hasta `bimestre_hasta` funciona de punta a punta **sin exigir datos de pase de salida**.
+  - En `documentDataIssues` (`pb_hooks/lib/teacherAccess.js`) se retiró el bloqueo de `cambios_escuela` por `bimestre_hasta < 4` para que ningún alumno de baja quede trabado al emitir su PDF por una regla aún no definida.
+  - Los campos de pase de salida en `DarDeBajaModal` y `4. Evaluaciones` siguen disponibles **de forma opcional**: si Dirección los completa, se imprimen normalmente en la Página 14; si se dejan vacíos, la Página 14 conserva `---` y el PDF se emite sin impedimentos.
+  - Si un alumno combina **A.T. + B.T.**, únicamente se exigen los 6 campos de ingreso de A.T. (Sección 5).
