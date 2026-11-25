@@ -340,9 +340,32 @@ export const AlumnoList: React.FC = () => {
               }
             : undefined;
 
+        const altaTardiaConfig =
+          values.esAltaTardia && createInscripcionData
+            ? {
+                esAltaTardia: true,
+                primerBimestre: values.altaTardiaDesdeBimestre ?? 1,
+                informes: [
+                  {
+                    tipoInforme: 'PRIMER_BIMESTRE' as const,
+                    evaluable: values.altaTardiaInformePrimerBimestre ?? true,
+                  },
+                  {
+                    tipoInforme: 'PRIMER_CUATRIMESTRE' as const,
+                    evaluable: values.altaTardiaInformePrimerCuatrimestre ?? true,
+                  },
+                  {
+                    tipoInforme: 'CICLO_FINAL' as const,
+                    evaluable: values.altaTardiaInformeCicloFinal ?? true,
+                  },
+                ],
+              }
+            : undefined;
+
         await alumnoService.createIntegral({
           alumno: alumnoData,
           inscripcion: createInscripcionData,
+          altaTardiaConfig,
           responsable: responsableData,
           vinculo,
           responsableSecundario: responsableSecundarioData,
@@ -516,6 +539,13 @@ export const AlumnoList: React.FC = () => {
               >
                 {formatModalidadJornada(record.modalidadJornada)}
               </Tag>
+            )}
+            {record.esAltaTardia && (
+              <Tooltip title="Alta Tardía en este ciclo">
+                <Tag color="gold" style={{ borderRadius: 6, fontSize: 11, fontWeight: 700, margin: 0 }}>
+                  A.T.
+                </Tag>
+              </Tooltip>
             )}
           </Space>
         );
@@ -830,6 +860,13 @@ export const AlumnoList: React.FC = () => {
                           <Tag className="student-legajo-tag" style={{ margin: 0 }}>
                             {alumno.numeroLegajo ? `Leg. ${alumno.numeroLegajo}` : 'S/L'}
                           </Tag>
+                          {alumno.esAltaTardia && (
+                            <Tooltip title="Alta Tardía en este ciclo">
+                              <Tag color="gold" style={{ margin: 0, borderRadius: 6, fontSize: 11, fontWeight: 700 }}>
+                                A.T.
+                              </Tag>
+                            </Tooltip>
+                          )}
                         </div>
                       </div>
 

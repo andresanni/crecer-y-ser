@@ -1,3 +1,18 @@
+onRecordBeforeCreateRequest((e) => {
+  if (!e.record) return
+  if (!e.record.getString("cursada_estado")) {
+    if (e.record.getString("estado") === "Baja") {
+      e.record.set("cursada_estado", "SIN_CURSADA")
+      e.record.set("bimestre_desde", 0)
+      e.record.set("bimestre_hasta", 0)
+    } else {
+      e.record.set("cursada_estado", "CONFIRMADA")
+      e.record.set("bimestre_desde", 1)
+      e.record.set("bimestre_hasta", 4)
+    }
+  }
+}, "inscripciones")
+
 routerAdd("GET", "/api/cys/docente/contexto", (c) => {
   const access = require(`${__hooks}/lib/teacherAccess.js`)
   return access.context(c)

@@ -108,6 +108,7 @@ export interface InscripcionRecord {
   bimestre_desde?: number;
   bimestre_hasta?: number;
   revision_cursada?: number;
+  es_alta_tardia?: boolean;
   estado: EstadoInscripcion;
   modalidad_jornada?: ModalidadJornada | string;
   promociono_con_acompanamiento?: OpcionBinariaSN;
@@ -132,6 +133,7 @@ export interface Inscripcion {
   cursadaEstado: string;
   bimestreDesde: number;
   bimestreHasta: number;
+  esAltaTardia: boolean;
   id: string;
   alumnoId: string;
   cursoId: string;
@@ -176,6 +178,7 @@ export const inscripcionAdapter = (record: InscripcionRecord): Inscripcion => ({
   cursadaEstado: record.cursada_estado || 'PENDIENTE',
   bimestreDesde: record.bimestre_desde || 0,
   bimestreHasta: record.bimestre_hasta || 0,
+  esAltaTardia: Boolean(record.es_alta_tardia),
   promocionoConAcompanamiento: record.promociono_con_acompanamiento || '-',
   poseeApoyos: record.posee_apoyos || '-',
   cualesApoyos: record.cuales_apoyos || '',

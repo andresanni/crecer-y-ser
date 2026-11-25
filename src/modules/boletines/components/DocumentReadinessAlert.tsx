@@ -20,7 +20,7 @@ export function DocumentReadinessAlert({ preparation, disabled, onStudent, onSup
         {issues.some(issue => issue.origen === 'alumno') && <Button disabled={disabled} onClick={() => onStudent('alumno')}>Completar ficha</Button>}
         {issues.some(issue => issue.origen === 'responsable') && <Button disabled={disabled} onClick={() => onStudent(issues.some(issue => issue.campo === 'responsable.vinculo') ? 'vinculos' : 'responsable')}>Revisar responsable</Button>}
         {supportTerms.map(term => <Button key={term} disabled={disabled} onClick={() => onSupport(term)}>Revisar apoyos · {term}.º bimestre</Button>)}
-        {issues.some(issue => issue.origen === 'cursada') && onCursada && <Button disabled={disabled} onClick={onCursada}>Completar cursada y pases</Button>}
+        {issues.some(issue => issue.origen === 'cursada') && onCursada && <Button disabled={disabled} onClick={onCursada}>Completar evaluaciones y pases</Button>}
       </Space>
     </Space>
   } />;

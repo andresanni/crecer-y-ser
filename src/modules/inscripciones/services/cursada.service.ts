@@ -1,21 +1,5 @@
 import pb from '../../../core/pocketbase';
-
-export interface CursadaSnapshot {
-  inscripcionId: string;
-  nombreCompleto: string;
-  curso: string;
-  ciclo: number;
-  cursada: { estado: 'PENDIENTE' | 'CONFIRMADA' | 'SIN_CURSADA'; desde: number; hasta: number; revision: number };
-  updated: string;
-  estadoAdministrativo: string;
-  fechaEgreso: string;
-  bimestresConDatos: number[];
-  escuelaInicial: string;
-  fechaIngresoInicial: string;
-  fechaEgresoInicial: string;
-  cambiosEscuela: Array<{ fecha: string; causa: string; escuelaDestino: string }>;
-  cambioDomicilio: string;
-}
+import type { CambioEscuelaItem } from '../models/inscripcion.model';
 
 export type TipoInformeEvaluacion =
   | 'PRIMER_BIMESTRE'
@@ -40,6 +24,14 @@ export interface StudentReportParticipationItem {
   tieneBorrador: boolean;
 }
 
+export interface StudentAdministrativeData {
+  escuelaInicial: string;
+  fechaIngresoInicial: string;
+  fechaEgresoInicial: string;
+  cambiosEscuela: CambioEscuelaItem[];
+  cambioDomicilio: string;
+}
+
 export interface StudentEvaluationsSnapshot {
   inscripcionId: string;
   alumnoId: string;
@@ -48,6 +40,8 @@ export interface StudentEvaluationsSnapshot {
   ciclo: number;
   esInicial: boolean;
   estadoAdministrativo: string;
+  esAltaTardia: boolean;
+  esBaja: boolean;
   fechaIngreso: string;
   fechaEgreso: string;
   cursada: {
@@ -59,39 +53,27 @@ export interface StudentEvaluationsSnapshot {
   updated: string;
   boletines: StudentBoletinesParticipation | null;
   informes: StudentReportParticipationItem[];
+  datosAdministrativos: StudentAdministrativeData;
 }
 
 export interface SaveStudentEvaluationsInput {
+  esAltaTardia?: boolean;
   boletines?: {
     b1: boolean;
     b2: boolean;
     b3: boolean;
     b4: boolean;
   };
-  informes: Array<{
+  informes?: Array<{
     tipoInforme: TipoInformeEvaluacion;
     evaluable: boolean;
   }>;
+  registrarBaja?: boolean;
+  fechaEgreso?: string;
+  datosAdministrativos?: Partial<StudentAdministrativeData>;
 }
 
 export const cursadaService = {
-  get: (id: string) => pb.send<CursadaSnapshot>(`/api/cys/directivo/inscripciones/${id}/cursada`, { requestKey: null }),
-  save: (snapshot: CursadaSnapshot, values: {
-    desde: number;
-    hasta: number;
-    sinCursada: boolean;
-    registrarBaja: boolean;
-    fechaEgreso: string;
-    escuelaInicial?: string;
-    fechaIngresoInicial?: string;
-    fechaEgresoInicial?: string;
-    cambiosEscuela?: Array<{ fecha: string; causa: string; escuelaDestino: string }>;
-    cambioDomicilio?: string;
-  }) =>
-    pb.send<CursadaSnapshot>(`/api/cys/directivo/inscripciones/${snapshot.inscripcionId}/cursada`, {
-      method: 'PUT', requestKey: null,
-      body: { ...values, expectedRevision: snapshot.cursada.revision, expectedUpdated: snapshot.updated },
-    }),
   getEvaluations: (id: string) =>
     pb.send<StudentEvaluationsSnapshot>(`/api/cys/directivo/inscripciones/${id}/evaluaciones`, { requestKey: null }),
   saveEvaluations: (snapshot: StudentEvaluationsSnapshot, values: SaveStudentEvaluationsInput) =>
@@ -101,8 +83,12 @@ export const cursadaService = {
       body: {
         expectedRevision: snapshot.cursada.revision,
         expectedUpdated: snapshot.updated,
+        ...(typeof values.esAltaTardia === 'boolean' ? { esAltaTardia: values.esAltaTardia } : {}),
         ...(values.boletines ? { boletines: values.boletines } : {}),
-        informes: values.informes,
+        ...(values.informes ? { informes: values.informes } : {}),
+        ...(values.registrarBaja ? { registrarBaja: true } : {}),
+        ...(typeof values.fechaEgreso === 'string' ? { fechaEgreso: values.fechaEgreso } : {}),
+        ...(values.datosAdministrativos ? { datosAdministrativos: values.datosAdministrativos } : {}),
       },
     }),
 };
