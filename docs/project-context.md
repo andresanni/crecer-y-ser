@@ -1,5 +1,14 @@
 # Contexto actual de Crecer y Ser
 
+## Adaptaciones de 4.° Bimestre y Observaciones PPI estructuradas — 25 de noviembre de 2026
+
+Se incorporaron cinco ajustes operativos para el cierre del 4.° bimestre en producción y la estandarización de observaciones docentes en todos los bimestres:
+- **Desdoble de asistencias de 4.° bimestre en 2 tiempos (`1793200000_added_fourth_term_closure_and_synthesis.js`, `pb_hooks/lib/finalAttendance.js`, `pb_hooks/final_attendance.pb.js`)**: en B4, `Asistencias`, `Inasistencias` y `Llegadas tarde` salen del formulario principal de calificaciones (`/carga`) y se gestionan en una entidad independiente (`instancias_asistencia_b4`, `tokens_acceso_asistencia_b4`, `asistencias_cierre_b4`) accesible desde la nueva pestaña **`Asistencias finales`** dentro de 4.° Bimestre (`/app/boletines/calificaciones?periodo=...&tab=asistencias`) y el portal público tabular **`/carga-asistencias`**. Completar, entregar o corregir asistencias finales **no retira los visados académicos** (`visados_boletin`), pero la instantánea y emisión PDF de B4 exigen que estén entregadas (`422 DATOS_DOCUMENTALES_INCOMPLETOS`, `origen: "asistencias_b4"`).
+- **`Promocionó con acompañamiento` estático en `NO`**: retirado del formulario docente y directivo (`VistaPorAlumno.tsx`) y de las validaciones de `documentDataIssues`; `buildDocumentSnapshot` y `documentSnapshot.adapter.ts` emiten siempre `NO` en 4.° bimestre conservando el molde del boletín (`---` en B1–B3).
+- **`Promovido/a a:` calculado automáticamente y `Permanece en: ---`**: en 4.° bimestre `documentSnapshot.adapter.ts` calcula el destino (`SEGUNDO GRADO` … `SÉPTIMO GRADO` / `NIVEL SECUNDARIO`), concatenando `, SEGÚN PPI QUE SE ADJUNTA` cuando `posee_apoyos === 'SI'`.
+- **`Síntesis Conceptual` en formulario B4**: nuevo campo `cierres_periodo_alumno.sintesis_conceptual_id` (relación a `valores_escala`), obligatorio en 4.° bimestre con filtrado estricto de `No corresponde` en cliente y servidor, habilitando el render documental completo de B4 sin pendientes anuales.
+- **Observaciones PPI estructuradas en `/carga` (B1–B4)**: en el portal docente se reemplaza el texto libre de `Observaciones` por `ObservacionPpiSelector` (tilde + selección múltiple de grados hasta el grado actual inclusive + vista previa en vivo), persistiendo texto plano en `cierres_periodo_alumno.observaciones` para compatibilidad total con B1–B3; Dirección conserva edición libre en revisión.
+
 ## Altas Tardías (A.T.) y Bajas Tempranas (B.T.) acopladas a la cursada y eliminación de `CursadaModal` — 25 de noviembre de 2026
 
 Sobre la base de `4. Evaluaciones`, se reemplazó la edición libre sin restricciones por un modelo de **libertad guiada dentro de carriles** documentado en detalle en `docs/enrollment-exceptions-policy.md`:

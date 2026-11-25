@@ -241,6 +241,7 @@ export const CargaDocentePublicaPage: React.FC = () => {
       ) : (
         <VistaPorAlumno
           periodoId={periodo.id}
+          cursoNombre={curso.nombre}
           alumnos={alumnos}
           cursoMaterias={materias}
           valoresEscala={valoresEscala}

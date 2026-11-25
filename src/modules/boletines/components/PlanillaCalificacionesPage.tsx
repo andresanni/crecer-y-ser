@@ -522,11 +522,13 @@ export const PlanillaCalificacionesPage: React.FC<PlanillaCalificacionesPageProp
               onStudent={openStudentData}
               onSupport={openSupport}
               onCursada={() => openStudentData('evaluaciones')}
+              onAsistenciasB4={() => navigate(`/app/boletines/calificaciones?periodo=${encodeURIComponent(selectedPeriodoId || '')}&tab=asistencias&asistenciaCurso=${encodeURIComponent(selectedCursoId || '')}`)}
               onRefresh={() => setDocumentRevision(value => value + 1)}
             />
             <VistaPorAlumno
               key={`${selectedCursoId}:${selectedPeriodoId}:${reviewInscripcionId}:${reloadCounter}`}
               periodoId={selectedPeriodoId || ''}
+              cursoNombre={selectedCurso?.nombre}
               alumnos={reviewableStudents}
               cursoMaterias={cursoMaterias}
               valoresEscala={valoresEscala}

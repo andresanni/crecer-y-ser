@@ -258,6 +258,25 @@ Cada operación revalida dentro de la transacción que el curso posea escala (`r
 
 ---
 
+## Rutas de Asistencias Finales de 4.° Bimestre (`pb_hooks/final_attendance.pb.js`)
+
+Aíslan `asistencias`, `inasistencias` y `llegadas_tarde` del 4.° bimestre en `instancias_asistencia_b4`, `tokens_acceso_asistencia_b4` y `asistencias_cierre_b4`. Rechazan con `400` cualquier período distinto de `numero_periodo === 4` o curso sin escala. Sus escrituras **no retiran** `visados_boletin`.
+
+- Institucional (`users`):
+  - `GET /api/cys/directivo/asistencias-b4/etapas/:periodoId`
+  - `POST /api/cys/directivo/asistencias-b4/enlaces`
+  - `POST /api/cys/directivo/asistencias-b4/enlaces/:tokenId/rotar` y `/recuperar`
+  - `GET /api/cys/directivo/asistencias-b4/curso/:cursoId/:periodoId`
+  - `PUT /api/cys/directivo/asistencias-b4/curso/:cursoId/:periodoId` (concurrencia optimista `expectedRevision`, `409` en conflicto)
+- Docente (`X-CYS-Attendance-Token`):
+  - `GET /api/cys/docente/asistencias-b4/contexto`
+  - `PUT /api/cys/docente/asistencias-b4/guardar`
+  - `POST /api/cys/docente/asistencias-b4/enviar` (`422` si faltan alumnos; en `200` pasa a `CONTROL_DIRECTIVO` y elimina el token).
+
+En `numero_periodo === 4`, `PUT /api/cys/docente/alumnos/:inscripcionId` y `PUT /api/cys/directivo/alumnos/:inscripcionId` exigen `cierre.sintesisConceptualId` válido de la escala del curso (rechazando `No corresponde`) y no exigen los tres números de asistencia. `buildDocumentSnapshot` exige asistencias finales entregadas en `asistencias_cierre_b4`, emite `apoyos.promocionoConAcompanamiento: "NO"` estático y retorna `pendientesDeIntegracion: []`.
+
+---
+
 ## Respuestas de autorización
 
 - `401`: enlace ausente, inválido, reemplazado o eliminado.

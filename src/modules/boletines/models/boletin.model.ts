@@ -306,6 +306,7 @@ export interface CierrePeriodoAlumnoRecord {
   inasistencias: number;
   llegadas_tarde: number;
   observaciones: string;
+  sintesis_conceptual_id?: string;
   expand?: {
     inscripcion_id?: unknown;
     periodo_id?: PeriodoRecord;
@@ -320,6 +321,7 @@ export interface CierrePeriodoAlumno {
   inasistencias: number;
   llegadasTarde: number;
   observaciones: string;
+  sintesisConceptualId?: string;
   periodoNombre?: string;
   createdAt: string;
   updatedAt: string;
@@ -333,6 +335,7 @@ export const cierrePeriodoAlumnoAdapter = (record: CierrePeriodoAlumnoRecord): C
   inasistencias: Number(record.inasistencias) || 0,
   llegadasTarde: Number(record.llegadas_tarde) || 0,
   observaciones: record.observaciones || '',
+  sintesisConceptualId: record.sintesis_conceptual_id || '',
   periodoNombre: record.expand?.periodo_id?.nombre,
   createdAt: record.created,
   updatedAt: record.updated,

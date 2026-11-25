@@ -75,6 +75,7 @@ Toda tarea que modifique archivos listados en la Sección 4 debe cumplir estas t
 - **Nivel actual**: Nivel 1 (Paridad por Contrato) — *Candidato prioritario a Nivel 2 (`PublicPortalHeader`)*.
 - **Módulos suscriptos**:
   - **Boletines**: `src/modules/boletines/components/CargaDocentePublicaPage.tsx` (+ `.module.css`)
+  - **Asistencias Finales B4**: `src/modules/boletines/components/CargaAsistenciasB4PublicaPage.tsx` (+ `.module.css`) — variante tabular de carga rápida (3 campos numéricos por alumno) exclusiva de 4.° bimestre en `/carga-asistencias`.
   - **Informes** (`CICLO_FINAL`, `PRIMER_CUATRIMESTRE`, `PRIMER_BIMESTRE`): `src/modules/informes/components/CargaInformePublicaPage.tsx` (+ `.module.css`)
 - **Invariantes UX obligatorios**:
   - Encabezado institucional con identidad azul, escudo circular (`/escudo-circular.png`), identificación clara del docente y resumen visible del alcance (curso/turno/período o materia/ciclo).
@@ -144,6 +145,7 @@ Toda tarea que modifique archivos listados en la Sección 4 debe cumplir estas t
 - **Nivel actual**: Nivel 1 (Paridad por Contrato) sobre shell Nivel 2 (`FormModal`).
 - **Módulos suscriptos**:
   - **Boletines**: `src/modules/boletines/components/GestorEnlacesModal.tsx` (+ `.module.css`)
+  - **Asistencias Finales B4**: `src/modules/boletines/components/GestorEnlacesAsistenciasB4Modal.tsx` — gestor exclusivo sobre `FormModal` para enlaces de `/carga-asistencias` en 4.° bimestre.
   - **Informes** (`CICLO_FINAL`, `PRIMER_CUATRIMESTRE`, `PRIMER_BIMESTRE`): `src/modules/informes/components/GestorEnlacesInformesModal.tsx` (+ `.module.css`)
 - **Invariantes UX obligatorios**:
   - Construido sobre `FormModal` con reinicio de sesión vía `useModalSessionKey` y foco de validación vía `focusFirstFormError`.

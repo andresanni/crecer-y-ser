@@ -1,12 +1,13 @@
 import { Alert, Button, Space } from 'antd';
 import type { DocumentPreparation } from '../services/gradebookDataSource.service';
 
-export function DocumentReadinessAlert({ preparation, disabled, onStudent, onSupport, onCursada, onRefresh }: {
+export function DocumentReadinessAlert({ preparation, disabled, onStudent, onSupport, onCursada, onAsistenciasB4, onRefresh }: {
   preparation?: DocumentPreparation;
   disabled: boolean;
   onStudent: (section: 'alumno' | 'responsable' | 'vinculos') => void;
   onSupport: (term: number) => void;
   onCursada?: () => void;
+  onAsistenciasB4?: () => void;
   onRefresh: () => void;
 }) {
   if (!preparation) return <Alert type="info" showIcon title="Preparación del PDF pendiente de comprobar" action={<Button onClick={onRefresh}>Actualizar</Button>} />;
@@ -21,6 +22,7 @@ export function DocumentReadinessAlert({ preparation, disabled, onStudent, onSup
         {issues.some(issue => issue.origen === 'responsable') && <Button disabled={disabled} onClick={() => onStudent(issues.some(issue => issue.campo === 'responsable.vinculo') ? 'vinculos' : 'responsable')}>Revisar responsable</Button>}
         {supportTerms.map(term => <Button key={term} disabled={disabled} onClick={() => onSupport(term)}>Revisar apoyos · {term}.º bimestre</Button>)}
         {issues.some(issue => issue.origen === 'cursada') && onCursada && <Button disabled={disabled} onClick={onCursada}>Completar evaluaciones y pases</Button>}
+        {issues.some(issue => issue.origen === 'asistencias_b4') && onAsistenciasB4 && <Button disabled={disabled} onClick={onAsistenciasB4}>Ir a Asistencias finales</Button>}
       </Space>
     </Space>
   } />;
