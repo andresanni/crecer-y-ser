@@ -6,7 +6,11 @@ const vm = require('node:vm');
 const context = vm.createContext({ module: { exports: {} } });
 vm.runInContext(readFileSync('pb_hooks/lib/teacherAccess.js', 'utf8'), context);
 const validate = vm.runInContext('documentDataIssues', context);
-const record = data => ({ getString: key => data[key] || '', getInt: key => data[key] !== undefined ? data[key] : (key === 'bimestre_desde' ? 1 : key === 'bimestre_hasta' ? 4 : 0) });
+const record = data => ({
+  getString: key => data[key] || '',
+  getInt: key => data[key] !== undefined ? data[key] : (key === 'bimestre_desde' ? 1 : key === 'bimestre_hasta' ? 4 : 0),
+  getBool: key => Boolean(data[key]),
+});
 const student = { apellidos: 'Prueba', nombres: 'Ejemplo', dni: '00000000' };
 const guardian = { apellidos: 'Prueba', nombres: 'Tutor' };
 const enrollment = { posee_apoyos: 'NO', cuales_apoyos: '', promociono_con_acompanamiento: '-' };
@@ -80,15 +84,42 @@ test('La instantánea rechaza faltantes antes de devolver una huella o leer nota
   assert.match(result.body.message, /primer bimestre/);
 });
 
-test('Cursadas parciales exigen datos de procedencia y pases', () => {
+test('Cursadas parciales y Altas Tardías exigen datos de procedencia y pases', () => {
   const lateIssues = issues({ bimestre_desde: 2 });
   assert.ok(lateIssues.some(item => item.campo === 'administrativo.escuelaInicial' && item.origen === 'cursada'));
+  assert.ok(lateIssues.some(item => item.campo === 'administrativo.fechaIngresoInicial' && item.origen === 'cursada'));
+  assert.ok(lateIssues.some(item => item.campo === 'administrativo.fechaEgresoInicial' && item.origen === 'cursada'));
   assert.ok(lateIssues.some(item => item.campo === 'administrativo.cambiosEscuela' && item.origen === 'cursada'));
+
+  const flagOnlyLateIssues = issues({ es_alta_tardia: true, bimestre_desde: 1 });
+  assert.equal(flagOnlyLateIssues.length, 4);
+
+  const transferWithoutCause = JSON.stringify([{ fecha: '2026-05-18', causa: '', escuelaDestino: 'Colegio Crecer y Ser' }]);
+  assert.ok(issues({
+    es_alta_tardia: true,
+    bimestre_desde: 1,
+    escuela_inicial: 'Escuela N° 18 D.E 13',
+    fecha_ingreso_inicial: '2026-02-25',
+    fecha_egreso_inicial: '2026-05-15',
+    cambios_escuela: transferWithoutCause,
+  }).some(item => item.campo === 'administrativo.cambiosEscuela'));
 
   const validTransfers = JSON.stringify([{ fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }]);
   assert.equal(issues({
+    es_alta_tardia: true,
     bimestre_desde: 2,
     escuela_inicial: 'Escuela N° 18 D.E 13',
+    fecha_ingreso_inicial: '2026-02-25',
+    fecha_egreso_inicial: '2026-05-15',
+    cambios_escuela: validTransfers,
+  }).length, 0);
+
+  assert.equal(issues({
+    es_alta_tardia: true,
+    bimestre_desde: 1,
+    escuela_inicial: 'Escuela N° 18 D.E 13',
+    fecha_ingreso_inicial: '2026-02-25',
+    fecha_egreso_inicial: '2026-05-15',
     cambios_escuela: validTransfers,
   }).length, 0);
 

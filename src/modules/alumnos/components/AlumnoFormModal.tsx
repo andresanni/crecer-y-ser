@@ -1099,7 +1099,7 @@ const AlumnoFormModalSession: React.FC<AlumnoFormModalProps> = ({
                     </Col>
                   </Row>
                   <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
-                    Podrás ajustar estas instancias y completar los datos de pase (Página 14) en cualquier momento desde la pestaña 4. Evaluaciones de su ficha.
+                    Podrás ajustar estas instancias y cargar los datos de la escuela anterior y pase (Página 14 del boletín) cuando cuentes con la documentación, desde la pestaña 4. Evaluaciones de su ficha.
                   </Text>
                 </div>
               )}

@@ -161,6 +161,7 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
   } | null>(null);
   const [informesDraft, setInformesDraft] = useState<Record<string, boolean>>({});
   const [adminDraft, setAdminDraft] = useState<StudentAdministrativeData>(() => normalizeAdminData());
+  const [adminExpandedKeys, setAdminExpandedKeys] = useState<string[] | null>(null);
 
   const hydrateFromSnapshot = (data: StudentEvaluationsSnapshot) => {
     setSnapshot(data);
@@ -380,7 +381,25 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
       adminDraft.cambioDomicilio,
   );
 
+  const isLateEntryForBoletin =
+    !snapshot.esInicial &&
+    (altaTardiaDraft || (activeBoletinTerms.length > 0 && activeBoletinTerms[0] > 1));
+
+  const missingLateEntryFields = (() => {
+    if (!isLateEntryForBoletin) return [];
+    const missing: string[] = [];
+    if (!adminDraft.escuelaInicial.trim()) missing.push('Escuela en la que inició el año');
+    if (!adminDraft.fechaIngresoInicial.trim()) missing.push('Fecha de ingreso (escuela anterior)');
+    if (!adminDraft.fechaEgresoInicial.trim()) missing.push('Fecha de egreso (escuela anterior)');
+    const hasCompleteTransfer = adminDraft.cambiosEscuela.some(
+      (item) => item.fecha.trim() && item.causa.trim() && item.escuelaDestino.trim(),
+    );
+    if (!hasCompleteTransfer) missing.push('Pase de ingreso completo (fecha, causa y escuela destino)');
+    return missing;
+  })();
+
   const showAdminSection = !snapshot.esInicial && (altaTardiaDraft || esBaja || hasExistingAdminData);
+  const activeAdminKeys = adminExpandedKeys ?? (missingLateEntryFields.length > 0 ? ['admin'] : []);
 
   const boletinSummary =
     activeBoletinTerms.length === 0
@@ -401,14 +420,15 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
 
   const addTransferItem = () => {
     setSaveError(null);
+    const isFirstLateEntryTransfer = altaTardiaDraft && adminDraft.cambiosEscuela.length === 0;
     setAdminDraft((prev) => ({
       ...prev,
       cambiosEscuela: [
         ...prev.cambiosEscuela,
         {
-          fecha: '',
+          fecha: isFirstLateEntryTransfer && snapshot.fechaIngreso ? snapshot.fechaIngreso.slice(0, 10) : '',
           causa: '',
-          escuelaDestino: altaTardiaDraft && !esBaja ? 'Colegio Crecer y Ser' : '',
+          escuelaDestino: isFirstLateEntryTransfer || (altaTardiaDraft && !esBaja) ? 'Colegio Crecer y Ser' : '',
         },
       ],
     }));
@@ -759,84 +779,103 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
 
       {showAdminSection && (
         <Collapse
+          activeKey={activeAdminKeys}
+          onChange={(keys) => setAdminExpandedKeys(typeof keys === 'string' ? [keys] : keys)}
           items={[
             {
               key: 'admin',
-              label: 'Pases de escuela y datos administrativos (Página 14 del boletín)',
+              label: (
+                <div className={styles.cardHeader}>
+                  <span>Pases de escuela y datos administrativos (Página 14 del boletín)</span>
+                  {isLateEntryForBoletin && (
+                    missingLateEntryFields.length === 0 ? (
+                      <Tag color="success" style={{ margin: 0 }}>Completo para PDF</Tag>
+                    ) : (
+                      <Tag color="warning" style={{ margin: 0 }}>
+                        Faltan datos para PDF ({missingLateEntryFields.length})
+                      </Tag>
+                    )
+                  )}
+                </div>
+              ),
               children: (
                 <Space orientation="vertical" size="small" className={ui.fullWidth}>
-                  {activeBoletinTerms.length > 0 && activeBoletinTerms[0] > 1 && (
+                  {isLateEntryForBoletin && missingLateEntryFields.length > 0 && (
                     <Alert
                       type="warning"
                       showIcon
-                      message="Ingreso tardío: datos requeridos para el boletín"
-                      description="Indicá la escuela de origen y registrá el pase de ingreso hacia Crecer y Ser para habilitar la generación del PDF."
+                      title="Alta Tardía: completá los datos de Página 14 para habilitar el boletín PDF"
+                      description={`Pendiente: ${missingLateEntryFields.join(' · ')}.`}
                     />
                   )}
                   {(esBaja || (activeBoletinTerms.length > 0 && activeBoletinTerms[activeBoletinTerms.length - 1] < 4)) && (
                     <Alert
                       type="warning"
                       showIcon
-                      message="Baja o egreso anticipado"
+                      title="Baja o egreso anticipado"
                       description="Registrá el pase hacia la escuela de destino para la hoja administrativa del boletín."
                     />
                   )}
-                  <div>
-                    <Text strong style={{ display: 'block', fontSize: 12.5, marginBottom: 4 }}>
-                      Escuela de procedencia / inicial
-                    </Text>
-                    <Input
-                      value={adminDraft.escuelaInicial}
-                      disabled={saving}
-                      placeholder="Ej: Escuela N° 18 D.E 13"
-                      onChange={(e) => {
-                        setSaveError(null);
-                        setAdminDraft((prev) => ({ ...prev, escuelaInicial: e.target.value }));
-                      }}
-                    />
-                  </div>
-                  <Row gutter={12}>
-                    <Col xs={24} sm={12}>
-                      <Text strong style={{ display: 'block', fontSize: 12.5, marginBottom: 4 }}>
-                        Fecha de ingreso inicial
-                      </Text>
-                      <DatePicker
-                        format="DD/MM/YYYY"
-                        className={ui.fullWidth}
-                        placeholder="DD/MM/AAAA"
-                        disabled={saving}
-                        value={adminDraft.fechaIngresoInicial ? dayjs(adminDraft.fechaIngresoInicial) : null}
-                        onChange={(value) => {
-                          setSaveError(null);
-                          setAdminDraft((prev) => ({
-                            ...prev,
-                            fechaIngresoInicial: value ? value.format('YYYY-MM-DD') : '',
-                          }));
-                        }}
-                      />
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <Text strong style={{ display: 'block', fontSize: 12.5, marginBottom: 4 }}>
-                        Fecha de egreso inicial
-                      </Text>
-                      <DatePicker
-                        format="DD/MM/YYYY"
-                        className={ui.fullWidth}
-                        placeholder="DD/MM/AAAA"
-                        disabled={saving}
-                        value={adminDraft.fechaEgresoInicial ? dayjs(adminDraft.fechaEgresoInicial) : null}
-                        onChange={(value) => {
-                          setSaveError(null);
-                          setAdminDraft((prev) => ({
-                            ...prev,
-                            fechaEgresoInicial: value ? value.format('YYYY-MM-DD') : '',
-                          }));
-                        }}
-                      />
-                    </Col>
-                  </Row>
+                  <Card size="small" title="Escuela en la que inició el año (colegio anterior)">
+                    <Space orientation="vertical" size="small" className={ui.fullWidth}>
+                      <div>
+                        <Text strong style={{ display: 'block', fontSize: 12.5, marginBottom: 4 }}>
+                          Nombre de la escuela anterior{isLateEntryForBoletin ? ' *' : ''}
+                        </Text>
+                        <Input
+                          value={adminDraft.escuelaInicial}
+                          disabled={saving}
+                          placeholder="Ej: Escuela N° 18 D.E 13"
+                          onChange={(e) => {
+                            setSaveError(null);
+                            setAdminDraft((prev) => ({ ...prev, escuelaInicial: e.target.value }));
+                          }}
+                        />
+                      </div>
+                      <Row gutter={12}>
+                        <Col xs={24} sm={12}>
+                          <Text strong style={{ display: 'block', fontSize: 12.5, marginBottom: 4 }}>
+                            Fecha de ingreso (en esa escuela){isLateEntryForBoletin ? ' *' : ''}
+                          </Text>
+                          <DatePicker
+                            format="DD/MM/YYYY"
+                            className={ui.fullWidth}
+                            placeholder="DD/MM/AAAA"
+                            disabled={saving}
+                            value={adminDraft.fechaIngresoInicial ? dayjs(adminDraft.fechaIngresoInicial) : null}
+                            onChange={(value) => {
+                              setSaveError(null);
+                              setAdminDraft((prev) => ({
+                                ...prev,
+                                fechaIngresoInicial: value ? value.format('YYYY-MM-DD') : '',
+                              }));
+                            }}
+                          />
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Text strong style={{ display: 'block', fontSize: 12.5, marginBottom: 4 }}>
+                            Fecha de egreso (de esa escuela){isLateEntryForBoletin ? ' *' : ''}
+                          </Text>
+                          <DatePicker
+                            format="DD/MM/YYYY"
+                            className={ui.fullWidth}
+                            placeholder="DD/MM/AAAA"
+                            disabled={saving}
+                            value={adminDraft.fechaEgresoInicial ? dayjs(adminDraft.fechaEgresoInicial) : null}
+                            onChange={(value) => {
+                              setSaveError(null);
+                              setAdminDraft((prev) => ({
+                                ...prev,
+                                fechaEgresoInicial: value ? value.format('YYYY-MM-DD') : '',
+                              }));
+                            }}
+                          />
+                        </Col>
+                      </Row>
+                    </Space>
+                  </Card>
                   <Text strong style={{ fontSize: 13, display: 'block', marginTop: 4 }}>
-                    Pases de escuela (hasta 4)
+                    Cambios de Escuela (hasta 4 pases){isLateEntryForBoletin ? ' *' : ''}
                   </Text>
                   <div className={styles.transferList}>
                     {adminDraft.cambiosEscuela.map((transfer, index) => (
@@ -857,7 +896,7 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
                         <Row gutter={8}>
                           <Col xs={24} sm={7}>
                             <Text type="secondary" style={{ display: 'block', fontSize: 11.5, marginBottom: 2 }}>
-                              Fecha
+                              Fecha{isLateEntryForBoletin && index === 0 ? ' *' : ''}
                             </Text>
                             <DatePicker
                               format="DD/MM/YYYY"
@@ -874,7 +913,7 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
                           </Col>
                           <Col xs={24} sm={8}>
                             <Text type="secondary" style={{ display: 'block', fontSize: 11.5, marginBottom: 2 }}>
-                              Causa
+                              Causa{isLateEntryForBoletin && index === 0 ? ' *' : ''}
                             </Text>
                             <Input
                               value={transfer.causa}
@@ -885,7 +924,7 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
                           </Col>
                           <Col xs={24} sm={9}>
                             <Text type="secondary" style={{ display: 'block', fontSize: 11.5, marginBottom: 2 }}>
-                              Escuela destino
+                              Pasa a la Escuela{isLateEntryForBoletin && index === 0 ? ' *' : ''}
                             </Text>
                             <Input
                               value={transfer.escuelaDestino}
@@ -907,7 +946,9 @@ const ParticipacionEvaluativaEditor: React.FC<ParticipacionEvaluativaEditorProps
                         block
                         icon={<PlusOutlined />}
                       >
-                        Agregar pase de escuela
+                        {altaTardiaDraft && adminDraft.cambiosEscuela.length === 0
+                          ? 'Cargar pase de ingreso a Colegio Crecer y Ser'
+                          : 'Agregar pase de escuela'}
                       </Button>
                     )}
                   </div>

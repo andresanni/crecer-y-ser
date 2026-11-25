@@ -73,6 +73,34 @@ Todas las escrituras pasan transaccionalmente por `PUT /api/cys/directivo/inscri
 
 ---
 
-## 5. Hoja de ruta — Etapa 2 (pendiente)
+## 5. Boletines PDF — Reglas de Alta Tardía (A.T.)
 
-Esta primera etapa consolidó la **fuente de verdad acoplada, los candados de integridad y la unificación de pantallas** (`4. Evaluaciones` + `DarDeBajaModal` + alta de alumno). En la **Etapa 2** se abordará en detalle cómo se capturan, validan y plasman en los **boletines PDF** los datos administrativos específicos de A.T. y B.T. (escuela de procedencia, motivo y fecha del traspaso, pases en Hoja 14, leyendas y casos de borde de impresión).
+Para todo alumno de Nivel Primario marcado con `es_alta_tardia = true` (o con `bimestre_desde > 1`), rigen las siguientes reglas de renderizado y validación documental:
+
+### Renderizado automático de bimestres previos (`n < bimestre_desde`)
+- **Criterios y Calificación General**: imprimen `*` automáticamente (`CalificacionCelda`).
+- **PPI, Asistencias, Inasistencias y Llegadas tarde**: imprimen `---` automáticamente (`ValorCelda`).
+- **Observaciones del bimestre anterior**: se completan automáticamente sobre rieles (sin campo editable) con la leyenda oficial centrada:
+  `(*) Primer bimestre, información perteneciente a colegio anterior, consta en legajo de alumno.` (adaptando `Primer` / `Segundo` / `Tercer`).
+- **Apoyos e Integración Escolar (Página 3)**: `firstEvaluableTerm` traslada automáticamente el registro de `¿Posee apoyos / acompañamiento?` al primer bimestre evaluable del alumno (con `NO` por defecto).
+- **Celdas vacías en Página 14**: las filas no utilizadas de *Cambios de Escuela* y los campos administrativos sin dato conservan `---` para evitar manipulación en papel.
+
+### Riel de integridad documental en Página 14 (6 campos obligatorios para emitir PDF)
+La carga de los datos de Página 14 se mantiene **desacoplada del formulario de alta** (para no sobrecargar la carga inicial cuando la documentación del pase aún no llegó) y se centraliza en **`4. Evaluaciones`** (`ParticipacionEvaluativaPanel.tsx`), donde el bloque se auto-expande si faltan datos y pre-sugiere `Colegio Crecer y Ser` y la `fecha_ingreso` de la inscripción al agregar el primer pase.
+
+Al consultar `preparacionDocumental` o generar la instantánea PDF (`buildDocumentSnapshot`), el servidor (`documentDataIssues` en `pb_hooks/lib/teacherAccess.js`) exige los **6 campos** para todo alumno con `es_alta_tardia = true || bimestre_desde > 1`:
+1. `escuela_inicial` — **Escuela en la que inició el año** (colegio anterior).
+2. `fecha_ingreso_inicial` — **Fecha de ingreso** en esa escuela anterior.
+3. `fecha_egreso_inicial` — **Fecha de egreso** de esa escuela anterior.
+4. `cambios_escuela` — al menos un pase completo con:
+   - `fecha` (**Fecha** del pase),
+   - `causa` (**Causa** del traspaso), y
+   - `escuelaDestino` (**Pasa a la Escuela**, ej. `Colegio Crecer y Ser`).
+
+Estos faltantes **no bloquean** la carga docente ni el visado académico; bloquean únicamente la emisión del PDF individual del alumno (con acceso directo `Completar evaluaciones y pases` desde `DocumentReadinessAlert`).
+
+---
+
+## 6. Hoja de ruta — Bajas Tempranas (B.T.) en Boletines PDF (pendiente)
+
+Completada la alineación de **A.T.** en Boletines PDF, el siguiente paso es revisar con el mismo detalle los ejemplos de **Baja Temprana (B.T.)** en boletines (qué campos de Página 14 se exigen, cómo se visualiza el cierre tras el último bimestre cursado y si corresponde alguna leyenda o ajuste en `DarDeBajaModal` / `4. Evaluaciones`).

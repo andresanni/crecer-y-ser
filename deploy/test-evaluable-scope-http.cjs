@@ -184,7 +184,7 @@ test('Cursada evaluable: migración, permisos, baja, entrega, concurrencia y UI 
     assert.equal((await saveScope(enrollment.id, { hasta: 2 }, old)).status, 409);
     assert.equal((await saveScope(oldBaja.id, { sinCursada: true })).status, 200);
     const late = await create('inscripciones', { alumno_id: student.id, curso_id: course.id, ciclo_id: cycle.id, estado: 'Regular' });
-    assert.equal((await saveScope(late.id, { desde: 2, hasta: 4, escuelaInicial: 'Escuela N° 18 D.E 13', cambiosEscuela: [{ fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }] })).status, 200);
+    assert.equal((await saveScope(late.id, { desde: 2, hasta: 4, escuelaInicial: 'Escuela N° 18 D.E 13', fechaIngresoInicial: '2026-02-25', fechaEgresoInicial: '2026-05-15', cambiosEscuela: [{ fecha: '2026-05-18', causa: 'Motivos particulares', escuelaDestino: 'Colegio Crecer y Ser' }] })).status, 200);
     assert.equal((await readScope(late.id)).esAltaTardia, true);
     assert.equal((await teacher(1, 'contexto')).body.alumnos.length, 1);
     assert.equal((await teacher(2, 'contexto')).body.alumnos.length, 2);

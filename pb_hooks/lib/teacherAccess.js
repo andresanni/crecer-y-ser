@@ -2075,19 +2075,44 @@ function documentDataIssues(student, guardian, enrollment, cutoff) {
   }
   var desde = (enrollment.getInt ? enrollment.getInt("bimestre_desde") : 1) || 1
   var hasta = (enrollment.getInt ? enrollment.getInt("bimestre_hasta") : 4) || 4
-  if (desde > 1) {
-    required(enrollment.getString("escuela_inicial"), "administrativo.escuelaInicial", "Completar la escuela de origen en los datos de cursada.", "cursada")
-    var transfers = transferRecords(enrollment)
-    var validTransfer = transfers.length > 0 && hasText(transfers[0].fecha) && hasText(transfers[0].escuelaDestino)
-    if (!validTransfer) {
-      issues.push({ campo: "administrativo.cambiosEscuela", mensaje: "Completar el registro de pase en los datos de cursada.", origen: "cursada", bimestre: null })
+  var isLateEntry = Boolean(enrollment.getBool ? enrollment.getBool("es_alta_tardia") : false) || desde > 1
+  if (isLateEntry) {
+    required(
+      enrollment.getString("escuela_inicial"),
+      "administrativo.escuelaInicial",
+      "Completar la escuela en la que inició el año (Página 14) en 4. Evaluaciones.",
+      "cursada"
+    )
+    required(
+      enrollment.getString("fecha_ingreso_inicial"),
+      "administrativo.fechaIngresoInicial",
+      "Completar la fecha de ingreso en la escuela anterior (Página 14) en 4. Evaluaciones.",
+      "cursada"
+    )
+    required(
+      enrollment.getString("fecha_egreso_inicial"),
+      "administrativo.fechaEgresoInicial",
+      "Completar la fecha de egreso de la escuela anterior (Página 14) en 4. Evaluaciones.",
+      "cursada"
+    )
+    var lateTransfers = transferRecords(enrollment)
+    var validEntryTransfer = lateTransfers.some(
+      (item) => hasText(item.fecha) && hasText(item.causa) && hasText(item.escuelaDestino)
+    )
+    if (!validEntryTransfer) {
+      issues.push({
+        campo: "administrativo.cambiosEscuela",
+        mensaje: "Completar el pase de ingreso (fecha, causa y escuela destino) en 4. Evaluaciones.",
+        origen: "cursada",
+        bimestre: null
+      })
     }
   }
   if (hasta < 4 && !issues.some((issue) => issue.campo === "administrativo.cambiosEscuela")) {
-    var transfers = transferRecords(enrollment)
-    var validTransfer = transfers.length > 0 && hasText(transfers[0].fecha) && hasText(transfers[0].escuelaDestino)
-    if (!validTransfer) {
-      issues.push({ campo: "administrativo.cambiosEscuela", mensaje: "Completar el registro de pase o egreso en los datos de cursada.", origen: "cursada", bimestre: null })
+    var exitTransfers = transferRecords(enrollment)
+    var validExitTransfer = exitTransfers.length > 0 && hasText(exitTransfers[0].fecha) && hasText(exitTransfers[0].escuelaDestino)
+    if (!validExitTransfer) {
+      issues.push({ campo: "administrativo.cambiosEscuela", mensaje: "Completar el registro de pase o egreso en 4. Evaluaciones.", origen: "cursada", bimestre: null })
     }
   }
   return issues
