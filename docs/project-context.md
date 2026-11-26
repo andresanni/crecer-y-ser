@@ -1,5 +1,11 @@
 # Contexto actual de Crecer y Ser
 
+## Observaciones PPI estructuradas en Informes de Maestras — 26 de noviembre de 2026
+
+En paridad con Boletines (`UX-05` en `docs/ux-patterns-registry.md`), se reemplazó el texto libre de `Observaciones` en el portal docente de Informes (`/carga-informe`, `VistaInformePorAlumno.tsx`) por el control booleano `ObservacionPpiInformeToggle.tsx`:
+- **Switch SI/NO con vista previa**: al activarlo redacta automáticamente la leyenda fija de respaldo PPI (*«Su situación de alumno se encuentra respaldada por un PPI que enmarca adaptaciones curriculares y de recursos, los cuales tienen como finalidad respetar los tiempos y favorecer los procesos de comprensión y ejecución de tareas.»*); al desactivarlo guarda vacío (`-` en el PDF).
+- **Sin cambios de esquema y edición libre en Dirección**: persiste texto plano en `evaluaciones_informe.observaciones` y conserva el cuadro de texto libre para correcciones de Dirección en `/app/informes`.
+
 ## Adaptaciones de 4.° Bimestre y Observaciones PPI estructuradas — 25 de noviembre de 2026
 
 Se incorporaron cinco ajustes operativos para el cierre del 4.° bimestre en producción y la estandarización de observaciones docentes en todos los bimestres:
