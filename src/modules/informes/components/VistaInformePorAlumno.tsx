@@ -58,6 +58,7 @@ import {
   SemaforoStudentPills,
 } from './InformesVisualIndicators';
 import styles from './VistaInformePorAlumno.module.css';
+import { ObservacionPpiInformeToggle } from './ObservacionPpiInformeToggle';
 
 const { Text } = Typography;
 
@@ -1133,7 +1134,12 @@ export const VistaInformePorAlumno: React.FC<VistaInformePorAlumnoProps> = ({
                   Si se deja vacío se imprimirá &quot;-&quot;
                 </Text>
               </div>
-              {!readOnly || isStaffEditing ? (
+              {!readOnly ? (
+                <ObservacionPpiInformeToggle
+                  value={draftObservaciones}
+                  onChange={setDraftObservaciones}
+                />
+              ) : isStaffEditing ? (
                 <Input.TextArea
                   rows={3}
                   maxLength={1000}
