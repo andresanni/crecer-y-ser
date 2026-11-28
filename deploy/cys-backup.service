@@ -1,0 +1,12 @@
+[Unit]
+Description=Crecer y Ser PocketBase Encrypted Backup
+After=network-online.target pocketbase.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/cys-vps-backup.sh
+Nice=10
+IOSchedulingClass=best-effort
+StandardOutput=journal
+StandardError=journal

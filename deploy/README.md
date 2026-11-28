@@ -35,6 +35,11 @@ La versión confirmada de PocketBase es `0.22.17` y la de Caddy es `2.11.4`. Poc
 - `deploy/pocketbase-version.json`: versión, artefactos y checksums oficiales fijados.
 - `deploy/pocketbase-dev-seed/`: datos sintéticos exclusivos de desarrollo.
 - `deploy/Caddyfile`: proxy vigente.
+- `deploy/vps-backup.sh`: respaldo cifrado diario todo-en-uno (local + Google Drive vía `rclone`).
+- `deploy/vps-backup-notify.py`: notificación diaria por email `[OK]` / `[ERROR]` vía SMTP.
+- `deploy/vps-restore-dr.sh`: verificación y restauración ante desastres (seguro por defecto en modo solo lectura).
+- `deploy/cys-backup.service` y `deploy/cys-backup.timer`: programación diaria automática a las 03:30.
+- `docs/vps-backup-and-disaster-recovery.md`: política canónica de respaldos y protocolo de crisis del VPS.
 - `docs/pocketbase-api.md`: contrato HTTP propio.
 - `docs/pocketbase-magic-link-hardening.md`: seguridad, pruebas y secuencia de migración.
 - `docs/gradebook-workflow-test-plan.md`: matriz funcional, de seguridad y concurrencia posterior al despliegue.
